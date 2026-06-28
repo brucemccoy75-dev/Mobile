@@ -108,6 +108,38 @@
     #resetBtn { background: #334155; }
     button:disabled { opacity: 0.4; cursor: default; }
 
+    .toggle {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding-top: 14px;
+      transition: opacity 0.3s ease;
+    }
+    .toggle.hidden { opacity: 0; pointer-events: none; height: 0; padding: 0; overflow: hidden; }
+    .toggle-label { font-size: 0.8rem; letter-spacing: 0.05em; text-transform: uppercase; color: #94a3b8; }
+    .seg {
+      display: inline-flex;
+      background: rgba(255,255,255,0.06);
+      border-radius: 999px;
+      padding: 4px;
+      gap: 4px;
+    }
+    .seg-btn {
+      flex: none;
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 9px 26px;
+      border-radius: 999px;
+      background: transparent;
+      color: #cbd5e1;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+    .seg-btn:active { transform: scale(0.96); }
+    .seg-btn.active { background: #475569; color: #fff; }
+    #startNormal.active { background: var(--regular); color: #042b3d; }
+    #startSpeed.active  { background: var(--speed);   color: #2a1206; }
+
     footer { font-size: 0.8rem; color: #475569; padding-top: 4px; }
   </style>
 </head>
@@ -115,6 +147,14 @@
   <header>
     <h1>Interval Walking</h1>
   </header>
+
+  <div class="toggle" id="toggle">
+    <span class="toggle-label">Start with</span>
+    <div class="seg" role="group" aria-label="Starting pace">
+      <button class="seg-btn active" id="startNormal" data-mode="regular">Normal</button>
+      <button class="seg-btn" id="startSpeed" data-mode="speed">Speed</button>
+    </div>
+  </div>
 
   <main>
     <div id="phase">Ready</div>
@@ -143,13 +183,25 @@
     const PHASE_SECONDS = 3 * 60;   // 3 minutes per phase
     const ROUNDS = 5;               // 5 rounds → 30 minutes total
 
-    // Build the sequence: each round = Speed walk then Regular walk.
-    const SEQUENCE = [];
-    for (let r = 1; r <= ROUNDS; r++) {
-      SEQUENCE.push({ name: "Speed Walk",   cls: "speed",   round: r });
-      SEQUENCE.push({ name: "Regular Walk", cls: "regular", round: r });
+    const SPEED   = { name: "Speed Walk",   cls: "speed"   };
+    const REGULAR = { name: "Regular Walk", cls: "regular" };
+
+    // Which pace each round starts with ("regular" = default, or "speed").
+    let startMode = "regular";
+
+    // Build the sequence: each round is the chosen pace, then the other pace.
+    let SEQUENCE = [];
+    function buildSequence() {
+      const first  = startMode === "speed" ? SPEED : REGULAR;
+      const second = startMode === "speed" ? REGULAR : SPEED;
+      SEQUENCE = [];
+      for (let r = 1; r <= ROUNDS; r++) {
+        SEQUENCE.push({ ...first,  round: r });
+        SEQUENCE.push({ ...second, round: r });
+      }
     }
-    const TOTAL_SECONDS = SEQUENCE.length * PHASE_SECONDS;
+    buildSequence();
+    const TOTAL_SECONDS = ROUNDS * 2 * PHASE_SECONDS;
 
     // ---- State --------------------------------------------------------------
     let stepIndex = 0;          // index into SEQUENCE
@@ -168,6 +220,9 @@
     const progress  = document.getElementById("progress");
     const startBtn  = document.getElementById("startBtn");
     const resetBtn  = document.getElementById("resetBtn");
+    const toggleEl    = document.getElementById("toggle");
+    const startNormal = document.getElementById("startNormal");
+    const startSpeed  = document.getElementById("startSpeed");
 
     progress.style.strokeDasharray = CIRC;
     progress.style.strokeDashoffset = 0;
@@ -300,6 +355,7 @@
       startBtn.textContent = "Pause";
       startBtn.classList.add("running");
       resetBtn.disabled = false;
+      toggleEl.classList.add("hidden");
       requestWakeLock();
       render();
       phaseCue(SEQUENCE[stepIndex].cls);
@@ -320,6 +376,7 @@
       startBtn.textContent = finished ? "Start Again" : "Start";
       startBtn.classList.remove("running");
       releaseWakeLock();
+      if (finished) toggleEl.classList.remove("hidden");
     }
     function reset() {
       stop(false);
@@ -333,6 +390,16 @@
       cycleEl.textContent = "Press Start";
       totalEl.textContent = "Total workout: " + fmt(TOTAL_SECONDS);
       progress.style.strokeDashoffset = 0;
+      toggleEl.classList.remove("hidden");
+    }
+
+    function setStartMode(mode) {
+      if (running) return;            // can't change pace mid-workout
+      startMode = mode;
+      startNormal.classList.toggle("active", mode === "regular");
+      startSpeed.classList.toggle("active", mode === "speed");
+      buildSequence();
+      reset();
     }
 
     startBtn.addEventListener("click", () => {
@@ -340,6 +407,8 @@
       else start();
     });
     resetBtn.addEventListener("click", reset);
+    startNormal.addEventListener("click", () => setStartMode("regular"));
+    startSpeed.addEventListener("click", () => setStartMode("speed"));
 
     // Initialise display.
     reset();
