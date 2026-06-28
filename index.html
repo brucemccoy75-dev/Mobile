@@ -44,13 +44,14 @@
       align-items: center;
       justify-content: center;
       width: 100%;
-      gap: 14px;
+      gap: 18px;
     }
 
     #phase {
-      font-size: clamp(1.6rem, 8vw, 2.6rem);
+      font-size: clamp(1.4rem, 6.5vw, 2rem);
       font-weight: 800;
-      letter-spacing: 0.02em;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
       color: var(--idle);
       transition: color 0.4s ease;
     }
@@ -59,34 +60,34 @@
     body.done    #phase { color: var(--done); }
 
     #time {
-      font-size: clamp(4.5rem, 30vw, 9rem);
+      font-size: clamp(3rem, 15vw, 4.5rem);
       font-weight: 800;
       font-variant-numeric: tabular-nums;
       line-height: 1;
-      letter-spacing: -0.02em;
+      letter-spacing: -0.01em;
     }
 
-    #cycle { font-size: 1.15rem; color: #cbd5e1; font-weight: 600; min-height: 1.4em; }
+    #cycle { font-size: 1.1rem; color: #cbd5e1; font-weight: 600; min-height: 1.4em; }
     #total { font-size: 0.95rem; color: #64748b; }
 
     .ring {
       position: relative;
-      width: min(78vw, 320px);
-      height: min(78vw, 320px);
+      width: min(72vw, 300px);
+      height: min(72vw, 300px);
       display: flex;
       align-items: center;
       justify-content: center;
     }
     .ring svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
-    .ring .track { fill: none; stroke: rgba(255,255,255,0.08); stroke-width: 10; }
+    .ring .track { fill: none; stroke: rgba(255,255,255,0.08); stroke-width: 7; }
     .ring .progress {
-      fill: none; stroke: var(--idle); stroke-width: 10; stroke-linecap: round;
+      fill: none; stroke: var(--idle); stroke-width: 7; stroke-linecap: round;
       transition: stroke 0.4s ease, stroke-dashoffset 0.25s linear;
     }
     body.speed   .ring .progress { stroke: var(--speed); }
     body.regular .ring .progress { stroke: var(--regular); }
     body.done    .ring .progress { stroke: var(--done); }
-    .ring .inner { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .ring .inner { display: flex; flex-direction: column; align-items: center; }
 
     .controls { display: flex; gap: 14px; width: 100%; max-width: 420px; }
     button {
@@ -116,17 +117,17 @@
   </header>
 
   <main>
+    <div id="phase">Ready</div>
     <div class="ring">
       <svg viewBox="0 0 120 120">
-        <circle class="track" cx="60" cy="60" r="54" />
-        <circle class="progress" id="progress" cx="60" cy="60" r="54" />
+        <circle class="track" cx="60" cy="60" r="56" />
+        <circle class="progress" id="progress" cx="60" cy="60" r="56" />
       </svg>
       <div class="inner">
-        <div id="phase">Ready</div>
         <div id="time">03:00</div>
-        <div id="cycle">Press Start</div>
       </div>
     </div>
+    <div id="cycle">Press Start</div>
     <div id="total">Total workout: 30:00</div>
   </main>
 
@@ -156,7 +157,7 @@
     let running = false;
     let ticker = null;
     let wakeLock = null;
-    const CIRC = 2 * Math.PI * 54; // ring circumference
+    const CIRC = 2 * Math.PI * 56; // ring circumference
 
     // ---- Elements -----------------------------------------------------------
     const body      = document.body;
