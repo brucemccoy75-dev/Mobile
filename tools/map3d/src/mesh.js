@@ -364,6 +364,145 @@ export function extrudeWalls(g, rings, baseAt, topAt, opts = {}) {
   return tris;
 }
 
+/**
+ * Trim, a door and windows on a building's outer wall.
+ *
+ * An extruded footprint with a roof on it is a shoebox, and a street of them
+ * reads as a warehouse estate whatever colour you paint it. What makes a house
+ * look like a house at eye level is the small stuff: a plinth at the bottom, a
+ * band under the eaves, a door on the street side, and windows on a storey
+ * spacing. None of it is surveyed - OSM does not know where anyone's front door
+ * is - so it is regular, and it is placed to look right rather than to be true.
+ *
+ * Everything sits a few centimetres proud of the wall, which is cheaper than
+ * cutting openings into it and, at any distance you will see it from, reads the
+ * same.
+ *
+ * @param {MeshBuilder} builder
+ * @param {Array<[number, number]>} ring outer ring, CCW
+ * @param {{baseY: number, eaveY: number, levelHeight?: number,
+ *          facing?: [number, number], windows?: boolean}} opts
+ * @returns {number} triangles emitted
+ */
+export function facadeDetail(builder, ring, opts) {
+  const { eaveY } = opts;
+  // Footings are sunk below the lowest corner of the plot so a building on a
+  // slope has no daylight under it, which means the bottom of the wall can be
+  // a metre underground. Detail hung off that lands in the dirt, so everything
+  // here is measured from where the wall comes out of the ground instead.
+  const baseY = Math.max(opts.baseY, opts.groundY ?? opts.baseY);
+  const wallH = eaveY - baseY;
+  if (!(wallH > 2)) return 0;
+
+  const levelHeight = opts.levelHeight ?? 3.2;
+  const levels = Math.max(1, Math.round(wallH / levelHeight));
+  const storey = wallH / levels;
+
+  const segments = [];
+  for (let i = 0; i < ring.length; i++) {
+    const [ax, az] = ring[i];
+    const [bx, bz] = ring[(i + 1) % ring.length];
+    const dx = bx - ax;
+    const dz = bz - az;
+    const len = Math.hypot(dx, dz);
+    if (len < 0.4) continue;
+    // Outward normal for a CCW ring, matching extrudeWalls.
+    segments.push({ ax, az, ux: dx / len, uz: dz / len, nx: -dz / len, nz: dx / len, len });
+  }
+  if (!segments.length) return 0;
+
+  const trim = builder.group('trim');
+  let tris = 0;
+
+  /**
+   * A panel lying on the wall, `off` metres proud of it. The two ends carry
+   * their own heights so a band can follow sloping ground.
+   */
+  const panel = (g, seg, s0, s1, y0, y1, off, y0b = y0, y1b = y1) => {
+    const at = (s, y) => [
+      seg.ax + seg.ux * s + seg.nx * off,
+      y,
+      seg.az + seg.uz * s + seg.nz * off,
+    ];
+    const p = [at(s0, y0), at(s1, y0b), at(s1, y1b), at(s0, y1)];
+    const idx = p.map(([x, y, z]) => g.vertex(x, y, z, seg.nx, 0, seg.nz, 0, 0));
+    g.quad(idx[0], idx[1], idx[2], idx[3]);
+    return 2;
+  };
+
+  // Where the wall meets the ground, along this segment. Floors are level, so
+  // the storeys above are not allowed to follow the slope - but the plinth is
+  // part of the ground, and a base course a metre up the wall on the downhill
+  // side reads as a belt course nobody asked for.
+  const groundAt = opts.groundAt;
+  const foot = (seg, s) => {
+    if (!groundAt) return baseY;
+    const y = groundAt(seg.ax + seg.ux * s, seg.az + seg.uz * s);
+    return Math.min(Math.max(y, opts.baseY), eaveY - 1);
+  };
+
+  // A plinth, and a band under the eaves. Both run the whole wall.
+  const plinth = Math.min(0.45, wallH * 0.1);
+  for (const seg of segments) {
+    const [ga, gb] = [foot(seg, 0), foot(seg, seg.len)];
+    tris += panel(trim, seg, 0, seg.len, ga, ga + plinth, 0.06, gb, gb + plinth);
+    tris += panel(trim, seg, 0, seg.len, eaveY - Math.min(0.3, wallH * 0.06), eaveY, 0.06);
+  }
+
+  // The front door goes on whichever wall faces the street, or failing that on
+  // the longest one, which is usually the front anyway.
+  let front = segments[0];
+  let bestScore = -Infinity;
+  for (const seg of segments) {
+    if (seg.len < 1.6) continue;
+    const mx = seg.ax + seg.ux * seg.len * 0.5;
+    const mz = seg.az + seg.uz * seg.len * 0.5;
+    const score = opts.facing
+      ? -Math.hypot(mx - opts.facing[0], mz - opts.facing[1])
+      : seg.len;
+    if (score > bestScore) {
+      bestScore = score;
+      front = seg;
+    }
+  }
+
+  const doorW = 1.05;
+  const doorH = Math.min(2.15, wallH - 0.3);
+  const doorS = front.len / 2 - doorW / 2;
+  const step = foot(front, front.len / 2);
+  if (front.len >= 1.6 && doorH > 1.6) {
+    tris += panel(builder.group('door'), front, doorS, doorS + doorW, step, step + doorH, 0.05);
+    // A lintel over it, so the door is not just a dark rectangle.
+    tris += panel(trim, front, doorS - 0.12, doorS + doorW + 0.12,
+      step + doorH, step + doorH + 0.14, 0.08);
+  }
+
+  if (opts.windows === false) return tris;
+
+  const glass = builder.group('window');
+  const spacing = 3.1;
+  const winW = 1.0;
+  const winH = Math.min(1.3, storey * 0.45);
+  for (const seg of segments) {
+    const usable = seg.len - 1.2;
+    if (usable < winW) continue;
+    const count = Math.max(1, Math.floor(usable / spacing));
+    const gap = (seg.len - count * winW) / (count + 1);
+    for (let level = 0; level < levels; level++) {
+      const sill = baseY + level * storey + Math.min(1.0, storey * 0.35);
+      if (sill + winH > eaveY - 0.35) break;
+      for (let k = 0; k < count; k++) {
+        const s0 = gap + k * (winW + gap);
+        // Don't put a window where the front door is.
+        if (seg === front && level === 0 && s0 < doorS + doorW && s0 + winW > doorS) continue;
+        tris += panel(glass, seg, s0, s0 + winW, sill, sill + winH, 0.04);
+        tris += panel(trim, seg, s0 - 0.09, s0 + winW + 0.09, sill + winH, sill + winH + 0.1, 0.07);
+      }
+    }
+  }
+  return tris;
+}
+
 /* ---------------------------------- roofs --------------------------------- */
 
 const ROOF_ALIASES = {
@@ -418,6 +557,23 @@ export function buildRoof(g, rings, eaveY, roofHeight, shape, opts = {}) {
 
   const obb = orientedBox(outer);
   if (!obb) return fillPolygon(g, rings, () => eaveY, {});
+
+  // A ridged roof is built over the footprint's bounding box, which is fine for
+  // the rectangles most buildings are and grotesque for the ones that are not:
+  // the box around an L-shaped house is twice the house, and the roof ends up a
+  // slab hanging metres out over the garden. Where the box does not fit, keep
+  // the same ridge but lay it over the real outline as a height field, so the
+  // roof stops where the building does.
+  if (polygonAreaXZ([outer]) < obb.area * 0.82) {
+    return fillPolygon(g, rings, ridgeHeightField(obb, eaveY, roofHeight, kind), {
+      uvScale: opts.uvScale ?? 6,
+      // The ridge is a crease, and a triangulation only approximates it: the
+      // finer this is, the closer the ridge gets to its full height. A tenth of
+      // the span holds it to within about 10cm of true.
+      maxEdge: Math.max(obb.width / 10, 1),
+      smooth: true,
+    });
+  }
 
   const { corners, axis } = obb; // corners in order, `axis` = index of long side
   // corners: c0 -> c1 -> c2 -> c3 (CCW). Long edges are c0-c1 and c2-c3 when
@@ -495,6 +651,40 @@ function rawNormal(p, q, r) {
 }
 
 /** Outward horizontal normal of edge a->b for a CCW (in u/v) ring. */
+/**
+ * The shape of a ridged roof, as height over the ground plane.
+ *
+ * Same ridge the box-built roofs have - down the middle, along the long axis,
+ * hipped in at the ends if asked - but expressed as a function of position, so
+ * it can be laid over a footprint of any shape rather than over a rectangle.
+ */
+function ridgeHeightField(obb, eaveY, roofHeight, kind) {
+  const { corners, axis } = obb;
+  const p = axis === 0 ? corners : [corners[1], corners[2], corners[3], corners[0]];
+  const [a, b, c] = p; // a-b is a long edge; b-c crosses the building
+  const cx = (p[0][0] + p[1][0] + p[2][0] + p[3][0]) / 4;
+  const cz = (p[0][1] + p[1][1] + p[2][1] + p[3][1]) / 4;
+
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+  const ax = (b[0] - a[0]) / len;                 // along the ridge
+  const az = (b[1] - a[1]) / len;
+  const halfWidth = Math.hypot(c[0] - b[0], c[1] - b[1]) / 2 || 1;
+  const halfLength = len / 2;
+  // A hip pulls the ends of the ridge in by about the roof's half-width, which
+  // is what makes its end slopes match the pitch of its sides.
+  const ridgeHalf = kind === 'hipped' ? Math.max(halfLength - halfWidth, 0) : halfLength;
+
+  return (x, z) => {
+    const dx = x - cx;
+    const dz = z - cz;
+    const along = dx * ax + dz * az;
+    const across = Math.abs(-dx * az + dz * ax);
+    const past = Math.max(Math.abs(along) - ridgeHalf, 0);
+    const drop = Math.min(Math.max(across, past) / halfWidth, 1);
+    return eaveY + roofHeight * (1 - drop);
+  };
+}
+
 function edgeNormal(a, b) {
   const dx = b[0] - a[0];
   const dz = b[1] - a[1];
@@ -545,7 +735,24 @@ export function orientedBox(ring) {
 
   const side01 = Math.hypot(corners[1][0] - corners[0][0], corners[1][1] - corners[0][1]);
   const side12 = Math.hypot(corners[2][0] - corners[1][0], corners[2][1] - corners[1][1]);
-  return { corners, axis: side01 >= side12 ? 0 : 1, width: Math.min(side01, side12), length: Math.max(side01, side12) };
+  return {
+    corners,
+    axis: side01 >= side12 ? 0 : 1,
+    width: Math.min(side01, side12),
+    length: Math.max(side01, side12),
+    area: side01 * side12,
+  };
+}
+
+/** Ray-cast point-in-polygon on an [x, z] ring. */
+function ringContains(ring, x, z) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, zi] = ring[i];
+    const [xj, zj] = ring[j];
+    if (zi > z !== zj > z && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
+  }
+  return inside;
 }
 
 /** Andrew's monotone chain. Input/output are [x, z] pairs. */

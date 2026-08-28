@@ -9,10 +9,12 @@ import { clipPolygon, clipLine, squareBoundary, circleBoundary } from './clip.js
 import {
   MeshBuilder, normalizeRings, fillPolygon, extrudeWalls, buildRoof, ribbon,
   grid, gridSurface, tree, polygonAreaXZ, centroidXZ, normalizeRoofShape,
+  facadeDetail, orientedBox,
 } from './mesh.js';
 import {
   MATERIALS, AREA_CANOPY, buildingHeights, classifyBuilding, classifyArea,
   classifyHighway, classifyRailway, classifyWaterway, parseLength, parseIntTag,
+  wallMaterial, roofMaterial,
 } from './tags.js';
 import { OccupancyMask, scatter } from './scatter.js';
 
@@ -38,6 +40,11 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
     treeSpacing: DEFAULTS.treeSpacing,
     maxTrees: DEFAULTS.maxTrees,
     minAreaM2: 2,
+    facades: true,
+    // Trim, doors and windows on every building in a dense city would cost
+    // more triangles than the buildings themselves. Spend the budget on the
+    // ones nearest the address, where they will actually be seen.
+    facadeBudget: 90000,
     // Drop unset keys: the CLI passes `undefined` for every flag the user did
     // not type, and spreading those would erase the defaults above.
     ...Object.fromEntries(Object.entries(options).filter(([, v]) => v !== undefined)),
@@ -88,6 +95,13 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
   const surface = gridSurface(groundHalf, opts.terrainCells, ground);
   // Detail finer than the ground itself buys nothing, and costs triangles.
   const detail = (groundHalf * 2) / opts.terrainCells / 2;
+  // Area fills are the biggest thing laid on the ground - one park can be a
+  // third of the map - and a chord only misses ground that bends. Washington's
+  // lawns are flat enough to cover in a few large triangles; the same rule over
+  // a San Francisco hillside needs four times the detail. Scale by how much the
+  // ground actually moves from one grid cell to the next.
+  const reliefPerCell = (terrain.max - terrain.min) / opts.terrainCells;
+  const areaDetail = detail * Math.min(Math.max(0.35 / (reliefPerCell || 0.35), 1), 4);
 
   /* ------------------------------- ground ------------------------------- */
 
@@ -150,7 +164,7 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
       fillPolygon(g, norm, (x, z) => surface(x, z) + y, {
         uvScale: 24,
         smooth: terrain.enabled,
-        maxEdge: terrain.enabled ? detail : 0,
+        maxEdge: terrain.enabled ? areaDetail : 0,
       });
       manifest.areas.push({
         id: f.id,
@@ -275,6 +289,7 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
     // outline is only a footprint. Rendering both gives you a church nave
     // extruded to its steeple height, so the parent is drawn only if it has
     // no parts. See https://wiki.openstreetmap.org/wiki/Simple_3D_Buildings
+    const facades = [];
     const candidates = local.filter(
       (f) => f.kind === 'area' && (f.tags.building || f.tags['building:part']) && !isUnderground(f.tags),
     );
@@ -326,14 +341,20 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
       if (footprintArea < opts.minAreaM2) continue;
 
       const { material, type } = classifyBuilding(f.tags);
-      const h = buildingHeights(f.tags, opts);
+      const seed = hash(f.id);
+      // The roof's pitch comes from how wide the building is, so the shape has
+      // to be measured before the height can be resolved.
+      const span = orientedBox(norm[0])?.width ?? 0;
+      const h = buildingHeights(f.tags, {
+        ...opts, footprintM2: footprintArea, spanM: span, seed,
+      });
 
       // Most OSM buildings carry neither `height` nor `building:levels`, so a
       // whole block falls back to one number and extrudes as a single slab.
       // Nudge estimated heights deterministically (same id -> same height) so
       // the skyline has texture. Measured heights are never touched.
       if (h.estimated && opts.jitter !== false) {
-        const spread = 0.84 + ((hash(f.id) % 1000) / 1000) * 0.38;
+        const spread = 0.84 + ((seed % 1000) / 1000) * 0.38;
         h.top = Math.max(h.base + 1, h.top * spread);
       }
 
@@ -352,15 +373,26 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
       const eaveY = gMax + h.top - (opts.roofs ? h.roofHeight : 0);
 
       buildingRings.push(norm);
-      const wallGroup = builder.group(material);
+      const wallGroup = builder.group(wallMaterial(material, f.tags, seed));
       extrudeWalls(wallGroup, norm, () => baseY, () => eaveY, { uvScale: 4 });
 
       const roofShape = opts.roofs ? normalizeRoofShape(h.roofShape) : 'flat';
       const roofGroup =
-        roofShape === 'flat' ? wallGroup : builder.group('roof');
+        roofShape === 'flat' ? wallGroup : builder.group(roofMaterial(f.tags, seed));
       buildRoof(roofGroup, norm, eaveY, opts.roofs ? h.roofHeight : 0, roofShape, {
         uvScale: 6,
       });
+
+      if (opts.facades && !isPart) {
+        facades.push({
+          ring: norm[0],
+          baseY,
+          groundY: gMax,
+          eaveY,
+          levelHeight: opts.levelHeight ?? DEFAULTS.levelHeight,
+          distance: Math.hypot(...centroidXZ(norm[0])),
+        });
+      }
 
       const [cx, cz] = centroidXZ(norm[0]);
       manifest.buildings.push({
@@ -382,6 +414,26 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
         holes: norm.length > 1 ? norm.slice(1).map(roundRing) : undefined,
       });
     }
+
+    // Nearest first: the budget runs out on the far side of the map, where a
+    // window is a pixel, rather than at whichever building OSM happened to
+    // list last.
+    facades.sort((a, b) => a.distance - b.distance);
+    let spent = 0;
+    for (const f of facades) {
+      if (spent >= opts.facadeBudget) break;
+      spent += facadeDetail(builder, f.ring, {
+        baseY: f.baseY,
+        groundY: f.groundY,
+        groundAt: surface,
+        eaveY: f.eaveY,
+        levelHeight: f.levelHeight,
+        facing: nearestRoadPoint(f.ring, roadLines),
+        // Trim alone still reads at a distance; windows are what get expensive.
+        windows: spent < opts.facadeBudget * 0.75,
+      });
+    }
+    manifest.stats.facadeTriangles = spent;
   }
 
   /* --------------------------- walls and fences -------------------------- */
@@ -546,6 +598,27 @@ function addImageryGround(builder, imagery, ground, detail = 0) {
       }
     }
   });
+}
+
+/**
+ * The nearest point on a road to a building, used to decide which wall the
+ * front door belongs on. Only the centrelines already clipped into the map are
+ * considered, so a building with no road near it just keeps its longest wall.
+ */
+function nearestRoadPoint(ring, roadLines) {
+  const [cx, cz] = centroidXZ(ring);
+  let best = null;
+  let bestDist = 60;
+  for (const { line } of roadLines) {
+    for (const [x, z] of line) {
+      const d = Math.hypot(x - cx, z - cz);
+      if (d < bestDist) {
+        bestDist = d;
+        best = [x, z];
+      }
+    }
+  }
+  return best ?? undefined;
 }
 
 /** Underground volumes (metro concourses, car parks) are not part of the skyline. */

@@ -48,6 +48,8 @@ Data sources
 
 Content toggles
   --no-buildings  --no-roads  --no-areas  --no-trees  --no-barriers  --no-roofs
+  --no-facades           Leave off trim, doors and windows
+  --facade-budget <n>    Triangles to spend on them, nearest buildings first
   --no-jitter            Do not vary heights that had to be estimated
   --level-height <m>     Metres per building level (default ${DEFAULTS.levelHeight})
 
@@ -143,6 +145,8 @@ export async function main(argv) {
       trees: args.flags['no-trees'] !== true,
       barriers: args.flags['no-barriers'] !== true,
       roofs: args.flags['no-roofs'] !== true,
+      facades: args.flags['no-facades'] !== true,
+      facadeBudget: num(args.flags['facade-budget']),
       jitter: args.flags['no-jitter'] !== true,
       levelHeight: num(args.flags['level-height']),
       terrainCells: num(args.flags['ground-cells']),
@@ -185,7 +189,7 @@ export function parseArgs(argv) {
     'overpass', 'worlds', 'elevation', 'elevation-url', 'elevation-zoom', 'terrain-cells',
     'ground-cells', 'landcover-url', 'landcover-layer', 'tree-spacing',
     'max-trees', 'imagery', 'imagery-zoom', 'imagery-max-tiles', 'level-height',
-    'cache', 'port',
+    'facade-budget', 'cache', 'port',
   ]);
 
   for (let i = 0; i < argv.length; i++) {

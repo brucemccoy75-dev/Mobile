@@ -177,12 +177,41 @@ test('lengths parse from the units OSM actually uses', () => {
 });
 
 test('building height prefers height, then levels, then a type default', () => {
+  // `height` is to the ridge and is taken as given.
   assert.equal(buildingHeights({ building: 'yes', height: '24' }).top, 24);
-  assert.equal(buildingHeights({ building: 'yes', 'building:levels': '3' }).top, 3 * 3.2 + 1);
-  const guess = buildingHeights({ building: 'house' });
-  assert.equal(guess.estimated, true);
-  assert.equal(guess.top, 6.5);
   assert.equal(buildingHeights({ building: 'yes', height: '24' }).estimated, false);
+  // `building:levels` counts storeys, so a flat roof adds only a parapet.
+  assert.equal(buildingHeights({ building: 'yes', 'building:levels': '3' }).top, 3 * 3.2 + 1);
+  const guess = buildingHeights({ building: 'yes' });
+  assert.equal(guess.estimated, true);
+  assert.equal(guess.top, 8);
+});
+
+test('a pitched roof stands on top of the walls, not inside them', () => {
+  // A house gets a pitch it was never tagged with, and the walls keep their
+  // full height underneath it - the ridge is what moves.
+  const wide = buildingHeights({ building: 'house' }, { spanM: 12 });
+  assert.equal(wide.roofShape === 'flat', false);
+  assert.ok(wide.roofHeight > 2.5, `${wide.roofHeight}`);
+  assert.equal(Math.round((wide.top - wide.roofHeight) * 100) / 100, 5.6, 'eave height');
+
+  // Pitch, not proportion: a wider house gets a taller roof.
+  const narrow = buildingHeights({ building: 'house' }, { spanM: 6 });
+  assert.ok(narrow.roofHeight < wide.roofHeight, 'a narrow span needs less rise');
+  const pitch = (h, span) => (Math.atan(h.roofHeight / (span / 2)) * 180) / Math.PI;
+  for (const [h, span] of [[wide, 12], [narrow, 6]]) {
+    assert.ok(pitch(h, span) > 20 && pitch(h, span) < 45, `${pitch(h, span)} degrees`);
+  }
+
+  // A stated height is a stated height: the roof fits inside it.
+  const stated = buildingHeights({ building: 'house', height: '6' }, { spanM: 12 });
+  assert.equal(stated.top, 6);
+  assert.ok(stated.roofHeight <= 6 * 0.45 + 1e-9);
+
+  // Levels count storeys; the roof is extra, and never taller than the walls.
+  const two = buildingHeights({ building: 'house', 'building:levels': '2' }, { spanM: 30 });
+  assert.equal(Math.round((two.top - two.roofHeight) * 100) / 100, 6.4);
+  assert.ok(two.roofHeight <= 6.4 * 0.6 + 1e-9, `${two.roofHeight}`);
 });
 
 test('a roof never eats more than its building', () => {
@@ -1161,5 +1190,131 @@ test('subdividing a fill leaves no cracks and no stray vertices', () => {
         assert.ok(dist > 1e-6, `vertex ${k} splits the edge ${i}-${j}: that is a crack`);
       }
     }
+  }
+});
+
+/* ------------------------------- buildings -------------------------------- */
+
+import { facadeDetail } from '../src/mesh.js';
+import { wallMaterial, roofMaterial, parseColor, inferRoofShape } from '../src/tags.js';
+
+test('a ridged roof stays on top of the building it belongs to', () => {
+  // An L-shaped house. Its bounding box is nearly twice the footprint, and a
+  // roof built over that box hangs metres out over the garden.
+  const ring = [[0, 0], [24, 0], [24, 9], [9, 9], [9, 26], [0, 26]];
+  const box = orientedBox(ring);
+  assert.ok(polygonAreaXZ([ring]) < box.area * 0.7, 'the test shape must be a poor fit');
+
+  for (const shape of ['gabled', 'hipped']) {
+    const g = new MeshBuilder().group('roof');
+    buildRoof(g, [ring], 5, 3, shape);
+    let top = -Infinity;
+    let bottom = Infinity;
+    for (let i = 0; i < g.positions.length; i += 3) {
+      const [x, y, z] = [g.positions[i], g.positions[i + 1], g.positions[i + 2]];
+      assert.ok(x >= -0.01 && x <= 24.01 && z >= -0.01 && z <= 26.01,
+        `${shape} roof reaches ${x},${z}, outside the footprint`);
+      top = Math.max(top, y);
+      bottom = Math.min(bottom, y);
+    }
+    assert.ok(Math.abs(bottom - 5) < 0.05, `${shape} eave at ${bottom}, wanted 5`);
+    if (shape === 'gabled') {
+      assert.ok(Math.abs(top - 8) < 0.05, `${shape} ridge at ${top}, wanted 8`);
+    } else {
+      // A hip pulls its ridge in from both ends, and on this shape that puts
+      // the apex over the notch of the L, which is not part of the building.
+      // The roof is right to stop short there; it must still rise properly.
+      assert.ok(top > 6.5 && top <= 8.01, `${shape} ridge at ${top}`);
+    }
+  }
+});
+
+test('a roof over a rectangle keeps its cheap shape', () => {
+  const g = new MeshBuilder().group('roof');
+  const tris = buildRoof(g, [[[0, 0], [20, 0], [20, 10], [0, 10]]], 5, 3, 'gabled');
+  assert.ok(tris <= 8, `a plain gable should not cost ${tris} triangles`);
+});
+
+test('orientedBox reports the area it covers', () => {
+  // Without this, callers comparing a footprint against its box compare against
+  // NaN, which is false every time and silently disables whatever it guards.
+  const box = orientedBox([[0, 0], [10, 0], [10, 4], [0, 4]]);
+  assert.ok(Math.abs(box.area - 40) < 1e-6, `${box.area}`);
+  assert.ok(Math.abs(box.width - 4) < 1e-6);
+  assert.ok(Math.abs(box.length - 10) < 1e-6);
+});
+
+test('facade detail sits where the wall leaves the ground', () => {
+  // Footings are sunk below the plot's lowest corner, so a building on a slope
+  // has a metre of wall underground. Trim hung off that ends up buried, or
+  // stranded halfway up the wall if it uses the high corner instead.
+  const builder = new MeshBuilder();
+  const ring = [[0, 0], [12, 0], [12, 8], [0, 8]];
+  facadeDetail(builder, ring, {
+    baseY: -1.4, groundY: 0.9, eaveY: 6.5,
+    groundAt: (x) => x / 12,        // ground climbs 1m across the building
+  });
+
+  const lowest = (name) => {
+    const g = builder.groups.get(name);
+    let min = Infinity;
+    for (let i = 1; i < g.positions.length; i += 3) min = Math.min(min, g.positions[i]);
+    return min;
+  };
+  assert.ok(lowest('trim') > -0.1, `trim starts at ${lowest('trim')}, in the dirt`);
+  assert.ok(lowest('trim') < 0.5, 'and not stranded up the wall either');
+  assert.ok(lowest('door') >= -0.01, 'the door opens onto the ground');
+  assert.ok(lowest('window') > 0.5, 'windows sit above the ground');
+});
+
+test('buildings take the colour OSM gives them, and vary otherwise', () => {
+  assert.deepEqual(parseColor('#ffffff'), [1, 1, 1]);
+  assert.deepEqual(parseColor('#fff'), [1, 1, 1]);
+  assert.equal(parseColor('chartreuse'), null, 'unknown names must not guess');
+
+  const stated = wallMaterial('building_residential', { 'building:colour': '#c0392b' }, 1);
+  assert.ok(MATERIALS[stated], 'a stated colour must resolve to a real material');
+  assert.deepEqual(
+    MATERIALS[stated].color.map((c) => Math.round(c * 255)), [192, 57, 43],
+  );
+  // Same colour, different buildings: one material, not one per building.
+  assert.equal(stated, wallMaterial('building_residential', { colour: '#c0392b' }, 9));
+
+  // Untagged buildings vary, stably, and stay in their own material's family.
+  const seen = new Set();
+  for (let i = 0; i < 12; i++) seen.add(wallMaterial('building_residential', {}, i));
+  assert.ok(seen.size > 2, 'a street of identical buildings is the thing to avoid');
+  for (const name of seen) {
+    assert.ok(MATERIALS[name], `${name} must exist in the palette`);
+    assert.ok(name.startsWith('building_residential'), name);
+  }
+  assert.equal(wallMaterial('building_residential', {}, 5), wallMaterial('building_residential', {}, 5));
+  assert.ok(MATERIALS[roofMaterial({}, 3)], 'roofs need a real material too');
+  assert.deepEqual(
+    MATERIALS[roofMaterial({ 'roof:colour': '#123456' }, 3)].color.map((c) => Math.round(c * 255)),
+    [18, 52, 86],
+  );
+});
+
+test('roof shapes are guessed only where a pitch belongs', () => {
+  assert.equal(inferRoofShape('supermarket', 2000, 1), 'flat');
+  assert.equal(inferRoofShape('office', 800, 1), 'flat');
+  assert.equal(inferRoofShape('apartments', 1400, 1), 'flat');
+  for (let seed = 0; seed < 6; seed++) {
+    assert.notEqual(inferRoofShape('house', 120, seed), 'flat');
+    assert.notEqual(inferRoofShape('detached', 120, seed), 'flat');
+  }
+  const shapes = new Set([0, 1, 2, 3, 4, 5].map((s) => inferRoofShape('house', 120, s)));
+  assert.ok(shapes.size > 1, 'a whole street of the same roof looks stamped out');
+});
+
+test('a material name always names a material that exists', () => {
+  // A name with no entry behind it falls back to the ground colour, so a
+  // building would come out the colour of grass rather than erroring.
+  for (const seed of [0, -7, 1.5, -0.2, 2 ** 31]) {
+    for (const base of ['building_generic', 'building_residential', 'building_civic']) {
+      assert.ok(MATERIALS[wallMaterial(base, {}, seed)], `wall seed ${seed}`);
+    }
+    assert.ok(MATERIALS[roofMaterial({}, seed)], `roof seed ${seed}`);
   }
 });

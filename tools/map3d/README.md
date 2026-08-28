@@ -287,6 +287,9 @@ you get one collider per building instead of one per material batch.
 4. **Build meshes**: ear-clipped polygons for ground layers, mitered ribbons
    for roads, extruded footprints with flat/gabled/hipped/pyramidal/skillion
    roofs for buildings, low-poly props for trees.
+   Everything that lies on the ground is placed on the ground *mesh* rather
+   than on the elevation field it was built from — see **Sitting on the
+   ground** below.
 5. **Merge by material** into one primitive each, and write a single-buffer GLB.
 
 Everything about how it *looks* — colours, fallback heights, road widths, tag
@@ -296,17 +299,70 @@ different art direction.
 ### Buildings
 
 Height is resolved in this order: the `height` tag, then
-`building:levels × --level-height`, then a per-type default (a `house` is 6.5 m,
-`apartments` 15 m, and so on). Anything that fell through to the default is
-flagged `heightEstimated` in the manifest and gets a small deterministic
-variation so a block of untagged buildings doesn't extrude into one flat slab
-(`--no-jitter` turns that off).
+`building:levels × --level-height`, then a per-type default. The three mean
+different things and are treated differently: `height` is to the ridge and is
+taken as given, while levels and the per-type defaults give the height of the
+*walls* — whatever roof the building ends up with is added on top. Anything
+that fell through to the default is flagged `heightEstimated` in the manifest
+and gets a small deterministic variation so a block of untagged buildings
+doesn't extrude into one flat slab (`--no-jitter` turns that off).
+
+Most buildings carry no `roof:shape`, and giving all of them flat roofs is what
+makes a residential street read as a row of shoeboxes, so house-like types get
+a pitch inferred — gabled, hipped or, on small outbuildings, pyramidal, chosen
+from the OSM id so a street varies but rebuilds the same way. How high the roof
+stands comes from how wide the building is, at about a 30° pitch, because a
+roof's height is a consequence of its angle: derive it from the building's
+height instead and a 19 m span gets a 2 m rise, which from the air is a flat
+slab with a crease in it. Ridged roofs are built over the footprint's bounding
+box, which is cheap and right for the rectangles most buildings are; where that
+box does not fit — an L-shaped house's box is twice the house — the same ridge
+is laid over the real outline as a height field so the roof stops where the
+building does.
+
+Walls take `building:colour` and roofs `roof:colour` where OSM states one
+(hex, or a common colour name). Everything else gets one of a few tints of its
+material, picked from the OSM id, because a real street is not one colour.
+
+Buildings near the address also get trim, a front door and windows: a plinth
+following the ground, a band under the eaves, a door on the wall facing the
+nearest road, and windows on a storey spacing. None of it is surveyed — OSM
+does not know where anyone's front door is — so it is regular, and it is there
+because it is what makes a building read as a building at eye level. It is
+spent nearest-first against a triangle budget (`--facade-budget`, default
+90,000), so a dense city details the buildings you will actually walk past
+rather than running the count up across the whole map. `--no-facades` turns it
+off.
 
 Where a building has `building:part` children — OSM's
 [Simple 3D Buildings](https://wiki.openstreetmap.org/wiki/Simple_3D_Buildings)
 scheme, used for churches, stations and anything with a tower — the parts carry
 the real per-volume heights and the parent outline is drawn as footprint only.
 Without this, a church's nave gets extruded to its steeple's height.
+
+### Sitting on the ground
+
+The terrain is a smooth field sampled from the elevation tiles; the ground you
+see is a grid triangulated from it, and between grid corners the two disagree
+by however much the ground curves. Anything laid on the ground by asking the
+*field* for its height therefore floats over the mesh in some places and sinks
+under it in others — which is why roads used to appear with holes in them,
+where a rise came through the tarmac, and why trees stood in mid-air or buried
+to the knee.
+
+So roads, paths, water, ground cover, walls, footings and trees all take their
+height from `gridSurface()`, which interpolates over the same two triangles the
+ground grid emits, from the same corner heights. That makes it exact, not
+merely closer.
+
+Corners on the surface are only half of it, because the spans between them are
+flat. Road ribbons are broken up along their length and across their width, and
+area fills are bisected until their edges are short — how short scales with how
+much the ground moves from one cell to the next, since a chord only misses
+ground that bends, and a flat lawn needs a handful of triangles where a
+hillside needs hundreds. An edge is split at its midpoint and only because of
+its own length, so two triangles sharing one always agree and no crack opens
+between them.
 
 ### Terrain
 

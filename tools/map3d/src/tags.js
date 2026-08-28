@@ -44,19 +44,21 @@ export function parseIntTag(value) {
 // Fallback heights (metres) by building type, used when OSM has neither
 // `height` nor `building:levels`. Tuned to look plausible in a game, not to be
 // surveyed truth.
+// Heights to the eave, not to the ridge: whatever roof the building ends up
+// with is added on top. For flat-roofed types the two are the same thing.
 const BUILDING_FALLBACK_HEIGHT = {
-  house: 6.5,
-  detached: 6.5,
-  bungalow: 4.5,
-  hut: 3,
-  shed: 2.8,
-  garage: 2.8,
-  garages: 3,
-  carport: 2.6,
-  cabin: 4,
-  static_caravan: 3,
-  terrace: 8,
-  semidetached_house: 7,
+  house: 5.6,
+  detached: 5.6,
+  bungalow: 3.1,
+  hut: 2.4,
+  shed: 2.4,
+  garage: 2.5,
+  garages: 2.8,
+  carport: 2.4,
+  cabin: 3.2,
+  static_caravan: 2.6,
+  terrace: 6.4,
+  semidetached_house: 5.8,
   residential: 9,
   apartments: 15,
   dormitory: 15,
@@ -74,9 +76,9 @@ const BUILDING_FALLBACK_HEIGHT = {
   university: 15,
   college: 12,
   hospital: 18,
-  church: 14,
+  church: 11,
   cathedral: 30,
-  chapel: 9,
+  chapel: 6.5,
   mosque: 14,
   synagogue: 12,
   temple: 12,
@@ -86,8 +88,8 @@ const BUILDING_FALLBACK_HEIGHT = {
   parking: 10,
   roof: 4,
   greenhouse: 4,
-  farm_auxiliary: 5,
-  barn: 8,
+  farm_auxiliary: 4.2,
+  barn: 6.5,
   silo: 16,
   storage_tank: 12,
   water_tower: 25,
@@ -124,6 +126,34 @@ export function classifyBuilding(tags) {
   return { type, material };
 }
 
+// Building types that are shaped like houses: pitched roof, close to the
+// ground, and the ones a half-mile map is mostly made of. Everything else keeps
+// the flat top it had, because a supermarket with a gable on it looks worse
+// than a supermarket with a flat roof.
+const PITCHED = /^(house|detached|semidetached_house|terrace|bungalow|cabin|static_caravan|hut|cottage|farm|shed|garage|garages|carport|barn|farm_auxiliary|chapel)$/;
+
+/**
+ * What shape of roof to put on a building OSM says nothing about.
+ *
+ * Most buildings carry no `roof:shape`, and defaulting all of them to flat is
+ * what makes a residential street read as a row of shoeboxes. A house has a
+ * pitched roof; which pitch is a coin flip, so it is a deterministic one,
+ * because a street where every roof faces the same way looks stamped out.
+ */
+export function inferRoofShape(type, footprintM2, seed = 0) {
+  if (PITCHED.test(type)) {
+    // A small near-square outbuilding reads better as a pyramid than a gable.
+    if (footprintM2 > 0 && footprintM2 < 30 && seed % 5 === 0) return 'pyramidal';
+    return seed % 3 === 0 ? 'hipped' : 'gabled';
+  }
+  // Small blocks of flats and older civic buildings usually have a pitch too;
+  // a big footprint almost never does.
+  if (/^(residential|apartments|dormitory|school|church|public)$/.test(type)) {
+    return footprintM2 > 0 && footprintM2 < 260 ? 'gabled' : 'flat';
+  }
+  return 'flat';
+}
+
 /**
  * Resolves a building's vertical extent.
  * @returns {{base: number, top: number, roofHeight: number, roofShape: string, estimated: boolean}}
@@ -131,39 +161,43 @@ export function classifyBuilding(tags) {
 export function buildingHeights(tags, opts = {}) {
   const levelHeight = opts.levelHeight ?? DEFAULTS.levelHeight;
   const roofLevelHeight = opts.roofLevelHeight ?? DEFAULTS.roofLevelHeight;
+  const { type } = classifyBuilding(tags);
 
-  let estimated = false;
+  const roofShape = tags['roof:shape']
+    ? String(tags['roof:shape']).toLowerCase()
+    : inferRoofShape(type, opts.footprintM2 ?? 0, opts.seed ?? 0);
 
-  // `height` in OSM is the *total* height including the roof.
-  let total =
-    parseLength(tags.height) ??
-    parseLength(tags['building:height']) ??
-    null;
-
-  const levels =
-    parseIntTag(tags['building:levels']) ?? parseIntTag(tags['levels']) ?? null;
-
-  const roofShape = (tags['roof:shape'] ?? 'flat').toLowerCase();
   let roofHeight =
     parseLength(tags['roof:height']) ??
     (parseIntTag(tags['roof:levels']) != null
       ? parseIntTag(tags['roof:levels']) * roofLevelHeight
-      : null);
+      : null) ??
+    pitchedRoofHeight(roofShape, opts.spanM ?? 0);
 
-  if (total == null && levels != null) {
-    total = levels * levelHeight + 1.0; // parapet / floor slab
-  }
-  if (total == null) {
-    const { type } = classifyBuilding(tags);
-    total = BUILDING_FALLBACK_HEIGHT[type] ?? BUILDING_FALLBACK_HEIGHT.yes;
-    estimated = true;
+  // OSM's two ways of stating a height mean different things, and the roof is
+  // the difference: `height` is to the ridge, `building:levels` counts storeys
+  // and says nothing about what sits on top of them.
+  const stated = parseLength(tags.height) ?? parseLength(tags['building:height']);
+  const levels = parseIntTag(tags['building:levels']) ?? parseIntTag(tags['levels']);
+
+  let total;
+  let estimated = false;
+  if (stated != null) {
+    total = stated;
+    // Believe the number, and fit the roof inside it.
+    roofHeight = Math.min(roofHeight, total * 0.45);
+  } else {
+    // Both of these give the height of the walls, so the roof goes on top.
+    // A roof taller than the walls it sits on is a spire, not a house.
+    const eave = levels != null
+      ? levels * levelHeight
+      : BUILDING_FALLBACK_HEIGHT[type] ?? BUILDING_FALLBACK_HEIGHT.yes;
+    roofHeight = Math.min(roofHeight, eave * 0.6);
+    total = eave + (roofHeight > 0 ? roofHeight : levels != null ? 1.0 : 0);
+    estimated = levels == null;
   }
 
-  if (roofHeight == null) {
-    roofHeight = roofShape === 'flat' ? 0 : Math.min(total * 0.3, 5);
-  }
-  // The roof has to fit inside the total height.
-  roofHeight = Math.max(0, Math.min(roofHeight, total * 0.8));
+  roofHeight = Math.max(0, Math.min(roofHeight, total * 0.6));
 
   const base =
     parseLength(tags.min_height) ??
@@ -178,6 +212,20 @@ export function buildingHeights(tags, opts = {}) {
     roofShape,
     estimated,
   };
+}
+
+/**
+ * How high a pitched roof stands, from how wide the building is.
+ *
+ * Deriving it from the building's height instead - the obvious shortcut - puts
+ * a 2m rise on a 19m span, which is a 12 degree pitch: from the air it reads as
+ * a flat slab with a crease in it. Roofs are pitched at an angle, so the span
+ * is what sets the height. The cap keeps a barn from growing a spire.
+ */
+function pitchedRoofHeight(shape, spanM) {
+  if (shape === 'flat' || !(spanM > 0)) return shape === 'flat' ? 0 : 2;
+  if (shape === 'skillion') return Math.min(Math.max(spanM * 0.25, 1), 3.5);
+  return Math.min(Math.max(Math.tan((30 * Math.PI) / 180) * (spanM / 2), 1.5), 4.5);
 }
 
 /* --------------------------------- roads ---------------------------------- */
@@ -357,3 +405,94 @@ export const MATERIALS = {
   trunk:              { color: [0.32, 0.24, 0.17], roughness: 1.0, metallic: 0 },
   imagery:            { color: [1, 1, 1], roughness: 1.0, metallic: 0 },
 };
+
+/* -------------------------------- colouring ------------------------------- */
+
+// The handful of colour names that actually turn up in `building:colour`.
+// OSM allows any CSS colour; the long tail is not worth carrying.
+const NAMED_COLORS = {
+  white: '#f2f0ec', black: '#26242a', grey: '#8d8d8d', gray: '#8d8d8d',
+  silver: '#c0c0c0', red: '#9e3b32', maroon: '#6b2b2b', brown: '#7a5a42',
+  tan: '#c8ab84', beige: '#ddd0b4', cream: '#ece3cc', yellow: '#d8c479',
+  orange: '#c8813f', green: '#4d6b45', olive: '#7a7a45', blue: '#4a6684',
+  navy: '#33445c', purple: '#6a5372', pink: '#d6a9a9', sandstone: '#cbb391',
+  terracotta: '#a5563a', slate: '#4e565e', charcoal: '#3b3b3f',
+};
+
+/** Parses `#rgb`, `#rrggbb` or a common colour name into sRGB 0..1. */
+export function parseColor(value) {
+  if (!value) return null;
+  const s = String(value).trim().toLowerCase();
+  const hex = NAMED_COLORS[s] ?? s;
+  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/.exec(hex);
+  if (!m) return null;
+  const h = m[1].length === 3 ? m[1].replace(/./g, (c) => c + c) : m[1];
+  return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
+}
+
+const TINTS = 6;
+
+/** Nudges a colour's warmth and value without leaving its own family. */
+function tint(color, i) {
+  const warm = ((i % 3) - 1) * 0.045;      // towards brick, or towards slate
+  const value = 1 + (Math.floor(i / 3) - 0.5) * 0.14;
+  return [
+    clamp01(color[0] * value + warm),
+    clamp01(color[1] * value),
+    clamp01(color[2] * value - warm),
+  ];
+}
+
+function clamp01(v) {
+  return v < 0 ? 0 : v > 1 ? 1 : v;
+}
+
+// Real streets are not one colour. Every wall material gets a few variants so
+// neighbouring buildings differ, picked from the OSM id so a place looks the
+// same every time it is built.
+for (const name of Object.keys(MATERIALS)) {
+  if (!name.startsWith('building_')) continue;
+  const base = MATERIALS[name];
+  for (let i = 0; i < TINTS; i++) {
+    MATERIALS[`${name}~${i}`] = { ...base, color: tint(base.color, i) };
+  }
+}
+
+// Roofs vary more than walls do - slate, tile, shingle, tin - and the variation
+// is what you notice first from the air.
+const ROOF_COLORS = [
+  [0.34, 0.30, 0.29], [0.45, 0.25, 0.21], [0.38, 0.36, 0.34],
+  [0.28, 0.29, 0.31], [0.52, 0.42, 0.33], [0.33, 0.35, 0.31],
+];
+ROOF_COLORS.forEach((color, i) => {
+  MATERIALS[`roof~${i}`] = { ...MATERIALS.roof, color };
+});
+
+MATERIALS.trim = { color: [0.88, 0.87, 0.84], roughness: 0.75, metallic: 0 };
+MATERIALS.door = { color: [0.35, 0.27, 0.22], roughness: 0.6, metallic: 0 };
+MATERIALS.window = { color: [0.16, 0.20, 0.24], roughness: 0.18, metallic: 0.1 };
+
+/**
+ * Registers a material for a colour OSM gave us explicitly, and returns its
+ * name. Named after the colour, so the same colour is always the same material
+ * and the mesh does not grow a group per building.
+ */
+function paintedMaterial(prefix, color, base) {
+  const key = `${prefix}#${color.map((c) => Math.round(c * 255).toString(16).padStart(2, '0')).join('')}`;
+  if (!MATERIALS[key]) MATERIALS[key] = { ...base, color };
+  return key;
+}
+
+/** Wall material for one building: what OSM says, else a stable variant. */
+export function wallMaterial(material, tags, seed = 0) {
+  const stated = parseColor(tags['building:colour'] ?? tags['building:color'] ?? tags.colour);
+  if (stated) return paintedMaterial('wall', stated, MATERIALS[material]);
+  return `${material}~${Math.abs(Math.trunc(seed)) % TINTS}`;
+}
+
+/** Roof material for one building: what OSM says, else a stable variant. */
+export function roofMaterial(tags, seed = 0) {
+  const stated = parseColor(tags['roof:colour'] ?? tags['roof:color']);
+  if (stated) return paintedMaterial('roof', stated, MATERIALS.roof);
+  return `roof~${Math.abs(Math.trunc(seed)) % ROOF_COLORS.length}`;
+}
