@@ -1,0 +1,63 @@
+# Publishes the map3d shell to GitHub Pages.
+#
+# The site is plain static files: web/index.html and web/app.js at the root,
+# with the shared modules under src/. There is no build step and no bundler -
+# the browser loads the same ES modules the command-line tool imports.
+
+name: Deploy map3d to Pages
+
+on:
+  push:
+    branches: [claude/3d-map-generator-addresses-1v1g89]
+    paths:
+      - 'tools/map3d/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; let a newer push finish rather than cancelling it.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run the test suite
+        run: node --test "tools/map3d/test/*.test.js"
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble the site
+        run: |
+          mkdir -p site
+          cp -r tools/map3d/web/. site/
+          mkdir -p site/src
+          cp -r tools/map3d/src/. site/src/
+          # Pages otherwise runs the tree through Jekyll, which skips
+          # directories beginning with an underscore and slows the build.
+          touch site/.nojekyll
+          echo "Site contents:" && find site -type f | sort
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4

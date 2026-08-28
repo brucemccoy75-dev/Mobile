@@ -1,12 +1,17 @@
-// Tiny fetch helpers: retries, timeouts, polite rate limiting and a disk cache.
-// Zero dependencies - Node 18+ ships fetch.
+// Tiny fetch helpers: retries, timeouts, polite rate limiting and caching.
+//
+// No host dependencies: `fetch` exists in both Node 18+ and every browser, and
+// where responses get cached is decided by whichever platform adapter is
+// installed (files under Node, the Cache API in a browser, nowhere in tests).
 
-import { createHash } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
 import { USER_AGENT, DEFAULTS } from './config.js';
+import { platform, cacheKey } from './platform.js';
+
+export { cacheKey };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const IS_BROWSER = typeof window !== 'undefined' && typeof document !== 'undefined';
 
 /** Serialises calls to a host so we never hammer a free public API. */
 const lastCallAt = new Map();
@@ -48,11 +53,10 @@ export async function request(url, options = {}) {
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), timeoutMs);
     try {
-      const res = await fetch(url, {
-        ...init,
-        signal: ac.signal,
-        headers: { 'user-agent': USER_AGENT, ...(init.headers ?? {}) },
-      });
+      // Browsers forbid setting user-agent, and throw if you try.
+      const headers = { ...(init.headers ?? {}) };
+      if (!IS_BROWSER) headers['user-agent'] = USER_AGENT;
+      const res = await fetch(url, { ...init, signal: ac.signal, headers });
       if (res.ok) return res;
       const body = await res.text().catch(() => '');
       const err = new HttpError(res.status, body, url);
@@ -73,30 +77,18 @@ export async function requestJson(url, options) {
   return res.json();
 }
 
-export async function requestBuffer(url, options) {
+/** @returns {Promise<Uint8Array>} */
+export async function requestBytes(url, options) {
   const res = await request(url, options);
-  return Buffer.from(await res.arrayBuffer());
+  return new Uint8Array(await res.arrayBuffer());
 }
 
-/* ------------------------------ disk cache ------------------------------ */
+/* --------------------------------- cache --------------------------------- */
 
-export function cacheKey(...parts) {
-  return createHash('sha1').update(parts.join(' ')).digest('hex').slice(0, 20);
+export function readCache(key, ext = 'json') {
+  return platform.cache.read(key, ext);
 }
 
-export async function readCache(cacheDir, key, ext = 'json') {
-  if (!cacheDir) return null;
-  try {
-    const raw = await readFile(join(cacheDir, `${key}.${ext}`));
-    return ext === 'json' ? JSON.parse(raw.toString('utf8')) : raw;
-  } catch {
-    return null;
-  }
-}
-
-export async function writeCache(cacheDir, key, value, ext = 'json') {
-  if (!cacheDir) return;
-  const file = join(cacheDir, `${key}.${ext}`);
-  await mkdir(dirname(file), { recursive: true });
-  await writeFile(file, ext === 'json' ? JSON.stringify(value) : value);
+export function writeCache(key, value, ext = 'json') {
+  return platform.cache.write(key, value, ext);
 }

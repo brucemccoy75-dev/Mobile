@@ -16,7 +16,7 @@ import { DEFAULTS } from './config.js';
 import {
   lonToTileX, latToTileY, tileXToLon, tileYToLat, metersPerPixel,
 } from './project.js';
-import { requestBuffer, cacheKey, readCache, writeCache, throttle } from './net.js';
+import { requestBytes, cacheKey, readCache, writeCache, throttle } from './net.js';
 
 /** Picks the highest zoom whose tile count stays under the cap. */
 export function chooseZoom(lat, half, maxTiles = DEFAULTS.maxImageryTiles) {
@@ -61,11 +61,11 @@ export async function fetchImagery(projector, half, template, opts = {}) {
         .replace('{s}', 'abc'[(tx + ty) % 3]);
 
       const key = cacheKey('tile', url);
-      let data = await readCache(opts.cacheDir, key, 'bin');
+      let data = await readCache(key, 'bin');
       if (!data) {
         await throttle(new URL(url).host, opts.minIntervalMs ?? 60);
-        data = await requestBuffer(url, { headers: { accept: 'image/*' } });
-        await writeCache(opts.cacheDir, key, data, 'bin');
+        data = await requestBytes(url, { headers: { accept: 'image/*' } });
+        await writeCache(key, data, 'bin');
       }
       fetched++;
       opts.log?.(`Imagery: tile ${fetched}/${count}`);
@@ -92,6 +92,6 @@ export async function fetchImagery(projector, half, template, opts = {}) {
 function sniffMime(buf, url) {
   if (buf.length > 8 && buf[0] === 0x89 && buf[1] === 0x50) return 'image/png';
   if (buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8) return 'image/jpeg';
-  if (buf.length > 12 && buf.toString('ascii', 8, 12) === 'WEBP') return 'image/webp';
+  if (buf.length > 12 && String.fromCharCode(...buf.subarray(8, 12)) === 'WEBP') return 'image/webp';
   return /\.jpe?g/i.test(url) ? 'image/jpeg' : 'image/png';
 }

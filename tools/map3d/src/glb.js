@@ -3,11 +3,16 @@
 // One primitive per material group, non-interleaved attributes, everything in
 // a single embedded buffer. That is the layout Unity, Unreal, Godot, Blender
 // and three.js all import without complaint.
+//
+// Uint8Array rather than Buffer throughout, so this runs in a browser too -
+// the hosted version offers the same .glb as a download.
 
 /** glTF baseColorFactor is linear; the palette is authored in sRGB. */
 function srgbToLinear(c) {
   return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
 }
+
+import { concatBytes } from './platform.js';
 
 const MAGIC = 0x46546c67; // 'glTF'
 const JSON_CHUNK = 0x4e4f534a;
@@ -25,25 +30,25 @@ class BufferWriter {
     this.length = 0;
   }
 
-  /** Appends `buf`, 4-byte aligned, and returns its offset. */
-  push(buf) {
+  /** Appends `bytes`, 4-byte aligned, and returns its offset. */
+  push(bytes) {
     this.pad(4);
     const offset = this.length;
-    this.chunks.push(buf);
-    this.length += buf.length;
+    this.chunks.push(bytes);
+    this.length += bytes.length;
     return offset;
   }
 
   pad(alignment, fill = 0) {
     const rem = this.length % alignment;
     if (rem === 0) return;
-    const padding = Buffer.alloc(alignment - rem, fill);
+    const padding = new Uint8Array(alignment - rem).fill(fill);
     this.chunks.push(padding);
     this.length += padding.length;
   }
 
   concat() {
-    return Buffer.concat(this.chunks, this.length);
+    return concatBytes(this.chunks);
   }
 }
 
@@ -51,7 +56,7 @@ class BufferWriter {
  * @param {import('./mesh.js').MeshBuilder} builder
  * @param {Record<string, {color: number[], roughness: number, metallic: number}>} materials
  * @param {{generator?: string, extras?: object}} [opts]
- * @returns {Buffer}
+ * @returns {Uint8Array}
  */
 export function writeGlb(builder, materials, opts = {}) {
   const bin = new BufferWriter();
@@ -72,7 +77,7 @@ export function writeGlb(builder, materials, opts = {}) {
 
   const addFloatAccessor = (values, componentsPerElement, withBounds) => {
     const arr = Float32Array.from(values);
-    const view = addView(Buffer.from(arr.buffer, arr.byteOffset, arr.byteLength), ARRAY_BUFFER);
+    const view = addView(new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength), ARRAY_BUFFER);
     const type = { 1: 'SCALAR', 2: 'VEC2', 3: 'VEC3', 4: 'VEC4' }[componentsPerElement];
     const accessor = {
       bufferView: view,
@@ -101,7 +106,7 @@ export function writeGlb(builder, materials, opts = {}) {
     const big = vertexCount > 65535;
     const arr = big ? Uint32Array.from(indices) : Uint16Array.from(indices);
     const view = addView(
-      Buffer.from(arr.buffer, arr.byteOffset, arr.byteLength),
+      new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength),
       ELEMENT_ARRAY_BUFFER,
     );
     accessors.push({
@@ -199,32 +204,36 @@ export function writeGlb(builder, materials, opts = {}) {
 }
 
 function assemble(gltf, binary) {
-  const jsonBuf = padTo(Buffer.from(JSON.stringify(gltf), 'utf8'), 4, 0x20);
+  const jsonBuf = padTo(new TextEncoder().encode(JSON.stringify(gltf)), 4, 0x20);
   const binBuf = padTo(binary, 4, 0x00);
 
   const total = 12 + 8 + jsonBuf.length + (binBuf.length ? 8 + binBuf.length : 0);
-  const out = Buffer.alloc(total);
+  const out = new Uint8Array(total);
+  const view = new DataView(out.buffer);
   let o = 0;
 
-  out.writeUInt32LE(MAGIC, o); o += 4;
-  out.writeUInt32LE(2, o); o += 4;
-  out.writeUInt32LE(total, o); o += 4;
+  view.setUint32(o, MAGIC, true); o += 4;
+  view.setUint32(o, 2, true); o += 4;
+  view.setUint32(o, total, true); o += 4;
 
-  out.writeUInt32LE(jsonBuf.length, o); o += 4;
-  out.writeUInt32LE(JSON_CHUNK, o); o += 4;
-  jsonBuf.copy(out, o); o += jsonBuf.length;
+  view.setUint32(o, jsonBuf.length, true); o += 4;
+  view.setUint32(o, JSON_CHUNK, true); o += 4;
+  out.set(jsonBuf, o); o += jsonBuf.length;
 
   if (binBuf.length) {
-    out.writeUInt32LE(binBuf.length, o); o += 4;
-    out.writeUInt32LE(BIN_CHUNK, o); o += 4;
-    binBuf.copy(out, o);
+    view.setUint32(o, binBuf.length, true); o += 4;
+    view.setUint32(o, BIN_CHUNK, true); o += 4;
+    out.set(binBuf, o);
   }
 
   return out;
 }
 
-function padTo(buf, alignment, fill) {
-  const rem = buf.length % alignment;
-  if (rem === 0) return buf;
-  return Buffer.concat([buf, Buffer.alloc(alignment - rem, fill)]);
+function padTo(bytes, alignment, fill) {
+  const rem = bytes.length % alignment;
+  if (rem === 0) return bytes;
+  const out = new Uint8Array(bytes.length + (alignment - rem));
+  out.set(bytes);
+  out.fill(fill, bytes.length);
+  return out;
 }

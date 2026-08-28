@@ -26,7 +26,7 @@ export async function geocode(address, opts = {}) {
   }
 
   const key = cacheKey('geocode', provider, address);
-  const cached = await readCache(opts.cacheDir, key);
+  const cached = await readCache(key);
   if (cached) return { ...cached, cached: true };
 
   const result =
@@ -34,7 +34,7 @@ export async function geocode(address, opts = {}) {
       ? await geocodeGoogle(address, opts.apiKey)
       : await geocodeNominatim(address);
 
-  await writeCache(opts.cacheDir, key, result);
+  await writeCache(key, result);
   return result;
 }
 

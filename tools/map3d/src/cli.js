@@ -4,6 +4,8 @@ import { join, resolve } from 'node:path';
 
 import { DEFAULTS, METERS_PER_MILE } from './config.js';
 import { buildMap } from './pipeline.js';
+import { installNodePlatform } from './node/platform-node.js';
+import { writeMap } from './node/write.js';
 import { serve } from './serve.js';
 import { play } from './play.js';
 
@@ -71,12 +73,7 @@ export async function main(argv) {
   }
 
   if (args.command === 'play') {
-    await play({
-      port: Number(args.flags.port ?? 8080),
-      worldsDir: args.flags.worlds ? String(args.flags.worlds) : undefined,
-      cacheDir: args.flags['no-cache'] ? null : resolve(String(args.flags.cache ?? DEFAULTS.cacheDir)),
-      radius: parseDistance(args.flags.radius) ?? undefined,
-    });
+    await play({ port: Number(args.flags.port ?? 8080) });
     return 0;
   }
 
@@ -108,13 +105,14 @@ export async function main(argv) {
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
 
-  const { manifest, place, files, outDir } = await buildMap({
+  installNodePlatform({ cacheDir });
+
+  const outDir = resolve(String(args.flags.out ?? join('out',
+    args.flags.name ? slugify(String(args.flags.name)) : slugify(address))));
+
+  const built = await buildMap({
     address,
     radius,
-    outDir: resolve(String(args.flags.out ?? join('out',
-      args.flags.name ? slugify(String(args.flags.name)) : slugify(address)))),
-    formats,
-    cacheDir,
     log,
     geocoder: args.flags.geocoder,
     googleKey: args.flags['google-key'],
@@ -152,7 +150,8 @@ export async function main(argv) {
       maxTrees: num(args.flags['max-trees']),
     },
   });
-  const written = files;
+  const { manifest, place } = built;
+  const written = await writeMap(built, { outDir, formats });
 
   const s = manifest.stats;
   process.stdout.write(

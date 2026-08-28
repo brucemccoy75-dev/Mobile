@@ -14,8 +14,8 @@
 // the address always sits at y = 0.
 
 import { OPENTOPODATA_ENDPOINT, TERRARIUM_ENDPOINT, DEFAULTS } from './config.js';
-import { requestJson, requestBuffer, throttle, cacheKey, readCache, writeCache } from './net.js';
-import { decodePng } from './png.js';
+import { requestJson, requestBytes, throttle, cacheKey, readCache, writeCache } from './net.js';
+import { platform } from './platform.js';
 import {
   lonToTileX, latToTileY, metersPerPixel,
 } from './project.js';
@@ -86,12 +86,12 @@ async function fetchTerrainTiles(projector, half, opts = {}) {
         .replace('{y}', String(ty));
       const key = cacheKey('terrarium', url);
 
-      let png = await readCache(opts.cacheDir, key, 'bin');
+      let png = await readCache(key, 'bin');
       if (!png) {
-        png = await requestBuffer(url, { headers: { accept: 'image/png' } });
-        await writeCache(opts.cacheDir, key, png, 'bin');
+        png = await requestBytes(url, { headers: { accept: 'image/png' } });
+        await writeCache(key, png, 'bin');
       }
-      tiles.set(`${tx},${ty}`, decodePng(png));
+      tiles.set(`${tx},${ty}`, await platform.decodePng(png));
     }
   }
 
@@ -176,7 +176,7 @@ async function fetchTerrainPoints(projector, half, opts = {}) {
   }
 
   const key = cacheKey('elevation', baseUrl, projector.lat0, projector.lon0, half, cells);
-  let heights = await readCache(opts.cacheDir, key);
+  let heights = await readCache(key);
 
   if (!heights) {
     heights = [];
@@ -202,7 +202,7 @@ async function fetchTerrainPoints(projector, half, opts = {}) {
       }
       for (const r of json.results) heights.push(r.elevation);
     }
-    await writeCache(opts.cacheDir, key, heights);
+    await writeCache(key, heights);
   }
 
   // Fill any nulls (sea, dataset gaps) with the mean of what we did get.

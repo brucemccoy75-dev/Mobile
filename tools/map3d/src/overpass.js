@@ -44,7 +44,7 @@ export function buildQuery(lat, lon, radius, opts = {}) {
 export async function runQuery(query, opts = {}) {
   const endpoints = opts.endpoints?.length ? opts.endpoints : OVERPASS_ENDPOINTS;
   const key = cacheKey('overpass', query);
-  const cached = await readCache(opts.cacheDir, key);
+  const cached = await readCache(key);
   if (cached) {
     opts.log?.(`Overpass: reusing cached response (${cached.elements.length} elements)`);
     return { ...cached, cached: true };
@@ -87,7 +87,7 @@ export async function runQuery(query, opts = {}) {
       }
 
       opts.log?.(`  got ${json.elements.length} elements`);
-      await writeCache(opts.cacheDir, key, result);
+      await writeCache(key, result);
       return { ...result, cached: false };
     } catch (err) {
       problems.push(`${new URL(endpoint).host}: ${describe(err)}`);
@@ -97,7 +97,7 @@ export async function runQuery(query, opts = {}) {
 
   if (emptyResult) {
     // Every mirror that answered said the area is empty; believe them.
-    await writeCache(opts.cacheDir, key, emptyResult);
+    await writeCache(key, emptyResult);
     return { ...emptyResult, cached: false };
   }
 

@@ -468,22 +468,23 @@ function sampleBuilder() {
 
 test('the GLB header and chunk layout are valid', () => {
   const glb = writeGlb(sampleBuilder(), MATERIALS);
-  assert.equal(glb.toString('ascii', 0, 4), 'glTF');
-  assert.equal(glb.readUInt32LE(4), 2);
-  assert.equal(glb.readUInt32LE(8), glb.length);
+  assert.ok(glb instanceof Uint8Array, 'must be plain bytes, not a Buffer');
+  assert.equal(glbAscii(glb, 0, 4), 'glTF');
+  assert.equal(glbU32(glb, 4), 2);
+  assert.equal(glbU32(glb, 8), glb.length);
   assert.equal(glb.length % 4, 0);
 
-  const jsonLen = glb.readUInt32LE(12);
-  assert.equal(glb.readUInt32LE(16), 0x4e4f534a); // 'JSON'
-  const gltf = JSON.parse(glb.toString('utf8', 20, 20 + jsonLen));
-  assert.equal(glb.readUInt32LE(20 + jsonLen + 4), 0x004e4942); // 'BIN'
-  assert.equal(gltf.buffers[0].byteLength, glb.readUInt32LE(20 + jsonLen));
+  const jsonLen = glbU32(glb, 12);
+  assert.equal(glbU32(glb, 16), 0x4e4f534a); // 'JSON'
+  const gltf = JSON.parse(glbAscii(glb, 20, 20 + jsonLen));
+  assert.equal(glbU32(glb, 20 + jsonLen + 4), 0x004e4942); // 'BIN'
+  assert.equal(gltf.buffers[0].byteLength, glbU32(glb, 20 + jsonLen));
   assert.equal(gltf.meshes.length, 3);
 });
 
 test('GLB accessors stay inside their buffer views', () => {
   const glb = writeGlb(sampleBuilder(), MATERIALS);
-  const gltf = JSON.parse(glb.toString('utf8', 20, 20 + glb.readUInt32LE(12)));
+  const gltf = JSON.parse(glbAscii(glb, 20, 20 + glbU32(glb, 12)));
   const size = { 5126: 4, 5123: 2, 5125: 4 };
   const count = { SCALAR: 1, VEC2: 2, VEC3: 3 };
   for (const a of gltf.accessors) {
@@ -495,8 +496,8 @@ test('GLB accessors stay inside their buffer views', () => {
 
 test('GLB indices never point past the vertex list', () => {
   const glb = writeGlb(sampleBuilder(), MATERIALS);
-  const jsonLen = glb.readUInt32LE(12);
-  const gltf = JSON.parse(glb.toString('utf8', 20, 20 + jsonLen));
+  const jsonLen = glbU32(glb, 12);
+  const gltf = JSON.parse(glbAscii(glb, 20, 20 + jsonLen));
   const binStart = 20 + jsonLen + 8;
   for (const mesh of gltf.meshes) {
     for (const prim of mesh.primitives) {
@@ -513,7 +514,7 @@ test('GLB indices never point past the vertex list', () => {
 
 test('GLB positions carry the bounds glTF requires', () => {
   const glb = writeGlb(sampleBuilder(), MATERIALS);
-  const gltf = JSON.parse(glb.toString('utf8', 20, 20 + glb.readUInt32LE(12)));
+  const gltf = JSON.parse(glbAscii(glb, 20, 20 + glbU32(glb, 12)));
   for (const mesh of gltf.meshes) {
     const a = gltf.accessors[mesh.primitives[0].attributes.POSITION];
     assert.equal(a.min.length, 3);
@@ -524,7 +525,7 @@ test('GLB positions carry the bounds glTF requires', () => {
 
 test('the sRGB palette is written to glTF as linear', () => {
   const glb = writeGlb(sampleBuilder(), MATERIALS);
-  const gltf = JSON.parse(glb.toString('utf8', 20, 20 + glb.readUInt32LE(12)));
+  const gltf = JSON.parse(glbAscii(glb, 20, 20 + glbU32(glb, 12)));
   const roof = gltf.materials.find((m) => m.name === 'roof');
   const [r] = roof.pbrMetallicRoughness.baseColorFactor;
   assert.ok(r < MATERIALS.roof.color[0], 'linear value should be below the sRGB one');
@@ -627,8 +628,16 @@ test('bare coordinates skip the geocoder', () => {
 
 /* ----------------------------------- png ---------------------------------- */
 
-import { deflateSync } from 'node:zlib';
-import { decodePng } from '../src/png.js';
+import { deflateSync, inflateSync } from 'node:zlib';
+import { decodePng as decodePngRaw } from '../src/png.js';
+
+/** The decoder takes inflate as a parameter now; supply Node's. */
+const decodePng = (bytes) => decodePngRaw(bytes, (d) => inflateSync(d));
+
+/** GLB is a Uint8Array, so read it the way a browser would. */
+const glbView = (glb) => new DataView(glb.buffer, glb.byteOffset, glb.byteLength);
+const glbU32 = (glb, o) => glbView(glb).getUint32(o, true);
+const glbAscii = (glb, a, b) => new TextDecoder().decode(glb.subarray(a, b));
 import { OccupancyMask, scatter, hash2, pointInRing } from '../src/scatter.js';
 import { chooseTerrainZoom, flatTerrain } from '../src/elevation.js';
 import { NLCD_CLASSES, MATCH_TOLERANCE } from '../src/landcover.js';
@@ -851,5 +860,86 @@ test('no pixel can fall within tolerance of two NLCD classes', () => {
           `within 2x the ${MATCH_TOLERANCE} tolerance`,
       );
     }
+  }
+});
+
+/* ------------------------------ platform seam ----------------------------- */
+
+import { readdirSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join, relative } from 'node:path';
+import { hashString, cacheKey as platformCacheKey, concatBytes, CACHE_VERSION } from '../src/platform.js';
+
+const SRC = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
+
+function jsFilesUnder(dir) {
+  const out = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...jsFilesUnder(full));
+    else if (entry.name.endsWith('.js')) out.push(full);
+  }
+  return out;
+}
+
+test('shared modules never import node: built-ins', () => {
+  // The hosted build loads these same files in a browser. A stray `node:`
+  // import throws there and nowhere else, so guard it here instead.
+  const hostOnly = new Set(['node', 'cli.js', 'play.js', 'serve.js']);
+  const offenders = [];
+
+  for (const file of jsFilesUnder(SRC)) {
+    const rel = relative(SRC, file);
+    const [first] = rel.split('/');
+    if (hostOnly.has(first) || hostOnly.has(rel)) continue;
+
+    const source = readFileSync(file, 'utf8');
+    for (const m of source.matchAll(/from\s+['"](node:[a-z/]+)['"]/g)) {
+      offenders.push(`${rel} imports ${m[1]}`);
+    }
+    if (/\bBuffer\s*\.\s*(from|alloc|concat)\b/.test(source)) {
+      offenders.push(`${rel} uses Buffer, which browsers do not have`);
+    }
+  }
+
+  assert.deepEqual(offenders, [], `these run in the browser too:\n  ${offenders.join('\n  ')}`);
+});
+
+test('both platform adapters satisfy the same contract', async () => {
+  const node = await import('../src/node/platform-node.js');
+  const web = await import('../src/browser/platform-web.js');
+  assert.equal(typeof node.installNodePlatform, 'function');
+  assert.equal(typeof web.installWebPlatform, 'function');
+});
+
+test('cache keys are stable, distinct and version-tagged', () => {
+  assert.equal(platformCacheKey('a', 'b'), platformCacheKey('a', 'b'));
+  const keys = new Set(['a', 'b', 'ab', 'ba', 'aa'].map((s) => platformCacheKey(s)));
+  assert.equal(keys.size, 5, 'these inputs must not collide');
+  assert.match(platformCacheKey('x'), /^[0-9a-f]{16}$/);
+  // Bumping the version must invalidate everything, or a format change gets
+  // read back through the old entries and silently produces a different map.
+  assert.ok(CACHE_VERSION >= 1);
+});
+
+test('hashString is deterministic across inputs', () => {
+  assert.equal(hashString('map3d'), hashString('map3d'));
+  assert.notEqual(hashString('map3d'), hashString('map3e'));
+  assert.match(hashString(''), /^[0-9a-f]{8}$/);
+});
+
+test('concatBytes joins typed arrays in order', () => {
+  const out = concatBytes([new Uint8Array([1, 2]), new Uint8Array([]), new Uint8Array([3])]);
+  assert.deepEqual([...out], [1, 2, 3]);
+  assert.equal(concatBytes([]).length, 0);
+});
+
+test('the browser entry point only imports portable modules', () => {
+  const app = readFileSync(join(SRC, '..', 'web', 'app.js'), 'utf8');
+  for (const m of app.matchAll(/from\s+['"]([^'"]+)['"]/g)) {
+    const spec = m[1];
+    if (spec === 'three' || spec.startsWith('three/')) continue;
+    assert.ok(spec.startsWith('../src/'), `web/app.js imports ${spec}`);
+    assert.ok(!spec.includes('/node/'), `web/app.js must not import ${spec}`);
   }
 });

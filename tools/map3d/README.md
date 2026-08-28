@@ -5,20 +5,26 @@ around that address — real terrain, buildings with real footprints and heights
 roads at real widths, water, and tree cover — as a `.glb` you can drop straight
 into Unity, Unreal, Godot, Blender or three.js.
 
-Zero dependencies. Node 18+.
+Zero dependencies. Node 18+, or any modern browser.
 
 ## Just want to walk around?
+
+The shell is a static web app, so it can run from a URL with nothing installed
+(see **Hosting it** below), or locally:
 
 ```
 node tools/map3d/bin/map3d.js play
 ```
 
 Open <http://localhost:8080>, type an address, and you land in it on foot —
-mouse to look, WASD to walk, shift to run. Worlds are saved as you build them,
-so the home screen fills up with places you can drop back into instantly.
+mouse to look, WASD to walk, shift to run. Works on a phone: drag the left half
+of the screen to walk, the right half to look.
 
-That is the whole shell: no engine, no install, works on a phone (drag the
-left half of the screen to walk, the right half to look).
+**The map is built in your browser.** The same modules the CLI imports run in
+the page, so nothing is uploaded anywhere and no server does any work — the
+page talks to OpenStreetMap, AWS and USGS directly. Every response is kept in
+the browser's Cache API, so revisiting a place you have already built takes
+well under a second and no network at all.
 
 ## Want the files for an engine?
 
@@ -151,14 +157,31 @@ map3d build "51.5007,-0.1246" --radius 300m \
 map3d build "Yellowstone, WY" --radius 1km --no-trees --no-barriers
 ```
 
+## Hosting it
+
+`.github/workflows/pages.yml` publishes the shell to GitHub Pages on every
+push. It runs the test suite, then copies `web/` to the site root and `src/`
+alongside it. There is no build step and no bundler: the browser loads the
+same ES modules Node does.
+
+Pages needs a **public** repository on a free plan, and the repository's
+Settings → Pages source must be set to **GitHub Actions**.
+
+Because the page calls the data services directly, those requests are subject
+to cross-origin rules. Nominatim, the AWS elevation tiles and USGS land cover
+all send `Access-Control-Allow-Origin: *`. Overpass mirrors vary, which is one
+more reason the endpoint list in `config.js` is tried in order — a mirror that
+refuses a browser request is handled the same way as one returning 503.
+
+Everything runs client-side, so the rate limits are yours to respect: one
+visitor is one more caller against Nominatim's 1-request-per-second policy and
+against volunteer-run Overpass instances.
+
 ## Walking around (`map3d play`)
 
-The shell is a small HTTP server plus one page. Typing an address POSTs to
-`/api/build`, which runs the same pipeline as the CLI and streams its progress
-back as newline-delimited JSON, so you watch the Overpass mirrors and the
-terrain fetch go by instead of a spinner. Finished worlds live in `worlds/<id>`
-keyed by address, radius and detail level, so rebuilding the same place is
-instant and older ones stay one click away.
+`play` is a plain static file server over `web/` and `src/` — the same files
+Pages serves. All the work happens in the page, so there is exactly one
+implementation of the address screen and the walker.
 
 The player is a 0.34m capsule with gravity, a 0.6m step-up for kerbs and
 slopes, and walls from the manifest's building footprints in a uniform grid, so
@@ -175,6 +198,9 @@ data is worth carrying alongside the mesh.
 `window.map3d` exposes `teleport(x, z)`, `look(headingDeg, pitchDeg)`, `player`
 and `scene` for scripting. Note that `teleport` moves you directly and does not
 resolve collisions.
+
+**Download .glb** in the world view hands you the same file `map3d build`
+writes, so you can grab a map for Unity from a phone.
 
 **Frame rate note.** The simulation clamps its timestep to 50ms, so below 20fps
 the world runs in slow motion rather than letting you tunnel through walls. If
@@ -359,6 +385,12 @@ Use `--overpass <url>` to point at your own instance for heavy use.
 node --test "tools/map3d/test/*.test.js"
 ```
 
+Everything in `src/` is plain JavaScript that runs in both Node and a browser.
+The three things that genuinely differ — inflating PNGs, caching responses, and
+writing files — sit behind `platform.js`, and each host installs its own
+adapter at startup. **Anything reaching for `node:` outside `src/node/` is a
+bug**, and is what would quietly break the hosted build.
+
 87 tests cover the triangulator, clipping, projection, tag parsing, mesh
 winding and normals, multipolygon stitching, the PNG decoder, occupancy masks
 and scatter determinism, the land-cover legend, and the GLB/OBJ writers.
@@ -381,11 +413,16 @@ src/
   scene.js       assembles features into meshes plus the manifest
   glb.js         glTF 2.0 binary writer
   obj.js         Wavefront OBJ/MTL writer
-  pipeline.js    geocode -> fetch -> build -> write, as one callable function
-  play.js        the `play` server: build API, world storage, static files
+  pipeline.js    geocode -> fetch -> build, as one callable function
+  platform.js    the seam between shared code and its host
+  play.js        static file server for the shell
   serve.js       tiny static server for the standalone viewer
+  node/          Node's half of the seam: zlib, the disk cache, writing files
+  browser/       the browser's half: canvas PNG decode, Cache API, three.js
+web/
+  index.html     the shell: address screen and first-person walker
+  app.js         builds in-page, then runs the walker
 viewer/
-  play.html      the shell: address screen and first-person walker
   index.html     three.js preview (orbit, walk, wireframe, building info)
 ```
 

@@ -2,26 +2,34 @@
 //
 // Two of our data sources are rasters: Mapzen terrarium tiles encode elevation
 // in the RGB channels, and NLCD land cover comes back as a paletted image.
-// Both need real pixels, and Node already ships the hard part (zlib), so a
-// decoder is about a hundred lines rather than a dependency.
+// Both need real pixels, and the hard part (inflate) is passed in - Node hands
+// us zlib, and a browser never calls this at all because it has its own
+// decoder. That keeps this file free of any host dependency.
 //
 // Supports 8- and 16-bit samples, all five colour types, and no interlacing
 // (Adam7 is not used by any tile service worth the name). Always returns RGBA8.
 
-import { inflateSync } from 'node:zlib';
+import { concatBytes } from './platform.js';
 
-const SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+const SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
 
 const CHANNELS = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 };
 
 /**
- * @param {Buffer} buf
+ * @param {Uint8Array} buf
+ * @param {(deflated: Uint8Array) => Uint8Array} inflate
  * @returns {{width: number, height: number, data: Uint8Array}} RGBA, 4 bytes per pixel
  */
-export function decodePng(buf) {
-  if (buf.length < 8 || !buf.subarray(0, 8).equals(SIGNATURE)) {
+export function decodePng(buf, inflate) {
+  if (buf.length < 8 || SIGNATURE.some((b, i) => buf[i] !== b)) {
     throw new Error('not a PNG (bad signature)');
   }
+  if (typeof inflate !== 'function') {
+    throw new Error('decodePng needs an inflate function for this platform');
+  }
+  const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  const readU32 = (o) => view.getUint32(o);
+  const readAscii = (o, n) => String.fromCharCode(...buf.subarray(o, o + n));
 
   let width = 0;
   let height = 0;
@@ -34,16 +42,16 @@ export function decodePng(buf) {
 
   let off = 8;
   while (off + 8 <= buf.length) {
-    const length = buf.readUInt32BE(off);
-    const type = buf.toString('ascii', off + 4, off + 8);
+    const length = readU32(off);
+    const type = readAscii(off + 4, 4);
     const start = off + 8;
     const end = start + length;
     if (end > buf.length) break;
 
     switch (type) {
       case 'IHDR':
-        width = buf.readUInt32BE(start);
-        height = buf.readUInt32BE(start + 4);
+        width = readU32(start);
+        height = readU32(start + 4);
         bitDepth = buf[start + 8];
         colorType = buf[start + 9];
         interlace = buf[start + 12];
@@ -79,7 +87,7 @@ export function decodePng(buf) {
   const bpp = channels * bytesPerSample; // bytes per pixel, for the filters
   const stride = width * bpp;
 
-  const raw = inflateSync(Buffer.concat(idat));
+  const raw = inflate(concatBytes(idat));
   if (raw.length < (stride + 1) * height) {
     throw new Error('PNG data is shorter than its header claims');
   }
@@ -135,7 +143,7 @@ export function decodePng(buf) {
  * `a` is the pixel to the left, `b` above, `c` above-left.
  */
 function unfilter(raw, width, height, bpp, stride) {
-  const out = Buffer.alloc(height * stride);
+  const out = new Uint8Array(height * stride);
   let pos = 0;
 
   for (let y = 0; y < height; y++) {

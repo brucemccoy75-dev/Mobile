@@ -14,8 +14,8 @@
 // falls back to OSM polygons alone.
 
 import { NLCD_ENDPOINT } from './config.js';
-import { requestBuffer, cacheKey, readCache, writeCache } from './net.js';
-import { decodePng } from './png.js';
+import { requestBytes, cacheKey, readCache, writeCache } from './net.js';
+import { platform } from './platform.js';
 
 /**
  * NLCD legend. `canopy` is the fraction of ground we treat as tree-covered,
@@ -78,13 +78,13 @@ export async function fetchLandcover(projector, half, opts = {}) {
   );
 
   const key = cacheKey('landcover', url.toString());
-  let png = await readCache(opts.cacheDir, key, 'bin');
+  let png = await readCache(key, 'bin');
   if (!png) {
-    png = await requestBuffer(url, { headers: { accept: 'image/png' } });
-    await writeCache(opts.cacheDir, key, png, 'bin');
+    png = await requestBytes(url, { headers: { accept: 'image/png' } });
+    await writeCache(key, png, 'bin');
   }
 
-  const img = decodePng(png);
+  const img = await platform.decodePng(png);
   const lookup = buildLookup(img);
 
   // A tile fully outside NLCD's footprint comes back blank. Treat that as
