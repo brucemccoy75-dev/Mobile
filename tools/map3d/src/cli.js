@@ -9,6 +9,7 @@ import { geocode } from './geocode.js';
 import { Projector } from './project.js';
 import { buildQuery, runQuery, normalizeElements } from './overpass.js';
 import { fetchTerrain, flatTerrain } from './elevation.js';
+import { fetchLandcover } from './landcover.js';
 import { fetchImagery } from './imagery.js';
 import { buildScene } from './scene.js';
 import { MATERIALS } from './tags.js';
@@ -31,13 +32,20 @@ Common options
   --format <list>        glb,obj,json  (default glb,json)
   --shape <square|disc>  Ground shape (default square).
 
+Terrain and ground cover (both on by default)
+  --no-terrain           Build on a flat plane instead
+  --elevation <name>     terrarium (default, ~7m tiles) or opentopodata
+  --terrain <dataset>    OpenTopoData dataset, e.g. srtm30m
+  --elevation-url <url>  Custom elevation endpoint
+  --ground-cells <n>     Ground mesh resolution (default ${DEFAULTS.terrainGrid})
+  --no-landcover         Skip NLCD land cover (US only; drives ground + trees)
+  --tree-spacing <m>     Mean gap between scattered trees (default ${DEFAULTS.treeSpacing})
+  --max-trees <n>        Cap on scattered trees (default ${DEFAULTS.maxTrees})
+
 Data sources
   --geocoder <name>      nominatim (default) or google
   --google-key <key>     Google Geocoding key (or set GOOGLE_MAPS_API_KEY)
   --overpass <url>       Override the Overpass endpoint (repeatable)
-  --terrain [dataset]    Fetch real elevation (default dataset aster30m)
-  --elevation-url <url>  Custom OpenTopoData-compatible endpoint
-  --terrain-cells <n>    Height field resolution (default ${DEFAULTS.terrainGrid})
   --imagery <template>   XYZ tile URL, e.g. "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
   --imagery-zoom <n>     Force a zoom level
   --imagery-max-tiles <n>  Safety cap (default ${DEFAULTS.maxImageryTiles})
@@ -54,7 +62,7 @@ Other
 
 Examples
   map3d build "1600 Pennsylvania Ave NW, Washington, DC"
-  map3d build "51.5007,-0.1246" --radius 800m --terrain --format glb,obj,json
+  map3d build "51.5007,-0.1246" --radius 800m --format glb,obj,json
   map3d build "Shibuya Crossing, Tokyo" --shape disc --no-trees
   map3d serve out/1600-pennsylvania-ave-nw-washington-dc
 `;
@@ -124,20 +132,41 @@ export async function main(argv) {
 
   /* 3. How high is the ground? */
   let terrain = flatTerrain();
-  if (args.flags.terrain) {
-    const dataset = typeof args.flags.terrain === 'string' ? args.flags.terrain : undefined;
+  if (args.flags['no-terrain'] !== true) {
+    const provider = args.flags.elevation ?? 'terrarium';
     try {
       terrain = await fetchTerrain(projector, half, {
+        provider,
         cells: args.flags['terrain-cells'] ? Number(args.flags['terrain-cells']) : undefined,
-        dataset,
+        dataset: typeof args.flags.terrain === 'string' ? args.flags.terrain : undefined,
         url: args.flags['elevation-url'],
+        zoom: args.flags['elevation-zoom'] ? Number(args.flags['elevation-zoom']) : undefined,
         cacheDir,
         log,
       });
-      log(`  elevation ${terrain.baseElevation.toFixed(1)}m at centre, ` +
-          `relief ${(terrain.max - terrain.min).toFixed(1)}m`);
+      log(`  ground ${terrain.baseElevation.toFixed(0)}m at centre, ` +
+          `${(terrain.max - terrain.min).toFixed(0)}m of relief ` +
+          `(${terrain.provider}, ${terrain.resolutionMeters.toFixed(1)}m samples)`);
     } catch (err) {
       log(`  terrain unavailable (${err.message}); falling back to flat ground`);
+      terrain = flatTerrain();
+    }
+  }
+
+  /* 3b. What is the ground made of? */
+  let landcover = null;
+  if (args.flags['no-landcover'] !== true) {
+    try {
+      landcover = await fetchLandcover(projector, half, {
+        url: args.flags['landcover-url'],
+        layer: args.flags['landcover-layer'],
+        cacheDir,
+        log,
+      });
+      if (landcover) log(`  land cover: ${landcover.summary.join(', ')}`);
+      else log('  land cover: no coverage here (outside the US); using OSM only');
+    } catch (err) {
+      log(`  land cover unavailable (${err.message}); using OSM only`);
     }
   }
 
@@ -167,6 +196,7 @@ export async function main(argv) {
     terrain,
     radius,
     imagery,
+    landcover,
     options: {
       shape: args.flags.shape === 'disc' ? 'disc' : 'square',
       buildings: args.flags['no-buildings'] !== true,
@@ -177,7 +207,9 @@ export async function main(argv) {
       roofs: args.flags['no-roofs'] !== true,
       jitter: args.flags['no-jitter'] !== true,
       levelHeight: args.flags['level-height'] ? Number(args.flags['level-height']) : undefined,
-      terrainCells: args.flags['terrain-cells'] ? Number(args.flags['terrain-cells']) : undefined,
+      terrainCells: args.flags['ground-cells'] ? Number(args.flags['ground-cells']) : undefined,
+      treeSpacing: args.flags['tree-spacing'] ? Number(args.flags['tree-spacing']) : undefined,
+      maxTrees: args.flags['max-trees'] ? Number(args.flags['max-trees']) : undefined,
     },
   });
 
@@ -233,7 +265,8 @@ export async function main(argv) {
       '',
       `  ${place.label}`,
       `  centre ${place.lat.toFixed(6)}, ${place.lon.toFixed(6)}  radius ${fmtDistance(radius)}`,
-      `  ${s.buildings} buildings, ${s.roads} ways, ${s.areas} areas, ${s.trees ?? 0} trees`,
+      `  ${s.buildings} buildings, ${s.roads} ways, ${s.areas} areas`,
+      `  ${s.trees ?? 0} trees (${s.treesMapped ?? 0} mapped in OSM, ${s.treesScattered ?? 0} scattered)`,
       `  ${s.triangles.toLocaleString()} triangles in ${s.meshes} meshes`,
       `  -> ${outDir}`,
       ...written.map(([name, size]) => `     ${name}${size ? `  ${fmtBytes(size)}` : ''}`),
@@ -255,8 +288,10 @@ export function parseArgs(argv) {
 
   const KNOWN_VALUE_FLAGS = new Set([
     'radius', 'out', 'name', 'format', 'shape', 'geocoder', 'google-key',
-    'overpass', 'elevation-url', 'terrain-cells', 'imagery', 'imagery-zoom',
-    'imagery-max-tiles', 'level-height', 'cache', 'port',
+    'overpass', 'elevation', 'elevation-url', 'elevation-zoom', 'terrain-cells',
+    'ground-cells', 'landcover-url', 'landcover-layer', 'tree-spacing',
+    'max-trees', 'imagery', 'imagery-zoom', 'imagery-max-tiles', 'level-height',
+    'cache', 'port',
   ]);
 
   for (let i = 0; i < argv.length; i++) {

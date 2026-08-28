@@ -1,9 +1,9 @@
 # map3d
 
 Give it a street address. It gives you back a 3D map of roughly half a mile
-around that address — buildings with real footprints and heights, roads at real
-widths, parks, water, trees and optional terrain — as a `.glb` you can drop
-straight into Unity, Unreal, Godot, Blender or three.js.
+around that address — real terrain, buildings with real footprints and heights,
+roads at real widths, water, and tree cover — as a `.glb` you can drop straight
+into Unity, Unreal, Godot, Blender or three.js.
 
 Zero dependencies. Node 18+.
 
@@ -40,8 +40,13 @@ triangle soup can't tell you.
 | --- | --- | --- |
 | Address → coordinates | Nominatim (OSM), or Google Geocoding | no / yes |
 | Buildings, roads, land use, water, trees | OpenStreetMap via Overpass | no |
-| Terrain elevation (`--terrain`) | OpenTopoData | no |
+| Terrain elevation | Mapzen terrarium tiles on AWS (or OpenTopoData) | no |
+| Ground cover and tree density | USGS NLCD — United States only | no |
 | Ground imagery (`--imagery`) | any XYZ tile URL you supply | depends |
+
+Terrain and land cover are **on by default**. Elevation comes from RGB-encoded
+tiles, so a whole map costs a handful of requests at about 7m per sample rather
+than a thousand rate-limited point lookups.
 
 **Why OpenStreetMap and not Google's 3D tiles?** Google's Photorealistic 3D
 Tiles are streamed under terms that don't permit baking them into a game asset,
@@ -90,12 +95,17 @@ You can skip geocoding entirely by passing coordinates: `map3d build
 | `--out <dir>` | `out/<slug>` | Output directory |
 | `--format <list>` | `glb,json` | Any of `glb`, `obj`, `json` |
 | `--shape square\|disc` | `square` | Square play area, or a circular island |
+| `--no-terrain` | | Build on a flat plane |
+| `--elevation <name>` | `terrarium` | `terrarium` (tiles) or `opentopodata` (points) |
+| `--terrain <dataset>` | `aster30m` | OpenTopoData dataset, when using that provider |
+| `--elevation-url <url>` | | Custom elevation endpoint |
+| `--ground-cells <n>` | `128` | Ground mesh resolution |
+| `--no-landcover` | | Skip NLCD; use OSM polygons alone |
+| `--tree-spacing <m>` | `15` | Mean gap between scattered trees |
+| `--max-trees <n>` | `20000` | Cap on scattered trees |
 | `--geocoder nominatim\|google` | `nominatim` | Address lookup provider |
 | `--google-key <key>` | `$GOOGLE_MAPS_API_KEY` | Google Geocoding key |
 | `--overpass <url>` | built-in mirror list | Use a specific Overpass instance |
-| `--terrain [dataset]` | off | Fetch real elevation (`aster30m`, `srtm30m`, …) |
-| `--terrain-cells <n>` | `32` | Height field resolution |
-| `--elevation-url <url>` | OpenTopoData | Self-hosted elevation endpoint |
 | `--imagery <template>` | off | XYZ tile URL, e.g. `https://…/{z}/{x}/{y}.png` |
 | `--imagery-zoom <n>` | auto | Force a tile zoom level |
 | `--level-height <m>` | `3.2` | Metres per `building:levels` |
@@ -110,8 +120,12 @@ You can skip geocoding entirely by passing coordinates: `map3d build
 # The default: half a mile, flat ground, everything on
 map3d build "Marienplatz, Munich"
 
-# Hilly terrain, circular island, both mesh formats
-map3d build "Lombard Street, San Francisco" --radius 450m --terrain --shape disc --format glb,obj,json
+# Circular island, both mesh formats
+map3d build "Lombard Street, San Francisco" --radius 450m --shape disc --format glb,obj,json
+
+# Thicker woods, and a flat plane if you want to do your own terrain
+map3d build "Dunbarton, NH" --tree-spacing 10
+map3d build "Dunbarton, NH" --no-terrain --no-landcover
 
 # Satellite/map imagery draped on the ground (pick a provider you're licensed for)
 map3d build "51.5007,-0.1246" --radius 300m \
@@ -215,6 +229,43 @@ scheme, used for churches, stations and anything with a tower — the parts carr
 the real per-volume heights and the parent outline is drawn as footprint only.
 Without this, a church's nave gets extruded to its steeple's height.
 
+### Terrain
+
+Elevation comes from Mapzen terrarium tiles: PNGs whose RGB channels encode
+height as `R * 256 + G + B / 256 - 32768` metres. At zoom 15 that is about
+3.5m per sample, so a half-mile map gets a genuinely shaped hillside rather
+than a smooth blob, and it costs about six HTTP requests. Coverage is global
+(SRTM, with NED over the US and EU-DEM over Europe).
+
+The ground mesh is a `--ground-cells` grid draped over that height field.
+Buildings are buried to the lowest corner of their footprint and topped off at
+the highest, so they neither float nor sink on a slope; roads and ground layers
+follow the terrain per vertex.
+
+### Trees and ground cover
+
+Where OSM has mapped things, OSM wins. Individually mapped trees
+(`natural=tree`, `natural=tree_row`) are always placed exactly where they are
+recorded, and any OSM land-use polygon claims its ground — a `leisure=park`
+lawn stays a lawn even if a satellite says otherwise.
+
+Everywhere else, NLCD land cover decides. Each 30m cell carries a canopy
+fraction (forest 1.0, woody wetland 0.75, shrub 0.25, developed 0.02–0.15),
+and trees are scattered on a jittered grid at `--tree-spacing`, accepted with
+that probability. Conifer or broadleaf follows the NLCD class, so evergreen
+forest gets stacked cones and deciduous gets round crowns.
+
+Nothing is scattered where it would clip: building footprints (plus 2.5m),
+road surfaces (plus 3m) and water are rasterised into a mask first. The
+clearings you see along roads and around houses fall out of that for free.
+
+Scattering is deterministic — the same address always produces the same trees
+in the same places, so rebuilding doesn't reshuffle the world.
+
+Outside the United States there is no NLCD, so this falls back to OSM polygons
+alone. In most of Europe that is plenty; in rural Canada or Australia it is
+not, and those maps will still come out bare.
+
 ### Layering
 
 Coplanar ground surfaces (land use, then parks, water, parking, footways, roads,
@@ -234,8 +285,14 @@ The map is exactly as good as OpenStreetMap is in that spot.
   The defaults are tuned to look plausible, not to be surveyed truth.
 - **Interiors don't exist.** These are extruded shells. Doors and windows are
   yours to add.
-- **Trees are approximate.** Only individually mapped trees and tree rows are
-  placed; a forest polygon is rendered as green ground, not as instanced trees.
+- **Scattered trees are plausible, not real.** Individually mapped trees are
+  where OSM says. Everything else is a statistically reasonable guess from a
+  30m land-cover cell — right species mix and right density, wrong individual
+  trunks. `props[].source` in the manifest says which is which.
+- **Tree geometry is not instanced.** Several thousand trees is several
+  thousand small meshes merged into two, which is fine to render but makes for
+  a large file. If you need it smaller, raise `--tree-spacing`, or drop
+  `--no-trees` and instance them yourself from `props` in the manifest.
 
 If a spot looks wrong, it is usually fixable by editing OSM — and then
 re-running with `--no-cache`.
@@ -256,18 +313,22 @@ Use `--overpass <url>` to point at your own instance for heavy use.
 node --test "tools/map3d/test/*.test.js"
 ```
 
-60 tests cover the triangulator, clipping, projection, tag parsing, mesh
-winding and normals, multipolygon stitching, and the GLB/OBJ writers.
+87 tests cover the triangulator, clipping, projection, tag parsing, mesh
+winding and normals, multipolygon stitching, the PNG decoder, occupancy masks
+and scatter determinism, the land-cover legend, and the GLB/OBJ writers.
 
 ```
 src/
   cli.js         argument parsing and the build pipeline
   geocode.js     address -> lat/lon (Nominatim, Google)
   overpass.js    query building, mirror fallback, OSM element normalisation
-  elevation.js   optional terrain height field
+  elevation.js   terrain height field (terrarium tiles or OpenTopoData)
   imagery.js     optional XYZ tile ground texture
   project.js     lat/lon <-> local metres, slippy-map maths
   clip.js        Sutherland-Hodgman and line clipping
+  png.js         minimal PNG decoder (elevation tiles, land cover)
+  landcover.js   NLCD land cover -> ground material and canopy density
+  scatter.js     occupancy masks and deterministic prop scattering
   earcut.js      polygon triangulation with holes
   mesh.js        extrusion, roofs, ribbons, terrain grids, props
   tags.js        OSM tag -> category, height, width, colour

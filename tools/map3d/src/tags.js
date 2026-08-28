@@ -257,10 +257,13 @@ export function classifyArea(tags) {
   if (t.natural === 'wood' || t.landuse === 'forest') {
     return { material: 'forest', layer: 'park' };
   }
+  if (t.natural === 'scrub' || t.natural === 'heath') {
+    return { material: 'scrub', layer: 'park' };
+  }
   if (
     t.leisure === 'park' || t.leisure === 'garden' || t.leisure === 'nature_reserve' ||
     t.landuse === 'grass' || t.landuse === 'meadow' || t.landuse === 'village_green' ||
-    t.landuse === 'recreation_ground' || t.natural === 'grassland' || t.natural === 'scrub'
+    t.landuse === 'recreation_ground' || t.natural === 'grassland'
   ) {
     return { material: 'grass', layer: 'park' };
   }
@@ -289,6 +292,16 @@ export function classifyArea(tags) {
   }
   return null;
 }
+
+/**
+ * How thickly each ground material should be treed when we scatter.
+ * OSM's own polygons win over any raster land cover, so an explicitly mapped
+ * lawn stays a lawn even where the satellite record says forest.
+ */
+export const AREA_CANOPY = {
+  forest: 1,
+  scrub: 0.3,
+};
 
 /** Linear water (streams, canals) rendered as ribbons. */
 export function classifyWaterway(tags) {
@@ -319,6 +332,7 @@ export const MATERIALS = {
   industrial_ground:  { color: [0.47, 0.46, 0.44], roughness: 1.0, metallic: 0 },
   grass:              { color: [0.36, 0.52, 0.27], roughness: 1.0, metallic: 0 },
   forest:             { color: [0.22, 0.38, 0.20], roughness: 1.0, metallic: 0 },
+  scrub:              { color: [0.42, 0.46, 0.30], roughness: 1.0, metallic: 0 },
   pitch:              { color: [0.40, 0.56, 0.32], roughness: 1.0, metallic: 0 },
   farmland:           { color: [0.55, 0.51, 0.34], roughness: 1.0, metallic: 0 },
   sand:               { color: [0.78, 0.71, 0.52], roughness: 1.0, metallic: 0 },

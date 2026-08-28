@@ -18,6 +18,19 @@ export class MeshGroup {
     this.indices = [];
   }
 
+  /**
+   * Set false for groups that will never be textured (props). The exporters
+   * then skip TEXCOORD_0, which is a quarter of the vertex payload and pure
+   * waste across several thousand trees.
+   */
+  get needsUvs() {
+    return this._needsUvs !== false;
+  }
+
+  set needsUvs(v) {
+    this._needsUvs = v;
+  }
+
   get vertexCount() {
     return this.positions.length / 3;
   }
@@ -583,27 +596,37 @@ export function disc(g, cx, cz, radius, heightAt, segments = 8) {
 
 /**
  * A regular grid covering [-half, half] in X and Z.
+ * `groupFor(x, z)` picks the MeshGroup per cell, which is how land cover tints
+ * the ground; vertices are cached per group, so a material boundary duplicates
+ * vertices there and stays a hard edge.
+ * @param {(x: number, z: number) => import('./mesh.js').MeshGroup} groupFor
  * @param {(x: number, z: number) => number} heightAt
- * @param {(x: number, z: number) => boolean} [keep] cell filter (for disc ground)
+ * @param {{keep?: (x: number, z: number) => boolean, uvScale?: number}} [opts]
  */
-export function grid(g, half, cells, heightAt, keep) {
+export function grid(groupFor, half, cells, heightAt, opts = {}) {
   const step = (half * 2) / cells;
-  const idx = new Map();
-  const key = (i, j) => i * (cells + 1) + j;
-  const uvScale = half / 4;
+  const uvScale = opts.uvScale ?? half / 4;
+  const keep = opts.keep;
+  const caches = new Map();
 
-  const vertexAt = (i, j) => {
-    const k = key(i, j);
-    if (idx.has(k)) return idx.get(k);
+  const vertexAt = (group, i, j) => {
+    let cache = caches.get(group);
+    if (!cache) {
+      cache = new Map();
+      caches.set(group, cache);
+    }
+    const k = i * (cells + 1) + j;
+    const existing = cache.get(k);
+    if (existing !== undefined) return existing;
+
     const x = -half + i * step;
     const z = -half + j * step;
-    const y = heightAt(x, z);
-    // Central differences give smooth normals on the height field.
+    // Central differences give smooth normals across the height field.
     const hx = heightAt(x + step, z) - heightAt(x - step, z);
     const hz = heightAt(x, z + step) - heightAt(x, z - step);
     const n = normalize([-hx, 2 * step, -hz]);
-    const v = g.vertex(x, y, z, n[0], n[1], n[2], x / uvScale, z / uvScale);
-    idx.set(k, v);
+    const v = group.vertex(x, heightAt(x, z), z, n[0], n[1], n[2], x / uvScale, z / uvScale);
+    cache.set(k, v);
     return v;
   };
 
@@ -613,12 +636,14 @@ export function grid(g, half, cells, heightAt, keep) {
       const cx = -half + (i + 0.5) * step;
       const cz = -half + (j + 0.5) * step;
       if (keep && !keep(cx, cz)) continue;
-      const a = vertexAt(i, j);
-      const b = vertexAt(i, j + 1);
-      const c = vertexAt(i + 1, j + 1);
-      const d = vertexAt(i + 1, j);
-      // (x, z) with +Z south: a->b->c->d is CCW seen from above.
-      g.quad(a, b, c, d);
+      const group = groupFor(cx, cz);
+      if (!group) continue;
+      const a = vertexAt(group, i, j);
+      const b = vertexAt(group, i, j + 1);
+      const c = vertexAt(group, i + 1, j + 1);
+      const d = vertexAt(group, i + 1, j);
+      // With +Z south, a->b->c->d is counter-clockwise seen from above.
+      group.quad(a, b, c, d);
       tris += 2;
     }
   }
@@ -627,44 +652,69 @@ export function grid(g, half, cells, heightAt, keep) {
 
 /* ---------------------------------- props --------------------------------- */
 
-/** A cheap two-part tree: tapered trunk plus a stacked-cone canopy. */
-export function tree(builder, x, z, groundY, height, radius, seed = 0) {
-  const trunkH = height * 0.35;
-  const trunkR = Math.max(0.12, radius * 0.12);
+/**
+ * A cheap low-poly tree: tapered trunk plus a canopy.
+ * `kind` is 'conifer' (narrow stacked cones) or 'broadleaf' (a rounder, wider
+ * crown). Roughly 25-30 triangles either way, which is the budget that lets a
+ * map carry several thousand of them.
+ */
+export function tree(builder, x, z, groundY, height, radius, seed = 0, kind = 'conifer') {
+  const broadleaf = kind === 'broadleaf';
+  const trunkH = height * (broadleaf ? 0.42 : 0.32);
+  const trunkR = Math.max(0.1, radius * (broadleaf ? 0.1 : 0.12));
   const sides = 5;
-  const rot = (seed % 10) / 10 * Math.PI;
+  const rot = ((seed % 10) / 10) * Math.PI;
 
   const trunk = builder.group('trunk');
+  trunk.needsUvs = false;
   const ringAt = (r, y) => {
     const pts = [];
     for (let i = 0; i < sides; i++) {
       const t = rot + (i / sides) * Math.PI * 2;
+      // Clockwise in (x, z) is counter-clockwise in (u, v), which is what the
+      // outward-facing wall rule expects.
       pts.push([x + r * Math.cos(t), y, z - r * Math.sin(t)]);
     }
     return pts;
   };
-  const low = ringAt(trunkR, groundY);
-  const high = ringAt(trunkR * 0.7, groundY + trunkH);
+
+  const low = ringAt(trunkR, groundY - 0.2);
+  const high = ringAt(trunkR * 0.75, groundY + trunkH);
   let tris = 0;
   for (let i = 0; i < sides; i++) {
     const j = (i + 1) % sides;
-    const ref = radialRef([x, z], low[i], low[j]);
-    tris += addQuadFacet(trunk, low[i], low[j], high[j], high[i], ref);
+    tris += addQuadFacet(trunk, low[i], low[j], high[j], high[i], radialRef([x, z], low[i], low[j]));
   }
 
   const canopy = builder.group('tree');
+  canopy.needsUvs = false;
+
+  if (broadleaf) {
+    // A squat bicone: widest around half way up, closed top and bottom. Any
+    // lower and the crown reads as a spike rather than a deciduous canopy.
+    const waistY = groundY + trunkH + (height - trunkH) * 0.45;
+    const waist = ringAt(radius, waistY);
+    const apex = [x, groundY + height, z];
+    const base = [x, groundY + trunkH * 0.85, z];
+    for (let i = 0; i < sides; i++) {
+      const j = (i + 1) % sides;
+      tris += addFacet(canopy, waist[i], waist[j], apex);
+      tris += addFacet(canopy, waist[j], waist[i], base, DOWN);
+    }
+    return tris;
+  }
+
   const tiers = 2;
   for (let t = 0; t < tiers; t++) {
     const baseY = groundY + trunkH + (height - trunkH) * (t * 0.4);
     const topY = groundY + trunkH + (height - trunkH) * (0.65 + t * 0.35);
-    const r = radius * (1 - t * 0.35);
-    const base = ringAt(r, baseY);
+    const base = ringAt(radius * (1 - t * 0.35), baseY);
     const apex = [x, topY, z];
     for (let i = 0; i < sides; i++) {
       const j = (i + 1) % sides;
       tris += addFacet(canopy, base[i], base[j], apex);
     }
-    // Close the underside so the tree is watertight from low angles.
+    // Close the underside so the crown is solid seen from below.
     for (let i = 1; i < sides - 1; i++) {
       tris += addFacet(canopy, base[0], base[i + 1], base[i], DOWN);
     }

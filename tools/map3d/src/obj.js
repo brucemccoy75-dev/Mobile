@@ -12,7 +12,11 @@
 export function writeObj(builder, materials, opts = {}) {
   const mtlName = opts.mtlName ?? 'map.mtl';
   const obj = [`# ${opts.name ?? 'map3d export'}`, `mtllib ${mtlName}`, ''];
-  let vertexBase = 1; // OBJ indices are 1-based and global
+  // OBJ indices are 1-based and global across the file. Position and normal
+  // indices stay in lockstep because every group emits both, but texture
+  // coordinates are optional, so they need their own running count.
+  let vertexBase = 1;
+  let uvBase = 1;
 
   for (const [name, g] of builder.groups) {
     if (!g.indices.length) continue;
@@ -21,8 +25,11 @@ export function writeObj(builder, materials, opts = {}) {
     for (let i = 0; i < g.positions.length; i += 3) {
       obj.push(`v ${f(g.positions[i])} ${f(g.positions[i + 1])} ${f(g.positions[i + 2])}`);
     }
-    for (let i = 0; i < g.uvs.length; i += 2) {
-      obj.push(`vt ${f(g.uvs[i])} ${f(g.uvs[i + 1])}`);
+    const withUvs = g.needsUvs;
+    if (withUvs) {
+      for (let i = 0; i < g.uvs.length; i += 2) {
+        obj.push(`vt ${f(g.uvs[i])} ${f(g.uvs[i + 1])}`);
+      }
     }
     for (let i = 0; i < g.normals.length; i += 3) {
       obj.push(`vn ${f(g.normals[i])} ${f(g.normals[i + 1])} ${f(g.normals[i + 2])}`);
@@ -33,10 +40,18 @@ export function writeObj(builder, materials, opts = {}) {
       const a = g.indices[i] + vertexBase;
       const b = g.indices[i + 1] + vertexBase;
       const c = g.indices[i + 2] + vertexBase;
-      obj.push(`f ${a}/${a}/${a} ${b}/${b}/${b} ${c}/${c}/${c}`);
+      if (withUvs) {
+        const ta = g.indices[i] + uvBase;
+        const tb = g.indices[i + 1] + uvBase;
+        const tc = g.indices[i + 2] + uvBase;
+        obj.push(`f ${a}/${ta}/${a} ${b}/${tb}/${b} ${c}/${tc}/${c}`);
+      } else {
+        obj.push(`f ${a}//${a} ${b}//${b} ${c}//${c}`);
+      }
     }
     obj.push('');
     vertexBase += g.vertexCount;
+    if (withUvs) uvBase += g.vertexCount;
   }
 
   const mtl = ['# map3d materials', ''];

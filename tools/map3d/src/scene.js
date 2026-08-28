@@ -11,9 +11,10 @@ import {
   grid, tree, polygonAreaXZ, centroidXZ, normalizeRoofShape,
 } from './mesh.js';
 import {
-  MATERIALS, buildingHeights, classifyBuilding, classifyArea, classifyHighway,
-  classifyRailway, classifyWaterway, parseLength, parseIntTag,
+  MATERIALS, AREA_CANOPY, buildingHeights, classifyBuilding, classifyArea,
+  classifyHighway, classifyRailway, classifyWaterway, parseLength, parseIntTag,
 } from './tags.js';
+import { OccupancyMask, scatter } from './scatter.js';
 
 /**
  * @param {object} args
@@ -24,7 +25,7 @@ import {
  * @param {object} [args.imagery]
  * @param {object} [args.options]
  */
-export function buildScene({ projector, features, terrain, radius, imagery, options = {} }) {
+export function buildScene({ projector, features, terrain, radius, imagery, landcover, options = {} }) {
   const opts = {
     shape: 'square',        // 'square' | 'disc'
     buildings: true,
@@ -33,9 +34,13 @@ export function buildScene({ projector, features, terrain, radius, imagery, opti
     trees: true,
     barriers: true,
     roofs: true,
-    terrainCells: DEFAULTS.terrainGrid,
+    terrainCells: terrain.enabled ? DEFAULTS.terrainGrid : DEFAULTS.terrainFlatGrid,
+    treeSpacing: DEFAULTS.treeSpacing,
+    maxTrees: DEFAULTS.maxTrees,
     minAreaM2: 2,
-    ...options,
+    // Drop unset keys: the CLI passes `undefined` for every flag the user did
+    // not type, and spreading those would erase the defaults above.
+    ...Object.fromEntries(Object.entries(options).filter(([, v]) => v !== undefined)),
   };
 
   const half = radius + (opts.groundPadding ?? DEFAULTS.groundPadding);
@@ -56,10 +61,18 @@ export function buildScene({ projector, features, terrain, radius, imagery, opti
     axes: 'X=east, Y=up, -Z=north (metres)',
     terrain: {
       enabled: terrain.enabled,
+      provider: terrain.provider,
+      resolutionMeters: Number.isFinite(terrain.resolutionMeters)
+        ? round(terrain.resolutionMeters, 1)
+        : undefined,
       baseElevationMeters: round(terrain.baseElevation, 2),
       minMeters: round(terrain.min, 2),
       maxMeters: round(terrain.max, 2),
     },
+    landcover: landcover
+      ? { source: landcover.source, resolutionMeters: round(landcover.resolutionMeters, 1),
+          summary: landcover.summary }
+      : undefined,
     spawn: { x: 0, y: round(terrain.heightAt(0, 0), 3), z: 0 },
     buildings: [],
     roads: [],
@@ -72,21 +85,31 @@ export function buildScene({ projector, features, terrain, radius, imagery, opti
 
   /* ------------------------------- ground ------------------------------- */
 
+  const keepCell =
+    opts.shape === 'disc'
+      ? (x, z) => Math.hypot(x, z) <= radius + (half - radius) * 0.5
+      : undefined;
+
   if (imagery?.tiles?.length) {
     addImageryGround(builder, imagery, ground);
   } else {
-    const g = builder.group('ground');
-    const cells = terrain.enabled ? opts.terrainCells : 8;
-    const keep =
-      opts.shape === 'disc'
-        ? (x, z) => Math.hypot(x, z) <= radius + (half - radius) * 0.5
-        : undefined;
-    grid(g, groundHalf, cells, ground, keep);
+    // Land cover, where we have it, turns a flat grey plane into forest,
+    // pasture and scrub - which is most of what a rural map is made of.
+    const groupFor = landcover
+      ? (x, z) => builder.group(landcover.materialAt(x, z))
+      : () => builder.group('ground');
+    grid(groupFor, groundHalf, opts.terrainCells, ground, { keep: keepCell });
   }
 
   /* --------------------------- project + clip --------------------------- */
 
   const local = features.map((f) => projectFeature(f, projector));
+
+  // Collected while drawing, then used to decide where props may stand.
+  const osmAreas = [];
+  const waterAreas = [];
+  const roadLines = [];
+  const buildingRings = [];
 
   /* ------------------------------- areas -------------------------------- */
 
@@ -110,6 +133,10 @@ export function buildScene({ projector, features, terrain, radius, imagery, opti
     areaFeatures.sort((a, b) => b.area - a.area);
 
     for (const { f, cls, norm, area } of areaFeatures) {
+      // Remember what OSM says the ground is, so the tree scatter can defer
+      // to it instead of trusting a 30m raster over a surveyed lawn.
+      osmAreas.push({ rings: norm, canopy: AREA_CANOPY[cls.material] ?? 0 });
+      if (cls.material === 'water') waterAreas.push(norm);
       const y = LAYER_Y[cls.layer] ?? LAYER_Y.landuse;
       const g = builder.group(cls.material);
       fillPolygon(g, norm, (x, z) => ground(x, z) + y, {
@@ -184,6 +211,7 @@ export function buildScene({ projector, features, terrain, radius, imagery, opti
       if (tunnel) continue;
 
       lines.push({ f, cls, pieces, lift, layerName });
+      for (const piece of pieces) roadLines.push({ line: piece, width: cls.width });
 
       if (!bridge && f.nodes) {
         for (let i = 0; i < f.nodes.length; i++) {
@@ -309,6 +337,7 @@ export function buildScene({ projector, features, terrain, radius, imagery, opti
       const baseY = gMin + h.base - (h.base > 0 ? 0 : 0.3);
       const eaveY = gMax + h.top - (opts.roofs ? h.roofHeight : 0);
 
+      buildingRings.push(norm);
       const wallGroup = builder.group(material);
       extrudeWalls(wallGroup, norm, () => baseY, () => eaveY, { uvScale: 4 });
 
@@ -368,7 +397,8 @@ export function buildScene({ projector, features, terrain, radius, imagery, opti
   /* -------------------------------- trees -------------------------------- */
 
   if (opts.trees) {
-    let planted = 0;
+    // Individually mapped trees are ground truth and always get placed.
+    const planted = [];
     for (const f of local) {
       const isTreeNode = f.kind === 'point' && f.tags.natural === 'tree';
       const isTreeRow = f.kind === 'line' && f.tags.natural === 'tree_row';
@@ -378,23 +408,76 @@ export function buildScene({ projector, features, terrain, radius, imagery, opti
       for (const [x, z] of spots) {
         if (!insideBounds(x, z, boundary)) continue;
         const seed = hash(`${f.id}:${x.toFixed(1)}:${z.toFixed(1)}`);
-        const height =
-          parseLength(f.tags.height) ?? 6 + (seed % 60) / 10;
-        const crown =
-          (parseLength(f.tags['diameter_crown']) ?? 0) / 2 || height * 0.28;
-        tree(builder, x, z, ground(x, z), height, crown, seed);
-        manifest.props.push({
-          id: f.id,
-          kind: 'tree',
-          x: round(x, 2),
-          z: round(z, 2),
-          y: round(ground(x, z), 2),
-          heightMeters: round(height, 1),
-        });
-        planted++;
+        const height = parseLength(f.tags.height) ?? 6 + (seed % 60) / 10;
+        const crown = (parseLength(f.tags['diameter_crown']) ?? 0) / 2 || height * 0.28;
+        const kind = /conifer|needle|pine|spruce|fir/i.test(
+          `${f.tags['leaf_type'] ?? ''} ${f.tags.species ?? ''} ${f.tags.genus ?? ''}`,
+        ) ? 'conifer' : 'broadleaf';
+        tree(builder, x, z, ground(x, z), height, crown, seed, kind);
+        planted.push({ id: f.id, x, z, height, mapped: true });
       }
     }
-    manifest.stats.trees = planted;
+    const mappedCount = planted.length;
+
+    // Then fill in the woodland. OSM polygons win where they exist; land cover
+    // covers the rest, which in rural areas is very nearly all of it.
+    const claimed = new OccupancyMask(half, 4);
+    for (const area of osmAreas) {
+      // 2 = OSM says open ground here; 3+ encodes canopy density.
+      claimed.markPolygon(area.rings, 0, 2 + Math.round(area.canopy * 200));
+    }
+
+    const blockedMask = new OccupancyMask(half, 2);
+    for (const rings of buildingRings) blockedMask.markPolygon(rings, 2.5);
+    for (const rings of waterAreas) blockedMask.markPolygon(rings, 1);
+    for (const { line, width } of roadLines) blockedMask.markLine(line, width + 3);
+
+    const canopyAt = (x, z) => {
+      const c = claimed.valueAt(x, z);
+      if (c >= 2) return (c - 2) / 200; // an OSM area covers this spot
+      return landcover ? landcover.canopyAt(x, z) : 0;
+    };
+
+    const spots = scatter({
+      half: radius,
+      spacing: opts.treeSpacing,
+      canopyAt,
+      accept: (x, z) => insideBounds(x, z, boundary) && !blockedMask.get(x, z),
+      max: Math.max(0, opts.maxTrees - mappedCount),
+      seed: Math.abs(Math.round(projector.lat0 * 1e4)) + 1,
+    });
+
+    for (const spot of spots) {
+      const cls = landcover?.classAt(spot.x, spot.z);
+      const conifer =
+        cls?.name === 'evergreen forest' ||
+        (cls?.name === 'mixed forest' && spot.r < 0.45) ||
+        (!cls && spot.r < 0.35);
+      const scrubby = cls?.name === 'shrub/scrub';
+
+      const height = scrubby ? 2 + spot.r * 2.5 : 11 + spot.r * 11;
+      const crown = height * (conifer ? 0.2 : 0.34) * (0.8 + spot.r * 0.5);
+      const y = ground(spot.x, spot.z);
+      tree(builder, spot.x, spot.z, y, height, crown, Math.round(spot.r * 1e6),
+        conifer ? 'conifer' : 'broadleaf');
+      planted.push({ x: spot.x, z: spot.z, height, scattered: true });
+    }
+
+    for (const t of planted) {
+      manifest.props.push({
+        id: t.id,
+        kind: 'tree',
+        x: round(t.x, 2),
+        z: round(t.z, 2),
+        y: round(ground(t.x, t.z), 2),
+        heightMeters: round(t.height, 1),
+        source: t.mapped ? 'osm' : 'scattered',
+      });
+    }
+
+    manifest.stats.trees = planted.length;
+    manifest.stats.treesMapped = mappedCount;
+    manifest.stats.treesScattered = planted.length - mappedCount;
   }
 
   /* ------------------------------- finish -------------------------------- */

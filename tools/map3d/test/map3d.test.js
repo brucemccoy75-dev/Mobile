@@ -13,7 +13,7 @@ import {
 } from '../src/tags.js';
 import {
   MeshBuilder, normalizeRings, fillPolygon, extrudeWalls, buildRoof, ribbon,
-  orientedBox, convexHull, polygonAreaXZ, centroidXZ, cleanRing,
+  orientedBox, convexHull, polygonAreaXZ, centroidXZ, cleanRing, tree, grid,
 } from '../src/mesh.js';
 import { clipRing, clipPolygon, clipLine, squareBoundary, circleBoundary } from '../src/clip.js';
 import { normalizeElements, assembleMultipolygon, buildQuery } from '../src/overpass.js';
@@ -349,6 +349,50 @@ test('a degenerate polyline produces nothing', () => {
   assert.equal(ribbon(g, [[5, 5], [5, 5]], 8, () => 0), 0);
 });
 
+test('a grid can span several materials and stays wound correctly', () => {
+  const b = new MeshBuilder();
+  const tris = grid((x) => b.group(x < 0 ? 'forest' : 'grass'), 100, 10, (x, z) => Math.sin(x / 30) * 3);
+  assert.equal(tris, 200);
+  assert.equal(b.groups.size, 2);
+  for (const [name, g] of b.groups) {
+    assertConsistentNormals(g, `grid/${name}`);
+    // Ground must face up everywhere.
+    for (let i = 1; i < g.normals.length; i += 3) assert.ok(g.normals[i] > 0);
+  }
+});
+
+test('a grid honours the keep filter', () => {
+  const b = new MeshBuilder();
+  const tris = grid(() => b.group('g'), 100, 20, () => 0, {
+    keep: (x, z) => Math.hypot(x, z) <= 60,
+  });
+  const expected = (Math.PI * 60 * 60) / (10 * 10) * 2;
+  assert.ok(Math.abs(tris - expected) / expected < 0.05, `${tris} vs ~${expected.toFixed(0)}`);
+});
+
+for (const kind of ['conifer', 'broadleaf']) {
+  test(`a ${kind} tree is closed and consistently wound`, () => {
+    const b = new MeshBuilder();
+    const tris = tree(b, 5, -5, 2, 10, 3, 7, kind);
+    assert.ok(tris >= 15 && tris <= 40, `${tris} triangles is outside the prop budget`);
+    for (const [name, g] of b.groups) assertConsistentNormals(g, `${kind}/${name}`);
+    // Nothing may poke below the ground it stands on, beyond the buried base.
+    for (const [, g] of b.groups) {
+      for (let i = 1; i < g.positions.length; i += 3) {
+        assert.ok(g.positions[i] >= 1.7, `vertex at y=${g.positions[i]} is below ground`);
+        assert.ok(g.positions[i] <= 12.001, `vertex at y=${g.positions[i]} is above the crown`);
+      }
+    }
+  });
+}
+
+test('trees skip texture coordinates', () => {
+  const b = new MeshBuilder();
+  tree(b, 0, 0, 0, 8, 2, 1);
+  for (const [, g] of b.groups) assert.equal(g.needsUvs, false);
+  assert.equal(new MeshBuilder().group('ground').needsUvs, true);
+});
+
 test('the builder drops empty groups', () => {
   const b = new MeshBuilder();
   b.group('empty');
@@ -487,6 +531,40 @@ test('the sRGB palette is written to glTF as linear', () => {
   assert.ok(Math.abs(r - ((MATERIALS.roof.color[0] + 0.055) / 1.055) ** 2.4) < 1e-6);
 });
 
+test('OBJ keeps vt indices aligned when some groups have no UVs', () => {
+  // Props skip TEXCOORD_0, so the texture-coordinate count runs behind the
+  // vertex count. Every v/vt/vn index still has to land in range.
+  const b = new MeshBuilder();
+  fillPolygon(b.group('ground'), normalizeRings([SQUARE]), () => 0); // has UVs
+  tree(b, 30, -30, 0, 9, 2.5, 1); // trunk + tree, both without UVs
+  fillPolygon(b.group('grass'), normalizeRings([[[20, -20], [30, -20], [30, -30], [20, -30]]]), () => 1);
+  b.finalize();
+
+  const { obj } = writeObj(b, MATERIALS);
+  const lines = obj.split('\n');
+  const vCount = lines.filter((l) => l.startsWith('v ')).length;
+  const vtCount = lines.filter((l) => l.startsWith('vt ')).length;
+  const vnCount = lines.filter((l) => l.startsWith('vn ')).length;
+
+  assert.ok(vtCount > 0 && vtCount < vCount, 'some groups should have UVs and some not');
+  assert.equal(vnCount, vCount, 'every vertex needs a normal');
+
+  let facesWithUv = 0;
+  let facesWithout = 0;
+  for (const line of lines.filter((l) => l.startsWith('f '))) {
+    for (const part of line.slice(2).split(' ')) {
+      const [v, vt, vn] = part.split('/');
+      assert.ok(Number(v) >= 1 && Number(v) <= vCount, `v index ${v} out of range`);
+      assert.ok(Number(vn) >= 1 && Number(vn) <= vnCount, `vn index ${vn} out of range`);
+      if (vt === '') continue;
+      assert.ok(Number(vt) >= 1 && Number(vt) <= vtCount, `vt index ${vt} out of 1..${vtCount}`);
+    }
+    if (line.includes('//')) facesWithout++;
+    else facesWithUv++;
+  }
+  assert.ok(facesWithUv > 0 && facesWithout > 0, 'expected both kinds of face');
+});
+
 test('OBJ indices are 1-based and global across groups', () => {
   const { obj, mtl } = writeObj(sampleBuilder(), MATERIALS);
   const faces = obj.split('\n').filter((l) => l.startsWith('f '));
@@ -545,4 +623,233 @@ test('bare coordinates skip the geocoder', () => {
   assert.deepEqual(parseLatLon(' 51.5 , -0.12 '), { lat: 51.5, lon: -0.12 });
   assert.equal(parseLatLon('1600 Amphitheatre Pkwy'), null);
   assert.equal(parseLatLon('999,0'), null);
+});
+
+/* ----------------------------------- png ---------------------------------- */
+
+import { deflateSync } from 'node:zlib';
+import { decodePng } from '../src/png.js';
+import { OccupancyMask, scatter, hash2, pointInRing } from '../src/scatter.js';
+import { chooseTerrainZoom, flatTerrain } from '../src/elevation.js';
+import { NLCD_CLASSES, MATCH_TOLERANCE } from '../src/landcover.js';
+
+/** Builds a PNG in memory so the decoder can be tested without a fixture. */
+function makePng(width, height, colorType, pixels, { palette, filter = 0 } = {}) {
+  const channels = { 0: 1, 2: 3, 3: 1, 6: 4 }[colorType];
+  const stride = width * channels;
+
+  const raw = Buffer.alloc((stride + 1) * height);
+  for (let y = 0; y < height; y++) {
+    raw[y * (stride + 1)] = filter;
+    for (let x = 0; x < stride; x++) {
+      const value = pixels[y * stride + x];
+      // Apply the filter we claim to be using, so the decoder must undo it.
+      const a = x >= channels ? pixels[y * stride + x - channels] : 0;
+      const b = y > 0 ? pixels[(y - 1) * stride + x] : 0;
+      let out = value;
+      if (filter === 1) out = value - a;
+      else if (filter === 2) out = value - b;
+      raw[y * (stride + 1) + 1 + x] = out & 0xff;
+    }
+  }
+
+  const chunk = (type, data) => {
+    const head = Buffer.alloc(8);
+    head.writeUInt32BE(data.length, 0);
+    head.write(type, 4, 'ascii');
+    return Buffer.concat([head, data, Buffer.alloc(4)]); // CRC is not checked
+  };
+
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8;
+  ihdr[9] = colorType;
+
+  const parts = [Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr)];
+  if (palette) parts.push(chunk('PLTE', Buffer.from(palette)));
+  parts.push(chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0)));
+  return Buffer.concat(parts);
+}
+
+test('PNG decodes truecolour', () => {
+  const px = [255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255];
+  const img = decodePng(makePng(2, 2, 2, px));
+  assert.equal(img.width, 2);
+  assert.equal(img.height, 2);
+  assert.deepEqual([...img.data.slice(0, 4)], [255, 0, 0, 255]);
+  assert.deepEqual([...img.data.slice(4, 8)], [0, 255, 0, 255]);
+  assert.deepEqual([...img.data.slice(12, 16)], [255, 255, 255, 255]);
+});
+
+test('PNG decodes a palette', () => {
+  const img = decodePng(makePng(2, 1, 3, [0, 1], { palette: [10, 20, 30, 40, 50, 60] }));
+  assert.deepEqual([...img.data.slice(0, 4)], [10, 20, 30, 255]);
+  assert.deepEqual([...img.data.slice(4, 8)], [40, 50, 60, 255]);
+});
+
+test('PNG decodes greyscale and RGBA', () => {
+  assert.deepEqual([...decodePng(makePng(2, 1, 0, [8, 200])).data.slice(0, 8)],
+    [8, 8, 8, 255, 200, 200, 200, 255]);
+  assert.deepEqual([...decodePng(makePng(1, 1, 6, [1, 2, 3, 4])).data], [1, 2, 3, 4]);
+});
+
+for (const filter of [1, 2]) {
+  test(`PNG undoes filter type ${filter}`, () => {
+    const px = [];
+    for (let i = 0; i < 4 * 4 * 3; i++) px.push((i * 7) % 256);
+    const img = decodePng(makePng(4, 4, 2, px, { filter }));
+    for (let i = 0, p = 0; i < 16; i++, p += 4) {
+      assert.equal(img.data[p], px[i * 3], `pixel ${i} red`);
+      assert.equal(img.data[p + 1], px[i * 3 + 1], `pixel ${i} green`);
+    }
+  });
+}
+
+test('PNG rejects things that are not PNGs', () => {
+  assert.throws(() => decodePng(Buffer.from('definitely not a png')), /signature/);
+});
+
+test('terrarium RGB decodes to the documented elevation', () => {
+  // height = R * 256 + G + B / 256 - 32768
+  const img = decodePng(makePng(1, 1, 2, [128, 209, 32]));
+  const [r, g, b] = img.data;
+  assert.equal(r * 256 + g + b / 256 - 32768, 209.125);
+});
+
+/* --------------------------------- scatter -------------------------------- */
+
+test('a mask blocks what has been marked and nothing else', () => {
+  const m = new OccupancyMask(100, 2);
+  assert.equal(m.get(0, 0), false);
+  m.markDisc(0, 0, 6);
+  assert.equal(m.get(0, 0), true);
+  assert.equal(m.get(4, 0), true);
+  assert.equal(m.get(40, 0), false);
+});
+
+test('a mask stamps a road along its whole length', () => {
+  const m = new OccupancyMask(200, 2);
+  m.markLine([[-100, 0], [100, 0]], 8);
+  assert.equal(m.get(0, 0), true);
+  assert.equal(m.get(-90, 3), true);
+  assert.equal(m.get(90, -3), true);
+  assert.equal(m.get(0, 40), false);
+});
+
+test('a mask fills a polygon but not its hole', () => {
+  const m = new OccupancyMask(100, 2);
+  m.markPolygon([
+    [[-40, -40], [40, -40], [40, 40], [-40, 40]],
+    [[-10, -10], [10, -10], [10, 10], [-10, 10]],
+  ]);
+  assert.equal(m.get(30, 30), true);
+  assert.equal(m.get(0, 0), false, 'the hole must stay clear');
+  assert.equal(m.get(80, 80), false);
+});
+
+test('a mask carries per-cell values', () => {
+  const m = new OccupancyMask(100, 2);
+  m.markDisc(0, 0, 4, 200);
+  assert.equal(m.valueAt(0, 0), 200);
+  assert.equal(m.valueAt(50, 50), 0);
+});
+
+test('points outside the mask never read as blocked', () => {
+  const m = new OccupancyMask(50, 2);
+  m.markDisc(0, 0, 10);
+  assert.equal(m.get(5000, 5000), false);
+  assert.equal(m.index(5000, 5000), -1);
+});
+
+test('scatter respects canopy density', () => {
+  const none = scatter({ half: 200, spacing: 10, canopyAt: () => 0, accept: () => true, max: 1e6 });
+  assert.equal(none.length, 0);
+  const all = scatter({ half: 200, spacing: 10, canopyAt: () => 1, accept: () => true, max: 1e6 });
+  assert.ok(all.length > 1200, `expected a full grid, got ${all.length}`);
+});
+
+test('scatter honours the accept test and the cap', () => {
+  const half = scatter({
+    half: 200, spacing: 10, canopyAt: () => 1, accept: (x) => x < 0, max: 1e6,
+  });
+  assert.ok(half.every((p) => p.x < 0));
+  assert.equal(
+    scatter({ half: 200, spacing: 10, canopyAt: () => 1, accept: () => true, max: 50 }).length,
+    50,
+  );
+});
+
+test('scatter is deterministic and jittered off the grid', () => {
+  const args = { half: 150, spacing: 12, canopyAt: () => 1, accept: () => true, max: 500 };
+  const a = scatter({ ...args });
+  const b = scatter({ ...args });
+  assert.deepEqual(a, b, 'the same map must produce the same trees');
+  const c = scatter({ ...args, seed: 99 });
+  assert.notDeepEqual(a, c, 'a different seed must move them');
+  // No two trees should share an exact coordinate on the underlying grid.
+  const xs = new Set(a.map((p) => p.x.toFixed(6)));
+  assert.ok(xs.size > a.length * 0.5, 'positions look unjittered');
+});
+
+test('hash2 is stable and well spread', () => {
+  assert.equal(hash2(3, 7, 1), hash2(3, 7, 1));
+  assert.notEqual(hash2(3, 7, 1), hash2(7, 3, 1));
+  const seen = new Set();
+  for (let i = 0; i < 40; i++) for (let j = 0; j < 40; j++) seen.add(hash2(i, j, 5));
+  assert.ok(seen.size > 1500, `only ${seen.size} distinct hashes from 1600 cells`);
+});
+
+test('pointInRing handles the margin', () => {
+  const ring = [[0, 0], [10, 0], [10, 10], [0, 10]];
+  assert.equal(pointInRing(5, 5, ring), true);
+  assert.equal(pointInRing(12, 5, ring), false);
+  assert.equal(pointInRing(12, 5, ring, 3), true, 'margin should reach it');
+});
+
+/* -------------------------------- elevation ------------------------------- */
+
+test('terrain zoom targets the requested ground resolution', () => {
+  const z = chooseTerrainZoom(43, 845, 8);
+  assert.ok(z >= 13 && z <= 15, `got zoom ${z}`);
+  // A coarser target is allowed to pick a lower zoom, never a higher one.
+  assert.ok(chooseTerrainZoom(43, 845, 30) <= z);
+});
+
+test('flat terrain is flat', () => {
+  const t = flatTerrain(120);
+  assert.equal(t.enabled, false);
+  assert.equal(t.heightAt(500, -500), 0);
+  assert.equal(t.baseElevation, 120);
+});
+
+/* -------------------------------- landcover ------------------------------- */
+
+test('the NLCD legend is well formed', () => {
+  const codes = new Set();
+  for (const c of NLCD_CLASSES) {
+    assert.equal(c.rgb.length, 3, `${c.name} needs an rgb triple`);
+    assert.ok(c.canopy >= 0 && c.canopy <= 1, `${c.name} canopy out of range`);
+    assert.ok(MATERIALS[c.material], `${c.name} maps to unknown material ${c.material}`);
+    assert.ok(!codes.has(c.code), `duplicate NLCD code ${c.code}`);
+    codes.add(c.code);
+  }
+  // Forest classes must actually produce trees, water must not.
+  assert.equal(NLCD_CLASSES.find((c) => c.code === 42).canopy, 1);
+  assert.equal(NLCD_CLASSES.find((c) => c.code === 11).canopy, 0);
+});
+
+test('no pixel can fall within tolerance of two NLCD classes', () => {
+  // Otherwise which class wins would depend on the order of the table.
+  for (let i = 0; i < NLCD_CLASSES.length; i++) {
+    for (let j = i + 1; j < NLCD_CLASSES.length; j++) {
+      const [a, b] = [NLCD_CLASSES[i], NLCD_CLASSES[j]];
+      const d = Math.hypot(...a.rgb.map((v, k) => v - b.rgb[k]));
+      assert.ok(
+        d > 2 * MATCH_TOLERANCE,
+        `${a.name} and ${b.name} are ${d.toFixed(0)} apart, ` +
+          `within 2x the ${MATCH_TOLERANCE} tolerance`,
+      );
+    }
+  }
 });

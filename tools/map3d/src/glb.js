@@ -148,14 +148,19 @@ export function writeGlb(builder, materials, opts = {}) {
 
     const position = addFloatAccessor(group.positions, 3, true);
     const normal = addFloatAccessor(group.normals, 3, false);
-    const texcoord = addFloatAccessor(group.uvs, 2, false);
+    const texcoord =
+      group.needsUvs || group.texture ? addFloatAccessor(group.uvs, 2, false) : null;
     const indices = addIndexAccessor(group.indices, group.vertexCount);
 
     meshes.push({
       name,
       primitives: [
         {
-          attributes: { POSITION: position, NORMAL: normal, TEXCOORD_0: texcoord },
+          attributes: {
+            POSITION: position,
+            NORMAL: normal,
+            ...(texcoord === null ? {} : { TEXCOORD_0: texcoord }),
+          },
           indices,
           material: addMaterial(name, group),
           mode: 4,
