@@ -1,5 +1,6 @@
-# map3d writes its builds and its Overpass cache relative to the working
-# directory, which is normally the repo root.
+# map3d writes its builds, its playable worlds and its cache relative to the
+# working directory, which is normally the repo root.
 out/
+worlds/
 .map3d-cache/
 node_modules/

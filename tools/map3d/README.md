@@ -7,14 +7,29 @@ into Unity, Unreal, Godot, Blender or three.js.
 
 Zero dependencies. Node 18+.
 
+## Just want to walk around?
+
+```
+node tools/map3d/bin/map3d.js play
+```
+
+Open <http://localhost:8080>, type an address, and you land in it on foot —
+mouse to look, WASD to walk, shift to run. Worlds are saved as you build them,
+so the home screen fills up with places you can drop back into instantly.
+
+That is the whole shell: no engine, no install, works on a phone (drag the
+left half of the screen to walk, the right half to look).
+
+## Want the files for an engine?
+
 ```
 node tools/map3d/bin/map3d.js build "1600 Pennsylvania Ave NW, Washington, DC"
 node tools/map3d/bin/map3d.js serve out/1600-pennsylvania-ave-nw-washington-dc
 ```
 
-The second command opens a browser preview at <http://localhost:8080> where you
-can orbit the map, walk around it at eye level, and click a building to see what
-OSM knows about it.
+`build` writes the map to disk; `serve` opens an orbit-and-inspect viewer at
+<http://localhost:8080> where you can click a building to see what OSM knows
+about it.
 
 ---
 
@@ -80,8 +95,9 @@ lat/lon — handy if you want to look a spot up on a real map later.
 ## Usage
 
 ```
-map3d build "<address or lat,lon>" [options]
-map3d serve [directory] [--port 8080]
+map3d play                              [--port 8080] [--worlds <dir>] [--radius 0.5mi]
+map3d build "<address or lat,lon>"      [options]
+map3d serve [directory]                 [--port 8080]
 ```
 
 You can skip geocoding entirely by passing coordinates: `map3d build
@@ -134,6 +150,36 @@ map3d build "51.5007,-0.1246" --radius 300m \
 # A big quiet map: no props, no undergrowth
 map3d build "Yellowstone, WY" --radius 1km --no-trees --no-barriers
 ```
+
+## Walking around (`map3d play`)
+
+The shell is a small HTTP server plus one page. Typing an address POSTs to
+`/api/build`, which runs the same pipeline as the CLI and streams its progress
+back as newline-delimited JSON, so you watch the Overpass mirrors and the
+terrain fetch go by instead of a spinner. Finished worlds live in `worlds/<id>`
+keyed by address, radius and detail level, so rebuilding the same place is
+instant and older ones stay one click away.
+
+The player is a 0.34m capsule with gravity, a 0.6m step-up for kerbs and
+slopes, and walls from the manifest's building footprints in a uniform grid, so
+each step only tests the handful of walls actually nearby. Water outlines are
+walls too — swimming is not modelled, and the alternative is strolling across
+the middle of a pond. **Trees have no collision**: blocking every trunk would
+make dense woods impassable, and walking through one is the more forgiving
+mistake.
+
+The HUD names the street you are standing on by matching your position against
+the road centrelines in the manifest, which is a nice demonstration of why that
+data is worth carrying alongside the mesh.
+
+`window.map3d` exposes `teleport(x, z)`, `look(headingDeg, pitchDeg)`, `player`
+and `scene` for scripting. Note that `teleport` moves you directly and does not
+resolve collisions.
+
+**Frame rate note.** The simulation clamps its timestep to 50ms, so below 20fps
+the world runs in slow motion rather than letting you tunnel through walls. If
+walking feels sluggish, that is the clamp telling you the frame rate is low —
+try the Fast detail setting or a smaller radius.
 
 ## The manifest (`map.json`)
 
@@ -335,8 +381,11 @@ src/
   scene.js       assembles features into meshes plus the manifest
   glb.js         glTF 2.0 binary writer
   obj.js         Wavefront OBJ/MTL writer
-  serve.js       tiny static server for the viewer
+  pipeline.js    geocode -> fetch -> build -> write, as one callable function
+  play.js        the `play` server: build API, world storage, static files
+  serve.js       tiny static server for the standalone viewer
 viewer/
+  play.html      the shell: address screen and first-person walker
   index.html     three.js preview (orbit, walk, wireframe, building info)
 ```
 
