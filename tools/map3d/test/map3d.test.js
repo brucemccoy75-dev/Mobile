@@ -950,6 +950,19 @@ test('the browser entry point only imports portable modules', () => {
   }
 });
 
+test('every element app.js reaches for exists in the markup', () => {
+  // A handler wired to a button that was never added throws on entry to the
+  // world, long after the build has finished - the most expensive place to
+  // find out. Cheap to check here instead.
+  const app = readFileSync(join(SRC, '..', 'web', 'app.js'), 'utf8');
+  const html = readFileSync(join(SRC, '..', 'web', 'index.html'), 'utf8');
+  const ids = new Set([...app.matchAll(/\$\(['"]([\w-]+)['"]\)/g)].map((m) => m[1]));
+  assert.ok(ids.has('fly'), 'expected the fly toggle to be wired up');
+  for (const id of ids) {
+    assert.ok(html.includes(`id="${id}"`), `app.js uses #${id}, which index.html does not define`);
+  }
+});
+
 /* --------------------------- trusting the mirrors ------------------------- */
 
 import { runQuery } from '../src/overpass.js';

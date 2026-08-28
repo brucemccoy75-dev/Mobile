@@ -63,12 +63,19 @@ const GROUND_RE =
 const GRAVITY = 22;
 const EYE = 1.68;
 const RADIUS = 0.34;
-const WALK = 1.6;
-const RUN = 5.4;
+// Faster than life on purpose: real walking pace makes crossing half a mile a
+// chore, and covering ground is the point.
+const WALK = 3.6;
+const RUN = 12;
+const FLY = 28;
+const FLY_BOOST = 95;   // crosses a half-mile map in about 17 seconds
+const CEILING = 1500;   // metres above the address; past this there is nothing to see
+const FLOOR_CLEARANCE = 2;
 
 let world = null;   // { root, ground, manifest, collider, builder }
 let mode = 'home';
 let locked = false;
+let flying = false;
 
 const player = {
   pos: new THREE.Vector3(),
@@ -100,10 +107,23 @@ $('form').onsubmit = (e) => {
   if (address) startBuild(address);
 };
 
+function setFlying(on) {
+  flying = on;
+  player.vel.set(0, 0, 0);
+  $('fly').setAttribute('aria-pressed', String(on));
+  $('fly').textContent = on ? 'Walk' : 'Fly';
+  $('keys').textContent = on
+    ? 'WASD fly · Space up · C down · Shift boost · F walk'
+    : 'WASD move · Shift run · Space jump · F fly';
+}
+
+$('fly').onclick = () => setFlying(!flying);
+
 $('cancel').onclick = () => show('home');
 $('leave').onclick = () => {
   document.exitPointerLock?.();
   if (world) { scene.remove(world.root); disposeScene(world.root); world = null; }
+  setFlying(false);
   show('home');
   renderRecent();
 };
@@ -385,6 +405,7 @@ function spawnPlayer(manifest) {
   player.yaw = 0;
   player.pitch = 0;
   player.start.copy(player.pos);
+  setFlying(false);
 }
 
 /* -------------------------------- ground -------------------------------- */
@@ -407,6 +428,7 @@ const keys = new Set();
 
 addEventListener('keydown', (e) => {
   if (mode !== 'world') return;
+  if (e.code === 'KeyF' && !e.repeat) setFlying(!flying);
   keys.add(e.code);
   if (e.code === 'Space') e.preventDefault();
 });
@@ -460,6 +482,7 @@ const clock = new THREE.Clock();
 const forward = new THREE.Vector3();
 const right = new THREE.Vector3();
 const wish = new THREE.Vector3();
+const look = new THREE.Vector3();
 let hudTimer = 0;
 
 function step(dt) {
@@ -468,6 +491,32 @@ function step(dt) {
   forward.set(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
   right.set(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
 
+  if (flying) flyStep(dt);
+  else walkStep(dt);
+
+  camera.position.copy(player.pos);
+  camera.rotation.set(player.pitch, player.yaw, 0, 'YXZ');
+
+  // From altitude the default fog would swallow the whole map, so open it up
+  // with height. The shadow window widens too, or shadows stop part way out.
+  const altitude = Math.max(0, player.pos.y - groundHeight(player.pos.x, player.pos.z));
+  scene.fog.far = 900 + altitude * 6;
+  scene.fog.near = Math.min(120 + altitude * 2, scene.fog.far * 0.4);
+  const span = Math.min(SHADOW_SPAN + altitude * 1.5, 600);
+  if (Math.abs(sun.shadow.camera.right - span) > 5) {
+    Object.assign(sun.shadow.camera, { left: -span, right: span, top: span, bottom: -span });
+    sun.shadow.camera.updateProjectionMatrix();
+  }
+
+  sun.position.set(player.pos.x + 150, player.pos.y + 220, player.pos.z + 100);
+  sun.target.position.set(player.pos.x, player.pos.y - EYE, player.pos.z);
+  sun.target.updateMatrixWorld();
+
+  hudTimer -= dt;
+  if (hudTimer <= 0) { updateHud(); hudTimer = 0.25; }
+}
+
+function walkStep(dt) {
   wish.set(0, 0, 0);
   if (keys.has('KeyW') || keys.has('ArrowUp')) wish.add(forward);
   if (keys.has('KeyS') || keys.has('ArrowDown')) wish.sub(forward);
@@ -505,16 +554,42 @@ function step(dt) {
     player.vel.y = 6.2;
     player.onGround = false;
   }
+}
 
-  camera.position.copy(player.pos);
-  camera.rotation.set(player.pitch, player.yaw, 0, 'YXZ');
+/**
+ * Free flight. Movement follows where you are looking, including pitch, so
+ * nosing up climbs. No gravity and no collision: clipping through a roof on
+ * the way over is far less annoying than being stopped by one.
+ */
+function flyStep(dt) {
+  // Full 3D heading, unlike the ground-flattened `forward` used for walking.
+  const cp = Math.cos(player.pitch);
+  look.set(-Math.sin(player.yaw) * cp, Math.sin(player.pitch), -Math.cos(player.yaw) * cp);
 
-  sun.position.set(player.pos.x + 150, 220, player.pos.z + 100);
-  sun.target.position.set(player.pos.x, player.pos.y - EYE, player.pos.z);
-  sun.target.updateMatrixWorld();
+  wish.set(0, 0, 0);
+  if (keys.has('KeyW') || keys.has('ArrowUp')) wish.add(look);
+  if (keys.has('KeyS') || keys.has('ArrowDown')) wish.sub(look);
+  if (keys.has('KeyD') || keys.has('ArrowRight')) wish.add(right);
+  if (keys.has('KeyA') || keys.has('ArrowLeft')) wish.sub(right);
+  if (keys.has('Space')) wish.y += 1;
+  if (keys.has('KeyC') || keys.has('ControlLeft')) wish.y -= 1;
+  if (touch.move) {
+    wish.addScaledVector(look, -touch.move.y);
+    wish.addScaledVector(right, touch.move.x);
+  }
 
-  hudTimer -= dt;
-  if (hudTimer <= 0) { updateHud(); hudTimer = 0.25; }
+  const speed = keys.has('ShiftLeft') || keys.has('ShiftRight') ? FLY_BOOST : FLY;
+  if (wish.lengthSq() > 0) {
+    wish.normalize().multiplyScalar(speed * dt);
+    player.pos.add(wish);
+  }
+
+  // Stay above the ground and below a sensible ceiling, so you cannot get
+  // lost underneath the terrain or out in empty sky.
+  const floor = groundHeight(player.pos.x, player.pos.z) + FLOOR_CLEARANCE;
+  if (player.pos.y < floor) player.pos.y = floor;
+  if (player.pos.y > CEILING) player.pos.y = CEILING;
+  player.onGround = false;
 }
 
 const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -533,9 +608,11 @@ function updateHud() {
   const lat = m.origin.lat - player.pos.z / 111320;
   const lon = m.origin.lon + player.pos.x / (111320 * Math.cos((m.origin.lat * Math.PI) / 180));
   const elev = (m.terrain?.baseElevationMeters ?? 0) + player.pos.y - EYE;
+  const above = Math.max(0, player.pos.y - groundHeight(player.pos.x, player.pos.z));
   $('readout').innerHTML =
     `${lat.toFixed(5)}, ${lon.toFixed(5)}<br>` +
     `${Math.round(elev * 3.28084)} ft elevation<br>` +
+    (flying ? `${Math.round(above * 3.28084)} ft above ground<br>` : '') +
     `${walked < 400 ? `${Math.round(walked)} m` : `${(walked / METERS_PER_MILE).toFixed(2)} mi`} from the address`;
 }
 
@@ -578,6 +655,8 @@ window.map3d = {
     player.pos.set(x, groundHeight(x, z) + EYE, z);
     player.vel.set(0, 0, 0);
   },
+  get flying() { return flying; },
+  fly(on = true) { setFlying(on); },
   /** `headingDeg` is a compass bearing, matching what the HUD shows. */
   look(headingDeg, pitchDeg = 0) {
     player.yaw = (-headingDeg * Math.PI) / 180;

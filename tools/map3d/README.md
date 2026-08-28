@@ -17,8 +17,10 @@ node tools/map3d/bin/map3d.js play
 ```
 
 Open <http://localhost:8080>, type an address, and you land in it on foot —
-mouse to look, WASD to walk, shift to run. Works on a phone: drag the left half
-of the screen to walk, the right half to look.
+mouse to look, WASD to walk, shift to run. Press **F** (or the Fly button) to
+lift off: in fly mode WASD follows where you are looking, space and C climb and
+drop, and shift is a boost that crosses the whole map in a few seconds. Works on
+a phone: drag the left half of the screen to move, the right half to look.
 
 **The map is built in your browser.** The same modules the CLI imports run in
 the page, so nothing is uploaded anywhere and no server does any work — the
