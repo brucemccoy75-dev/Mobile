@@ -34,10 +34,12 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Run the test suite
-        run: node --test "tools/map3d/test/*.test.js"
+        # Unquoted on purpose: the shell expands the glob, so this works on
+        # every supported Node. Quoting it needs Node 21+.
+        run: node --test tools/map3d/test/*.test.js
 
       - name: Assemble the site
         run: |

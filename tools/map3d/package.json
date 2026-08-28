@@ -12,7 +12,7 @@
   "scripts": {
     "build": "node bin/map3d.js build",
     "serve": "node bin/map3d.js serve",
-    "test": "node --test \"test/*.test.js\""
+    "test": "node --test test/*.test.js"
   },
   "dependencies": {},
   "license": "MIT"

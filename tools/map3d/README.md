@@ -387,8 +387,11 @@ Use `--overpass <url>` to point at your own instance for heavy use.
 ## Development
 
 ```bash
-node --test "tools/map3d/test/*.test.js"
+node --test tools/map3d/test/*.test.js
 ```
+
+Leave that glob unquoted — the shell has to expand it. Node only learned to
+expand `--test` patterns itself in v21, and this runs on v18+.
 
 Everything in `src/` is plain JavaScript that runs in both Node and a browser.
 The three things that genuinely differ — inflating PNGs, caching responses, and
