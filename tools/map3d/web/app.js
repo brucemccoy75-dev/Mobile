@@ -1,17 +1,17 @@
 // The hosted shell: type an address, build the map here in the browser, walk it.
 //
-// Everything under ../src is the same code the command-line tool runs. The only
+// Everything under src/ is the same code the command-line tool runs. The only
 // browser-specific parts are the platform adapter (PNG decoding and caching)
 // and this file, which is the UI and the first-person controller.
 
 import * as THREE from 'three';
 
-import { installWebPlatform } from '../src/browser/platform-web.js';
-import { buildThreeScene, disposeScene } from '../src/browser/three-scene.js';
-import { buildMap } from '../src/pipeline.js';
-import { MATERIALS } from '../src/tags.js';
-import { writeGlb } from '../src/glb.js';
-import { METERS_PER_MILE } from '../src/config.js';
+import { installWebPlatform } from './src/browser/platform-web.js';
+import { buildThreeScene, disposeScene } from './src/browser/three-scene.js';
+import { buildMap } from './src/pipeline.js';
+import { MATERIALS } from './src/tags.js';
+import { writeGlb } from './src/glb.js';
+import { METERS_PER_MILE } from './src/config.js';
 
 installWebPlatform();
 window.__map3dReady = true;

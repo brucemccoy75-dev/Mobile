@@ -936,10 +936,16 @@ test('concatBytes joins typed arrays in order', () => {
 
 test('the browser entry point only imports portable modules', () => {
   const app = readFileSync(join(SRC, '..', 'web', 'app.js'), 'utf8');
+  assert.ok(
+    !/from\s+['"]\.\.\//.test(app),
+    'web/app.js must not import above the site root: Pages serves it under /<repo>/',
+  );
   for (const m of app.matchAll(/from\s+['"]([^'"]+)['"]/g)) {
     const spec = m[1];
     if (spec === 'three' || spec.startsWith('three/')) continue;
-    assert.ok(spec.startsWith('../src/'), `web/app.js imports ${spec}`);
+    // Relative to the *served* site, where src/ sits beside app.js. A '../'
+    // here climbs above the site root on a project Pages URL like /Mobile/.
+    assert.ok(spec.startsWith('./src/'), `web/app.js imports ${spec}`);
     assert.ok(!spec.includes('/node/'), `web/app.js must not import ${spec}`);
   }
 });

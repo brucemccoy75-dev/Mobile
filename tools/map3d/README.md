@@ -159,13 +159,18 @@ map3d build "Yellowstone, WY" --radius 1km --no-trees --no-barriers
 
 ## Hosting it
 
-`.github/workflows/pages.yml` publishes the shell to GitHub Pages on every
-push. It runs the test suite, then copies `web/` to the site root and `src/`
-alongside it. There is no build step and no bundler: the browser loads the
-same ES modules Node does.
+`.github/workflows/pages.yml` publishes the shell on every push. It runs the
+tests, assembles `web/` plus `src/` into a site, checks the site is
+self-contained, and pushes it to a **`gh-pages`** branch.
 
-Pages needs a **public** repository on a free plan, and the repository's
-Settings → Pages source must be set to **GitHub Actions**.
+Set Settings → Pages to **Deploy from a branch**, branch **`gh-pages`**,
+folder **`/ (root)`**. The repository must be public on a free plan.
+
+A project site is served under `https://<user>.github.io/<repo>/`, not at the
+domain root, so **every path in the site must be relative and must not climb
+above it**. `web/app.js` imports `./src/...` for exactly this reason; a
+`../src/...` resolves outside the site and 404s. There is a test for it, and
+the workflow re-checks the assembled site before publishing.
 
 Because the page calls the data services directly, those requests are subject
 to cross-origin rules. Nominatim, the AWS elevation tiles and USGS land cover

@@ -1,8 +1,12 @@
 # Publishes the map3d shell to GitHub Pages.
 #
-# The site is plain static files: web/index.html and web/app.js at the root,
-# with the shared modules under src/. There is no build step and no bundler -
-# the browser loads the same ES modules the command-line tool imports.
+# This builds a `gh-pages` branch rather than using the Pages deployment API,
+# so it works with the "Deploy from a branch" source. Point
+# Settings -> Pages at branch `gh-pages`, folder `/ (root)`.
+#
+# The site is plain static files: web/index.html and web/app.js at the root
+# with the shared modules beside them in src/. No build step, no bundler - the
+# browser loads the same ES modules Node does.
 
 name: Deploy map3d to Pages
 
@@ -15,49 +19,67 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
-# One deploy at a time; let a newer push finish rather than cancelling it.
+# One deploy at a time; let a running one finish rather than cancelling it.
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
-  test:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+
       - name: Run the test suite
         run: node --test "tools/map3d/test/*.test.js"
 
-  deploy:
-    needs: test
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/checkout@v4
-
       - name: Assemble the site
         run: |
-          mkdir -p site
+          rm -rf site && mkdir -p site
           cp -r tools/map3d/web/. site/
           mkdir -p site/src
           cp -r tools/map3d/src/. site/src/
           # Pages otherwise runs the tree through Jekyll, which skips
-          # directories beginning with an underscore and slows the build.
+          # directories starting with an underscore.
           touch site/.nojekyll
           echo "Site contents:" && find site -type f | sort
 
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Check the site is self-contained
+        run: |
+          # Every relative import must stay inside the site, because Pages
+          # serves a project site under /<repo>/ and anything above that 404s.
+          if grep -rn "from ['\"]\.\./" site/*.js; then
+            echo "::error::a top-level module imports above the site root"
+            exit 1
+          fi
+          # Spot-check that each import in app.js actually exists on disk.
+          node -e '
+            const fs = require("fs"), path = require("path");
+            const app = fs.readFileSync("site/app.js", "utf8");
+            let missing = 0;
+            for (const m of app.matchAll(/from\s+["\x27](\.[^"\x27]+)["\x27]/g)) {
+              const target = path.join("site", m[1]);
+              if (!fs.existsSync(target)) { console.error("missing:", target); missing++; }
+            }
+            if (missing) process.exit(1);
+            console.log("all of app.js imports resolve");
+          '
+
+      - name: Publish to the gh-pages branch
+        run: |
+          cd site
+          git init -q -b gh-pages
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -qm "Deploy ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
+          echo "Published. Pages will serve https://${GITHUB_REPOSITORY%%/*}.github.io/${GITHUB_REPOSITORY#*/}/"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
