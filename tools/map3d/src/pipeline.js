@@ -113,5 +113,16 @@ export async function buildMap(o = {}) {
     'Map data (c) OpenStreetMap contributors, ODbL 1.0 (https://www.openstreetmap.org/copyright)';
   if (imagery) manifest.imagery = { template: imagery.template, zoom: imagery.zoom };
 
+  // Terrain and land cover come from different services than OSM, so a map can
+  // finish looking plausible - ground, trees - while carrying nothing built.
+  // Say so rather than letting it pass for a real place.
+  const { buildings, roads } = manifest.stats;
+  if (buildings === 0 && roads === 0) {
+    manifest.warning =
+      'No buildings or roads came back from OpenStreetMap for this location. ' +
+      'Either it really is empty, or the map data service was unreachable.';
+    log(`  WARNING: ${manifest.warning}`);
+  }
+
   return { manifest, place, builder };
 }

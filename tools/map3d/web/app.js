@@ -197,6 +197,7 @@ async function startBuild(address) {
       scene: quality === 'fast' ? { treeSpacing: 22, terrainCells: 96 } : {},
     });
 
+    if (built.manifest.warning) line(built.manifest.warning, 'err');
     line('Handing the geometry to your graphics card…');
     await nextFrame();
     enterWorld(built);

@@ -354,6 +354,9 @@ mesh.
 
 The map is exactly as good as OpenStreetMap is in that spot.
 
+- **An empty map is flagged.** If a build finishes with no buildings and no
+  roads, `map.json` carries a `warning` and the log says so. That usually
+  means the data service was unreachable, not that the place is empty.
 - **Coverage varies enormously.** Central Munich has 1,100 buildings with
   roof shapes and levels. A US suburb may have footprints with no heights at
   all, and rural areas may have only roads. Check `stats` and the
@@ -377,8 +380,12 @@ re-running with `--no-cache`.
 ## Networking
 
 Overpass mirrors go down constantly, so the tool walks a list until one answers
-usefully (a mirror that returns "200, zero elements" for a region it doesn't
-carry is treated as a miss). Every response is cached on disk, so iterating on
+usefully. An empty answer is only believed when **no other mirror errored** —
+a mirror carrying a regional extract returns "200, nothing here" for the rest
+of the world, and when it is the only one still standing that is exactly the
+answer least worth trusting. Believing it yields a map with terrain and trees
+but no buildings or roads, which looks like success. Regional extracts are
+also kept out of the default endpoint list for the same reason. Every response is cached on disk, so iterating on
 the geometry costs nothing after the first fetch. Nominatim and OpenTopoData are
 rate-limited to one request per second, per their usage policies.
 

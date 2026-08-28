@@ -7,12 +7,15 @@ export const METERS_PER_MILE = 1609.344;
 
 // Overpass mirrors, tried in order. The first that answers with usable JSON wins.
 // Add your own (or a self-hosted instance) with --overpass <url>.
+// Deliberately excludes regional extracts such as overpass.osm.ch, which
+// serves Switzerland and answers "200, nothing here" for everywhere else.
+// As a general fallback that is worse than an error: it looks like success.
 export const OVERPASS_ENDPOINTS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
   'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
   'https://overpass.private.coffee/api/interpreter',
-  'https://overpass.osm.ch/api/interpreter',
+  'https://overpass.osm.jp/api/interpreter',
 ];
 
 export const NOMINATIM_ENDPOINT = 'https://nominatim.openstreetmap.org/search';

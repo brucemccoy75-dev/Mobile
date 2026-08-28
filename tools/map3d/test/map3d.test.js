@@ -949,3 +949,80 @@ test('the browser entry point only imports portable modules', () => {
     assert.ok(!spec.includes('/node/'), `web/app.js must not import ${spec}`);
   }
 });
+
+/* --------------------------- trusting the mirrors ------------------------- */
+
+import { runQuery } from '../src/overpass.js';
+import { OVERPASS_ENDPOINTS } from '../src/config.js';
+import { installPlatform } from '../src/platform.js';
+
+/** Runs runQuery against a scripted set of responses, with no real network. */
+async function withFakeOverpass(responses, fn) {
+  const realFetch = globalThis.fetch;
+  installPlatform({ cache: { async read() { return null; }, async write() {} } });
+  globalThis.fetch = async (url) => {
+    const host = new URL(url).host;
+    const r = responses[host];
+    if (!r) throw new TypeError('fetch failed');
+    if (r.status && r.status >= 400) {
+      return { ok: false, status: r.status, async text() { return ''; } };
+    }
+    return { ok: true, status: 200, async text() { return JSON.stringify({ elements: r.elements }); } };
+  };
+  try {
+    return await fn();
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+}
+
+const HOSTS = OVERPASS_ENDPOINTS.map((u) => new URL(u).host);
+
+test('an empty answer is trusted only when nothing else failed', async () => {
+  // Every mirror answers, all agree the area is empty: believe them.
+  const allEmpty = Object.fromEntries(HOSTS.map((h) => [h, { elements: [] }]));
+  await withFakeOverpass(allEmpty, async () => {
+    const res = await runQuery('[out:json];out;', { retries: 0 });
+    assert.deepEqual(res.elements, []);
+  });
+});
+
+test('an empty answer is refused when other mirrors errored', async () => {
+  // This is the real failure: every usable mirror is down and the one that
+  // answers carries a regional extract, so its "nothing here" means nothing.
+  // Believing it produced a map with no buildings and no roads.
+  const mostlyBroken = Object.fromEntries(HOSTS.map((h, i) => [h,
+    i === HOSTS.length - 1 ? { elements: [] } : { status: 503 }]));
+  await withFakeOverpass(mostlyBroken, async () => {
+    await assert.rejects(
+      () => runQuery('[out:json];out;', { retries: 0 }),
+      /cannot be trusted/,
+    );
+  });
+});
+
+test('a mirror with data wins over one without', async () => {
+  const mixed = Object.fromEntries(HOSTS.map((h, i) => [h,
+    i === 0 ? { elements: [] } : { elements: [{ type: 'node', id: 1, lat: 0, lon: 0 }] }]));
+  await withFakeOverpass(mixed, async () => {
+    const res = await runQuery('[out:json];out;', { retries: 0 });
+    assert.equal(res.elements.length, 1);
+  });
+});
+
+test('total failure explains itself', async () => {
+  await withFakeOverpass({}, async () => {
+    await assert.rejects(
+      () => runQuery('[out:json];out;', { retries: 0 }),
+      /Every Overpass mirror failed/,
+    );
+  });
+});
+
+test('no regional extract is used as a general fallback', () => {
+  // overpass.osm.ch serves Switzerland and answers "200, nothing here" for
+  // everywhere else, which reads as success and is worse than an error.
+  for (const url of OVERPASS_ENDPOINTS) {
+    assert.ok(!/osm\.ch/.test(url), `${url} only carries a regional extract`);
+  }
+});

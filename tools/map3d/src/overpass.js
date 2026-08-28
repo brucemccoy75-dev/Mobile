@@ -79,8 +79,8 @@ export async function runQuery(query, opts = {}) {
 
       const result = { elements: json.elements, endpoint };
       if (json.elements.length === 0) {
-        // Some mirrors only carry a regional extract and answer "200, nothing
-        // here" for the rest of the world. Keep looking, but remember this.
+        // Could be a genuinely empty area, or a mirror carrying only a
+        // regional extract. Keep looking before believing it.
         opts.log?.('  returned 0 elements, trying the next mirror');
         emptyResult ??= result;
         continue;
@@ -95,15 +95,23 @@ export async function runQuery(query, opts = {}) {
     }
   }
 
-  if (emptyResult) {
-    // Every mirror that answered said the area is empty; believe them.
+  // An empty answer is only trustworthy when nothing else went wrong. If some
+  // mirrors errored, the one that said "nothing here" is exactly the one least
+  // worth believing - it may only carry a regional extract. Believing it
+  // silently produces a map with no buildings and no roads, which looks like
+  // success and is the worst possible failure mode.
+  if (emptyResult && problems.length === 0) {
     await writeCache(key, emptyResult);
     return { ...emptyResult, cached: false };
   }
 
+  const detail = problems.length ? `\n  ${problems.join('\n  ')}` : '';
   throw new Error(
-    `All Overpass endpoints failed:\n  ${problems.join('\n  ')}\n` +
-      `Pass --overpass <url> to use a different (or self-hosted) instance.`,
+    emptyResult
+      ? `No map data came back. The only mirror that answered returned nothing, ` +
+        `and the others failed, so that empty answer cannot be trusted:${detail}`
+      : `Every Overpass mirror failed:${detail}\n` +
+        `They are volunteer-run and often busy - trying again shortly usually works.`,
   );
 }
 
