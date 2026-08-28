@@ -8,7 +8,7 @@ import { LAYER_Y, DEFAULTS } from './config.js';
 import { clipPolygon, clipLine, squareBoundary, circleBoundary } from './clip.js';
 import {
   MeshBuilder, normalizeRings, fillPolygon, extrudeWalls, buildRoof, ribbon,
-  grid, tree, polygonAreaXZ, centroidXZ, normalizeRoofShape,
+  grid, gridSurface, tree, polygonAreaXZ, centroidXZ, normalizeRoofShape,
 } from './mesh.js';
 import {
   MATERIALS, AREA_CANOPY, buildingHeights, classifyBuilding, classifyArea,
@@ -73,7 +73,7 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
       ? { source: landcover.source, resolutionMeters: round(landcover.resolutionMeters, 1),
           summary: landcover.summary }
       : undefined,
-    spawn: { x: 0, y: round(terrain.heightAt(0, 0), 3), z: 0 },
+    spawn: { x: 0, y: 0, z: 0 },   // filled in once the ground surface exists
     buildings: [],
     roads: [],
     areas: [],
@@ -82,6 +82,12 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
   };
 
   const ground = (x, z) => terrain.heightAt(x, z);
+  // Everything below is placed on the ground *mesh*, not on the smooth field
+  // the mesh approximates. Those differ by however much the terrain curves
+  // between grid corners, which is what leaves roads hovering or half buried.
+  const surface = gridSurface(groundHalf, opts.terrainCells, ground);
+  // Detail finer than the ground itself buys nothing, and costs triangles.
+  const detail = (groundHalf * 2) / opts.terrainCells / 2;
 
   /* ------------------------------- ground ------------------------------- */
 
@@ -90,8 +96,10 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
       ? (x, z) => Math.hypot(x, z) <= radius + (half - radius) * 0.5
       : undefined;
 
+  manifest.spawn.y = round(surface(0, 0), 3);
+
   if (imagery?.tiles?.length) {
-    addImageryGround(builder, imagery, ground);
+    addImageryGround(builder, imagery, surface, detail);
   } else {
     // Land cover, where we have it, turns a flat grey plane into forest,
     // pasture and scrub - which is most of what a rural map is made of.
@@ -139,9 +147,10 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
       if (cls.material === 'water') waterAreas.push(norm);
       const y = LAYER_Y[cls.layer] ?? LAYER_Y.landuse;
       const g = builder.group(cls.material);
-      fillPolygon(g, norm, (x, z) => ground(x, z) + y, {
+      fillPolygon(g, norm, (x, z) => surface(x, z) + y, {
         uvScale: 24,
         smooth: terrain.enabled,
+        maxEdge: terrain.enabled ? detail : 0,
       });
       manifest.areas.push({
         id: f.id,
@@ -235,7 +244,12 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
       const y = (LAYER_Y[layerName] ?? LAYER_Y.road) + lift;
       const g = builder.group(cls.material);
       for (const piece of pieces) {
-        ribbon(g, piece, cls.width, (x, z) => ground(x, z) + y, { uvScale: cls.width });
+        ribbon(g, piece, cls.width, (x, z) => surface(x, z) + y, {
+          uvScale: cls.width,
+          // A bridge deck is meant to be straight; only ground-level roads
+          // should be chasing the terrain.
+          maxSegment: terrain.enabled && !lift ? detail : 0,
+        });
       }
     }
 
@@ -247,7 +261,7 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
       const rings = clipPolygon([discRing(x, z, j.hw, 8)], boundary);
       if (!rings) continue;
       const g = builder.group(j.material);
-      fillPolygon(g, normalizeRings(rings), (px, pz) => ground(px, pz) + LAYER_Y.road, {
+      fillPolygon(g, normalizeRings(rings), (px, pz) => surface(px, pz) + LAYER_Y.road, {
         uvScale: Math.max(j.hw, 1) * 2,
       });
     }
@@ -328,7 +342,7 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
       let gMin = Infinity;
       let gMax = -Infinity;
       for (const [x, z] of norm[0]) {
-        const y = ground(x, z);
+        const y = surface(x, z);
         if (y < gMin) gMin = y;
         if (y > gMax) gMax = y;
       }
@@ -387,7 +401,7 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
         const rings = normalizeRings([thickLine(piece, thickness)]);
         if (!rings.length) continue;
         let gy = Infinity;
-        for (const [x, z] of rings[0]) gy = Math.min(gy, ground(x, z));
+        for (const [x, z] of rings[0]) gy = Math.min(gy, surface(x, z));
         extrudeWalls(g, rings, () => gy - 0.2, () => gy + height, { uvScale: 2 });
         fillPolygon(g, rings, () => gy + height, { uvScale: 2 });
       }
@@ -413,7 +427,7 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
         const kind = /conifer|needle|pine|spruce|fir/i.test(
           `${f.tags['leaf_type'] ?? ''} ${f.tags.species ?? ''} ${f.tags.genus ?? ''}`,
         ) ? 'conifer' : 'broadleaf';
-        tree(builder, x, z, ground(x, z), height, crown, seed, kind);
+        tree(builder, x, z, surface(x, z), height, crown, seed, kind);
         planted.push({ id: f.id, x, z, height, mapped: true });
       }
     }
@@ -457,7 +471,7 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
 
       const height = scrubby ? 2 + spot.r * 2.5 : 11 + spot.r * 11;
       const crown = height * (conifer ? 0.2 : 0.34) * (0.8 + spot.r * 0.5);
-      const y = ground(spot.x, spot.z);
+      const y = surface(spot.x, spot.z);
       tree(builder, spot.x, spot.z, y, height, crown, Math.round(spot.r * 1e6),
         conifer ? 'conifer' : 'broadleaf');
       planted.push({ x: spot.x, z: spot.z, height, scattered: true });
@@ -469,7 +483,7 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
         kind: 'tree',
         x: round(t.x, 2),
         z: round(t.z, 2),
-        y: round(ground(t.x, t.z), 2),
+        y: round(surface(t.x, t.z), 2),
         heightMeters: round(t.height, 1),
         source: t.mapped ? 'osm' : 'scattered',
       });
@@ -505,13 +519,18 @@ function projectFeature(f, projector) {
   return { ...f, rings: f.rings.map((r) => r.map(p)) };
 }
 
-function addImageryGround(builder, imagery, ground) {
+function addImageryGround(builder, imagery, ground, detail = 0) {
   imagery.tiles.forEach((tile, i) => {
     const g = builder.group(`imagery_${i}`);
     g.texture = { data: tile.data, mime: tile.mime };
     const { x0, z0, x1, z1 } = tile;
-    // Two triangles, subdivided a little so terrain shows through.
-    const cells = 4;
+    // Follow the terrain as closely as the ground grid does, within reason:
+    // one imagery tile can cover 300m, and at full detail that is thousands of
+    // quads each. Roads sit on this surface, so a coarse tile shows as a road
+    // sunk into the hillside.
+    const cells = detail > 0
+      ? Math.min(Math.max(Math.round((x1 - x0) / detail), 4), 24)
+      : 4;
     for (let a = 0; a < cells; a++) {
       for (let b = 0; b < cells; b++) {
         const px = [x0 + ((x1 - x0) * a) / cells, x0 + ((x1 - x0) * (a + 1)) / cells];

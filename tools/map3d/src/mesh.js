@@ -177,7 +177,7 @@ export function fillPolygon(g, rings, heightAt, opts = {}) {
   });
   if (coords.length < 6) return 0;
 
-  const tris = earcut(coords, holeStarts);
+  let tris = earcut(coords, holeStarts);
   if (!tris.length) return 0;
 
   // Vertices are shared across the surface; normals come from the height field.
@@ -186,6 +186,13 @@ export function fillPolygon(g, rings, heightAt, opts = {}) {
     const x = coords[i];
     const z = -coords[i + 1];
     base.push([x, heightAt(x, z), z]);
+  }
+
+  // A lake or a park earcuts into a handful of very long triangles, which then
+  // chord straight across every rise between their corners. Split them until
+  // they follow the ground.
+  if (opts.maxEdge > 0) {
+    tris = subdivideTriangles(base, tris, opts.maxEdge, heightAt, opts.maxTriangles ?? 60000);
   }
 
   const smooth = opts.smooth ?? false;
@@ -219,6 +226,77 @@ function emitTriangles(g, base, tris, idx) {
     if (s >= 0) g.tri(idx[a], idx[b], idx[c]);
     else g.tri(idx[a], idx[c], idx[b]);
   }
+}
+
+/**
+ * Bisects triangles until every edge is shorter than `maxEdge`.
+ *
+ * Which point an edge is split at depends only on that edge - always its
+ * midpoint - and whether it splits depends only on its length, so the two
+ * triangles sharing an edge always reach the same verdict and split it in the
+ * same place. That is what keeps this crack-free without tracking who
+ * neighbours whom. `mids` keeps the shared vertex a single vertex.
+ *
+ * A sag test (split where the ground actually bends, leave flat ground alone)
+ * looks like the smarter criterion and measured worse: it lets a triangle stay
+ * large as long as its three edges happen to lie on the ground, and the
+ * interior then wanders off it. Bounding the size is what bounds the error.
+ */
+function subdivideTriangles(base, tris, maxEdge, heightAt, maxTriangles) {
+  const mids = new Map();
+  const midpoint = (a, b) => {
+    const key = a < b ? `${a},${b}` : `${b},${a}`;
+    let m = mids.get(key);
+    if (m === undefined) {
+      const p = base[a];
+      const q = base[b];
+      const x = (p[0] + q[0]) / 2;
+      const z = (p[2] + q[2]) / 2;
+      m = base.length;
+      base.push([x, heightAt(x, z), z]);
+      mids.set(key, m);
+    }
+    return m;
+  };
+  const edgeLen = (a, b) =>
+    Math.hypot(base[a][0] - base[b][0], base[a][2] - base[b][2]);
+
+  let out = tris;
+  // Each pass at most halves the longest edge, so this converges quickly; the
+  // bound is only there so a pathological ring cannot spin.
+  for (let pass = 0; pass < 14; pass++) {
+    if (out.length / 3 >= maxTriangles) break;
+    const next = [];
+    let split = false;
+    for (let i = 0; i < out.length; i += 3) {
+      const a = out[i];
+      const b = out[i + 1];
+      const c = out[i + 2];
+      const ab = edgeLen(a, b);
+      const bc = edgeLen(b, c);
+      const ca = edgeLen(c, a);
+      const longest = Math.max(ab, bc, ca);
+      if (longest <= maxEdge) {
+        next.push(a, b, c);
+        continue;
+      }
+      split = true;
+      // Bisect the longest edge; the opposite corner joins the new vertex.
+      if (ab === longest) {
+        const m = midpoint(a, b);
+        next.push(a, m, c, m, b, c);
+      } else if (bc === longest) {
+        const m = midpoint(b, c);
+        next.push(b, m, a, m, c, a);
+      } else {
+        const m = midpoint(c, a);
+        next.push(c, m, b, m, a, b);
+      }
+    }
+    out = next;
+    if (!split) break;
+  }
+  return out;
 }
 
 function accumulateFaceNormal(pts, normals, a, b, c) {
@@ -501,7 +579,10 @@ export function convexHull(points) {
  * @param {Array<[number, number]>} line [x, z] points
  */
 export function ribbon(g, line, width, heightAt, opts = {}) {
-  const pts = cleanRing(line);
+  // A straight run between two corners is a single quad, and a quad is flat:
+  // a 90m stretch of road hops any rise in between. Break long runs up first
+  // so each piece can sit on the ground it covers.
+  const pts = densify(cleanRing(line), opts.maxSegment ?? 0);
   if (pts.length < 2) return 0;
 
   const hw = Math.max(width, 0.2) / 2;
@@ -535,42 +616,63 @@ export function ribbon(g, line, width, heightAt, opts = {}) {
     }
   }
 
+  // A carriageway is wide enough to cross a fold in the ground sideways, so a
+  // single quad across the width chords over it just as a long one does along.
+  const lanes = opts.maxSegment > 0
+    ? Math.max(1, Math.ceil((hw * 2) / opts.maxSegment))
+    : 1;
+
   let run = 0;
   let tris = 0;
+  /** Points across the carriageway at station `i`, left to right. */
   const section = (i) => {
     const [x, z] = pts[i];
     const [ou, ov] = offsets[i];
-    // (u, v) -> (x, z): u = x, v = -z
-    const lx = x + ou * hw;
-    const lz = z - ov * hw;
-    const rx = x - ou * hw;
-    const rz = z + ov * hw;
-    return [
-      [lx, heightAt(lx, lz), lz],
-      [rx, heightAt(rx, rz), rz],
-    ];
+    const out = [];
+    for (let k = 0; k <= lanes; k++) {
+      // (u, v) -> (x, z): u = x, v = -z
+      const t = hw - (2 * hw * k) / lanes;
+      const px = x + ou * t;
+      const pz = z - ov * t;
+      out.push([px, heightAt(px, pz), pz]);
+    }
+    return out;
   };
 
-  let [prevL, prevR] = section(0);
-  let prevIdx = [
-    g.vertex(prevL[0], prevL[1], prevL[2], 0, 1, 0, 0, 0),
-    g.vertex(prevR[0], prevR[1], prevR[2], 0, 1, 0, 1, 0),
-  ];
+  const emit = (pt, k, v) =>
+    g.vertex(pt[0], pt[1], pt[2], 0, 1, 0, k / lanes, v);
+
+  let prevIdx = section(0).map((pt, k) => emit(pt, k, 0));
 
   for (let i = 1; i < pts.length; i++) {
-    const [curL, curR] = section(i);
+    const cur = section(i);
     run += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
     const v = run / uvScale;
-    const curIdx = [
-      g.vertex(curL[0], curL[1], curL[2], 0, 1, 0, 0, v),
-      g.vertex(curR[0], curR[1], curR[2], 0, 1, 0, 1, v),
-    ];
-    // L(i-1) -> R(i-1) -> R(i) -> L(i) is CCW seen from above.
-    g.quad(prevIdx[0], prevIdx[1], curIdx[1], curIdx[0]);
-    tris += 2;
+    const curIdx = cur.map((pt, k) => emit(pt, k, v));
+    for (let k = 0; k < lanes; k++) {
+      // L(i-1) -> R(i-1) -> R(i) -> L(i) is CCW seen from above.
+      g.quad(prevIdx[k], prevIdx[k + 1], curIdx[k + 1], curIdx[k]);
+      tris += 2;
+    }
     prevIdx = curIdx;
   }
   return tris;
+}
+
+/** Inserts points along any span longer than `maxSegment`, keeping the corners. */
+export function densify(pts, maxSegment) {
+  if (!(maxSegment > 0) || pts.length < 2) return pts;
+  const out = [pts[0]];
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, z0] = pts[i - 1];
+    const [x1, z1] = pts[i];
+    const steps = Math.ceil(Math.hypot(x1 - x0, z1 - z0) / maxSegment);
+    for (let k = 1; k < steps; k++) {
+      out.push([x0 + ((x1 - x0) * k) / steps, z0 + ((z1 - z0) * k) / steps]);
+    }
+    out.push(pts[i]);
+  }
+  return out;
 }
 
 function unit2(u, v) {
@@ -648,6 +750,64 @@ export function grid(groupFor, half, cells, heightAt, opts = {}) {
     }
   }
   return tris;
+}
+
+/**
+ * The height of the surface `grid()` actually draws.
+ *
+ * Everything that lies on the ground - roads, paths, water, tree trunks - used
+ * to ask the terrain function directly. That function is a smooth bilinear
+ * field, while the ground you see is a coarse triangulation of it, and between
+ * grid corners the two disagree by however much the terrain curves across a
+ * cell. On rolling ground that is decimetres, and it shows: a road either
+ * hovers over a rise or the rise erupts through it, which looks like the road
+ * has a hole in it.
+ *
+ * So sample the mesh instead of the field. Corner heights come from the same
+ * `heightAt`, and inside a cell this interpolates over the same two triangles
+ * `grid()` emits, which makes it exact rather than merely closer.
+ *
+ * @param {number} half same half-width passed to grid()
+ * @param {number} cells same cell count passed to grid()
+ * @param {(x: number, z: number) => number} heightAt
+ * @returns {(x: number, z: number) => number}
+ */
+export function gridSurface(half, cells, heightAt) {
+  const step = (half * 2) / cells;
+  const n = cells + 1;
+  const h = new Float64Array(n * n);
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      h[i * n + j] = heightAt(-half + i * step, -half + j * step);
+    }
+  }
+
+  return (x, z) => {
+    const fi = (x + half) / step;
+    const fj = (z + half) / step;
+    const i = clampInt(Math.floor(fi), 0, cells - 1);
+    const j = clampInt(Math.floor(fj), 0, cells - 1);
+    // Outside the ground, hold the edge cell's plane rather than extrapolating.
+    const u = clamp01(fi - i);
+    const v = clamp01(fj - j);
+    const h00 = h[i * n + j];
+    const h01 = h[i * n + j + 1];
+    const h11 = h[(i + 1) * n + j + 1];
+    const h10 = h[(i + 1) * n + j];
+    // grid() emits quad(a=(i,j), b=(i,j+1), c=(i+1,j+1), d=(i+1,j)) and quad()
+    // splits it as (a,b,c) + (a,c,d), so the diagonal runs (i,j)->(i+1,j+1).
+    return u <= v
+      ? h00 + (h01 - h00) * v + (h11 - h01) * u
+      : h00 + (h10 - h00) * u + (h11 - h10) * v;
+  };
+}
+
+function clampInt(v, lo, hi) {
+  return v < lo ? lo : v > hi ? hi : v;
+}
+
+function clamp01(v) {
+  return v < 0 ? 0 : v > 1 ? 1 : v;
 }
 
 /* ---------------------------------- props --------------------------------- */

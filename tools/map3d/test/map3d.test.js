@@ -1039,3 +1039,127 @@ test('no regional extract is used as a general fallback', () => {
     assert.ok(!/osm\.ch/.test(url), `${url} only carries a regional extract`);
   }
 });
+
+/* ------------------------- sitting on the ground -------------------------- */
+
+import { gridSurface, densify } from '../src/mesh.js';
+
+test('gridSurface returns the height of the mesh, not of the field', () => {
+  // The field needs a genuine cross term. On a separable field (f(x) + g(z))
+  // bilinear interpolation and the triangulation agree exactly, so a test built
+  // on one cannot tell the two apart - and telling them apart is the point.
+  const field = (x, z) => (x * z) / 300 + Math.sin(x / 40) * 6;
+  const half = 100;
+  const cells = 4;
+  const step = (half * 2) / cells;
+  const at = gridSurface(half, cells, field);
+  const corner = (i, j) => field(-half + i * step, -half + j * step);
+
+  // Exact at every grid corner: that is where the mesh touches the field.
+  for (let i = 0; i <= cells; i++) {
+    for (let j = 0; j <= cells; j++) {
+      assert.ok(Math.abs(at(-half + i * step, -half + j * step) - corner(i, j)) < 1e-9);
+    }
+  }
+
+  // Inside a cell it must lie on the plane of the triangle covering that spot,
+  // which is the one thing bilinear interpolation does not do.
+  const plane = (p, q, r, x, z) => {
+    const d = (q[1] - r[1]) * (p[0] - r[0]) + (r[0] - q[0]) * (p[1] - r[1]);
+    const w0 = ((q[1] - r[1]) * (x - r[0]) + (r[0] - q[0]) * (z - r[1])) / d;
+    const w1 = ((r[1] - p[1]) * (x - r[0]) + (p[0] - r[0]) * (z - r[1])) / d;
+    return p[2] * w0 + q[2] * w1 + r[2] * (1 - w0 - w1);
+  };
+  const pt = (i, j) => [-half + i * step, -half + j * step, corner(i, j)];
+  // grid() splits each quad along (i,j) -> (i+1,j+1).
+  const lower = [pt(1, 1), pt(1, 2), pt(2, 2)];   // u <= v
+  const upper = [pt(1, 1), pt(2, 2), pt(2, 1)];   // u >= v
+  for (const [u, v, tri] of [[0.25, 0.75, lower], [0.75, 0.25, upper]]) {
+    const x = -half + step * (1 + u);
+    const z = -half + step * (1 + v);
+    assert.ok(Math.abs(at(x, z) - plane(...tri, x, z)) < 1e-9, `u=${u} v=${v}`);
+    assert.ok(
+      Math.abs(at(x, z) - field(x, z)) > 0.05,
+      'and it must differ from the field, or the mesh is not being sampled',
+    );
+  }
+});
+
+test('gridSurface holds the edge rather than extrapolating past the ground', () => {
+  const at = gridSurface(100, 4, (x) => x / 10);
+  assert.equal(at(-100, 0), at(-500, 0));
+  assert.equal(at(100, 0), at(500, 0));
+});
+
+test('densify keeps the corners and breaks up the long runs', () => {
+  const line = [[0, 0], [30, 0], [30, 4]];
+  const out = densify(line, 10);
+  assert.deepEqual(out[0], [0, 0]);
+  assert.deepEqual(out[out.length - 1], [30, 4]);
+  assert.ok(out.some((p) => p[0] === 30 && p[1] === 0), 'the corner must survive');
+  for (let i = 1; i < out.length; i++) {
+    const d = Math.hypot(out[i][0] - out[i - 1][0], out[i][1] - out[i - 1][1]);
+    assert.ok(d <= 10 + 1e-9, `span ${d} exceeds the limit`);
+  }
+  assert.equal(densify(line, 0), line, 'no limit means no work');
+});
+
+test('a filled polygon follows the ground it is laid on', () => {
+  // One big triangle over a ridge: unsubdivided it chords straight across.
+  const ridge = (x, z) => 8 - Math.abs(x) / 12 - Math.abs(z) / 40;
+  const ring = [[-60, -60], [60, -60], [60, 60], [-60, 60]];
+  const worstGap = (maxEdge) => {
+    const g = new MeshBuilder().group('ground');
+    fillPolygon(g, [ring], ridge, { maxEdge });
+    let worst = 0;
+    for (let t = 0; t < g.indices.length; t += 3) {
+      const p = [0, 1, 2].map((k) => {
+        const i = g.indices[t + k] * 3;
+        return [g.positions[i], g.positions[i + 1], g.positions[i + 2]];
+      });
+      const cx = (p[0][0] + p[1][0] + p[2][0]) / 3;
+      const cz = (p[0][2] + p[1][2] + p[2][2]) / 3;
+      const cy = (p[0][1] + p[1][1] + p[2][1]) / 3;
+      worst = Math.max(worst, Math.abs(cy - ridge(cx, cz)));
+    }
+    return worst;
+  };
+  assert.ok(worstGap(0) > 1.5, 'a single span across a ridge misses it badly');
+  assert.ok(worstGap(5) < 0.25, `subdivided it should hug the ridge`);
+});
+
+test('subdividing a fill leaves no cracks and no stray vertices', () => {
+  // An L with a thin arm. A regular square cannot show this up: earcut gives it
+  // triangles that are all much of a size, so even a rule that asks about the
+  // whole triangle rather than the edge has nothing to disagree with itself
+  // about. Mixed sizes are what make neighbours fall out of step.
+  const g = new MeshBuilder().group('ground');
+  fillPolygon(g, [[[-60, -60], [60, -60], [60, -40], [-20, -40], [-20, 60], [-60, 60]]],
+    (x, z) => x / 8 + z / 11, { maxEdge: 9 });
+
+  // Every vertex is used: testing an edge must not leave one behind.
+  const used = new Set(g.indices);
+  assert.equal(used.size, g.positions.length / 3, 'unused vertices were emitted');
+
+  const pos = (i) => [g.positions[i * 3], g.positions[i * 3 + 2]];
+  const vertices = [...used].map((i) => [i, pos(i)]);
+
+  // The T-junction test: no vertex may sit anywhere strictly inside another
+  // triangle's edge. Where one does, the triangle on that side has no matching
+  // vertex and the surface splits open along it.
+  for (let t = 0; t < g.indices.length; t += 3) {
+    for (const [ea, eb] of [[0, 1], [1, 2], [2, 0]]) {
+      const [i, j] = [g.indices[t + ea], g.indices[t + eb]];
+      const a = pos(i);
+      const b = pos(j);
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      for (const [k, v] of vertices) {
+        if (k === i || k === j) continue;
+        const s2 = ((v[0] - a[0]) * (b[0] - a[0]) + (v[1] - a[1]) * (b[1] - a[1])) / (len * len);
+        if (s2 <= 1e-6 || s2 >= 1 - 1e-6) continue;
+        const dist = Math.abs((b[0] - a[0]) * (a[1] - v[1]) - (a[0] - v[0]) * (b[1] - a[1])) / len;
+        assert.ok(dist > 1e-6, `vertex ${k} splits the edge ${i}-${j}: that is a crack`);
+      }
+    }
+  }
+});
