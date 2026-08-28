@@ -661,7 +661,9 @@ export function grid(groupFor, half, cells, heightAt, opts = {}) {
 export function tree(builder, x, z, groundY, height, radius, seed = 0, kind = 'conifer') {
   const broadleaf = kind === 'broadleaf';
   const trunkH = height * (broadleaf ? 0.42 : 0.32);
-  const trunkR = Math.max(0.1, radius * (broadleaf ? 0.1 : 0.12));
+  // Real trunks are slender against their crown; at eye level anything
+  // thicker reads as a telegraph pole.
+  const trunkR = Math.max(0.07, radius * (broadleaf ? 0.06 : 0.075));
   const sides = 5;
   const rot = ((seed % 10) / 10) * Math.PI;
 
