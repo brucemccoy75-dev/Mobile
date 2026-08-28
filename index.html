@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0b1220" />
+<title>Walk an address — map3d</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; background: #0b1220; }
+  body {
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #e2e8f0;
+  }
+  canvas { display: block; touch-action: none; }
+
+  /* ------------------------------- screens ------------------------------- */
+  .screen {
+    position: fixed; inset: 0; z-index: 10;
+    display: grid; place-items: center;
+    padding: max(24px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
+    background: radial-gradient(120% 90% at 50% 0%, #16233c 0%, #0b1220 70%);
+    overflow-y: auto;
+  }
+  .screen[hidden] { display: none; }
+  .card { width: min(560px, 100%); }
+
+  h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; }
+  .sub { color: #94a3b8; margin-top: 6px; font-size: 0.95rem; }
+
+  form { margin-top: 26px; display: flex; gap: 10px; flex-wrap: wrap; }
+  input[type="text"] {
+    flex: 1 1 260px; min-width: 0;
+    font: inherit; color: #f8fafc;
+    background: #0f172a; border: 1px solid #334155; border-radius: 10px;
+    padding: 13px 15px;
+  }
+  input[type="text"]:focus { outline: 2px solid #3b82f6; outline-offset: -1px; border-color: transparent; }
+  button {
+    font: inherit; font-weight: 600; color: #f8fafc; cursor: pointer;
+    background: #2563eb; border: 0; border-radius: 10px; padding: 13px 22px;
+  }
+  button:hover { background: #1d4ed8; }
+  button:disabled { background: #334155; color: #94a3b8; cursor: default; }
+  button.ghost { background: #1e293b; font-weight: 500; }
+  button.ghost:hover { background: #334155; }
+
+  .opts { margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .opts span { color: #64748b; font-size: 0.85rem; margin-right: 2px; }
+  .chip {
+    font: inherit; font-size: 0.85rem; color: #cbd5e1; cursor: pointer;
+    background: #1e293b; border: 1px solid #334155; border-radius: 999px; padding: 6px 13px;
+  }
+  .chip[aria-pressed="true"] { background: #2563eb; border-color: #3b82f6; color: #fff; }
+
+  .recent { margin-top: 30px; }
+  .recent h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; }
+  .recent ul { list-style: none; margin-top: 10px; display: grid; gap: 7px; }
+  .recent button {
+    width: 100%; text-align: left; background: #131f36; font-weight: 500;
+    padding: 11px 14px; border: 1px solid #1e293b; display: block;
+  }
+  .recent button:hover { background: #1c2c4a; }
+  .recent .meta { display: block; color: #64748b; font-size: 0.8rem; margin-top: 2px; }
+
+  .note { margin-top: 26px; color: #475569; font-size: 0.8rem; line-height: 1.6; }
+  .note a { color: #64748b; }
+
+  /* ------------------------------- progress ------------------------------ */
+  #log {
+    margin-top: 20px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.82rem; color: #94a3b8; background: #0f172a;
+    border: 1px solid #1e293b; border-radius: 10px; padding: 14px;
+    height: 220px; overflow-y: auto; white-space: pre-wrap;
+  }
+  #log b { color: #e2e8f0; font-weight: 500; }
+  .err { color: #fca5a5; }
+
+  /* --------------------------------- hud --------------------------------- */
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+  #hud[hidden] { display: none; }
+
+  #crosshair {
+    position: absolute; left: 50%; top: 50%; width: 5px; height: 5px;
+    margin: -2.5px 0 0 -2.5px; border-radius: 50%;
+    background: #ffffffcc; box-shadow: 0 0 0 1px #0006;
+  }
+  #street {
+    position: absolute; left: 0; right: 0; top: max(14px, env(safe-area-inset-top));
+    text-align: center; font-size: 1.05rem; font-weight: 600;
+    text-shadow: 0 1px 6px #000a; transition: opacity 0.4s;
+  }
+  #compass {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    top: calc(max(14px, env(safe-area-inset-top)) + 30px);
+    font-size: 0.78rem; letter-spacing: 0.14em; color: #cbd5e1; text-shadow: 0 1px 4px #000a;
+  }
+  #readout {
+    position: absolute; left: 12px; bottom: max(12px, env(safe-area-inset-bottom));
+    font-size: 0.78rem; color: #cbd5e1; text-shadow: 0 1px 4px #000a; line-height: 1.7;
+  }
+  #keys {
+    position: absolute; right: 12px; bottom: max(12px, env(safe-area-inset-bottom));
+    font-size: 0.75rem; color: #94a3b8; text-align: right; text-shadow: 0 1px 4px #000a;
+  }
+  #exit { position: absolute; right: 12px; top: max(12px, env(safe-area-inset-top));
+          pointer-events: auto; display: flex; gap: 8px; }
+  #exit button { font-size: 0.8rem; padding: 7px 13px; background: #1e293bcc; font-weight: 500; }
+  #exit button[aria-pressed="true"] { background: #2563ebd9; border-color: #60a5fa; color: #f8fafc; }
+
+  #tapToStart {
+    position: fixed; inset: 0; z-index: 8; display: grid; place-items: center;
+    background: #0b1220cc; backdrop-filter: blur(3px); text-align: center; padding: 24px;
+  }
+  #tapToStart[hidden] { display: none; }
+  #tapToStart p { color: #94a3b8; margin-top: 8px; font-size: 0.9rem; }
+
+  /* touch sticks, only on touch devices */
+  .stick { position: fixed; bottom: 0; width: 50%; height: 55%; z-index: 6; display: none; }
+  body.touch .stick { display: block; }
+  #stickL { left: 0; } #stickR { right: 0; }
+</style>
+</head>
+<body>
+
+<!-- ------------------------------- home ------------------------------- -->
+<div class="screen" id="home">
+  <div class="card">
+    <h1>Walk an address</h1>
+    <p class="sub">Type somewhere real. It builds the half mile around it from
+      OpenStreetMap, USGS terrain and land cover, then drops you in on foot.</p>
+
+    <form id="form" onsubmit="return false">
+      <input id="address" type="text" autocomplete="off" autocapitalize="words"
+             placeholder="1600 Pennsylvania Ave NW, Washington DC" />
+      <button type="submit" id="go">Go</button>
+    </form>
+
+    <div class="opts">
+      <span>Radius</span>
+      <button class="chip" data-radius="402.336">¼ mi</button>
+      <button class="chip" data-radius="804.672" aria-pressed="true">½ mi</button>
+      <button class="chip" data-radius="1207.008">¾ mi</button>
+      <span style="margin-left:10px">Detail</span>
+      <button class="chip" data-quality="full" aria-pressed="true">Full</button>
+      <button class="chip" data-quality="fast">Fast</button>
+    </div>
+
+    <div class="recent" id="recent" hidden>
+      <h2>Already built</h2>
+      <ul id="recentList"></ul>
+    </div>
+
+    <p class="note">
+      You can paste coordinates instead — <code>43.0859,-71.6087</code> — which
+      skips the address lookup. The map is built in your browser, so nothing is
+      uploaded anywhere. First build of a place takes 20–60 seconds; after that
+      it is served from your browser cache.<br />
+      Map data © OpenStreetMap contributors (ODbL). Elevation: Mapzen/AWS. Land cover: USGS NLCD.
+    </p>
+  </div>
+</div>
+
+<!-- ----------------------------- building ----------------------------- -->
+<div class="screen" id="building" hidden>
+  <div class="card">
+    <h1 id="buildingTitle">Building your map…</h1>
+    <p class="sub" id="buildingSub">Looking the address up.</p>
+    <div id="log"></div>
+    <div style="margin-top:16px; display:flex; gap:10px">
+      <button class="ghost" id="cancel">Back</button>
+    </div>
+  </div>
+</div>
+
+<!-- ------------------------------- world ------------------------------ -->
+<div id="hud" hidden>
+  <div id="crosshair"></div>
+  <div id="street"></div>
+  <div id="compass"></div>
+  <div id="readout"></div>
+  <div id="keys">WASD move · Shift run · Space jump · F fly</div>
+  <div id="exit">
+    <button class="ghost" id="fly" aria-pressed="false">Fly</button>
+    <button class="ghost" id="download">Download .glb</button>
+    <button class="ghost" id="leave">Leave</button>
+  </div>
+</div>
+<div id="tapToStart" hidden>
+  <div>
+    <h1 id="startTitle">Ready</h1>
+    <p id="startHint">Click to look around</p>
+  </div>
+</div>
+<div class="stick" id="stickL"></div>
+<div class="stick" id="stickR"></div>
+
+<script>
+  // The module below needs three.js from a CDN; say something useful if it
+  // never arrives rather than sitting on a dead screen.
+  setTimeout(() => {
+    if (window.__map3dReady) return;
+    const el = document.getElementById('home');
+    if (el && !el.hidden) {
+      document.querySelector('#home .note').innerHTML =
+        '<span class="err">three.js did not load from cdn.jsdelivr.net. ' +
+        'Check your connection — the rest of the tool works offline, but this ' +
+        'page needs the 3D library.</span>';
+    }
+  }, 15000);
+</script>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>
