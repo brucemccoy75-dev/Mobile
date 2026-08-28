@@ -238,7 +238,7 @@ export async function main(argv) {
       `  -> ${outDir}`,
       ...written.map(([name, size]) => `     ${name}${size ? `  ${fmtBytes(size)}` : ''}`),
       '',
-      `  Preview:  npx map3d serve ${relativeish(outDir)}`,
+      `  Preview:  ${invocation()} serve ${relativeish(outDir)}`,
       '',
     ].join('\n'),
   );
@@ -335,6 +335,14 @@ export function slugify(text) {
       .replace(/^-+|-+$/g, '')
       .slice(0, 60) || 'map'
   );
+}
+
+/** However the user launched us, hand them back a command that works. */
+function invocation() {
+  const entry = process.argv[1];
+  if (!entry) return 'map3d';
+  if (/[\\/]node_modules[\\/]/.test(entry) || /[\\/]\.bin[\\/]/.test(entry)) return 'map3d';
+  return `node ${relativeish(resolve(entry))}`;
 }
 
 function relativeish(p) {
