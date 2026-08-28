@@ -1,0 +1,19 @@
+{
+  "name": "map3d",
+  "version": "1.0.0",
+  "description": "Turn a real-world street address into a 3D game map (glTF/GLB, OBJ, JSON) using OpenStreetMap data.",
+  "type": "module",
+  "bin": {
+    "map3d": "./bin/map3d.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "node bin/map3d.js build",
+    "serve": "node bin/map3d.js serve",
+    "test": "node --test \"test/*.test.js\""
+  },
+  "dependencies": {},
+  "license": "MIT"
+}

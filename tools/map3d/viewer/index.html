@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>map3d viewer</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; background: #0b1220; }
+  body { font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #e2e8f0; }
+  canvas { display: block; touch-action: none; }
+
+  #hud {
+    position: fixed; top: 0; left: 0; right: 0;
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    padding: max(8px, env(safe-area-inset-top)) 10px 8px;
+    background: linear-gradient(#0b1220ee, #0b122000);
+    pointer-events: none;
+  }
+  #hud > * { pointer-events: auto; }
+  #title { font-weight: 600; margin-right: auto; max-width: 55vw;
+           overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  button {
+    font: inherit; font-size: 12px; color: #e2e8f0; background: #1e293bcc;
+    border: 1px solid #33415580; border-radius: 7px; padding: 6px 11px;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  button:hover { background: #334155cc; }
+  button[aria-pressed="true"] { background: #2563ebcc; border-color: #3b82f6; }
+
+  #panel {
+    position: fixed; left: 10px; bottom: max(10px, env(safe-area-inset-bottom));
+    max-width: min(360px, calc(100vw - 20px));
+    background: #0f172ae6; border: 1px solid #1e293b; border-radius: 10px;
+    padding: 10px 12px; backdrop-filter: blur(6px);
+  }
+  #panel dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; }
+  #panel dt { color: #94a3b8; }
+  #panel dd { text-align: right; font-variant-numeric: tabular-nums; }
+  #hint { margin-top: 8px; color: #64748b; font-size: 11.5px; }
+  #pick { margin-top: 8px; padding-top: 8px; border-top: 1px solid #1e293b; display: none; }
+  #pick.on { display: block; }
+  #pick b { color: #f8fafc; }
+
+  #splash {
+    position: fixed; inset: 0; display: grid; place-content: center; gap: 10px;
+    text-align: center; background: #0b1220; z-index: 10; padding: 24px;
+  }
+  #splash.gone { display: none; }
+  #splash code { background: #1e293b; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+  .err { color: #fca5a5; max-width: 460px; }
+</style>
+</head>
+<body>
+
+<div id="splash"><div>Loading map…</div></div>
+
+<div id="hud">
+  <div id="title">map3d</div>
+  <button id="mode" aria-pressed="false">Walk</button>
+  <button id="wire" aria-pressed="false">Wireframe</button>
+  <button id="sun">Noon</button>
+</div>
+
+<div id="panel">
+  <dl id="stats"></dl>
+  <div id="pick"></div>
+  <div id="hint">Drag to orbit · scroll to zoom · click a building for details</div>
+</div>
+
+<script>
+  // The module below imports three.js from a CDN. If that never arrives the
+  // module simply never runs, so say something useful instead of spinning.
+  setTimeout(() => {
+    if (window.map3d) return;
+    const splash = document.getElementById('splash');
+    if (!splash || splash.classList.contains('gone')) return;
+    splash.innerHTML =
+      '<div class="err"><p><b>three.js did not load.</b></p>' +
+      '<p style="margin-top:8px">The viewer pulls three.js from ' +
+      '<code>cdn.jsdelivr.net</code>. Check your connection, or vendor the ' +
+      'library locally and edit the importmap in this file.</p></div>';
+  }, 15000);
+</script>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const $ = (id) => document.getElementById(id);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.95;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x93b8d8);
+scene.fog = new THREE.Fog(0x93b8d8, 700, 2600);
+
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.5, 8000);
+camera.position.set(420, 320, 420);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.maxPolarAngle = Math.PI * 0.495;
+controls.target.set(0, 0, 0);
+
+const hemi = new THREE.HemisphereLight(0xc4dcf2, 0x7a7a66, 1.4);
+scene.add(hemi);
+
+const sun = new THREE.DirectionalLight(0xfff2e0, 2.35);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.bias = -0.0006;
+scene.add(sun, sun.target);
+
+const SUN_ANGLES = [
+  { name: 'Midday', elev: 58, azim: 200 },
+  { name: 'Afternoon', elev: 32, azim: 250 },
+  { name: 'Golden hour', elev: 13, azim: 285 },
+];
+let sunIndex = 0;
+const sunOffset = new THREE.Vector3();
+
+function placeSun(radius) {
+  const { elev, azim } = SUN_ANGLES[sunIndex];
+  const e = THREE.MathUtils.degToRad(elev);
+  const a = THREE.MathUtils.degToRad(azim);
+  const d = Math.max(radius, 200) * 1.6;
+  sunOffset.set(d * Math.cos(e) * Math.sin(a), d * Math.sin(e), d * Math.cos(e) * Math.cos(a));
+  // Keep the shadow map dense: cover a window around the camera target rather
+  // than the whole map, or a half-mile map gets ~1m per shadow texel.
+  const s = Math.min(Math.max(radius, 200), 320);
+  Object.assign(sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s, near: 1, far: d * 3 });
+  sun.shadow.camera.updateProjectionMatrix();
+  $('sun').textContent = SUN_ANGLES[sunIndex].name;
+}
+
+/* ------------------------------ load assets ------------------------------ */
+
+let manifest = null;
+let mapRoot = null;
+let mapRadius = 850;
+
+const params = new URLSearchParams(location.search);
+const glbUrl = params.get('glb') ?? 'map.glb';
+const jsonUrl = params.get('json') ?? 'map.json';
+
+fetch(jsonUrl)
+  .then((r) => (r.ok ? r.json() : null))
+  .then((m) => { manifest = m; applyManifest(); })
+  .catch(() => {});
+
+new GLTFLoader().load(
+  glbUrl,
+  (gltf) => {
+    mapRoot = gltf.scene;
+    mapRoot.traverse((o) => {
+      if (!o.isMesh) return;
+      o.castShadow = true;
+      o.receiveShadow = true;
+      const name = o.name || o.parent?.name || '';
+      // Ground-level planes only receive shadows; casting from them causes acne.
+      if (/^(ground|imagery|water|grass|forest|road|path|parking|pavement|pitch|farmland|sand|urban|industrial|railway)/.test(name)) {
+        o.castShadow = false;
+      }
+      if (/^water/.test(name)) {
+        o.material.metalness = 0.1;
+        o.material.roughness = 0.12;
+      }
+    });
+    scene.add(mapRoot);
+
+    const box = new THREE.Box3().setFromObject(mapRoot);
+    const size = box.getSize(new THREE.Vector3());
+    mapRadius = Math.max(size.x, size.z) / 2 || 850;
+    frameAll(box);
+    placeSun(mapRadius);
+    scene.fog.near = mapRadius * 1.1;
+    scene.fog.far = mapRadius * 4;
+    $('splash').classList.add('gone');
+    refreshStats();
+  },
+  (evt) => {
+    if (evt.total) $('splash').firstElementChild.textContent =
+      `Loading map… ${Math.round((evt.loaded / evt.total) * 100)}%`;
+  },
+  (err) => {
+    $('splash').innerHTML =
+      `<div class="err"><p><b>Could not load ${glbUrl}</b></p>` +
+      `<p style="margin-top:8px">${String(err.message ?? err)}</p>` +
+      `<p style="margin-top:12px">Serve the folder over HTTP — <code>npx map3d serve .</code> — ` +
+      `browsers block <code>file://</code> fetches.</p></div>`;
+  },
+);
+
+function frameAll(box) {
+  const size = box.getSize(new THREE.Vector3());
+  const centre = box.getCenter(new THREE.Vector3());
+  const dist = Math.max(size.x, size.z) * 0.75;
+  camera.position.set(centre.x + dist * 0.6, dist * 0.55, centre.z + dist * 0.6);
+  controls.target.set(centre.x, 0, centre.z);
+  camera.far = dist * 12;
+  camera.updateProjectionMatrix();
+}
+
+function applyManifest() {
+  if (!manifest) return;
+  $('title').textContent = manifest.address?.resolved ?? 'map3d';
+  document.title = `${manifest.address?.query ?? 'map3d'} — map3d viewer`;
+  refreshStats();
+}
+
+function refreshStats() {
+  const rows = [];
+  const s = manifest?.stats;
+  if (s) {
+    rows.push(['Buildings', s.buildings?.toLocaleString() ?? '—']);
+    rows.push(['Ways', s.roads?.toLocaleString() ?? '—']);
+    rows.push(['Areas', s.areas?.toLocaleString() ?? '—']);
+    if (s.trees) rows.push(['Trees', s.trees.toLocaleString()]);
+    rows.push(['Triangles', s.triangles?.toLocaleString() ?? '—']);
+  }
+  if (manifest?.radiusMeters) {
+    rows.push(['Radius', `${(manifest.radiusMeters / 1609.344).toFixed(2)} mi`]);
+  }
+  if (manifest?.terrain?.enabled) {
+    rows.push(['Relief', `${(manifest.terrain.maxMeters - manifest.terrain.minMeters).toFixed(0)} m`]);
+  }
+  $('stats').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+}
+
+/* -------------------------------- picking -------------------------------- */
+
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let downAt = null;
+
+renderer.domElement.addEventListener('pointerdown', (e) => { downAt = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', (e) => {
+  if (!downAt || !mapRoot || !manifest) return;
+  if (Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5) return; // a drag
+
+  pointer.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  raycaster.setFromCamera(pointer, camera);
+  const hit = raycaster.intersectObject(mapRoot, true)[0];
+  if (!hit) return;
+
+  const p = hit.point;
+  const nearest = nearestBuilding(p.x, p.z);
+  const box = $('pick');
+  if (nearest && nearest.d < 40) {
+    const b = nearest.b;
+    box.classList.add('on');
+    box.innerHTML =
+      `<b>${escapeHtml(b.name ?? b.address ?? b.type)}</b><br>` +
+      `${b.type}${b.levels ? ` · ${b.levels} levels` : ''} · ` +
+      `${b.heightMeters} m${b.heightEstimated ? ' (estimated)' : ''}<br>` +
+      `${b.footprintM2} m² footprint · roof: ${b.roof?.shape ?? 'flat'}<br>` +
+      `<span style="color:#64748b">x ${p.x.toFixed(1)}, z ${p.z.toFixed(1)}</span>`;
+  } else {
+    box.classList.add('on');
+    box.innerHTML = `<span style="color:#94a3b8">Ground at x ${p.x.toFixed(1)}, ` +
+      `y ${p.y.toFixed(1)}, z ${p.z.toFixed(1)}</span>`;
+  }
+});
+
+function nearestBuilding(x, z) {
+  let best = null;
+  for (const b of manifest.buildings ?? []) {
+    const d = Math.hypot(b.centre.x - x, b.centre.z - z);
+    if (!best || d < best.d) best = { d, b };
+  }
+  return best;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+/* --------------------------------- walk ---------------------------------- */
+
+const keys = new Set();
+let walking = false;
+const EYE = 1.7;
+
+addEventListener('keydown', (e) => {
+  keys.add(e.code);
+  if (e.code === 'Space' && walking) e.preventDefault();
+});
+addEventListener('keyup', (e) => keys.delete(e.code));
+
+$('mode').onclick = () => {
+  walking = !walking;
+  $('mode').setAttribute('aria-pressed', String(walking));
+  $('mode').textContent = walking ? 'Orbit' : 'Walk';
+  $('hint').textContent = walking
+    ? 'WASD to move · drag to look · Shift to sprint'
+    : 'Drag to orbit · scroll to zoom · click a building for details';
+  if (walking) {
+    const y = groundHeightAt(controls.target.x, controls.target.z) + EYE;
+    camera.position.set(controls.target.x, y, controls.target.z + 0.01);
+    controls.target.set(controls.target.x, y, controls.target.z - 1);
+    controls.enableZoom = false;
+    controls.enablePan = false;
+    controls.minDistance = 0.5;
+    controls.maxDistance = 1.5;
+  } else {
+    controls.enableZoom = true;
+    controls.enablePan = true;
+    controls.minDistance = 1;
+    controls.maxDistance = Infinity;
+    if (mapRoot) frameAll(new THREE.Box3().setFromObject(mapRoot));
+  }
+};
+
+const down = new THREE.Vector3(0, -1, 0);
+const probe = new THREE.Raycaster();
+probe.far = 400;
+
+function groundHeightAt(x, z) {
+  if (!mapRoot) return 0;
+  probe.set(new THREE.Vector3(x, 200, z), down);
+  const hits = probe.intersectObject(mapRoot, true);
+  return hits.length ? hits[hits.length - 1].point.y : 0;
+}
+
+$('wire').onclick = () => {
+  const on = $('wire').getAttribute('aria-pressed') !== 'true';
+  $('wire').setAttribute('aria-pressed', String(on));
+  mapRoot?.traverse((o) => { if (o.isMesh) o.material.wireframe = on; });
+};
+
+$('sun').onclick = () => {
+  sunIndex = (sunIndex + 1) % SUN_ANGLES.length;
+  placeSun(mapRadius);
+};
+
+/* --------------------------------- loop ---------------------------------- */
+
+const clock = new THREE.Clock();
+const forward = new THREE.Vector3();
+const right = new THREE.Vector3();
+
+function tick() {
+  requestAnimationFrame(tick);
+  const dt = Math.min(clock.getDelta(), 0.1);
+
+  if (walking) {
+    const speed = (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 9 : 3.2) * dt;
+    camera.getWorldDirection(forward);
+    forward.y = 0;
+    forward.normalize();
+    right.crossVectors(forward, camera.up).normalize();
+
+    const move = new THREE.Vector3();
+    if (keys.has('KeyW') || keys.has('ArrowUp')) move.add(forward);
+    if (keys.has('KeyS') || keys.has('ArrowDown')) move.sub(forward);
+    if (keys.has('KeyD') || keys.has('ArrowRight')) move.add(right);
+    if (keys.has('KeyA') || keys.has('ArrowLeft')) move.sub(right);
+
+    if (move.lengthSq() > 0) {
+      move.normalize().multiplyScalar(speed);
+      camera.position.add(move);
+      controls.target.add(move);
+    }
+    const y = groundHeightAt(camera.position.x, camera.position.z) + EYE;
+    const dy = y - camera.position.y;
+    camera.position.y += dy;
+    controls.target.y += dy;
+  }
+
+  // The shadow frustum follows the camera, so it stays tight at any zoom.
+  sun.target.position.set(controls.target.x, 0, controls.target.z);
+  sun.position.set(
+    controls.target.x + sunOffset.x,
+    sunOffset.y,
+    controls.target.z + sunOffset.z,
+  );
+  sun.target.updateMatrixWorld();
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+// Escape hatch for scripting the viewer (screenshots, embedding, debugging).
+window.map3d = {
+  THREE, scene, camera, controls, renderer,
+  get manifest() { return manifest; },
+  get map() { return mapRoot; },
+  look({ x = 0, z = 0, distance = 200, heading = 45, pitch = 30 } = {}) {
+    const h = THREE.MathUtils.degToRad(heading);
+    const p = THREE.MathUtils.degToRad(pitch);
+    const y = groundHeightAt(x, z);
+    controls.target.set(x, y, z);
+    camera.position.set(
+      x + distance * Math.cos(p) * Math.sin(h),
+      y + distance * Math.sin(p),
+      z + distance * Math.cos(p) * Math.cos(h),
+    );
+    controls.update();
+  },
+};
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+placeSun(mapRadius);
+tick();
+</script>
+</body>
+</html>
