@@ -896,7 +896,7 @@ test('no pixel can fall within tolerance of two NLCD classes', () => {
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, join, relative } from 'node:path';
+import { dirname, join, relative, sep } from 'node:path';
 import { hashString, cacheKey as platformCacheKey, concatBytes, CACHE_VERSION } from '../src/platform.js';
 
 const SRC = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
@@ -918,7 +918,7 @@ test('shared modules never import node: built-ins', () => {
   const offenders = [];
 
   for (const file of jsFilesUnder(SRC)) {
-    const rel = relative(SRC, file);
+    const rel = relative(SRC, file).split(sep).join('/');
     const [first] = rel.split('/');
     if (hostOnly.has(first) || hostOnly.has(rel)) continue;
 

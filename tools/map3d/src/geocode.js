@@ -25,7 +25,8 @@ export async function geocode(address, opts = {}) {
     return { ...literal, label: `${literal.lat}, ${literal.lon}`, provider: 'literal' };
   }
 
-  const key = cacheKey('geocode', provider, address);
+  // v2: results now carry the parsed street address (used to find the home building).
+  const key = cacheKey('geocode2', provider, address);
   const cached = await readCache(key);
   if (cached) return { ...cached, cached: true };
 
@@ -65,11 +66,20 @@ async function geocodeNominatim(address) {
     );
   }
   const hit = json[0];
+  const a = hit.address ?? {};
   return {
     lat: parseFloat(hit.lat),
     lon: parseFloat(hit.lon),
     label: hit.display_name,
     provider: 'nominatim',
+    // What the geocoder thinks the address is, so the scene can find the
+    // building that carries it rather than trusting the pin.
+    address: {
+      housenumber: a.house_number,
+      street: a.road,
+      city: a.town ?? a.city ?? a.village ?? a.hamlet,
+      postcode: a.postcode,
+    },
   };
 }
 

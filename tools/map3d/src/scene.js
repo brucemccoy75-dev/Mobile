@@ -17,6 +17,7 @@ import {
   wallMaterial, roofMaterial,
 } from './tags.js';
 import { OccupancyMask, scatter } from './scatter.js';
+import { pickHome, doorstep } from './home.js';
 
 /**
  * @param {object} args
@@ -436,6 +437,50 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
     manifest.stats.facadeTriangles = spent;
   }
 
+  /* -------------------------------- spawn ------------------------------- */
+
+  // The geocoder's pin is an estimate along the road. Start the player on the
+  // doorstep of the house at the address instead (or the nearest house), and
+  // failing that on the nearest road rather than in whatever the pin fell on.
+  if (opts.home !== false) {
+    const home = pickHome(manifest.buildings, opts.homeTarget ?? {});
+    if (home) {
+      const b = home.building;
+      const step = doorstep(b.outline, nearestRoadPoint(b.outline, roadLines));
+      manifest.home = {
+        buildingId: b.id,
+        address: b.address,
+        reason: home.reason,
+        centre: b.centre,
+      };
+      manifest.spawn = {
+        x: round(step.x, 2),
+        y: round(surface(step.x, step.z), 3),
+        z: round(step.z, 2),
+        yaw: round(step.yaw, 1),
+        facing: step.facing.map((v) => round(v, 3)),
+        at: 'doorstep',
+      };
+    } else {
+      let best = null;
+      let bestD = 40;
+      for (const { line } of roadLines) {
+        for (const [x, z] of line) {
+          const d = Math.hypot(x, z);
+          if (d < bestD) { bestD = d; best = [x, z]; }
+        }
+      }
+      if (best) {
+        manifest.spawn = {
+          x: round(best[0], 2), y: round(surface(best[0], best[1]), 3), z: round(best[1], 2),
+          yaw: 0, facing: [0, -1], at: 'road',
+        };
+      } else {
+        manifest.spawn.at = 'address';
+      }
+    }
+  }
+
   /* --------------------------- walls and fences -------------------------- */
 
   if (opts.barriers) {
@@ -479,8 +524,8 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
         const kind = /conifer|needle|pine|spruce|fir/i.test(
           `${f.tags['leaf_type'] ?? ''} ${f.tags.species ?? ''} ${f.tags.genus ?? ''}`,
         ) ? 'conifer' : 'broadleaf';
-        tree(builder, x, z, surface(x, z), height, crown, seed, kind);
-        planted.push({ id: f.id, x, z, height, mapped: true });
+        if (opts.treeMeshes !== false) tree(builder, x, z, surface(x, z), height, crown, seed, kind);
+        planted.push({ id: f.id, x, z, height, mapped: true, kind, crown });
       }
     }
     const mappedCount = planted.length;
@@ -524,22 +569,33 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
       const height = scrubby ? 2 + spot.r * 2.5 : 11 + spot.r * 11;
       const crown = height * (conifer ? 0.2 : 0.34) * (0.8 + spot.r * 0.5);
       const y = surface(spot.x, spot.z);
-      tree(builder, spot.x, spot.z, y, height, crown, Math.round(spot.r * 1e6),
-        conifer ? 'conifer' : 'broadleaf');
-      planted.push({ x: spot.x, z: spot.z, height, scattered: true });
+      // With --trees-data-only the engine instances its own tree prefabs from
+      // the manifest, which is far cheaper than 20 triangles a tree in a
+      // static mesh; the list below is all it needs.
+      if (opts.treeMeshes !== false) {
+        tree(builder, spot.x, spot.z, y, height, crown, Math.round(spot.r * 1e6),
+          conifer ? 'conifer' : 'broadleaf');
+      }
+      planted.push({
+        x: spot.x, z: spot.z, height, scattered: true, crown,
+        kind: scrubby ? 'scrub' : conifer ? 'conifer' : 'broadleaf',
+      });
     }
 
     for (const t of planted) {
       manifest.props.push({
         id: t.id,
         kind: 'tree',
+        species: t.kind,
         x: round(t.x, 2),
         z: round(t.z, 2),
         y: round(surface(t.x, t.z), 2),
         heightMeters: round(t.height, 1),
+        crownMeters: t.crown != null ? round(t.crown, 1) : undefined,
         source: t.mapped ? 'osm' : 'scattered',
       });
     }
+    manifest.stats.treeMeshes = opts.treeMeshes !== false;
 
     manifest.stats.trees = planted.length;
     manifest.stats.treesMapped = mappedCount;

@@ -42,9 +42,15 @@ Data sources
   --geocoder <name>      nominatim (default) or google
   --google-key <key>     Google Geocoding key (or set GOOGLE_MAPS_API_KEY)
   --overpass <url>       Override the Overpass endpoint (repeatable)
-  --imagery <template>   XYZ tile URL, e.g. "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-  --imagery-zoom <n>     Force a zoom level
+  --imagery <template>   XYZ tile URL, e.g. "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                         or "naip": USDA aerial photos via USGS (US only, public domain)
+  --imagery-zoom <n>     Force a zoom level (XYZ templates)
   --imagery-max-tiles <n>  Safety cap (default ${DEFAULTS.maxImageryTiles})
+  --imagery-cells <n>    Grid across the map for export imagery such as naip (default 4)
+  --imagery-size <px>    Pixels per cell for export imagery (default 1024)
+  --no-footprints        Do not add FEMA/ORNL USA Structures buildings where OSM has none (US only)
+  --no-home              Spawn at the geocoded point instead of the doorstep of the house
+  --trees-data-only      List trees in map.json but leave them out of the mesh (engine instancing)
 
 Content toggles
   --no-buildings  --no-roads  --no-areas  --no-trees  --no-barriers  --no-roofs
@@ -136,8 +142,13 @@ export async function main(argv) {
     imageryOptions: {
       zoom: num(args.flags['imagery-zoom']),
       maxTiles: num(args.flags['imagery-max-tiles']),
+      across: num(args.flags['imagery-cells']),
+      size: num(args.flags['imagery-size']),
     },
+    footprints: args.flags['no-footprints'] !== true,
     scene: {
+      home: args.flags['no-home'] !== true,
+      treeMeshes: args.flags['trees-data-only'] !== true,
       shape: args.flags.shape === 'disc' ? 'disc' : 'square',
       buildings: args.flags['no-buildings'] !== true,
       roads: args.flags['no-roads'] !== true,
@@ -164,7 +175,15 @@ export async function main(argv) {
       `  ${place.label}`,
       `  centre ${place.lat.toFixed(6)}, ${place.lon.toFixed(6)}  radius ${fmtDistance(radius)}`,
       `  ${s.buildings} buildings, ${s.roads} ways, ${s.areas} areas`,
-      `  ${s.trees ?? 0} trees (${s.treesMapped ?? 0} mapped in OSM, ${s.treesScattered ?? 0} scattered)`,
+      `  ${s.trees ?? 0} trees (${s.treesMapped ?? 0} mapped in OSM, ${s.treesScattered ?? 0} scattered` +
+        `${s.treeMeshes === false ? ', data only' : ''})`,
+      ...(s.footprints
+        ? [`  ${s.footprints.added} buildings added from USA Structures (${s.footprints.dropped} already in OSM)`]
+        : []),
+      ...(manifest.home
+        ? [`  home: ${manifest.home.address ?? manifest.home.buildingId} (${manifest.home.reason}), ` +
+           `spawn ${manifest.spawn.x}, ${manifest.spawn.z} on the ${manifest.spawn.at}`]
+        : []),
       `  ${s.triangles.toLocaleString()} triangles in ${s.meshes} meshes`,
       `  -> ${outDir}`,
       ...written.map(([name, size]) => `     ${name}${size ? `  ${fmtBytes(size)}` : ''}`),
@@ -188,8 +207,8 @@ export function parseArgs(argv) {
     'radius', 'out', 'name', 'format', 'shape', 'geocoder', 'google-key',
     'overpass', 'worlds', 'elevation', 'elevation-url', 'elevation-zoom', 'terrain-cells',
     'ground-cells', 'landcover-url', 'landcover-layer', 'tree-spacing',
-    'max-trees', 'imagery', 'imagery-zoom', 'imagery-max-tiles', 'level-height',
-    'facade-budget', 'cache', 'port',
+    'max-trees', 'imagery', 'imagery-zoom', 'imagery-max-tiles', 'imagery-cells',
+    'imagery-size', 'level-height', 'facade-budget', 'cache', 'port',
   ]);
 
   for (let i = 0; i < argv.length; i++) {

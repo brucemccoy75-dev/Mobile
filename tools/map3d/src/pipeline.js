@@ -10,7 +10,8 @@ import { Projector } from './project.js';
 import { buildQuery, runQuery, normalizeElements } from './overpass.js';
 import { fetchTerrain, flatTerrain } from './elevation.js';
 import { fetchLandcover } from './landcover.js';
-import { fetchImagery } from './imagery.js';
+import { fetchImagery, imageryCredit } from './imagery.js';
+import { fetchFootprints, mergeFootprints, USA_STRUCTURES_CREDIT } from './footprints.js';
 import { buildScene } from './scene.js';
 
 /**
@@ -50,8 +51,26 @@ export async function buildMap(o = {}) {
     endpoints: o.overpass,
     log,
   });
-  const features = normalizeElements(elements);
+  let features = normalizeElements(elements);
   log(`  ${features.length} usable features from ${new URL(endpoint).host}`);
+
+  /* 2b. The buildings OSM does not know about (US only). */
+  const credits = [];
+  let footprintStats;
+  if (o.footprints !== false && scene.buildings !== false) {
+    try {
+      const footprints = await fetchFootprints(projector, half, { ...o.footprintOptions, log });
+      const merged = mergeFootprints(features, footprints, projector);
+      features = merged.features;
+      footprintStats = { fetched: footprints.length, added: merged.added, dropped: merged.dropped };
+      if (footprints.length) {
+        credits.push(USA_STRUCTURES_CREDIT);
+        log(`  ${footprints.length} structures from USA Structures, ${merged.added} new to OSM`);
+      }
+    } catch (err) {
+      log(`  footprints unavailable (${err.message}); using OSM buildings only`);
+    }
+  }
 
   /* 3. How high is the ground? */
   let terrain = flatTerrain();
@@ -89,7 +108,13 @@ export async function buildMap(o = {}) {
         ...o.imageryOptions,
             log,
       });
-      log(`  ${imagery.tiles.length} imagery tiles at zoom ${imagery.zoom}`);
+      log(
+        imagery.zoom != null
+          ? `  ${imagery.tiles.length} imagery tiles at zoom ${imagery.zoom}`
+          : `  ${imagery.tiles.length} imagery tiles at ${imagery.metersPerPixel.toFixed(2)} m/px`,
+      );
+      const credit = imageryCredit(o.imagery);
+      if (credit) credits.push(credit);
     } catch (err) {
       log(`  imagery unavailable (${err.message}); using flat ground colour`);
     }
@@ -104,10 +129,21 @@ export async function buildMap(o = {}) {
     radius,
     imagery,
     landcover,
-    options: scene,
+    options: { homeTarget: place.address, ...scene },
   });
 
   manifest.address = { query: o.address, resolved: place.label, provider: place.provider };
+  if (footprintStats) manifest.stats.footprints = footprintStats;
+  if (credits.length) manifest.credits = credits;
+  if (manifest.home) {
+    log(
+      `  home: ${manifest.home.address ?? manifest.home.buildingId} ` +
+        `(${manifest.home.reason}); spawn on the doorstep at ` +
+        `${manifest.spawn.x}, ${manifest.spawn.z}`,
+    );
+  } else {
+    log('  home: no house found near the pin; spawning at the address point');
+  }
   manifest.generatedAt = new Date().toISOString();
   manifest.attribution =
     'Map data (c) OpenStreetMap contributors, ODbL 1.0 (https://www.openstreetmap.org/copyright)';
