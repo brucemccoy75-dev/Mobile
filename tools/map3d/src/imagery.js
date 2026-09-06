@@ -91,6 +91,7 @@ async function fetchImageryExport(projector, half, template, opts = {}) {
   const cells = exportTileGrid(projector, half, across);
   const tiles = [];
   let fetched = 0;
+  let blank = 0;
   for (const cell of cells) {
     const { west, south, east, north } = cell.bbox;
     const url = template
@@ -108,12 +109,25 @@ async function fetchImageryExport(projector, half, template, opts = {}) {
     }
     fetched++;
     opts.log?.(`Imagery: tile ${fetched}/${cells.length}`);
+    // Ask NAIP for Paris and it answers 200 with a blank JPEG rather than an
+    // error, so a map outside the coverage would get black ground instead of
+    // falling back to a painted one. A featureless tile compresses to almost
+    // nothing - 0.016 bytes a pixel against 0.25 for real imagery - so the gap
+    // is wide enough to just measure.
+    if (data.length < size * size * 0.05) {
+      blank++;
+      continue;
+    }
     tiles.push({
       x0: cell.x0, z0: cell.z0, x1: cell.x1, z1: cell.z1,
       data,
       mime: sniffMime(data, url),
     });
   }
+  if (!tiles.length) {
+    throw new Error(`no imagery coverage here (${blank} blank tiles from the image server)`);
+  }
+  if (blank) opts.log?.(`Imagery: ${blank} tiles outside coverage, skipped`);
   return { zoom: null, tiles, template, metersPerPixel: (half * 2) / across / size };
 }
 
