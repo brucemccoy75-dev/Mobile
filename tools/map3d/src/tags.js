@@ -316,7 +316,7 @@ export function classifyArea(tags) {
     return { material: 'grass', layer: 'park' };
   }
   if (t.leisure === 'pitch' || t.leisure === 'track' || t.leisure === 'golf_course') {
-    return { material: 'pitch', layer: 'park' };
+    return { material: pitchMaterial(t), layer: 'park', sport: pitchSport(t) };
   }
   if (t.amenity === 'parking' || t.amenity === 'parking_space') {
     return { material: 'parking', layer: 'parking' };
@@ -346,6 +346,62 @@ export function classifyArea(tags) {
  * OSM's own polygons win over any raster land cover, so an explicitly mapped
  * lawn stays a lawn even where the satellite record says forest.
  */
+/** First value of a ';'-separated sport tag, lowercased. '' when untagged. */
+export function pitchSport(tags) {
+  return String(tags.sport || '').split(';')[0].trim().toLowerCase();
+}
+
+const HARD_COURT = /^(basketball|tennis|netball|handball|volleyball|badminton|skateboard|padel|pickleball)$/;
+
+/**
+ * What a pitch is made of. OSM already says which sport it is; drawing every one
+ * of them as the same green rectangle is what makes a park read as a lawn with
+ * shapes cut out of it.
+ */
+function pitchMaterial(tags) {
+  const sport = pitchSport(tags);
+  const surface = String(tags.surface || '').toLowerCase();
+  if (tags.leisure === 'track' || sport === 'athletics' || sport === 'running') return 'pitch_track';
+  if (HARD_COURT.test(sport)) return 'pitch_hard';
+  if (surface === 'asphalt' || surface === 'concrete' || surface === 'paved') return 'pitch_hard';
+  if (sport === 'equestrian' || surface === 'dirt' || surface === 'ground') return 'infield';
+  return 'pitch';
+}
+
+/**
+ * Landmarks that deserve a shape of their own rather than a footprint extrusion:
+ * a water tower, a fountain, a big wheel. Returns null for anything the engine
+ * has no mesh for, so the catalogue can grow one prop at a time. `radius` and
+ * `height` are fallbacks for when OSM does not say.
+ */
+export function classifyProp(tags) {
+  const t = tags || {};
+  const a = String(t.attraction || '').toLowerCase();
+  if (a === 'big_wheel' || a === 'ferris_wheel') return { prop: 'big_wheel', radius: 18, height: 42 };
+  if (a === 'carousel' || a === 'merry_go_round') return { prop: 'carousel', radius: 8, height: 9 };
+  if (a === 'drop_tower') return { prop: 'drop_tower', radius: 3.5, height: 48 };
+  if (a === 'swing_carousel') return { prop: 'swing_carousel', radius: 9, height: 26 };
+  if (a === 'water_slide') return { prop: 'water_slide', radius: 5, height: 15 };
+  if (a === 'pirate_ship') return { prop: 'pirate_ship', radius: 8, height: 18 };
+  if (a) return { prop: 'ride_pavilion', radius: 9, height: 11 };
+
+  const m = String(t.man_made || '').toLowerCase();
+  if (m === 'water_tower') return { prop: 'water_tower', radius: 6, height: 28 };
+  if (m === 'chimney') return { prop: 'chimney', radius: 2.5, height: 38 };
+  if (m === 'windmill') return { prop: 'windmill', radius: 4, height: 22 };
+  if (m === 'lighthouse') return { prop: 'lighthouse', radius: 4, height: 26 };
+  if (m === 'mast' || m === 'tower') return { prop: 'mast', radius: 2, height: 40 };
+  if (m === 'flagpole') return { prop: 'flagpole', radius: 0.25, height: 12 };
+  if (m === 'obelisk') return { prop: 'monument', radius: 1.8, height: 12 };
+
+  if (t.amenity === 'fountain') return { prop: 'fountain', radius: 4, height: 3.5 };
+  if (t.tourism === 'artwork' || t.historic === 'monument' || t.historic === 'memorial') {
+    return { prop: 'monument', radius: 1.6, height: 5 };
+  }
+  if (t.leisure === 'playground') return { prop: 'playground', radius: 6, height: 4 };
+  return null;
+}
+
 export const AREA_CANOPY = {
   forest: 1,
   scrub: 0.3,
@@ -382,6 +438,11 @@ export const MATERIALS = {
   forest:             { color: [0.22, 0.38, 0.20], roughness: 1.0, metallic: 0 },
   scrub:              { color: [0.42, 0.46, 0.30], roughness: 1.0, metallic: 0 },
   pitch:              { color: [0.40, 0.56, 0.32], roughness: 1.0, metallic: 0 },
+  pitch_hard:         { color: [0.26, 0.34, 0.37], roughness: 0.9, metallic: 0 },
+  pitch_track:        { color: [0.52, 0.25, 0.19], roughness: 0.95, metallic: 0 },
+  infield:            { color: [0.55, 0.38, 0.26], roughness: 1.0, metallic: 0 },
+  ride_steel:         { color: [0.72, 0.20, 0.18], roughness: 0.45, metallic: 0.5 },
+  roof_plant:         { color: [0.55, 0.56, 0.57], roughness: 0.6, metallic: 0.35 },
   farmland:           { color: [0.55, 0.51, 0.34], roughness: 1.0, metallic: 0 },
   sand:               { color: [0.78, 0.71, 0.52], roughness: 1.0, metallic: 0 },
   water:              { color: [0.16, 0.34, 0.52], roughness: 0.15, metallic: 0.0 },

@@ -132,9 +132,18 @@ procedurally rather than raycasting a render mesh:
     "centerlines": [[[x, z], …]]    // one array per piece after clipping
   }],
 
-  "areas": [{ "id": …, "kind": "water", "name": …, "areaM2": …, "outline": […] }],
+  "areas": [{ "id": …, "kind": "water", "name": …, "areaM2": …, "outline": […],
+              "sport": "baseball" }],          // sport only on leisure=pitch
   "props": [{ "kind": "tree", "x": …, "y": …, "z": …, "heightMeters": 7.3,
-              "source": "osm" }],   // or "scattered"
+              "source": "osm" },               // or "scattered"
+            // Landmarks: things worth a shape of their own rather than a footprint
+            // extrusion. `prop` names the catalogue entry (classifyProp in tags.js);
+            // radius/height come from OSM where it says, and are fallbacks otherwise.
+            { "kind": "landmark", "prop": "water_tower", "name": …, "x": …, "y": …,
+              "z": …, "radiusMeters": 6, "heightMeters": 28, "rotationDeg": 0 },
+            // Roller coasters. The ground plan is real; OSM carries no height at
+            // all, so the engine invents the profile it hangs on this.
+            { "kind": "coaster", "name": …, "points": [[x, z, y], …] }],
   "stats": { "buildings": 15, "roads": 58, "triangles": 242298, "trees": 8517, … },
   "attribution": "Map data (c) OpenStreetMap contributors, ODbL 1.0 …"
 }

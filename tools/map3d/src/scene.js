@@ -13,7 +13,7 @@ import {
 } from './mesh.js';
 import {
   MATERIALS, AREA_CANOPY, buildingHeights, classifyBuilding, classifyArea,
-  classifyHighway, classifyRailway, classifyWaterway, parseLength, parseIntTag,
+  classifyHighway, classifyRailway, classifyWaterway, classifyProp, parseLength, parseIntTag,
   wallMaterial, roofMaterial,
 } from './tags.js';
 import { OccupancyMask, scatter } from './scatter.js';
@@ -36,6 +36,7 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
     areas: true,
     trees: true,
     barriers: true,
+    landmarks: true,
     roofs: true,
     terrainCells: terrain.enabled ? DEFAULTS.terrainGrid : DEFAULTS.terrainFlatGrid,
     treeSpacing: DEFAULTS.treeSpacing,
@@ -134,6 +135,76 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
   const roadLines = [];
   const buildingRings = [];
 
+  /* ------------------------------ landmarks ------------------------------ */
+
+  // Fountains, water towers, big wheels, coaster track. These go out as manifest
+  // props rather than triangles: the engine instances one mesh per kind, the way
+  // it already does for trees, so a new landmark costs a tag rule in tags.js and
+  // a mesh in the engine and nothing here.
+  //
+  // Anything also tagged as a building is left to the building pass. A footprint
+  // extrusion of the real outline beats a stock shape, and emitting both would
+  // put two solids in the same place.
+  let landmarkCount = 0;
+  let coasterCount = 0;
+  if (opts.landmarks) {
+    for (const f of local) {
+      if (f.tags.building || f.tags['building:part']) continue;
+      const cls = classifyProp(f.tags);
+      if (!cls) continue;
+
+      let x;
+      let z;
+      let radius = cls.radius;
+      if (f.kind === 'point') {
+        [x, z] = f.point;
+      } else if (f.kind === 'area' && f.rings?.[0]?.length >= 3) {
+        const ring = f.rings[0];
+        [x, z] = centroidXZ(ring);
+        // The footprint is the truth about how big the thing is; the catalogue's
+        // radius is only there for a bare node with no outline at all.
+        let far = 0;
+        for (const [px, pz] of ring) far = Math.max(far, Math.hypot(px - x, pz - z));
+        if (far > 1) radius = far;
+      } else continue;
+      if (!insideBounds(x, z, boundary)) continue;
+
+      manifest.props.push({
+        id: f.id,
+        kind: 'landmark',
+        prop: cls.prop,
+        name: f.tags.name,
+        x: round(x, 2),
+        z: round(z, 2),
+        y: round(surface(x, z), 2),
+        radiusMeters: round(radius, 2),
+        heightMeters: round(parseLength(f.tags.height) ?? cls.height, 1),
+        rotationDeg: 0,
+        source: 'osm',
+      });
+      landmarkCount++;
+    }
+
+    // A coaster is mapped as a flat polyline: OSM has the ground plan and no
+    // height at all. The plan is the half that makes it recognisable, so hand it
+    // over and let the engine invent a profile to hang on it.
+    for (const f of local) {
+      if (f.kind !== 'line' || f.tags.roller_coaster !== 'track') continue;
+      for (const piece of clipLine(f.line, boundary)) {
+        if (piece.length < 2) continue;
+        manifest.props.push({
+          id: f.id,
+          kind: 'coaster',
+          name: f.tags.name,
+          points: piece.map(([px, pz]) => [round(px, 2), round(pz, 2), round(surface(px, pz), 2)]),
+        });
+        coasterCount++;
+      }
+    }
+    manifest.stats.landmarks = landmarkCount;
+    manifest.stats.coasters = coasterCount;
+  }
+
   /* ------------------------------- areas -------------------------------- */
 
   if (opts.areas) {
@@ -167,9 +238,13 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
         smooth: terrain.enabled,
         maxEdge: terrain.enabled ? areaDetail : 0,
       });
+      if (cls.sport === 'baseball' || cls.sport === 'softball') {
+        addBallDiamond(builder, norm[0], surface, y, manifest, f.id);
+      }
       manifest.areas.push({
         id: f.id,
         kind: cls.material,
+        sport: cls.sport || undefined,
         name: f.tags.name,
         areaM2: round(area, 1),
         outline: roundRing(norm[0]),
@@ -383,6 +458,13 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
       buildRoof(roofGroup, norm, eaveY, opts.roofs ? h.roofHeight : 0, roofShape, {
         uvScale: 6,
       });
+
+      // A supermarket, an office block or a hangar is a flat-topped slab, and a
+      // slab read from the street or the air is a grey box. A parapet lip and a
+      // little plant on the roof is the cheapest thing that makes it a building.
+      if (opts.roofDetail !== false && roofShape === 'flat' && !isPart && footprintArea > 300) {
+        addRoofDetail(builder, norm, eaveY, seed, roofGroup);
+      }
 
       if (opts.facades && !isPart) {
         facades.push({
@@ -619,6 +701,108 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
 }
 
 /* -------------------------------- helpers --------------------------------- */
+
+/**
+ * The lip and the machinery on top of a flat roof. The parapet is the outline
+ * extruded a little past the roof plane, so the roof surface sits slightly sunk
+ * inside a rim, which is how a real one looks; the units are small boxes dropped
+ * inside the footprint. Deterministic in the building's seed.
+ */
+function addRoofDetail(builder, rings, eaveY, seed, roofGroup) {
+  let state = (seed >>> 0) || 1;
+  const rand = () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+
+  const parapet = 0.7 + rand() * 0.6;
+  extrudeWalls(roofGroup, rings, () => eaveY - 0.05, () => eaveY + parapet, { uvScale: 3 });
+
+  const ring = rings[0];
+  const box = bbox(ring);
+  const width = box.maxX - box.minX;
+  const depth = box.maxZ - box.minZ;
+  if (width < 8 || depth < 8) return;
+
+  const g = builder.group('roof_plant');
+  const wanted = Math.min(5, Math.max(1, Math.floor((width * depth) / 900)));
+  let placed = 0;
+  for (let attempt = 0; attempt < 40 && placed < wanted; attempt++) {
+    const x = box.minX + rand() * width;
+    const z = box.minZ + rand() * depth;
+    // Keep clear of the parapet, or a unit pokes through the wall.
+    if (!pointInRing(x, z, ring)) continue;
+    const half = 1.3 + rand() * 1.1;
+    if (!pointInRing(x + half + 1.5, z, ring) || !pointInRing(x - half - 1.5, z, ring)) continue;
+    if (!pointInRing(x, z + half + 1.5, ring) || !pointInRing(x, z - half - 1.5, ring)) continue;
+    const tall = 1.1 + rand() * 1.2;
+    const unit = [
+      [x - half, z - half], [x + half, z - half], [x + half, z + half], [x - half, z + half],
+    ];
+    const units = normalizeRings([unit]);
+    if (!units.length) continue;
+    extrudeWalls(g, units, () => eaveY, () => eaveY + tall, { uvScale: 2 });
+    fillPolygon(g, units, () => eaveY + tall, { uvScale: 2 });
+    placed++;
+  }
+}
+
+/**
+ * Dirt infield and a backstop for a ball field. OSM gives the outline and the
+ * sport but never says where home plate is; on the fan-shaped polygon these are
+ * usually mapped as, it is the sharpest corner, which is guess enough to make
+ * the shape read as a ball field from anywhere on the map.
+ */
+function addBallDiamond(builder, ring, surface, y, manifest, id) {
+  const n = ring.length;
+  if (n < 4) return;
+
+  let home = 0;
+  let sharpest = Infinity;
+  for (let i = 0; i < n; i++) {
+    const prev = ring[(i - 1 + n) % n];
+    const cur = ring[i];
+    const next = ring[(i + 1) % n];
+    const a1 = Math.atan2(prev[1] - cur[1], prev[0] - cur[0]);
+    const a2 = Math.atan2(next[1] - cur[1], next[0] - cur[0]);
+    let angle = Math.abs(a1 - a2);
+    if (angle > Math.PI) angle = 2 * Math.PI - angle;
+    if (angle < sharpest) {
+      sharpest = angle;
+      home = i;
+    }
+  }
+
+  const [hx, hz] = ring[home];
+  let far = 0;
+  for (const [px, pz] of ring) far = Math.max(far, Math.hypot(px - hx, pz - hz));
+  if (far < 20) return;                       // too small to be a ball field
+  const infield = Math.min(Math.max(far * 0.42, 12), 30);
+  const [cx, cz] = centroidXZ(ring);
+  const facing = Math.atan2(cz - hz, cx - hx);
+
+  // A 108 degree fan of dirt, which is what an infield looks like from above.
+  const half = Math.PI * 0.3;
+  const fan = [[hx, hz]];
+  for (let i = 0; i <= 18; i++) {
+    const t = facing - half + (2 * half * i) / 18;
+    fan.push([hx + Math.cos(t) * infield, hz + Math.sin(t) * infield]);
+  }
+  fillPolygon(builder.group('infield'), [fan], (x, z) => surface(x, z) + y + 0.012, { uvScale: 12 });
+
+  manifest.props.push({
+    id: `${id}-backstop`,
+    kind: 'landmark',
+    prop: 'backstop',
+    x: round(hx - Math.cos(facing) * 4, 2),
+    z: round(hz - Math.sin(facing) * 4, 2),
+    y: round(surface(hx, hz), 2),
+    radiusMeters: round(Math.min(infield * 0.5, 11), 2),
+    heightMeters: 5,
+    rotationDeg: round((facing * 180) / Math.PI, 1),
+    source: 'osm',
+  });
+}
 
 function projectFeature(f, projector) {
   const p = ([lat, lon]) => projector.toLocal(lat, lon);

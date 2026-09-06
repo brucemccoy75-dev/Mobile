@@ -22,9 +22,18 @@ export function buildQuery(lat, lon, radius, opts = {}) {
     `relation["landuse"]["type"="multipolygon"]${a};`,
     `way["leisure"]${a};`,
     `relation["leisure"]["type"="multipolygon"]${a};`,
-    `way["amenity"~"^(parking|grave_yard)$"]${a};`,
+    `way["amenity"~"^(parking|grave_yard|fountain)$"]${a};`,
     `relation["amenity"="parking"]["type"="multipolygon"]${a};`,
-    `way["man_made"~"^(bridge|pier|breakwater|storage_tank|silo)$"]${a};`,
+    `way["man_made"~"^(bridge|pier|breakwater|storage_tank|silo|water_tower|tower|chimney|windmill|mast|obelisk|lighthouse)$"]${a};`,
+    // Landmarks. These are what a theme park, a fairground or a works is made of,
+    // and without them the map is a field of grey boxes on green.
+    `node["man_made"~"^(water_tower|tower|chimney|windmill|mast|obelisk|lighthouse|flagpole)$"]${a};`,
+    `node["amenity"="fountain"]${a};`,
+    `way["attraction"]${a};`,
+    `node["attraction"]${a};`,
+    `way["roller_coaster"]${a};`,
+    `way["tourism"~"^(attraction|theme_park|artwork|viewpoint)$"]${a};`,
+    `node["tourism"~"^(attraction|artwork|viewpoint)$"]${a};`,
   ];
   if (opts.barriers !== false) {
     clauses.push(`way["barrier"~"^(wall|fence|hedge|retaining_wall|city_wall)$"]${a};`);
@@ -178,6 +187,11 @@ function looksLikeArea(tags) {
   if (tags.amenity === 'parking' || tags.amenity === 'grave_yard') return true;
   if (tags.waterway === 'riverbank' || tags.waterway === 'dock') return true;
   if (tags.man_made === 'storage_tank' || tags.man_made === 'silo' || tags.man_made === 'pier') return true;
+  if (tags.man_made === 'water_tower' || tags.man_made === 'tower' || tags.man_made === 'lighthouse') return true;
+  if (tags.amenity === 'fountain') return true;
+  // A ride mapped as a closed way is its footprint, not a loop of track.
+  if (tags.attraction && tags.roller_coaster !== 'track') return true;
+  if (tags.tourism === 'theme_park' || tags.tourism === 'attraction') return true;
   // highway/railway/barrier closed loops stay linear.
   return false;
 }
