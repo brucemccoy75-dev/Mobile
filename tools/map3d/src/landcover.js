@@ -99,6 +99,18 @@ export async function fetchLandcover(projector, half, opts = {}) {
     return null;
   }
 
+  // Blocks of ~12 m, majority over +-3 blocks: roughly a 90 m window.
+  const blockPx = Math.max(2, Math.round(pixels / 128));
+  const smoothMaterial = buildSmoothMaterial(img, lookup.index, blockPx, 3);
+  const pixelOf = (x, z) => {
+    const u = (x + half) / (half * 2);
+    const v = (half - z) / (half * 2);
+    return [
+      Math.min(img.width - 1, Math.max(0, Math.round(u * img.width - 0.5))),
+      Math.min(img.height - 1, Math.max(0, Math.round((1 - v) * img.height - 0.5))),
+    ];
+  };
+
   const classAt = (x, z) => {
     // Local metres -> pixel. The raster spans exactly the map square, north up.
     const u = (x + half) / (half * 2);
@@ -122,7 +134,10 @@ export async function fetchLandcover(projector, half, opts = {}) {
     summary,
     classAt,
     canopyAt: (x, z) => classAt(x, z).canopy,
-    materialAt: (x, z) => classAt(x, z).material,
+    // The ground is painted from the smoothed material; trees and clutter still
+    // read the raw class, which is right for them - a single wooded cell should
+    // still get its trees.
+    materialAt: (x, z) => { const [px, py] = pixelOf(x, z); return smoothMaterial(px, py); },
   };
 }
 
@@ -148,10 +163,76 @@ function buildLookup(img) {
 
   return {
     histogram,
+    index,
     at: (px, py) => {
       const slot = index[py * img.width + px];
       return slot >= 0 ? NLCD_CLASSES[slot] : UNKNOWN;
     },
+  };
+}
+
+/**
+ * The ground material by majority over a wide window, not by the pixel under
+ * the point. NLCD is a 30 m raster: sampled raw it paints a 30 m grey square
+ * wherever one cell says "developed" in a field of green, and a lawn looks like
+ * a patchwork of gravel. Here each block of the raster gets a histogram by
+ * material, and a point takes the material that wins across the blocks within
+ * `radiusBlocks` of it - about 90 m - with hard ground needing a clear majority
+ * before it displaces grass. Small islands of anything vanish; a real town or
+ * a real wood keeps its shape.
+ */
+function buildSmoothMaterial(img, index, blockPx, radiusBlocks) {
+  const bw = Math.ceil(img.width / blockPx);
+  const bh = Math.ceil(img.height / blockPx);
+  const materials = [];
+  const matIndex = new Map();
+  for (const cls of NLCD_CLASSES) {
+    if (cls && !matIndex.has(cls.material)) { matIndex.set(cls.material, materials.length); materials.push(cls.material); }
+  }
+  const M = materials.length;
+  const hist = new Int32Array(bw * bh * M);
+  for (let py = 0; py < img.height; py++) {
+    const by = Math.floor(py / blockPx);
+    for (let px = 0; px < img.width; px++) {
+      const slot = index[py * img.width + px];
+      if (slot < 0) continue;
+      const m = matIndex.get(NLCD_CLASSES[slot].material);
+      hist[(by * bw + Math.floor(px / blockPx)) * M + m]++;
+    }
+  }
+  const hard = new Set(['urban_ground', 'industrial_ground', 'sand', 'water']);
+  const cache = new Map();
+  return (px, py) => {
+    const bx = Math.floor(px / blockPx);
+    const by = Math.floor(py / blockPx);
+    const key = by * bw + bx;
+    let out = cache.get(key);
+    if (out) return out;
+    const sum = new Int32Array(M);
+    let total = 0;
+    for (let dy = -radiusBlocks; dy <= radiusBlocks; dy++) {
+      const y = by + dy;
+      if (y < 0 || y >= bh) continue;
+      for (let dx = -radiusBlocks; dx <= radiusBlocks; dx++) {
+        const x = bx + dx;
+        if (x < 0 || x >= bw) continue;
+        const base = (y * bw + x) * M;
+        for (let m = 0; m < M; m++) { sum[m] += hist[base + m]; total += hist[base + m]; }
+      }
+    }
+    let best = -1;
+    let bestN = -1;
+    for (let m = 0; m < M; m++) if (sum[m] > bestN) { bestN = sum[m]; best = m; }
+    out = best >= 0 ? materials[best] : 'grass';
+    // Hard ground has to have won properly; a near-tie with grass is grass.
+    if (hard.has(out) && total > 0 && bestN / total < 0.5) {
+      let alt = -1;
+      let altN = -1;
+      for (let m = 0; m < M; m++) if (!hard.has(materials[m]) && sum[m] > altN) { altN = sum[m]; alt = m; }
+      out = alt >= 0 && altN > 0 ? materials[alt] : 'grass';
+    }
+    cache.set(key, out);
+    return out;
   };
 }
 
