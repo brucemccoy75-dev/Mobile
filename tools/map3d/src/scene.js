@@ -39,6 +39,7 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
     landmarks: true,
     kerbs: true,
     streetLife: true,
+    clutter: true,
     roofs: true,
     terrainCells: terrain.enabled ? DEFAULTS.terrainGrid : DEFAULTS.terrainFlatGrid,
     treeSpacing: DEFAULTS.treeSpacing,
@@ -236,7 +237,7 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
     for (const { f, cls, norm, area } of areaFeatures) {
       // Remember what OSM says the ground is, so the tree scatter can defer
       // to it instead of trusting a 30m raster over a surveyed lawn.
-      osmAreas.push({ rings: norm, canopy: AREA_CANOPY[cls.material] ?? 0 });
+      osmAreas.push({ rings: norm, canopy: AREA_CANOPY[cls.material] ?? 0, material: cls.material });
       if (cls.material === 'water') waterAreas.push(norm);
       const y = LAYER_Y[cls.layer] ?? LAYER_Y.landuse;
       const g = builder.group(cls.material);
@@ -564,6 +565,22 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
     manifest.stats.poles = life.filter((p) => p.kind === 'pole').length;
   }
 
+  /* -------------------------------- clutter ------------------------------ */
+
+  // Open ground is what makes a map feel empty: a lawn that runs to the horizon, a
+  // lot with nothing on it. This drops the small things that say people were here
+  // - carts, dumpsters, cones, bins in town; hay, tractors, wood, deer out of it -
+  // picked by what the ground is and what stands near, kept off roads and out of
+  // buildings. Props for the engine, like the cars.
+  if (opts.clutter) {
+    const clutter = placeClutter({
+      radius, boundary, surface, osmAreas, buildingRings, roadLines, landcover,
+      seed: Math.abs(Math.round(projector.lon0 * 1e4)) + 7,
+    });
+    for (const prop of clutter) manifest.props.push(prop);
+    manifest.stats.clutter = clutter.length;
+  }
+
   /* -------------------------------- spawn ------------------------------- */
 
   // The geocoder's pin is an estimate along the road. Start the player on the
@@ -748,6 +765,135 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
 /* -------------------------------- helpers --------------------------------- */
 
 const STREET_KINDS = /^(residential|tertiary|secondary|primary|unclassified|living_street)$/;
+
+/**
+ * Filler for open ground. Candidates come from the same jittered grid the trees
+ * use; each is kept with a probability set by its context and then given a prop
+ * that suits it. Deer come in small groups and hay in clusters.
+ */
+function placeClutter({ radius, boundary, surface, osmAreas, buildingRings, roadLines, landcover, seed }) {
+  // What the ground is, by OSM polygon: 1 car park, 2 lawn/park, 3 hard urban ground, 4 farmland.
+  const areaKind = new OccupancyMask(radius, 3);
+  const KIND = { parking: 1, grass: 2, pitch: 2, urban_ground: 3, pavement: 3, industrial_ground: 3, farmland: 4 };
+  for (const a of osmAreas) {
+    const k = KIND[a.material];
+    if (k) areaKind.markPolygon(a.rings, 0, k);
+  }
+  const blocked = new OccupancyMask(radius, 2);
+  for (const rings of buildingRings) blocked.markPolygon(rings, 1.2);
+  for (const { line, width } of roadLines) blocked.markLine(line, width + 1.5);
+  const nearBuilding = new OccupancyMask(radius, 3);
+  for (const rings of buildingRings) nearBuilding.markPolygon(rings, 9);
+  const nearRoad = new OccupancyMask(radius, 3);
+  for (const { line, width } of roadLines) nearRoad.markLine(line, width + 9);
+
+  const context = (x, z) => {
+    const cls = landcover?.classAt(x, z)?.name ?? '';
+    const k = areaKind.valueAt(x, z);
+    if (k === 1) return 'lot';
+    if (k === 3) return 'urban';
+    if (k === 4) return 'farm';
+    // Dense development is a town; open or low development is houses on lots, and
+    // what stands in a yard is not what stands behind a shop.
+    if (/^developed (medium|high)/.test(cls)) return k === 2 ? 'park' : 'urban';
+    if (/^developed/.test(cls)) return 'yard';
+    if (k === 2) return 'park';
+    if (/forest|woody|scrub/.test(cls)) return 'wood';
+    return 'farm';
+  };
+
+  const density = (x, z) => {
+    if (!insideBounds(x, z, boundary) || blocked.get(x, z)) return 0;
+    const c = context(x, z);
+    const b = nearBuilding.get(x, z);
+    const r = nearRoad.get(x, z);
+    if (c === 'lot') return 0.30;
+    if (c === 'urban') return b ? 0.45 : r ? 0.22 : 0.12;
+    if (c === 'park') return b ? 0.25 : 0.14;
+    if (c === 'yard') return b ? 0.40 : 0.05;
+    if (c === 'wood') return r ? 0 : 0.012;
+    return b ? 0.50 : r ? 0.10 : 0.06;   // farm
+  };
+
+  const spots = scatter({
+    half: radius, spacing: 15, canopyAt: density,
+    accept: (x, z) => true, max: 420, seed,
+  });
+
+  const props = [];
+  let deer = 0;
+  const maxDeer = 36;
+  const push = (prop, x, z, r) => {
+    if (prop === 'deer' && deer++ >= maxDeer) return;
+    props.push({
+    kind: 'clutter', prop,
+    x: round(x, 2), z: round(z, 2), y: round(surface(x, z), 2),
+    rotationDeg: round(r * 360, 1), source: 'scattered',
+  }); };
+
+  for (const { x, z, r } of spots) {
+    const c = context(x, z);
+    const b = nearBuilding.get(x, z);
+    const rd = nearRoad.get(x, z);
+    if (c === 'lot') {
+      if (r < 0.45) push('shopping_cart', x, z, r);
+      else if (r < 0.65) push('traffic_cones', x, z, r);
+      else if (r < 0.8) push('trash_can', x, z, r);
+      else push('jersey_barrier', x, z, r);
+    } else if (c === 'urban') {
+      if (b) {
+        if (r < 0.4) push('dumpster', x, z, r);
+        else if (r < 0.6) push('trash_can', x, z, r);
+        else if (r < 0.8) push('garbage_bags', x, z, r);
+        else push('bench', x, z, r);
+      } else if (rd) {
+        if (r < 0.4) push('hydrant', x, z, r);
+        else if (r < 0.7) push('trash_can', x, z, r);
+        else push('traffic_cones', x, z, r);
+      } else if (r < 0.5) push('bench', x, z, r);
+      else if (r < 0.75) push('shopping_cart', x, z, r);
+      else push('trash_can', x, z, r);
+    } else if (c === 'park') {
+      if (r < 0.5) push('bench', x, z, r);
+      else if (r < 0.7) push('trash_can', x, z, r);
+      else if (r < 0.85) push('garbage_bags', x, z, r);
+      else push('deer', x, z, r);
+    } else if (c === 'wood') {
+      push('deer', x, z, r);
+      if (r < 0.5) push('deer', x + 2.5, z + 1.5, r * 0.7);
+    } else if (c === 'yard') {
+      if (b) {
+        if (r < 0.3) push('wood_pile', x, z, r);
+        else if (r < 0.55) push('garbage_bags', x, z, r);
+        else if (r < 0.7) push('propane_tank', x, z, r);
+        else if (r < 0.85) push('bench', x, z, r);
+        else push('trash_can', x, z, r);
+      } else if (r < 0.5) push('deer', x, z, r);
+      else push('hay_bale', x, z, r);
+    } else {
+      // farm
+      if (b) {
+        if (r < 0.28) push('tractor', x, z, r);
+        else if (r < 0.52) push('wood_pile', x, z, r);
+        else if (r < 0.74) push('garbage_bags', x, z, r);
+        else if (r < 0.9) push('propane_tank', x, z, r);
+        else push('hay_bale', x, z, r);
+      } else if (rd) {
+        if (r < 0.5) push('garbage_bags', x, z, r);
+        else push('hay_bale', x, z, r);
+      } else if (r < 0.45) {
+        push('deer', x, z, r);
+        if (r < 0.25) push('deer', x + 3, z - 2, r * 0.8);
+        if (r < 0.12) push('deer', x - 2.5, z + 2.5, r * 0.6);
+      } else if (r < 0.85) {
+        push('hay_bale', x, z, r);
+        push('hay_bale', x + 2.2, z + 0.4, r * 0.9);
+        if (r > 0.6) push('hay_bale', x + 0.6, z + 2.6, r * 0.5);
+      }
+    }
+  }
+  return props;
+}
 
 /**
  * Kerb boxes along both edges of a road piece: a strip 35 cm wide straddling the
