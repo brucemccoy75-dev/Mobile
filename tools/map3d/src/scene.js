@@ -574,7 +574,7 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
   // buildings. Props for the engine, like the cars.
   if (opts.clutter) {
     const clutter = placeClutter({
-      radius, boundary, surface, osmAreas, buildingRings, roadLines, landcover,
+      radius, boundary, surface, osmAreas, waterAreas, buildingRings, roadLines, landcover,
       seed: Math.abs(Math.round(projector.lon0 * 1e4)) + 7,
     });
     for (const prop of clutter) manifest.props.push(prop);
@@ -771,7 +771,7 @@ const STREET_KINDS = /^(residential|tertiary|secondary|primary|unclassified|livi
  * use; each is kept with a probability set by its context and then given a prop
  * that suits it. Deer come in small groups and hay in clusters.
  */
-function placeClutter({ radius, boundary, surface, osmAreas, buildingRings, roadLines, landcover, seed }) {
+function placeClutter({ radius, boundary, surface, osmAreas, waterAreas, buildingRings, roadLines, landcover, seed }) {
   // What the ground is, by OSM polygon: 1 car park, 2 lawn/park, 3 hard urban ground, 4 farmland.
   const areaKind = new OccupancyMask(radius, 3);
   const KIND = { parking: 1, grass: 2, pitch: 2, urban_ground: 3, pavement: 3, industrial_ground: 3, farmland: 4 };
@@ -782,6 +782,7 @@ function placeClutter({ radius, boundary, surface, osmAreas, buildingRings, road
   const blocked = new OccupancyMask(radius, 2);
   for (const rings of buildingRings) blocked.markPolygon(rings, 1.2);
   for (const { line, width } of roadLines) blocked.markLine(line, width + 1.5);
+  for (const rings of waterAreas) blocked.markPolygon(rings, 3);   // no hay on the lake
   const nearBuilding = new OccupancyMask(radius, 3);
   for (const rings of buildingRings) nearBuilding.markPolygon(rings, 9);
   const nearRoad = new OccupancyMask(radius, 3);
@@ -807,22 +808,22 @@ function placeClutter({ radius, boundary, surface, osmAreas, buildingRings, road
     const c = context(x, z);
     const b = nearBuilding.get(x, z);
     const r = nearRoad.get(x, z);
-    if (c === 'lot') return 0.30;
-    if (c === 'urban') return b ? 0.45 : r ? 0.22 : 0.12;
-    if (c === 'park') return b ? 0.25 : 0.14;
-    if (c === 'yard') return b ? 0.40 : 0.05;
-    if (c === 'wood') return r ? 0 : 0.012;
-    return b ? 0.50 : r ? 0.10 : 0.06;   // farm
+    if (c === 'lot') return 0.45;
+    if (c === 'urban') return b ? 0.65 : r ? 0.40 : 0.22;
+    if (c === 'park') return b ? 0.40 : 0.24;
+    if (c === 'yard') return b ? 0.65 : r ? 0.18 : 0.10;
+    if (c === 'wood') return r ? 0 : 0.02;
+    return b ? 0.70 : r ? 0.22 : 0.11;   // farm
   };
 
   const spots = scatter({
-    half: radius, spacing: 15, canopyAt: density,
-    accept: (x, z) => true, max: 420, seed,
+    half: radius, spacing: 11, canopyAt: density,
+    accept: (x, z) => true, max: 900, seed,
   });
 
   const props = [];
   let deer = 0;
-  const maxDeer = 36;
+  const maxDeer = 60;
   const push = (prop, x, z, r) => {
     if (prop === 'deer' && deer++ >= maxDeer) return;
     props.push({
