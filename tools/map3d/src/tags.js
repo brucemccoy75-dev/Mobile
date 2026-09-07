@@ -443,6 +443,8 @@ export const MATERIALS = {
   infield:            { color: [0.55, 0.38, 0.26], roughness: 1.0, metallic: 0 },
   ride_steel:         { color: [0.72, 0.20, 0.18], roughness: 0.45, metallic: 0.5 },
   roof_plant:         { color: [0.55, 0.56, 0.57], roughness: 0.6, metallic: 0.35 },
+  kerb:               { color: [0.64, 0.62, 0.58], roughness: 0.9, metallic: 0 },
+  marking:            { color: [0.86, 0.86, 0.80], roughness: 0.8, metallic: 0 },
   farmland:           { color: [0.55, 0.51, 0.34], roughness: 1.0, metallic: 0 },
   sand:               { color: [0.78, 0.71, 0.52], roughness: 1.0, metallic: 0 },
   water:              { color: [0.16, 0.34, 0.52], roughness: 0.15, metallic: 0.0 },

@@ -9,7 +9,7 @@ import { clipPolygon, clipLine, squareBoundary, circleBoundary } from './clip.js
 import {
   MeshBuilder, normalizeRings, fillPolygon, extrudeWalls, buildRoof, ribbon,
   grid, gridSurface, tree, polygonAreaXZ, centroidXZ, normalizeRoofShape,
-  facadeDetail, orientedBox,
+  facadeDetail, orientedBox, offsetLine, densify,
 } from './mesh.js';
 import {
   MATERIALS, AREA_CANOPY, buildingHeights, classifyBuilding, classifyArea,
@@ -37,6 +37,8 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
     trees: true,
     barriers: true,
     landmarks: true,
+    kerbs: true,
+    streetLife: true,
     roofs: true,
     terrainCells: terrain.enabled ? DEFAULTS.terrainGrid : DEFAULTS.terrainFlatGrid,
     treeSpacing: DEFAULTS.treeSpacing,
@@ -134,6 +136,11 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
   const waterAreas = [];
   const roadLines = [];
   const buildingRings = [];
+  // Streets with a kerb, and the crossings where kerbs and parked cars must stop.
+  const streetPieces = [];
+  const junctionPts = [];
+  // Marked bays in car parks; some get a car.
+  const parkingStalls = [];
 
   /* ------------------------------ landmarks ------------------------------ */
 
@@ -241,6 +248,11 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
       if (cls.sport === 'baseball' || cls.sport === 'softball') {
         addBallDiamond(builder, norm[0], surface, y, manifest, f.id);
       }
+      if (cls.material === 'parking' && area >= 250) {
+        for (const stall of addParkingStripes(builder, norm[0], surface, y)) {
+          parkingStalls.push(stall);
+        }
+      }
       manifest.areas.push({
         id: f.id,
         kind: cls.material,
@@ -311,6 +323,9 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
 
       lines.push({ f, cls, pieces, lift, layerName });
       for (const piece of pieces) roadLines.push({ line: piece, width: cls.width });
+      if (!lift && STREET_KINDS.test(cls.kind)) {
+        pieces.forEach((piece, k) => streetPieces.push({ id: `${f.id}/${k}`, piece, hw: cls.width / 2, kind: cls.kind }));
+      }
 
       if (!bridge && f.nodes) {
         for (let i = 0; i < f.nodes.length; i++) {
@@ -347,6 +362,7 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
     // from the unclipped centrelines, so the patch has to be clipped too.
     for (const j of junctions.values()) {
       if (j.count < 2 || !j.pt) continue;
+      junctionPts.push({ x: j.pt[0], z: j.pt[1], r: j.hw + 1.5 });
       const [x, z] = j.pt;
       const rings = clipPolygon([discRing(x, z, j.hw, 8)], boundary);
       if (!rings) continue;
@@ -355,6 +371,23 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
         uvScale: Math.max(j.hw, 1) * 2,
       });
     }
+  }
+
+  /* -------------------------------- kerbs -------------------------------- */
+
+  // A road drawn as a flat ribbon on flat ground meets the verge at a painted
+  // seam. A kerb - a lip 12 cm proud of the road along each edge - turns that
+  // into a real edge that catches the light and casts a shadow, which does more
+  // for a street than any amount of texture. They stop short of each junction.
+  if (opts.roads && opts.kerbs) {
+    const g = builder.group('kerb');
+    let segments = 0;
+    for (const { piece, hw } of streetPieces) {
+      if (hw < 2.2) continue;
+      segments += addKerbs(g, piece, hw, surface, LAYER_Y.road, junctionPts,
+        terrain.enabled ? detail : 0);
+    }
+    manifest.stats.kerbSegments = segments;
   }
 
   /* ----------------------------- buildings ------------------------------ */
@@ -517,6 +550,18 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
       });
     }
     manifest.stats.facadeTriangles = spent;
+  }
+
+  /* ----------------------------- street life ----------------------------- */
+
+  // What stands on all that ground: cars along the kerb and in the marked bays,
+  // utility poles down one side of the street. Props, not triangles - the engine
+  // has the meshes - and they keep out of buildings and clear of junctions.
+  if (opts.streetLife) {
+    const life = placeStreetLife(streetPieces, parkingStalls, junctionPts, buildingRings, surface, boundary);
+    for (const prop of life) manifest.props.push(prop);
+    manifest.stats.cars = life.filter((p) => p.kind === 'car').length;
+    manifest.stats.poles = life.filter((p) => p.kind === 'pole').length;
   }
 
   /* -------------------------------- spawn ------------------------------- */
@@ -702,6 +747,186 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
 
 /* -------------------------------- helpers --------------------------------- */
 
+const STREET_KINDS = /^(residential|tertiary|secondary|primary|unclassified|living_street)$/;
+
+/**
+ * Kerb boxes along both edges of a road piece: a strip 35 cm wide straddling the
+ * ribbon's edge, buried 5 cm into the ground and standing 12 cm above the road.
+ * One quad ring per segment, so it follows the terrain the way the ribbon does.
+ * Returns how many segments were built.
+ */
+function addKerbs(g, piece, hw, surface, roadY, junctionPts, maxSegment) {
+  const pts = densify(piece, maxSegment);
+  if (pts.length < 2) return 0;
+  let built = 0;
+  for (const side of [1, -1]) {
+    const inner = offsetLine(pts, side * (hw - 0.12));
+    const outer = offsetLine(pts, side * (hw + 0.23));
+    for (let i = 0; i < pts.length - 1; i++) {
+      if (nearJunction(pts[i][0], pts[i][1], junctionPts, 0)
+        || nearJunction(pts[i + 1][0], pts[i + 1][1], junctionPts, 0)) continue;
+      const rings = normalizeRings([[inner[i], outer[i], outer[i + 1], inner[i + 1]]]);
+      if (!rings.length) continue;
+      extrudeWalls(g, rings, (x, z) => surface(x, z) - 0.05, (x, z) => surface(x, z) + roadY + 0.12, { uvScale: 2 });
+      fillPolygon(g, rings, (x, z) => surface(x, z) + roadY + 0.12, { uvScale: 2 });
+      built++;
+    }
+  }
+  return built;
+}
+
+function nearJunction(x, z, junctionPts, extra) {
+  for (const j of junctionPts) {
+    const r = j.r + extra;
+    const dx = x - j.x;
+    const dz = z - j.z;
+    if (dx * dx + dz * dz < r * r) return true;
+  }
+  return false;
+}
+
+/**
+ * Painted bays in a car park: rows of 2.7 m stalls, 5 m deep, laid along the long
+ * axis of the lot's bounding box with a 6 m aisle between each pair of rows. A
+ * marked lot reads as a lot; an unmarked one is a grey shape. Returns the bay
+ * centres so some of them can be given a car.
+ */
+function addParkingStripes(builder, ring, surface, y) {
+  const box = orientedBox(ring);
+  if (!box || box.width < 11 || box.length < 11) return [];
+  const c = box.corners;
+  // Long axis unit vector and the short axis across it.
+  const a0 = box.axis === 0 ? c[0] : c[1];
+  const a1 = box.axis === 0 ? c[1] : c[2];
+  const b1 = box.axis === 0 ? c[3] : c[0];
+  const L = box.length;
+  const W = box.width;
+  const lx = (a1[0] - a0[0]) / L;
+  const lz = (a1[1] - a0[1]) / L;
+  const sx = (b1[0] - a0[0]) / W;
+  const sz = (b1[1] - a0[1]) / W;
+  const at = (u, v) => [a0[0] + lx * u + sx * v, a0[1] + lz * u + sz * v];
+
+  const g = builder.group('marking');
+  const stalls = [];
+  let stripes = 0;
+  const bay = 2.7;
+  const depth = 5;
+  const aisle = 6;
+  // Row pairs: bays back to back, then an aisle, repeating across the lot.
+  for (let v = 1.5; v + depth * 2 <= W - 1 && stripes < 600; v += depth * 2 + aisle) {
+    for (const [base, dir] of [[v, 1], [v + depth * 2, -1]]) {
+      for (let u = 1.5; u + bay <= L - 1; u += bay) {
+        const p0 = at(u, base);
+        const p1 = at(u, base + depth * dir);
+        if (!pointInRing(p0[0], p0[1], ring) || !pointInRing(p1[0], p1[1], ring)) continue;
+        // A stripe is a thin quad along the bay's edge.
+        const quad = normalizeRings([[
+          [p0[0] - lx * 0.06, p0[1] - lz * 0.06], [p0[0] + lx * 0.06, p0[1] + lz * 0.06],
+          [p1[0] + lx * 0.06, p1[1] + lz * 0.06], [p1[0] - lx * 0.06, p1[1] - lz * 0.06],
+        ]]);
+        if (!quad.length) continue;
+        fillPolygon(g, quad, (x, z) => surface(x, z) + y + 0.012, { uvScale: 1 });
+        stripes++;
+        const centre = at(u + bay / 2, base + (depth / 2) * dir);
+        if (pointInRing(centre[0], centre[1], ring)) {
+          const heading = Math.atan2(sx * dir, sz * dir);
+          stalls.push({ x: centre[0], z: centre[1], rotationDeg: (heading * 180) / Math.PI });
+        }
+      }
+    }
+  }
+  return stalls;
+}
+
+/**
+ * Cars parked along the kerb and in the bays, and utility poles down one side of
+ * the street. Seeded, so the same map parks the same cars.
+ */
+function placeStreetLife(streetPieces, parkingStalls, junctionPts, buildingRings, surface, boundary) {
+  let state = 20240907;
+  const rand = () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+  const props = [];
+  const blocked = (x, z) => {
+    if (!insideBounds(x, z, boundary)) return true;
+    for (const rings of buildingRings) if (pointInRing(x, z, rings[0])) return true;
+    return false;
+  };
+  const car = (x, z, headingRad) => ({
+    kind: 'car',
+    x: round(x, 2), z: round(z, 2), y: round(surface(x, z), 2),
+    rotationDeg: round((headingRad * 180) / Math.PI, 1),
+    variant: Math.floor(rand() * 6),
+  });
+
+  let cars = 0;
+  let poles = 0;
+  const maxCars = 360;
+  const maxPoles = 260;
+
+  for (const { id, piece, hw, kind } of streetPieces) {
+    // Only a street wide enough to park on, and only kinds people park along.
+    const parkable = hw >= 2.6 && /^(residential|unclassified|living_street|tertiary)$/.test(kind);
+    let run = 0;
+    let nextCar = 8 + rand() * 14;
+    let nextPole = 12 + rand() * 20;
+    let seq = 0;
+    for (let i = 0; i < piece.length - 1; i++) {
+      const [ax, az] = piece[i];
+      const [bx, bz] = piece[i + 1];
+      const len = Math.hypot(bx - ax, bz - az);
+      if (len < 0.01) continue;
+      const heading = Math.atan2(bx - ax, bz - az);   // yaw about +z, Unity style
+      // Unit left-of-travel offset for this segment, in the ribbon's sense.
+      const left = offsetLine([[ax, az], [bx, bz]], 1);
+      const ox = left[0][0] - ax;
+      const oz = left[0][1] - az;
+      for (let d = 0; d < len; d += 0.5) {
+        const t = d / len;
+        const x = ax + (bx - ax) * t;
+        const z = az + (bz - az) * t;
+        run += 0.5;
+
+        if (parkable && run >= nextCar && cars < maxCars) {
+          nextCar = run + 16 + rand() * 26;
+          const side = rand() < 0.5 ? 1 : -1;
+          const cx = x + ox * side * (hw - 1.15);
+          const cz = z + oz * side * (hw - 1.15);
+          if (!nearJunction(cx, cz, junctionPts, 6) && !blocked(cx, cz)) {
+            props.push(car(cx, cz, side > 0 ? heading : heading + Math.PI));
+            cars++;
+          }
+        }
+        if (run >= nextPole && poles < maxPoles) {
+          nextPole = run + 42 + rand() * 8;
+          const cx = x + ox * (hw + 1.1);
+          const cz = z + oz * (hw + 1.1);
+          if (!nearJunction(cx, cz, junctionPts, 3) && !blocked(cx, cz)) {
+            props.push({
+              kind: 'pole', run: id, seq: seq++,
+              x: round(cx, 2), z: round(cz, 2), y: round(surface(cx, cz), 2),
+            });
+            poles++;
+          }
+        }
+      }
+    }
+  }
+
+  // Roughly a third of the marked bays are taken.
+  for (const stall of parkingStalls) {
+    if (cars >= maxCars) break;
+    if (rand() > 0.34) continue;
+    if (blocked(stall.x, stall.z)) continue;
+    props.push(car(stall.x, stall.z, (stall.rotationDeg * Math.PI) / 180));
+    cars++;
+  }
+  return props;
+}
+
 /**
  * The lip and the machinery on top of a flat roof. The parapet is the outline
  * extruded a little past the roof plane, so the roof surface sits slightly sunk
@@ -790,16 +1015,18 @@ function addBallDiamond(builder, ring, surface, y, manifest, id) {
   }
   fillPolygon(builder.group('infield'), [fan], (x, z) => surface(x, z) + y + 0.012, { uvScale: 12 });
 
+  // On home plate, facing the field. rotationDeg is atan2(dx, dz) like every other
+  // heading in the manifest; the engine mirrors it for its flipped x.
   manifest.props.push({
     id: `${id}-backstop`,
     kind: 'landmark',
     prop: 'backstop',
-    x: round(hx - Math.cos(facing) * 4, 2),
-    z: round(hz - Math.sin(facing) * 4, 2),
+    x: round(hx, 2),
+    z: round(hz, 2),
     y: round(surface(hx, hz), 2),
-    radiusMeters: round(Math.min(infield * 0.5, 11), 2),
+    radiusMeters: 5.5,
     heightMeters: 5,
-    rotationDeg: round((facing * 180) / Math.PI, 1),
+    rotationDeg: round((Math.atan2(Math.cos(facing), Math.sin(facing)) * 180) / Math.PI, 1),
     source: 'osm',
   });
 }

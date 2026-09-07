@@ -796,32 +796,7 @@ export function ribbon(g, line, width, heightAt, opts = {}) {
   const uvScale = opts.uvScale ?? width;
   const maxMiter = opts.maxMiter ?? 3;
 
-  // Per-vertex left offset direction in (u, v) space.
-  const offsets = [];
-  for (let i = 0; i < pts.length; i++) {
-    const prev = pts[i - 1];
-    const next = pts[i + 1];
-    const dIn = prev ? unit2(pts[i][0] - prev[0], -(pts[i][1] - prev[1])) : null;
-    const dOut = next ? unit2(next[0] - pts[i][0], -(next[1] - pts[i][1])) : null;
-
-    if (!dIn) offsets.push(leftOf(dOut));
-    else if (!dOut) offsets.push(leftOf(dIn));
-    else {
-      const nIn = leftOf(dIn);
-      const nOut = leftOf(dOut);
-      let mx = nIn[0] + nOut[0];
-      let mv = nIn[1] + nOut[1];
-      const len = Math.hypot(mx, mv);
-      if (len < 1e-6) {
-        offsets.push(nOut); // 180 degree turn; just use the outgoing normal
-      } else {
-        mx /= len;
-        mv /= len;
-        const scale = Math.min(1 / Math.max(mx * nIn[0] + mv * nIn[1], 1e-3), maxMiter);
-        offsets.push([mx * scale, mv * scale]);
-      }
-    }
-  }
+  const offsets = edgeOffsets(pts, maxMiter);
 
   // A carriageway is wide enough to cross a fold in the ground sideways, so a
   // single quad across the width chords over it just as a long one does along.
@@ -864,6 +839,49 @@ export function ribbon(g, line, width, heightAt, opts = {}) {
     prevIdx = curIdx;
   }
   return tris;
+}
+
+/**
+ * Per-vertex left offset direction in (u, v) space, corners mitered and the miter
+ * length clamped so hairpins don't explode. Shared by ribbon() and offsetLine().
+ */
+function edgeOffsets(pts, maxMiter = 3) {
+  const offsets = [];
+  for (let i = 0; i < pts.length; i++) {
+    const prev = pts[i - 1];
+    const next = pts[i + 1];
+    const dIn = prev ? unit2(pts[i][0] - prev[0], -(pts[i][1] - prev[1])) : null;
+    const dOut = next ? unit2(next[0] - pts[i][0], -(next[1] - pts[i][1])) : null;
+
+    if (!dIn) offsets.push(leftOf(dOut));
+    else if (!dOut) offsets.push(leftOf(dIn));
+    else {
+      const nIn = leftOf(dIn);
+      const nOut = leftOf(dOut);
+      let mx = nIn[0] + nOut[0];
+      let mv = nIn[1] + nOut[1];
+      const len = Math.hypot(mx, mv);
+      if (len < 1e-6) {
+        offsets.push(nOut); // 180 degree turn; just use the outgoing normal
+      } else {
+        mx /= len;
+        mv /= len;
+        const scale = Math.min(1 / Math.max(mx * nIn[0] + mv * nIn[1], 1e-3), maxMiter);
+        offsets.push([mx * scale, mv * scale]);
+      }
+    }
+  }
+  return offsets;
+}
+
+/**
+ * The polyline shifted sideways by `t` metres - positive is left of travel, the
+ * same sense ribbon() uses - so a kerb or a row of parked cars stays parallel to
+ * the road it borders. Returns [x, z] points.
+ */
+export function offsetLine(pts, t, maxMiter = 3) {
+  const offsets = edgeOffsets(pts, maxMiter);
+  return pts.map(([x, z], i) => [x + offsets[i][0] * t, z - offsets[i][1] * t]);
 }
 
 /** Inserts points along any span longer than `maxSegment`, keeping the corners. */
