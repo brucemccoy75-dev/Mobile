@@ -99,9 +99,14 @@ export async function fetchLandcover(projector, half, opts = {}) {
     return null;
   }
 
-  // Blocks of ~12 m, majority over +-3 blocks: roughly a 90 m window.
+  // Blocks of ~12 m, majority over +-3 blocks: roughly a 90 m window, then the
+  // patches themselves are cleaned up (see cleanPatches).
   const blockPx = Math.max(2, Math.round(pixels / 128));
-  const smoothMaterial = buildSmoothMaterial(img, lookup.index, blockPx, 3);
+  const blockMeters = blockPx * ((half * 2) / pixels);
+  const smoothMaterial = buildSmoothMaterial(img, lookup.index, blockPx, 3, {
+    minPatchM2: opts.minPatchM2 ?? 2500,
+    blockMeters,
+  });
   const pixelOf = (x, z) => {
     const u = (x + half) / (half * 2);
     const v = (half - z) / (half * 2);
@@ -176,12 +181,15 @@ function buildLookup(img) {
  * the point. NLCD is a 30 m raster: sampled raw it paints a 30 m grey square
  * wherever one cell says "developed" in a field of green, and a lawn looks like
  * a patchwork of gravel. Here each block of the raster gets a histogram by
- * material, and a point takes the material that wins across the blocks within
+ * material, and a block takes the material that wins across the blocks within
  * `radiusBlocks` of it - about 90 m - with hard ground needing a clear majority
- * before it displaces grass. Small islands of anything vanish; a real town or
- * a real wood keeps its shape.
+ * before it displaces grass. That still leaves islands and wedges: a block that
+ * just tips the vote one way inside a window that tips the other. So the block
+ * grid is then cleaned as a whole (cleanPatches): nothing under `minPatchM2`
+ * survives, and every patch is made compact. A real town or a real wood keeps
+ * its shape; a triangle of gravel in a lawn does not.
  */
-function buildSmoothMaterial(img, index, blockPx, radiusBlocks) {
+function buildSmoothMaterial(img, index, blockPx, radiusBlocks, opts = {}) {
   const bw = Math.ceil(img.width / blockPx);
   const bh = Math.ceil(img.height / blockPx);
   const materials = [];
@@ -201,39 +209,152 @@ function buildSmoothMaterial(img, index, blockPx, radiusBlocks) {
     }
   }
   const hard = new Set(['urban_ground', 'industrial_ground', 'sand', 'water']);
-  const cache = new Map();
+  const grid = new Array(bw * bh);
+  const sum = new Int32Array(M);
+  for (let by = 0; by < bh; by++) {
+    for (let bx = 0; bx < bw; bx++) {
+      sum.fill(0);
+      let total = 0;
+      for (let dy = -radiusBlocks; dy <= radiusBlocks; dy++) {
+        const y = by + dy;
+        if (y < 0 || y >= bh) continue;
+        for (let dx = -radiusBlocks; dx <= radiusBlocks; dx++) {
+          const x = bx + dx;
+          if (x < 0 || x >= bw) continue;
+          const base = (y * bw + x) * M;
+          for (let m = 0; m < M; m++) { sum[m] += hist[base + m]; total += hist[base + m]; }
+        }
+      }
+      let best = -1;
+      let bestN = -1;
+      for (let m = 0; m < M; m++) if (sum[m] > bestN) { bestN = sum[m]; best = m; }
+      let out = best >= 0 ? materials[best] : 'grass';
+      // Hard ground has to have won properly; a near-tie with grass is grass.
+      if (hard.has(out) && total > 0 && bestN / total < 0.5) {
+        let alt = -1;
+        let altN = -1;
+        for (let m = 0; m < M; m++) if (!hard.has(materials[m]) && sum[m] > altN) { altN = sum[m]; alt = m; }
+        out = alt >= 0 && altN > 0 ? materials[alt] : 'grass';
+      }
+      grid[by * bw + bx] = out;
+    }
+  }
+
+  const blockArea = (opts.blockMeters ?? 12) ** 2;
+  const minBlocks = Math.max(1, Math.ceil((opts.minPatchM2 ?? 2500) / blockArea));
+  cleanPatches(grid, bw, bh, minBlocks);
+
   return (px, py) => {
-    const bx = Math.floor(px / blockPx);
-    const by = Math.floor(py / blockPx);
-    const key = by * bw + bx;
-    let out = cache.get(key);
-    if (out) return out;
-    const sum = new Int32Array(M);
-    let total = 0;
-    for (let dy = -radiusBlocks; dy <= radiusBlocks; dy++) {
-      const y = by + dy;
-      if (y < 0 || y >= bh) continue;
-      for (let dx = -radiusBlocks; dx <= radiusBlocks; dx++) {
-        const x = bx + dx;
-        if (x < 0 || x >= bw) continue;
-        const base = (y * bw + x) * M;
-        for (let m = 0; m < M; m++) { sum[m] += hist[base + m]; total += hist[base + m]; }
+    const bx = Math.min(bw - 1, Math.floor(px / blockPx));
+    const by = Math.min(bh - 1, Math.floor(py / blockPx));
+    return grid[by * bw + bx];
+  };
+}
+
+/**
+ * Tidies a grid of material names in place. Two passes, applied until nothing
+ * changes: a mode filter, where a cell whose 8 neighbours mostly agree on some
+ * other material adopts it (this knocks off one-cell spurs and fills one-cell
+ * notches, so patches come out compact rather than ragged); and absorption,
+ * where every connected patch smaller than `minBlocks` cells is repainted with
+ * the material it shares the longest border with, smallest patches first. The
+ * rule Bruce asked for: a new ground cover only where there is a real stretch
+ * of it, and no wedges.
+ * @param {string[]} grid row-major, bw * bh
+ */
+export function cleanPatches(grid, bw, bh, minBlocks) {
+  for (let round = 0; round < 6; round++) {
+    let changed = modeFilter(grid, bw, bh);
+    changed = absorbSmallPatches(grid, bw, bh, minBlocks) || changed;
+    if (!changed) break;
+  }
+  return grid;
+}
+
+function modeFilter(grid, bw, bh) {
+  const next = grid.slice();
+  let changed = false;
+  const counts = new Map();
+  for (let y = 0; y < bh; y++) {
+    for (let x = 0; x < bw; x++) {
+      counts.clear();
+      let n = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (!dx && !dy) continue;
+          const yy = y + dy;
+          const xx = x + dx;
+          if (yy < 0 || yy >= bh || xx < 0 || xx >= bw) continue;
+          const m = grid[yy * bw + xx];
+          counts.set(m, (counts.get(m) ?? 0) + 1);
+          n++;
+        }
+      }
+      const own = grid[y * bw + x];
+      for (const [m, c] of counts) {
+        // Six of eight (or that share at an edge) is a spur or a notch; five is
+        // just the corner of a square, which must survive.
+        if (m !== own && c >= Math.ceil(n * 6 / 8)) { next[y * bw + x] = m; changed = true; break; }
       }
     }
-    let best = -1;
-    let bestN = -1;
-    for (let m = 0; m < M; m++) if (sum[m] > bestN) { bestN = sum[m]; best = m; }
-    out = best >= 0 ? materials[best] : 'grass';
-    // Hard ground has to have won properly; a near-tie with grass is grass.
-    if (hard.has(out) && total > 0 && bestN / total < 0.5) {
-      let alt = -1;
-      let altN = -1;
-      for (let m = 0; m < M; m++) if (!hard.has(materials[m]) && sum[m] > altN) { altN = sum[m]; alt = m; }
-      out = alt >= 0 && altN > 0 ? materials[alt] : 'grass';
+  }
+  if (changed) for (let i = 0; i < grid.length; i++) grid[i] = next[i];
+  return changed;
+}
+
+function absorbSmallPatches(grid, bw, bh, minBlocks) {
+  const label = new Int32Array(bw * bh).fill(-1);
+  const patches = [];   // { cells: number[], material }
+  const stack = [];
+  for (let i = 0; i < grid.length; i++) {
+    if (label[i] >= 0) continue;
+    const id = patches.length;
+    const patch = { cells: [], material: grid[i] };
+    patches.push(patch);
+    label[i] = id;
+    stack.push(i);
+    while (stack.length) {
+      const c = stack.pop();
+      patch.cells.push(c);
+      const x = c % bw;
+      const y = (c - x) / bw;
+      const nb = [];
+      if (x > 0) nb.push(c - 1);
+      if (x < bw - 1) nb.push(c + 1);
+      if (y > 0) nb.push(c - bw);
+      if (y < bh - 1) nb.push(c + bw);
+      for (const k of nb) if (label[k] < 0 && grid[k] === patch.material) { label[k] = id; stack.push(k); }
     }
-    cache.set(key, out);
-    return out;
-  };
+  }
+  const small = patches.map((p, id) => ({ p, id })).filter((e) => e.p.cells.length < minBlocks);
+  small.sort((a, b) => a.p.cells.length - b.p.cells.length);
+  let changed = false;
+  for (const { p } of small) {
+    // Longest shared border wins; a patch already repainted to our own material
+    // does not count as a neighbour.
+    const border = new Map();
+    for (const c of p.cells) {
+      const x = c % bw;
+      const y = (c - x) / bw;
+      const nb = [];
+      if (x > 0) nb.push(c - 1);
+      if (x < bw - 1) nb.push(c + 1);
+      if (y > 0) nb.push(c - bw);
+      if (y < bh - 1) nb.push(c + bw);
+      for (const k of nb) {
+        const m = grid[k];
+        if (m !== p.material) border.set(m, (border.get(m) ?? 0) + 1);
+      }
+    }
+    let best = null;
+    let bestN = 0;
+    for (const [m, n] of border) if (n > bestN) { bestN = n; best = m; }
+    if (best === null) continue;   // the whole map, or an island with no neighbour
+    for (const c of p.cells) grid[c] = best;
+    p.material = best;
+    changed = true;
+  }
+  return changed;
 }
 
 /**

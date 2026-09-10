@@ -107,7 +107,14 @@ async function fetchTerrainTiles(projector, half, opts = {}) {
     const ly = Math.min(Math.max(Math.floor(py) - ty * size, 0), size - 1);
     const i = (ly * tile.width + lx) * 4;
     // Terrarium encoding: height = R * 256 + G + B / 256 - 32768 metres.
-    return tile.data[i] * 256 + tile.data[i + 1] + tile.data[i + 2] / 256 - 32768;
+    const h = tile.data[i] * 256 + tile.data[i + 1] + tile.data[i + 2] / 256 - 32768;
+    // The tiles carry bathymetry, and a missing pixel decodes to -32768. Both
+    // put the water surface - which follows the terrain - hundreds of metres
+    // down (Seattle came out with a 20 km cliff under Puget Sound). The sea
+    // floor is not ground anyone walks on: nothing goes below 30 cm under sea
+    // level, so open water sits at sea level and a beach meets it in a step you
+    // could paddle off, not a cliff.
+    return Math.max(-0.3, h);
   };
 
   const sampleGeo = (lat, lon) => {
@@ -205,10 +212,14 @@ async function fetchTerrainPoints(projector, half, opts = {}) {
     await writeCache(key, heights);
   }
 
-  // Fill any nulls (sea, dataset gaps) with the mean of what we did get.
-  const known = heights.filter((h) => Number.isFinite(h));
+  // Fill any nulls (sea, dataset gaps) with the mean of what we did get. Some
+  // datasets hand back their no-data sentinel as a number - Seattle's shoreline
+  // came through at -20395 m and put a 20 km cliff under the water mesh - so
+  // anything below the Dead Sea or above Everest is a gap too.
+  const plausible = (h) => Number.isFinite(h) && h > -450 && h < 9000;
+  const known = heights.filter(plausible);
   const fallback = known.length ? known.reduce((a, b) => a + b, 0) / known.length : 0;
-  const grid = heights.map((h) => (Number.isFinite(h) ? h : fallback));
+  const grid = heights.map((h) => (plausible(h) ? h : fallback));
 
   const at = (i, j) => grid[clamp(j, 0, n - 1) * n + clamp(i, 0, n - 1)];
   const sample = (x, z) => bilinear(at, n, half, step, x, z);

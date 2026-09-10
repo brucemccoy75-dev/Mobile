@@ -43,6 +43,10 @@ export const DEFAULTS = {
   treeSpacing: 15,          // mean metres between scattered trees
   maxTrees: 20000,          // safety cap on scattered trees
   maxImageryTiles: 100,     // safety cap for --imagery
+  // A ground cover (grass, sand, gravel, wood...) is only painted where there is
+  // at least this much of it in one piece, from land cover or from an OSM polygon.
+  // A triangle of gravel in a lawn reads as a bug, not as gravel. About a 50 m square.
+  minPatchM2: 2500,
   cacheDir: '.map3d-cache',
   timeoutMs: 90_000,
   retries: 3,

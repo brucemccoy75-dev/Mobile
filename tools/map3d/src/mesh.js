@@ -957,6 +957,26 @@ export function grid(groupFor, half, cells, heightAt, opts = {}) {
     return v;
   };
 
+  // Where an area polygon is drawn the base ground is not: `inside(x, z)` says
+  // whether a point is under one. A cell wholly inside is skipped; a cell the
+  // edge crosses is cut into sub-cells of a few metres and only the ones
+  // outside are kept, so the polygon and the ground meet at a jagged seam a
+  // couple of metres wide instead of overlapping across the whole cell, where
+  // on a hillside the lower one would show through the upper.
+  const inside = opts.inside;
+  const sub = Math.min(40, Math.max(2, Math.round(step / (opts.subCellMeters ?? 6))));
+  // Sub-cell heights must come from the same surface the polygons sit on - the
+  // coarse mesh's interpolation (`subHeightAt`, normally gridSurface) - not the
+  // raw terrain field, or on a bank the sub-cells rise through the fill beside
+  // them and the shoreline turns into a dark staircase.
+  const subHeightAt = opts.subHeightAt ?? heightAt;
+  const looseVertex = (group, x, z) => {
+    const hx = heightAt(x + step, z) - heightAt(x - step, z);
+    const hz = heightAt(x, z + step) - heightAt(x, z - step);
+    const n = normalize([-hx, 2 * step, -hz]);
+    return group.vertex(x, subHeightAt(x, z), z, n[0], n[1], n[2], x / uvScale, z / uvScale);
+  };
+
   let tris = 0;
   for (let i = 0; i < cells; i++) {
     for (let j = 0; j < cells; j++) {
@@ -965,6 +985,32 @@ export function grid(groupFor, half, cells, heightAt, opts = {}) {
       if (keep && !keep(cx, cz)) continue;
       const group = groupFor(cx, cz);
       if (!group) continue;
+      if (inside) {
+        const x0 = -half + i * step;
+        const z0 = -half + j * step;
+        let covered = 0;
+        for (const [px, pz] of [[x0, z0], [x0 + step, z0], [x0, z0 + step], [x0 + step, z0 + step], [cx, cz]]) {
+          if (inside(px, pz)) covered++;
+        }
+        if (covered === 5) continue;
+        if (covered > 0) {
+          const ss = step / sub;
+          for (let si = 0; si < sub; si++) {
+            for (let sj = 0; sj < sub; sj++) {
+              const sx = x0 + si * ss;
+              const sz = z0 + sj * ss;
+              if (inside(sx + ss / 2, sz + ss / 2)) continue;
+              const a = looseVertex(group, sx, sz);
+              const b = looseVertex(group, sx, sz + ss);
+              const c = looseVertex(group, sx + ss, sz + ss);
+              const d = looseVertex(group, sx + ss, sz);
+              group.quad(a, b, c, d);
+              tris += 2;
+            }
+          }
+          continue;
+        }
+      }
       const a = vertexAt(group, i, j);
       const b = vertexAt(group, i, j + 1);
       const c = vertexAt(group, i + 1, j + 1);

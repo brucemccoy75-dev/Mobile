@@ -669,7 +669,7 @@ const glbU32 = (glb, o) => glbView(glb).getUint32(o, true);
 const glbAscii = (glb, a, b) => new TextDecoder().decode(glb.subarray(a, b));
 import { OccupancyMask, scatter, hash2, pointInRing } from '../src/scatter.js';
 import { chooseTerrainZoom, flatTerrain } from '../src/elevation.js';
-import { NLCD_CLASSES, MATCH_TOLERANCE } from '../src/landcover.js';
+import { NLCD_CLASSES, MATCH_TOLERANCE, cleanPatches } from '../src/landcover.js';
 
 /** Builds a PNG in memory so the decoder can be tested without a fixture. */
 function makePng(width, height, colorType, pixels, { palette, filter = 0 } = {}) {
@@ -1317,4 +1317,43 @@ test('a material name always names a material that exists', () => {
     }
     assert.ok(MATERIALS[roofMaterial({}, seed)], `roof seed ${seed}`);
   }
+});
+
+/* ----------------------------- ground patches ----------------------------- */
+
+test('cleanPatches absorbs a patch smaller than the minimum into its longest neighbour', () => {
+  // 8x8 grass with a 2x2 urban island and a 1-cell sand speck.
+  const bw = 8, bh = 8;
+  const g = new Array(bw * bh).fill('grass');
+  g[3 * bw + 3] = 'urban_ground'; g[3 * bw + 4] = 'urban_ground';
+  g[4 * bw + 3] = 'urban_ground'; g[4 * bw + 4] = 'urban_ground';
+  g[6 * bw + 1] = 'sand';
+  cleanPatches(g, bw, bh, 6);
+  assert.ok(g.every((m) => m === 'grass'), 'islands under the minimum vanish');
+});
+
+test('cleanPatches keeps a patch at or over the minimum and squares off its spurs', () => {
+  const bw = 10, bh = 10;
+  const g = new Array(bw * bh).fill('grass');
+  // A 4x4 urban block with a one-cell spur hanging off it.
+  for (let y = 3; y < 7; y++) for (let x = 3; x < 7; x++) g[y * bw + x] = 'urban_ground';
+  g[3 * bw + 7] = 'urban_ground';
+  cleanPatches(g, bw, bh, 6);
+  let urban = 0;
+  for (const m of g) if (m === 'urban_ground') urban++;
+  assert.ok(urban >= 15 && urban <= 17, `block survives (${urban} cells)`);
+  assert.equal(g[3 * bw + 7], 'grass', 'the spur is knocked off');
+});
+
+test('grid skips cells under an area and subdivides the ones its edge crosses', () => {
+  const quads = [];
+  const group = { vertex: (x, y, z) => ({ x, z }), quad: (a, b, c, d) => quads.push([a, b, c, d]) };
+  // Ground 40 m across in 4 cells of 10 m; the area covers x in [-20, 5].
+  const inside = (x) => x < 5;
+  grid(() => group, 20, 4, () => 0, { inside, subCellMeters: 5 });
+  const wholly = quads.filter((q) => q.every((v) => v.x >= 10));
+  const cut = quads.filter((q) => q.some((v) => v.x < 10));
+  assert.equal(wholly.length, 4, 'the one clear column is whole cells');
+  assert.ok(cut.length > 0 && cut.every((q) => q.every((v) => v.x >= 0)), 'crossed cells keep only sub-cells outside the area');
+  assert.ok(quads.every((q) => q.every((v) => v.x >= 0)), 'nothing drawn under the area');
 });

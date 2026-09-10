@@ -117,16 +117,22 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
 
   manifest.spawn.y = round(surface(0, 0), 3);
 
-  if (imagery?.tiles?.length) {
-    addImageryGround(builder, imagery, surface, detail);
-  } else {
+  // Drawn once the area polygons are known, so the base ground can stop where
+  // they start rather than run on underneath them.
+  let groundDrawn = false;
+  const drawGround = (insideArea) => {
+    groundDrawn = true;
+    if (imagery?.tiles?.length) {
+      addImageryGround(builder, imagery, surface, detail);
+      return;
+    }
     // Land cover, where we have it, turns a flat grey plane into forest,
     // pasture and scrub - which is most of what a rural map is made of.
     const groupFor = landcover
       ? (x, z) => builder.group(landcover.materialAt(x, z))
       : () => builder.group('ground');
-    grid(groupFor, groundHalf, opts.terrainCells, ground, { keep: keepCell });
-  }
+    grid(groupFor, groundHalf, opts.terrainCells, ground, { keep: keepCell, inside: insideArea, subHeightAt: surface });
+  };
 
   /* --------------------------- project + clip --------------------------- */
 
@@ -215,6 +221,12 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
 
   /* ------------------------------- areas -------------------------------- */
 
+  // The ground is a partition: every point gets one material. Rules, from
+  // Bruce (2026-09-08): a ground cover is only painted where there is a real
+  // stretch of it; nothing is stacked - a smaller polygon inside a bigger one
+  // is a hole in the bigger one, and the base ground stops where any polygon
+  // starts; roads stay on top of all of it, which LAYER_Y already guarantees
+  // once the fills follow the terrain as closely as the roads do.
   if (opts.areas) {
     const areaFeatures = [];
     for (const f of local) {
@@ -228,23 +240,55 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
       if (!norm.length) continue;
       const area = polygonAreaXZ(norm);
       if (area < opts.minAreaM2) continue;
-      areaFeatures.push({ f, cls, norm, area });
+      areaFeatures.push({ f, cls, norm, area, draw: true, holes: [] });
     }
 
     // Big shapes first so small ones (a pitch inside a park) land on top.
     areaFeatures.sort((a, b) => b.area - a.area);
 
-    for (const { f, cls, norm, area } of areaFeatures) {
+    const minPatch = opts.minPatchM2 ?? DEFAULTS.minPatchM2;
+    const drawn = [];
+    for (const a of areaFeatures) {
+      a.box = bbox(a.norm[0]);
+      if (GROUND_COVER.has(a.cls.material)) {
+        // A sliver of sand or gravel is dropped; a car park or a pitch of the
+        // same size is a thing in its own right and stays.
+        if (a.area < minPatch) { a.draw = false; continue; }
+        // The same material as the land cover already under it: drawing it
+        // again buys nothing but a seam.
+        if (landcover && sameAsBase(a.norm[0], a.cls.material, landcover)) { a.draw = false; continue; }
+      }
+      drawn.push(a);
+    }
+    for (let i = 0; i < drawn.length; i++) {
+      const outer = drawn[i];
+      if (!outer.draw) continue;
+      for (let j = i + 1; j < drawn.length; j++) {
+        const inner = drawn[j];
+        if (!inner.draw || !boxInside(inner.box, outer.box)) continue;
+        if (!ringInside(inner.norm[0], outer.norm[0])) continue;
+        if (inner.cls.material === outer.cls.material) { inner.draw = false; continue; }
+        outer.holes.push(inner.norm[0]);
+      }
+    }
+    const index = new AreaIndex(drawn.filter((a) => a.draw), groundHalf);
+    drawGround((x, z) => index.contains(x, z));
+
+    let skipped = 0;
+    for (const { f, cls, norm, area, draw, holes } of areaFeatures) {
       // Remember what OSM says the ground is, so the tree scatter can defer
       // to it instead of trusting a 30m raster over a surveyed lawn.
       osmAreas.push({ rings: norm, canopy: AREA_CANOPY[cls.material] ?? 0, material: cls.material });
       if (cls.material === 'water') waterAreas.push(norm);
+      if (!draw) { skipped++; continue; }
       const y = LAYER_Y[cls.layer] ?? LAYER_Y.landuse;
       const g = builder.group(cls.material);
-      fillPolygon(g, norm, (x, z) => surface(x, z) + y, {
+      fillPolygon(g, holes.length ? [...norm, ...holes] : norm, (x, z) => surface(x, z) + y, {
         uvScale: 24,
         smooth: terrain.enabled,
-        maxEdge: terrain.enabled ? areaDetail : 0,
+        // As fine as the roads, or on a hillside a fill's chord rises through
+        // the road above it.
+        maxEdge: terrain.enabled ? detail : 0,
       });
       if (cls.sport === 'baseball' || cls.sport === 'softball') {
         addBallDiamond(builder, norm[0], surface, y, manifest, f.id);
@@ -264,7 +308,9 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
         holes: norm.length > 1 ? norm.slice(1).map(roundRing) : undefined,
       });
     }
+    manifest.stats.areasSkipped = skipped;
   }
+  if (!groundDrawn) drawGround(null);
 
   /* ------------------------ roads, rails, streams ------------------------ */
 
@@ -1243,6 +1289,84 @@ function isUnderground(tags) {
     (parseIntTag(tags.layer) ?? 0) < 0 ||
     (parseIntTag(tags.level) ?? 0) < 0
   );
+}
+
+/** Ground covers: painted only in real stretches (DEFAULTS.minPatchM2). */
+const GROUND_COVER = new Set(['grass', 'forest', 'scrub', 'farmland', 'sand', 'urban_ground', 'industrial_ground']);
+
+/**
+ * Whether the land-cover ground under a polygon is already this material at
+ * nearly every sample: the centroid and the midpoints from it to each vertex.
+ */
+function sameAsBase(ring, material, landcover) {
+  const [cx, cz] = centroidXZ(ring);
+  let same = landcover.materialAt(cx, cz) === material ? 1 : 0;
+  let n = 1;
+  const stride = Math.max(1, Math.floor(ring.length / 24));
+  for (let i = 0; i < ring.length; i += stride) {
+    const [x, z] = ring[i];
+    if (landcover.materialAt((x + cx) / 2, (z + cz) / 2) === material) same++;
+    n++;
+  }
+  return same / n >= 0.9;
+}
+
+function boxInside(inner, outer) {
+  return inner.minX >= outer.minX && inner.maxX <= outer.maxX && inner.minZ >= outer.minZ && inner.maxZ <= outer.maxZ;
+}
+
+/** Every vertex of `inner` lies inside `outer`. */
+function ringInside(inner, outer) {
+  for (const [x, z] of inner) if (!pointInRing(x, z, outer)) return false;
+  return true;
+}
+
+/**
+ * Bucketed point-in-area lookup over the drawn polygons, for cutting the base
+ * ground: `contains(x, z)` is true under any drawn polygon and outside its own
+ * holes. One bucket is 32 m; a cell test touches only the polygons whose box
+ * overlaps that bucket.
+ */
+class AreaIndex {
+  constructor(areas, half, bucket = 32) {
+    this.bucket = bucket;
+    this.half = half;
+    this.n = Math.ceil((half * 2) / bucket) + 1;
+    this.cells = new Map();
+    areas.forEach((a, id) => {
+      const b = a.box;
+      const i0 = this.slot(b.minX);
+      const i1 = this.slot(b.maxX);
+      const j0 = this.slot(b.minZ);
+      const j1 = this.slot(b.maxZ);
+      for (let i = i0; i <= i1; i++) {
+        for (let j = j0; j <= j1; j++) {
+          const key = i * this.n + j;
+          let list = this.cells.get(key);
+          if (!list) { list = []; this.cells.set(key, list); }
+          list.push(a);
+        }
+      }
+    });
+  }
+
+  slot(v) {
+    return Math.min(this.n - 1, Math.max(0, Math.floor((v + this.half) / this.bucket)));
+  }
+
+  contains(x, z) {
+    const list = this.cells.get(this.slot(x) * this.n + this.slot(z));
+    if (!list) return false;
+    for (const a of list) {
+      const b = a.box;
+      if (x < b.minX || x > b.maxX || z < b.minZ || z > b.maxZ) continue;
+      if (!pointInRing(x, z, a.norm[0])) continue;
+      let inHole = false;
+      for (let k = 1; k < a.norm.length && !inHole; k++) if (pointInRing(x, z, a.norm[k])) inHole = true;
+      if (!inHole) return true;
+    }
+    return false;
+  }
 }
 
 function bbox(ring) {
