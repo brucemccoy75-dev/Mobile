@@ -999,7 +999,11 @@ export function grid(groupFor, half, cells, heightAt, opts = {}) {
             for (let sj = 0; sj < sub; sj++) {
               const sx = x0 + si * ss;
               const sz = z0 + sj * ss;
-              if (inside(sx + ss / 2, sz + ss / 2)) continue;
+              // Drop a sub-cell only when all of it is under the polygon. Testing the
+              // centre alone leaves sawtooth holes along the edge, through which the
+              // dark back faces of the ground beyond show; a sliver of overlap under
+              // the fill is invisible.
+              if (inside(sx, sz) && inside(sx + ss, sz) && inside(sx, sz + ss) && inside(sx + ss, sz + ss) && inside(sx + ss / 2, sz + ss / 2)) continue;
               const a = looseVertex(group, sx, sz);
               const b = looseVertex(group, sx, sz + ss);
               const c = looseVertex(group, sx + ss, sz + ss);
