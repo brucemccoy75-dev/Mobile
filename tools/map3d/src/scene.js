@@ -297,27 +297,31 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
       // to it instead of trusting a 30m raster over a surveyed lawn.
       osmAreas.push({ rings: norm, canopy: AREA_CANOPY[cls.material] ?? 0, material: cls.material });
       if (cls.material === 'water') waterAreas.push(norm);
-      if (!draw) { skipped++; continue; }
       const y = LAYER_Y[cls.layer] ?? LAYER_Y.landuse;
-      const g = builder.group(cls.material);
-      if (!GROUND_COVER.has(cls.material)) {
-        fillPolygon(g, holes.length ? [...norm, ...holes] : norm, (x, z) => surface(x, z) + y, {
-          uvScale: 24,
-          smooth: terrain.enabled,
-          // As fine as the roads, or on a hillside a fill's chord rises through
-          // the road above it.
-          maxEdge: terrain.enabled ? detail : 0,
-        });
-      }
-      if (cls.sport === 'baseball' || cls.sport === 'softball') {
-        addBallDiamond(builder, norm[0], surface, y, manifest, f.id);
-      }
-      if (cls.material === 'parking' && area >= 250) {
-        for (const stall of addParkingStripes(builder, norm[0], surface, y)) {
-          parkingStalls.push(stall);
+      if (draw) {
+        const g = builder.group(cls.material);
+        if (!GROUND_COVER.has(cls.material)) {
+          fillPolygon(g, holes.length ? [...norm, ...holes] : norm, (x, z) => surface(x, z) + y, {
+            uvScale: 24,
+            smooth: terrain.enabled,
+            // As fine as the roads, or on a hillside a fill's chord rises through
+            // the road above it.
+            maxEdge: terrain.enabled ? detail : 0,
+          });
         }
-      }
+        if (cls.sport === 'baseball' || cls.sport === 'softball') {
+          addBallDiamond(builder, norm[0], surface, y, manifest, f.id);
+        }
+        if (cls.material === 'parking' && area >= 250) {
+          for (const stall of addParkingStripes(builder, norm[0], surface, y)) {
+            parkingStalls.push(stall);
+          }
+        }
+      } else skipped++;
+      // Every area goes in the manifest, drawn or not: a cemetery that is grass on
+      // grass paints nothing, but the game still puts headstones in it.
       manifest.areas.push({
+        drawn: draw || undefined,
         id: f.id,
         kind: cls.material,
         sport: cls.sport || undefined,
@@ -895,9 +899,11 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
     }
     for (const b of manifest.buildings) if (b.use === 'church') ctx.churches++;
     for (const a of manifest.areas) if (a.use === 'cemetery') ctx.cemeteries++;
-    // The sea: a water polygon that reaches the edge of the map is not a pond.
+    // The sea: a water polygon that reaches the edge of the map and covers a real
+    // share of it. A river reaches the edge too (Concord came out coastal), so the
+    // size test matters: a sixth of the map, or natural=coastline above.
     for (const a of manifest.areas) {
-      if (a.kind !== 'water' || !a.outline) continue;
+      if (a.kind !== 'water' || !a.outline || (a.areaM2 ?? 0) < (half * 2) ** 2 / 6) continue;
       for (const [x, z] of a.outline) if (Math.abs(x) > half - 2 || Math.abs(z) > half - 2) { ctx.coast = true; break; }
     }
     manifest.context = ctx;
