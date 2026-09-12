@@ -1,0 +1,1607 @@
+// Turns normalised OSM features into meshes plus a machine-readable manifest.
+//
+// The manifest matters as much as the mesh: a game usually wants the *data*
+// (this footprint is a 3-storey house; this polyline is a residential street
+// 6.5m wide) so it can spawn colliders, NPC paths and props procedurally.
+
+import { LAYER_Y, DEFAULTS } from './config.js';
+import { clipPolygon, clipLine, squareBoundary, circleBoundary } from './clip.js';
+import {
+  MeshBuilder, normalizeRings, fillPolygon, extrudeWalls, buildRoof, ribbon,
+  grid, gridSurface, tree, polygonAreaXZ, centroidXZ, normalizeRoofShape,
+  facadeDetail, orientedBox, offsetLine, densify,
+} from './mesh.js';
+import {
+  MATERIALS, AREA_CANOPY, buildingHeights, classifyBuilding, classifyArea, classifyUse,
+  classifyHighway, classifyRailway, classifyWaterway, classifyProp, parseLength, parseIntTag,
+  wallMaterial, roofMaterial,
+} from './tags.js';
+import { OccupancyMask, scatter } from './scatter.js';
+import { pickHome, doorstep } from './home.js';
+
+/**
+ * @param {object} args
+ * @param {import('./project.js').Projector} args.projector
+ * @param {Array} args.features from overpass.normalizeElements
+ * @param {object} args.terrain from elevation.js
+ * @param {number} args.radius metres
+ * @param {object} [args.imagery]
+ * @param {object} [args.options]
+ */
+export function buildScene({ projector, features, terrain, radius, imagery, landcover, options = {} }) {
+  const opts = {
+    shape: 'square',        // 'square' | 'disc'
+    buildings: true,
+    roads: true,
+    areas: true,
+    trees: true,
+    barriers: true,
+    landmarks: true,
+    kerbs: true,
+    streetLife: true,
+    clutter: true,
+    roofs: true,
+    terrainCells: terrain.enabled ? DEFAULTS.terrainGrid : DEFAULTS.terrainFlatGrid,
+    treeSpacing: DEFAULTS.treeSpacing,
+    maxTrees: DEFAULTS.maxTrees,
+    minAreaM2: 2,
+    facades: true,
+    // Trim, doors and windows on every building in a dense city would cost
+    // more triangles than the buildings themselves. Spend the budget on the
+    // ones nearest the address, where they will actually be seen.
+    facadeBudget: 90000,
+    // Drop unset keys: the CLI passes `undefined` for every flag the user did
+    // not type, and spreading those would erase the defaults above.
+    ...Object.fromEntries(Object.entries(options).filter(([, v]) => v !== undefined)),
+  };
+
+  const half = radius + (opts.groundPadding ?? DEFAULTS.groundPadding);
+  const boundary =
+    opts.shape === 'disc' ? circleBoundary(radius, 96) : squareBoundary(half);
+  // Centrelines are clipped to the boundary, then widened into ribbons, so a
+  // road hugging the edge sticks out by half its width. Overhang the ground
+  // by more than the widest road so nothing floats over the void.
+  const groundHalf = half + 16;
+
+  const builder = new MeshBuilder();
+  const manifest = {
+    origin: { lat: projector.lat0, lon: projector.lon0 },
+    radiusMeters: radius,
+    shape: opts.shape,
+    bounds: { minX: -half, maxX: half, minZ: -half, maxZ: half },
+    groundBounds: { minX: -half - 16, maxX: half + 16, minZ: -half - 16, maxZ: half + 16 },
+    axes: 'X=east, Y=up, -Z=north (metres)',
+    terrain: {
+      enabled: terrain.enabled,
+      provider: terrain.provider,
+      resolutionMeters: Number.isFinite(terrain.resolutionMeters)
+        ? round(terrain.resolutionMeters, 1)
+        : undefined,
+      baseElevationMeters: round(terrain.baseElevation, 2),
+      minMeters: round(terrain.min, 2),
+      maxMeters: round(terrain.max, 2),
+    },
+    landcover: landcover
+      ? { source: landcover.source, resolutionMeters: round(landcover.resolutionMeters, 1),
+          summary: landcover.summary }
+      : undefined,
+    spawn: { x: 0, y: 0, z: 0 },   // filled in once the ground surface exists
+    buildings: [],
+    roads: [],
+    areas: [],
+    props: [],
+    stats: {},
+  };
+
+  const ground = (x, z) => terrain.heightAt(x, z);
+  // Everything below is placed on the ground *mesh*, not on the smooth field
+  // the mesh approximates. Those differ by however much the terrain curves
+  // between grid corners, which is what leaves roads hovering or half buried.
+  const surface = gridSurface(groundHalf, opts.terrainCells, ground);
+  // Detail finer than the ground itself buys nothing, and costs triangles.
+  const detail = (groundHalf * 2) / opts.terrainCells / 2;
+  // Area fills are the biggest thing laid on the ground - one park can be a
+  // third of the map - and a chord only misses ground that bends. Washington's
+  // lawns are flat enough to cover in a few large triangles; the same rule over
+  // a San Francisco hillside needs four times the detail. Scale by how much the
+  // ground actually moves from one grid cell to the next.
+  const reliefPerCell = (terrain.max - terrain.min) / opts.terrainCells;
+  const areaDetail = detail * Math.min(Math.max(0.35 / (reliefPerCell || 0.35), 1), 4);
+
+  /* ------------------------------- ground ------------------------------- */
+
+  const keepCell =
+    opts.shape === 'disc'
+      ? (x, z) => Math.hypot(x, z) <= radius + (half - radius) * 0.5
+      : undefined;
+
+  manifest.spawn.y = round(surface(0, 0), 3);
+
+  // Drawn once the area polygons are known, so the base ground can stop where
+  // they start rather than run on underneath them.
+  let groundDrawn = false;
+  // Paved polygons (plazas, car parks): a footway drawn across one is a tan stripe
+  // on a surface that is already paved, so those ribbons are dropped later.
+  let pavedIndex = null;
+  const drawGround = (insideArea, coverIndex) => {
+    groundDrawn = true;
+    if (imagery?.tiles?.length) {
+      addImageryGround(builder, imagery, surface, detail);
+      return;
+    }
+    // Land cover, where we have it, turns a flat grey plane into forest,
+    // pasture and scrub - which is most of what a rural map is made of. OSM's
+    // ground-cover polygons (a lawn, a wood, a beach) are painted straight into
+    // the same grid rather than laid on top of it: one surface, no step, no seam,
+    // and a boundary that is a stair of a couple of metres.
+    const baseAt = landcover ? (x, z) => landcover.materialAt(x, z) : () => 'ground';
+    const groupFor = coverIndex
+      ? (x, z) => builder.group(coverIndex.materialAt(x, z) ?? baseAt(x, z))
+      : (x, z) => builder.group(baseAt(x, z));
+    grid(groupFor, groundHalf, opts.terrainCells, ground, {
+      keep: keepCell, inside: insideArea, subHeightAt: surface, paint: !!coverIndex, subCellMeters: 2.2,
+    });
+  };
+
+  /* --------------------------- project + clip --------------------------- */
+
+  const local = features.map((f) => projectFeature(f, projector));
+
+  // Collected while drawing, then used to decide where props may stand.
+  const osmAreas = [];
+  const waterAreas = [];
+  const roadLines = [];
+  const buildingRings = [];
+  // Streets with a kerb, and the crossings where kerbs and parked cars must stop.
+  const streetPieces = [];
+  const junctionPts = [];
+  // Marked bays in car parks; some get a car.
+  const parkingStalls = [];
+
+  /* ------------------------------ landmarks ------------------------------ */
+
+  // Fountains, water towers, big wheels, coaster track. These go out as manifest
+  // props rather than triangles: the engine instances one mesh per kind, the way
+  // it already does for trees, so a new landmark costs a tag rule in tags.js and
+  // a mesh in the engine and nothing here.
+  //
+  // Anything also tagged as a building is left to the building pass. A footprint
+  // extrusion of the real outline beats a stock shape, and emitting both would
+  // put two solids in the same place.
+  let landmarkCount = 0;
+  let coasterCount = 0;
+  if (opts.landmarks) {
+    for (const f of local) {
+      if (f.tags.building || f.tags['building:part']) continue;
+      const cls = classifyProp(f.tags);
+      if (!cls) continue;
+
+      let x;
+      let z;
+      let radius = cls.radius;
+      if (f.kind === 'point') {
+        [x, z] = f.point;
+      } else if (f.kind === 'area' && f.rings?.[0]?.length >= 3) {
+        const ring = f.rings[0];
+        [x, z] = centroidXZ(ring);
+        // The footprint is the truth about how big the thing is; the catalogue's
+        // radius is only there for a bare node with no outline at all.
+        let far = 0;
+        for (const [px, pz] of ring) far = Math.max(far, Math.hypot(px - x, pz - z));
+        if (far > 1) radius = far;
+      } else continue;
+      if (!insideBounds(x, z, boundary)) continue;
+
+      manifest.props.push({
+        id: f.id,
+        kind: 'landmark',
+        prop: cls.prop,
+        name: f.tags.name,
+        x: round(x, 2),
+        z: round(z, 2),
+        y: round(surface(x, z), 2),
+        radiusMeters: round(radius, 2),
+        heightMeters: round(parseLength(f.tags.height) ?? cls.height, 1),
+        rotationDeg: 0,
+        source: 'osm',
+        wikipedia: f.tags.wikipedia,
+        wikidata: f.tags.wikidata,
+      });
+      landmarkCount++;
+    }
+
+    // A coaster is mapped as a flat polyline: OSM has the ground plan and no
+    // height at all. The plan is the half that makes it recognisable, so hand it
+    // over and let the engine invent a profile to hang on it.
+    for (const f of local) {
+      if (f.kind !== 'line' || f.tags.roller_coaster !== 'track') continue;
+      for (const piece of clipLine(f.line, boundary)) {
+        if (piece.length < 2) continue;
+        manifest.props.push({
+          id: f.id,
+          kind: 'coaster',
+          name: f.tags.name,
+          points: piece.map(([px, pz]) => [round(px, 2), round(pz, 2), round(surface(px, pz), 2)]),
+        });
+        coasterCount++;
+      }
+    }
+    manifest.stats.landmarks = landmarkCount;
+    manifest.stats.coasters = coasterCount;
+  }
+
+  /* ------------------------------- areas -------------------------------- */
+
+  // The ground is a partition: every point gets one material. Rules, from
+  // Bruce (2026-09-08): a ground cover is only painted where there is a real
+  // stretch of it; nothing is stacked - a smaller polygon inside a bigger one
+  // is a hole in the bigger one, and the base ground stops where any polygon
+  // starts; roads stay on top of all of it, which LAYER_Y already guarantees
+  // once the fills follow the terrain as closely as the roads do.
+  if (opts.areas) {
+    const areaFeatures = [];
+    for (const f of local) {
+      if (f.kind !== 'area') continue;
+      if (f.tags.building || f.tags['building:part']) continue;
+      const cls = classifyArea(f.tags);
+      if (!cls) continue;
+      const rings = clipPolygon(f.rings, boundary);
+      if (!rings) continue;
+      const norm = normalizeRings(rings);
+      if (!norm.length) continue;
+      const area = polygonAreaXZ(norm);
+      if (area < opts.minAreaM2) continue;
+      areaFeatures.push({ f, cls, norm, area, draw: true, holes: [] });
+    }
+
+    // Big shapes first so small ones (a pitch inside a park) land on top.
+    areaFeatures.sort((a, b) => b.area - a.area);
+
+    const minPatch = opts.minPatchM2 ?? DEFAULTS.minPatchM2;
+    const drawn = [];
+    for (const a of areaFeatures) {
+      a.box = bbox(a.norm[0]);
+      if (GROUND_COVER.has(a.cls.material)) {
+        // A sliver of sand or gravel is dropped; a car park or a pitch of the
+        // same size is a thing in its own right and stays.
+        if (a.area < minPatch) { a.draw = false; continue; }
+        // The same material as the land cover already under it: drawing it
+        // again buys nothing but a seam.
+        if (landcover && sameAsBase(a.norm[0], a.cls.material, landcover)) { a.draw = false; continue; }
+      }
+      drawn.push(a);
+    }
+    for (let i = 0; i < drawn.length; i++) {
+      const outer = drawn[i];
+      if (!outer.draw) continue;
+      for (let j = i + 1; j < drawn.length; j++) {
+        const inner = drawn[j];
+        if (!inner.draw || !boxInside(inner.box, outer.box)) continue;
+        if (!ringInside(inner.norm[0], outer.norm[0])) continue;
+        if (inner.cls.material === outer.cls.material) { inner.draw = false; continue; }
+        outer.holes.push(inner.norm[0]);
+      }
+    }
+    // Ground covers are painted into the base grid (smallest polygon wins); the
+    // hard surfaces - water, car parks, pitches, plazas - are still drawn as
+    // polygons with crisp edges, and the base stops under them.
+    const covers = drawn.filter((a) => a.draw && GROUND_COVER.has(a.cls.material));
+    const hard = drawn.filter((a) => a.draw && !GROUND_COVER.has(a.cls.material));
+    const hardIndex = new AreaIndex(hard, groundHalf);
+    drawGround((x, z) => hardIndex.contains(x, z), covers.length ? new AreaIndex(covers, groundHalf) : null);
+    pavedIndex = new AreaIndex(drawn.filter((a) => a.draw && (a.cls.material === 'pavement' || a.cls.material === 'parking')), groundHalf);
+
+    let skipped = 0;
+    for (const { f, cls, norm, area, draw, holes } of areaFeatures) {
+      // Remember what OSM says the ground is, so the tree scatter can defer
+      // to it instead of trusting a 30m raster over a surveyed lawn.
+      osmAreas.push({ rings: norm, canopy: AREA_CANOPY[cls.material] ?? 0, material: cls.material });
+      if (cls.material === 'water') waterAreas.push(norm);
+      const y = LAYER_Y[cls.layer] ?? LAYER_Y.landuse;
+      if (draw) {
+        const g = builder.group(cls.material);
+        if (!GROUND_COVER.has(cls.material)) {
+          fillPolygon(g, holes.length ? [...norm, ...holes] : norm, (x, z) => surface(x, z) + y, {
+            uvScale: 24,
+            smooth: terrain.enabled,
+            // As fine as the roads, or on a hillside a fill's chord rises through
+            // the road above it.
+            maxEdge: terrain.enabled ? detail : 0,
+          });
+        }
+        if (cls.sport === 'baseball' || cls.sport === 'softball') {
+          addBallDiamond(builder, norm[0], surface, y, manifest, f.id);
+        }
+        if (cls.material === 'parking' && area >= 250) {
+          for (const stall of addParkingStripes(builder, norm[0], surface, y)) {
+            parkingStalls.push(stall);
+          }
+        }
+      } else skipped++;
+      // Every area goes in the manifest, drawn or not: a cemetery that is grass on
+      // grass paints nothing, but the game still puts headstones in it.
+      manifest.areas.push({
+        drawn: draw || undefined,
+        id: f.id,
+        kind: cls.material,
+        sport: cls.sport || undefined,
+        name: f.tags.name,
+        use: f.tags.landuse === 'cemetery' || f.tags.amenity === 'grave_yard' ? 'cemetery'
+          : f.tags.leisure === 'park' ? 'park' : f.tags.leisure === 'playground' ? 'playground' : undefined,
+        denomination: f.tags.religion ?? f.tags.denomination ?? undefined,
+        areaM2: round(area, 1),
+        outline: roundRing(norm[0]),
+        holes: norm.length > 1 ? norm.slice(1).map(roundRing) : undefined,
+      });
+    }
+    manifest.stats.areasSkipped = skipped;
+  }
+  if (!groundDrawn) drawGround(null);
+
+
+  /* ------------------------ roads, rails, streams ------------------------ */
+
+  if (opts.roads) {
+    const junctions = new Map(); // node id -> widest half-width seen
+    const lines = [];
+
+    for (const f of local) {
+      if (f.kind !== 'line') continue;
+
+      let cls = classifyHighway(f.tags);
+      let layerName = cls
+        ? cls.minor
+          ? 'footway'
+          : 'road'
+        : null;
+
+      if (!cls) {
+        const rail = classifyRailway(f.tags);
+        if (rail) {
+          cls = { material: rail.material, width: rail.width, kind: f.tags.railway };
+          layerName = 'railway';
+        }
+      }
+      if (!cls) {
+        const water = classifyWaterway(f.tags);
+        if (water) {
+          cls = { material: water.material, width: water.width, kind: f.tags.waterway };
+          layerName = 'water';
+        }
+      }
+      if (!cls) continue;
+
+      // Tunnels and subways are below the surface; keep them out of the mesh.
+      const tunnel = f.tags.tunnel === 'yes' || f.tags.tunnel === 'building_passage';
+      const layerTag = parseIntTag(f.tags.layer) ?? 0;
+      const bridge = f.tags.bridge && f.tags.bridge !== 'no';
+      const lift = bridge ? Math.max(layerTag, 1) * 4.5 : 0;
+
+      const pieces = clipLine(f.line, boundary);
+      if (!pieces.length) continue;
+
+      manifest.roads.push({
+        id: f.id,
+        kind: cls.kind,
+        material: cls.material,
+        name: f.tags.name,
+        widthMeters: round(cls.width, 2),
+        oneway: f.tags.oneway === 'yes' || f.tags.oneway === '-1' || undefined,
+        bridge: bridge ? true : undefined,
+        tunnel: tunnel ? true : undefined,
+        maxspeed: f.tags.maxspeed,
+        centerlines: pieces.map(roundRing),
+      });
+
+      if (tunnel) continue;
+
+      lines.push({ f, cls, pieces, lift, layerName });
+      for (const piece of pieces) roadLines.push({ line: piece, width: cls.width });
+      if (!lift && STREET_KINDS.test(cls.kind)) {
+        pieces.forEach((piece, k) => streetPieces.push({ id: `${f.id}/${k}`, piece, hw: cls.width / 2, kind: cls.kind }));
+      }
+
+      if (!bridge && f.nodes) {
+        for (let i = 0; i < f.nodes.length; i++) {
+          const id = f.nodes[i];
+          const prev = junctions.get(id);
+          const entry = prev ?? { count: 0, hw: 0, pt: f.line[i], material: cls.material, road: false };
+          entry.count++;
+          if (!cls.minor) entry.road = true;
+          if (cls.width / 2 > entry.hw) {
+            entry.hw = cls.width / 2;
+            entry.material = cls.material;
+          }
+          junctions.set(id, entry);
+        }
+      }
+    }
+
+    // Draw wide roads first so narrow ones sit visibly on top of them.
+    lines.sort((a, b) => b.cls.width - a.cls.width);
+
+    for (const { cls, pieces, lift, layerName } of lines) {
+      const y = (LAYER_Y[layerName] ?? LAYER_Y.road) + lift;
+      const g = builder.group(cls.material);
+      for (const piece of pieces) {
+        if (cls.minor && pavedIndex && mostlyInside(piece, pavedIndex)) continue;
+        ribbon(g, piece, cls.width, (x, z) => surface(x, z) + y, {
+          uvScale: cls.width,
+          // A bridge deck is meant to be straight; only ground-level roads
+          // should be chasing the terrain.
+          maxSegment: terrain.enabled && !lift ? detail : 0,
+        });
+      }
+    }
+
+    // Plug the gaps where ribbons meet at an intersection. Junction nodes come
+    // from the unclipped centrelines, so the patch has to be clipped too.
+    for (const j of junctions.values()) {
+      if (j.count < 2 || !j.pt) continue;
+      // Only where a road meets something. A footway junction plugged at road height
+      // was a tan octagon sitting on every car park and plaza.
+      if (!j.road) continue;
+      junctionPts.push({ x: j.pt[0], z: j.pt[1], r: j.hw + 1.5 });
+      const [x, z] = j.pt;
+      const rings = clipPolygon([discRing(x, z, j.hw, 8)], boundary);
+      if (!rings) continue;
+      const g = builder.group(j.material);
+      fillPolygon(g, normalizeRings(rings), (px, pz) => surface(px, pz) + LAYER_Y.road, {
+        uvScale: Math.max(j.hw, 1) * 2,
+      });
+    }
+  }
+
+  /* -------------------------------- kerbs -------------------------------- */
+
+  // A road drawn as a flat ribbon on flat ground meets the verge at a painted
+  // seam. A kerb - a lip 12 cm proud of the road along each edge - turns that
+  // into a real edge that catches the light and casts a shadow, which does more
+  // for a street than any amount of texture. They stop short of each junction.
+  if (opts.roads && opts.kerbs) {
+    const g = builder.group('kerb');
+    let segments = 0;
+    for (const { piece, hw } of streetPieces) {
+      if (hw < 2.2) continue;
+      segments += addKerbs(g, piece, hw, surface, LAYER_Y.road, junctionPts,
+        terrain.enabled ? detail : 0);
+    }
+    manifest.stats.kerbSegments = segments;
+  }
+
+  /* ----------------------------- buildings ------------------------------ */
+
+  if (opts.buildings) {
+    // OSM's Simple 3D Buildings scheme: when a building carries `building:part`
+    // children, those parts hold the real per-volume heights and the parent
+    // outline is only a footprint. Rendering both gives you a church nave
+    // extruded to its steeple height, so the parent is drawn only if it has
+    // no parts. See https://wiki.openstreetmap.org/wiki/Simple_3D_Buildings
+    const facades = [];
+    const candidates = local.filter(
+      (f) => f.kind === 'area' && (f.tags.building || f.tags['building:part']) && !isUnderground(f.tags),
+    );
+    const parents = candidates.filter((f) => f.tags.building);
+    const parts = candidates.filter((f) => f.tags['building:part'] && !f.tags.building);
+    const parentBoxes = parents.map((f) => ({ f, box: bbox(f.rings[0]) }));
+
+    const supersededByParts = new Set();
+    for (const part of parts) {
+      const [cx, cz] = centroidXZ(part.rings[0]);
+      for (const { f, box } of parentBoxes) {
+        if (cx < box.minX || cx > box.maxX || cz < box.minZ || cz > box.maxZ) continue;
+        if (pointInRing(cx, cz, f.rings[0])) {
+          supersededByParts.add(f.id);
+          break;
+        }
+      }
+    }
+
+    for (const f of candidates) {
+      const isPart = !f.tags.building;
+      if (!isPart && supersededByParts.has(f.id)) {
+        // Keep the footprint in the manifest; the parts carry the geometry.
+        const outline = clipPolygon(f.rings, boundary);
+        if (outline) {
+          const norm = normalizeRings(outline);
+          if (norm.length) {
+            const [cx, cz] = centroidXZ(norm[0]);
+            manifest.buildings.push({
+              id: f.id,
+              type: classifyBuilding(f.tags).type,
+              name: f.tags.name,
+              address: formatAddress(f.tags),
+              centre: { x: round(cx, 2), z: round(cz, 2) },
+              renderedAsParts: true,
+              footprintM2: round(polygonAreaXZ(norm), 1),
+              outline: roundRing(norm[0]),
+            });
+          }
+        }
+        continue;
+      }
+
+      const rings = clipPolygon(f.rings, boundary);
+      if (!rings) continue;
+      const norm = normalizeRings(rings);
+      if (!norm.length) continue;
+      const footprintArea = polygonAreaXZ(norm);
+      if (footprintArea < opts.minAreaM2) continue;
+
+      const { material, type } = classifyBuilding(f.tags);
+      const seed = hash(f.id);
+      // The roof's pitch comes from how wide the building is, so the shape has
+      // to be measured before the height can be resolved.
+      const span = orientedBox(norm[0])?.width ?? 0;
+      const h = buildingHeights(f.tags, {
+        ...opts, footprintM2: footprintArea, spanM: span, seed,
+      });
+
+      // Most OSM buildings carry neither `height` nor `building:levels`, so a
+      // whole block falls back to one number and extrudes as a single slab.
+      // Nudge estimated heights deterministically (same id -> same height) so
+      // the skyline has texture. Measured heights are never touched.
+      if (h.estimated && opts.jitter !== false) {
+        const spread = 0.84 + ((seed % 1000) / 1000) * 0.38;
+        h.top = Math.max(h.base + 1, h.top * spread);
+      }
+
+      // Sample the terrain under the footprint so the building neither floats
+      // nor sinks on a slope: bury to the lowest corner, top off the highest.
+      let gMin = Infinity;
+      let gMax = -Infinity;
+      for (const [x, z] of norm[0]) {
+        const y = surface(x, z);
+        if (y < gMin) gMin = y;
+        if (y > gMax) gMax = y;
+      }
+      if (!Number.isFinite(gMin)) gMin = gMax = 0;
+
+      const baseY = gMin + h.base - (h.base > 0 ? 0 : 0.3);
+      const eaveY = gMax + h.top - (opts.roofs ? h.roofHeight : 0);
+
+      buildingRings.push(norm);
+      const wallGroup = builder.group(wallMaterial(material, f.tags, seed));
+      extrudeWalls(wallGroup, norm, () => baseY, () => eaveY, { uvScale: 4 });
+
+      const roofShape = opts.roofs ? normalizeRoofShape(h.roofShape) : 'flat';
+      const roofGroup =
+        roofShape === 'flat' ? wallGroup : builder.group(roofMaterial(f.tags, seed));
+      buildRoof(roofGroup, norm, eaveY, opts.roofs ? h.roofHeight : 0, roofShape, {
+        uvScale: 6,
+      });
+
+      // A supermarket, an office block or a hangar is a flat-topped slab, and a
+      // slab read from the street or the air is a grey box. A parapet lip and a
+      // little plant on the roof is the cheapest thing that makes it a building.
+      if (opts.roofDetail !== false && roofShape === 'flat' && !isPart && footprintArea > 300) {
+        addRoofDetail(builder, norm, eaveY, seed, roofGroup);
+      }
+
+      if (opts.facades && !isPart) {
+        facades.push({
+          ring: norm[0],
+          baseY,
+          groundY: gMax,
+          eaveY,
+          levelHeight: opts.levelHeight ?? DEFAULTS.levelHeight,
+          distance: Math.hypot(...centroidXZ(norm[0])),
+        });
+      }
+
+      const [cx, cz] = centroidXZ(norm[0]);
+      const use = classifyUse(f.tags);
+      manifest.buildings.push({
+        id: f.id,
+        type,
+        material,
+        isPart: isPart || undefined,
+        name: f.tags.name ?? use?.name,
+        use: use?.use,
+        brand: use?.brand,
+        cuisine: use?.cuisine,
+        denomination: use?.denomination,
+        historic: use?.historic,
+        wikipedia: use?.wikipedia,
+        wikidata: use?.wikidata,
+        address: formatAddress(f.tags),
+        centre: { x: round(cx, 2), z: round(cz, 2) },
+        groundY: round(gMax, 2),
+        baseMeters: round(h.base, 2),
+        heightMeters: round(h.top, 2),
+        levels: parseIntTag(f.tags['building:levels']) ?? undefined,
+        roof: { shape: roofShape, heightMeters: round(h.roofHeight, 2) },
+        heightEstimated: h.estimated || undefined,
+        footprintM2: round(footprintArea, 1),
+        outline: roundRing(norm[0]),
+        holes: norm.length > 1 ? norm.slice(1).map(roundRing) : undefined,
+      });
+    }
+
+    // Nearest first: the budget runs out on the far side of the map, where a
+    // window is a pixel, rather than at whichever building OSM happened to
+    // list last.
+    facades.sort((a, b) => a.distance - b.distance);
+    let spent = 0;
+    for (const f of facades) {
+      if (spent >= opts.facadeBudget) break;
+      spent += facadeDetail(builder, f.ring, {
+        baseY: f.baseY,
+        groundY: f.groundY,
+        groundAt: surface,
+        eaveY: f.eaveY,
+        levelHeight: f.levelHeight,
+        facing: nearestRoadPoint(f.ring, roadLines),
+        // Trim alone still reads at a distance; windows are what get expensive.
+        windows: spent < opts.facadeBudget * 0.75,
+      });
+    }
+    manifest.stats.facadeTriangles = spent;
+  }
+
+  /* ----------------------------- street life ----------------------------- */
+
+  // What stands on all that ground: cars along the kerb and in the marked bays,
+  // utility poles down one side of the street. Props, not triangles - the engine
+  // has the meshes - and they keep out of buildings and clear of junctions.
+  if (opts.streetLife) {
+    const life = placeStreetLife(streetPieces, parkingStalls, junctionPts, buildingRings, surface, boundary);
+    for (const prop of life) manifest.props.push(prop);
+    manifest.stats.cars = life.filter((p) => p.kind === 'car').length;
+    manifest.stats.poles = life.filter((p) => p.kind === 'pole').length;
+  }
+
+  /* -------------------------------- clutter ------------------------------ */
+
+  // Open ground is what makes a map feel empty: a lawn that runs to the horizon, a
+  // lot with nothing on it. This drops the small things that say people were here
+  // - carts, dumpsters, cones, bins in town; hay, tractors, wood, deer out of it -
+  // picked by what the ground is and what stands near, kept off roads and out of
+  // buildings. Props for the engine, like the cars.
+  if (opts.clutter) {
+    const clutter = placeClutter({
+      radius, boundary, surface, osmAreas, waterAreas, buildingRings, roadLines, landcover,
+      seed: Math.abs(Math.round(projector.lon0 * 1e4)) + 7,
+    });
+    for (const prop of clutter) manifest.props.push(prop);
+    manifest.stats.clutter = clutter.length;
+  }
+
+  /* -------------------------------- spawn ------------------------------- */
+
+  // The geocoder's pin is an estimate along the road. Start the player on the
+  // doorstep of the house at the address instead (or the nearest house), and
+  // failing that on the nearest road rather than in whatever the pin fell on.
+  if (opts.home !== false) {
+    const home = pickHome(manifest.buildings, opts.homeTarget ?? {});
+    if (home) {
+      const b = home.building;
+      const step = doorstep(b.outline, nearestRoadPoint(b.outline, roadLines));
+      manifest.home = {
+        buildingId: b.id,
+        address: b.address,
+        reason: home.reason,
+        centre: b.centre,
+      };
+      manifest.spawn = {
+        x: round(step.x, 2),
+        y: round(surface(step.x, step.z), 3),
+        z: round(step.z, 2),
+        yaw: round(step.yaw, 1),
+        facing: step.facing.map((v) => round(v, 3)),
+        at: 'doorstep',
+      };
+    } else {
+      let best = null;
+      let bestD = 40;
+      for (const { line } of roadLines) {
+        for (const [x, z] of line) {
+          const d = Math.hypot(x, z);
+          if (d < bestD) { bestD = d; best = [x, z]; }
+        }
+      }
+      if (best) {
+        manifest.spawn = {
+          x: round(best[0], 2), y: round(surface(best[0], best[1]), 3), z: round(best[1], 2),
+          yaw: 0, facing: [0, -1], at: 'road',
+        };
+      } else {
+        manifest.spawn.at = 'address';
+      }
+    }
+  }
+
+  /* --------------------------- walls and fences -------------------------- */
+
+  if (opts.barriers) {
+    const g = builder.group('wall');
+    for (const f of local) {
+      if (f.kind !== 'line' || !f.tags.barrier) continue;
+      const height =
+        parseLength(f.tags.height) ??
+        { wall: 2, city_wall: 6, retaining_wall: 1.5, fence: 1.8, hedge: 1.5 }[
+          f.tags.barrier
+        ];
+      if (!height) continue;
+      const thickness = f.tags.barrier === 'hedge' ? 0.6 : 0.25;
+      for (const piece of clipLine(f.line, boundary)) {
+        const rings = normalizeRings([thickLine(piece, thickness)]);
+        if (!rings.length) continue;
+        let gy = Infinity;
+        for (const [x, z] of rings[0]) gy = Math.min(gy, surface(x, z));
+        extrudeWalls(g, rings, () => gy - 0.2, () => gy + height, { uvScale: 2 });
+        fillPolygon(g, rings, () => gy + height, { uvScale: 2 });
+      }
+    }
+  }
+
+  /* -------------------------------- trees -------------------------------- */
+
+  if (opts.trees) {
+    // Individually mapped trees are ground truth and always get placed.
+    const planted = [];
+    for (const f of local) {
+      const isTreeNode = f.kind === 'point' && f.tags.natural === 'tree';
+      const isTreeRow = f.kind === 'line' && f.tags.natural === 'tree_row';
+      if (!isTreeNode && !isTreeRow) continue;
+
+      const spots = isTreeNode ? [f.point] : sampleAlong(f.line, 8);
+      for (const [x, z] of spots) {
+        if (!insideBounds(x, z, boundary)) continue;
+        const seed = hash(`${f.id}:${x.toFixed(1)}:${z.toFixed(1)}`);
+        const height = parseLength(f.tags.height) ?? 6 + (seed % 60) / 10;
+        const crown = (parseLength(f.tags['diameter_crown']) ?? 0) / 2 || height * 0.28;
+        const kind = /conifer|needle|pine|spruce|fir/i.test(
+          `${f.tags['leaf_type'] ?? ''} ${f.tags.species ?? ''} ${f.tags.genus ?? ''}`,
+        ) ? 'conifer' : 'broadleaf';
+        if (opts.treeMeshes !== false) tree(builder, x, z, surface(x, z), height, crown, seed, kind);
+        planted.push({ id: f.id, x, z, height, mapped: true, kind, crown });
+      }
+    }
+    const mappedCount = planted.length;
+
+    // Then fill in the woodland. OSM polygons win where they exist; land cover
+    // covers the rest, which in rural areas is very nearly all of it.
+    const claimed = new OccupancyMask(half, 4);
+    for (const area of osmAreas) {
+      // 2 = OSM says open ground here; 3+ encodes canopy density.
+      claimed.markPolygon(area.rings, 0, 2 + Math.round(area.canopy * 200));
+    }
+
+    const blockedMask = new OccupancyMask(half, 2);
+    for (const rings of buildingRings) blockedMask.markPolygon(rings, 2.5);
+    for (const rings of waterAreas) blockedMask.markPolygon(rings, 1);
+    for (const { line, width } of roadLines) blockedMask.markLine(line, width + 3);
+
+    const canopyAt = (x, z) => {
+      const c = claimed.valueAt(x, z);
+      if (c >= 2) return (c - 2) / 200; // an OSM area covers this spot
+      return landcover ? landcover.canopyAt(x, z) : 0;
+    };
+
+    const spots = scatter({
+      half: radius,
+      spacing: opts.treeSpacing,
+      canopyAt,
+      accept: (x, z) => insideBounds(x, z, boundary) && !blockedMask.get(x, z),
+      max: Math.max(0, opts.maxTrees - mappedCount),
+      seed: Math.abs(Math.round(projector.lat0 * 1e4)) + 1,
+    });
+
+    for (const spot of spots) {
+      const cls = landcover?.classAt(spot.x, spot.z);
+      const conifer =
+        cls?.name === 'evergreen forest' ||
+        (cls?.name === 'mixed forest' && spot.r < 0.45) ||
+        (!cls && spot.r < 0.35);
+      const scrubby = cls?.name === 'shrub/scrub';
+
+      const height = scrubby ? 2 + spot.r * 2.5 : 11 + spot.r * 11;
+      const crown = height * (conifer ? 0.2 : 0.34) * (0.8 + spot.r * 0.5);
+      const y = surface(spot.x, spot.z);
+      // With --trees-data-only the engine instances its own tree prefabs from
+      // the manifest, which is far cheaper than 20 triangles a tree in a
+      // static mesh; the list below is all it needs.
+      if (opts.treeMeshes !== false) {
+        tree(builder, spot.x, spot.z, y, height, crown, Math.round(spot.r * 1e6),
+          conifer ? 'conifer' : 'broadleaf');
+      }
+      planted.push({
+        x: spot.x, z: spot.z, height, scattered: true, crown,
+        kind: scrubby ? 'scrub' : conifer ? 'conifer' : 'broadleaf',
+      });
+    }
+
+    for (const t of planted) {
+      manifest.props.push({
+        id: t.id,
+        kind: 'tree',
+        species: t.kind,
+        x: round(t.x, 2),
+        z: round(t.z, 2),
+        y: round(surface(t.x, t.z), 2),
+        heightMeters: round(t.height, 1),
+        crownMeters: t.crown != null ? round(t.crown, 1) : undefined,
+        source: t.mapped ? 'osm' : 'scattered',
+      });
+    }
+    manifest.stats.treeMeshes = opts.treeMeshes !== false;
+
+    manifest.stats.trees = planted.length;
+    manifest.stats.treesMapped = mappedCount;
+    manifest.stats.treesScattered = planted.length - mappedCount;
+  }
+
+  /* ------------------------------- finish -------------------------------- */
+
+  const totals = builder.finalize();
+  manifest.stats = {
+    ...manifest.stats,
+    buildings: manifest.buildings.length,
+    roads: manifest.roads.length,
+    areas: manifest.areas.length,
+    vertices: totals.vertices,
+    triangles: totals.triangles,
+    meshes: totals.groups,
+  };
+
+  // After the buildings exist, so a point can find the building it sits in.
+  /* ------------------------------ points of interest ------------------------------ */
+
+  // A shop or a church mapped as a point inside a building names that building; one
+  // with no building under it is kept as a point of its own.
+  {
+    const named = [];
+    const byBox = manifest.buildings.map((b) => ({ b, box: bbox(b.outline) }));
+    let attached = 0;
+    for (const f of local) {
+      if (f.kind !== 'point') continue;
+      const use = classifyUse(f.tags);
+      if (!use) continue;
+      const [x, z] = f.point;
+      if (!insideBounds(x, z, boundary)) continue;
+      let host = null;
+      for (const { b, box } of byBox) {
+        if (x < box.minX || x > box.maxX || z < box.minZ || z > box.maxZ) continue;
+        if (pointInRing(x, z, b.outline)) { host = b; break; }
+      }
+      if (host && (!host.use || !host.name)) {
+        if (!host.use) host.use = use.use;
+        if (!host.name && use.name) host.name = use.name;
+        host.brand = host.brand ?? use.brand;
+        host.cuisine = host.cuisine ?? use.cuisine;
+        host.denomination = host.denomination ?? use.denomination;
+        host.historic = host.historic ?? use.historic;
+        host.wikipedia = host.wikipedia ?? use.wikipedia;
+        attached++;
+      } else {
+        named.push({ id: f.id, x: round(x, 2), z: round(z, 2), y: round(surface(x, z), 2), use: use.use, name: use.name, brand: use.brand, historic: use.historic, buildingId: host?.id });
+      }
+    }
+    manifest.pois = named;
+    manifest.stats.pois = named.length;
+    manifest.stats.poisAttached = attached;
+  }
+
+  /* ---------------------------------- context ---------------------------------- */
+
+  // What kind of place this is, for the game's regional dressing and sounds.
+  {
+    const ctx = { coast: false, rail: false, motorway: false, harbour: false, churches: 0, cemeteries: 0, farms: 0, campus: 0 };
+    for (const f of local) {
+      const t = f.tags;
+      if (t.natural === 'coastline') ctx.coast = true;
+      if (t.railway && /^(rail|light_rail|subway|tram|monorail|narrow_gauge)$/.test(t.railway) && f.kind === 'line') ctx.rail = true;
+      if (t.highway && /^(motorway|trunk)$/.test(t.highway)) ctx.motorway = true;
+      if (t.harbour || t.leisure === 'marina' || t.man_made === 'pier' || t.waterway === 'dock') ctx.harbour = true;
+      if (t.landuse === 'farmland' || t.landuse === 'farmyard' || t.building === 'barn') ctx.farms++;
+      if (t.amenity === 'university' || t.amenity === 'college') ctx.campus++;
+    }
+    for (const b of manifest.buildings) if (b.use === 'church') ctx.churches++;
+    for (const a of manifest.areas) if (a.use === 'cemetery') ctx.cemeteries++;
+    // The sea: a water polygon that reaches the edge of the map and covers a real
+    // share of it. A river reaches the edge too (Concord came out coastal), so the
+    // size test matters: a sixth of the map, or natural=coastline above.
+    for (const a of manifest.areas) {
+      if (a.kind !== 'water' || !a.outline || (a.areaM2 ?? 0) < (half * 2) ** 2 / 6) continue;
+      for (const [x, z] of a.outline) if (Math.abs(x) > half - 2 || Math.abs(z) > half - 2) { ctx.coast = true; break; }
+    }
+    manifest.context = ctx;
+  }
+
+  return { builder, manifest, boundary, half };
+}
+
+/* -------------------------------- helpers --------------------------------- */
+
+const STREET_KINDS = /^(residential|tertiary|secondary|primary|unclassified|living_street)$/;
+
+/**
+ * Filler for open ground. Candidates come from the same jittered grid the trees
+ * use; each is kept with a probability set by its context and then given a prop
+ * that suits it. Deer come in small groups and hay in clusters.
+ */
+function placeClutter({ radius, boundary, surface, osmAreas, waterAreas, buildingRings, roadLines, landcover, seed }) {
+  // What the ground is, by OSM polygon: 1 car park, 2 lawn/park, 3 hard urban ground, 4 farmland.
+  const areaKind = new OccupancyMask(radius, 3);
+  const KIND = { parking: 1, grass: 2, pitch: 2, urban_ground: 3, pavement: 3, industrial_ground: 3, farmland: 4 };
+  for (const a of osmAreas) {
+    const k = KIND[a.material];
+    if (k) areaKind.markPolygon(a.rings, 0, k);
+  }
+  const blocked = new OccupancyMask(radius, 2);
+  for (const rings of buildingRings) blocked.markPolygon(rings, 1.2);
+  for (const { line, width } of roadLines) blocked.markLine(line, width + 1.5);
+  for (const rings of waterAreas) blocked.markPolygon(rings, 3);   // no hay on the lake
+  const nearBuilding = new OccupancyMask(radius, 3);
+  for (const rings of buildingRings) nearBuilding.markPolygon(rings, 9);
+  const nearRoad = new OccupancyMask(radius, 3);
+  for (const { line, width } of roadLines) nearRoad.markLine(line, width + 9);
+
+  const context = (x, z) => {
+    const cls = landcover?.classAt(x, z)?.name ?? '';
+    const k = areaKind.valueAt(x, z);
+    if (k === 1) return 'lot';
+    if (k === 3) return 'urban';
+    if (k === 4) return 'farm';
+    // Dense development is a town; open or low development is houses on lots, and
+    // what stands in a yard is not what stands behind a shop.
+    if (/^developed (medium|high)/.test(cls)) return k === 2 ? 'park' : 'urban';
+    if (/^developed/.test(cls)) return 'yard';
+    if (k === 2) return 'park';
+    if (/forest|woody|scrub/.test(cls)) return 'wood';
+    return 'farm';
+  };
+
+  const density = (x, z) => {
+    if (!insideBounds(x, z, boundary) || blocked.get(x, z)) return 0;
+    const c = context(x, z);
+    const b = nearBuilding.get(x, z);
+    const r = nearRoad.get(x, z);
+    if (c === 'lot') return 0.45;
+    if (c === 'urban') return b ? 0.65 : r ? 0.40 : 0.22;
+    if (c === 'park') return b ? 0.40 : 0.24;
+    if (c === 'yard') return b ? 0.65 : r ? 0.18 : 0.10;
+    if (c === 'wood') return r ? 0 : 0.02;
+    return b ? 0.70 : r ? 0.22 : 0.11;   // farm
+  };
+
+  const spots = scatter({
+    half: radius, spacing: 11, canopyAt: density,
+    accept: (x, z) => true, max: 900, seed,
+  });
+
+  const props = [];
+  let deer = 0;
+  const maxDeer = 60;
+  const push = (prop, x, z, r) => {
+    if (prop === 'deer' && deer++ >= maxDeer) return;
+    props.push({
+    kind: 'clutter', prop,
+    x: round(x, 2), z: round(z, 2), y: round(surface(x, z), 2),
+    rotationDeg: round(r * 360, 1), source: 'scattered',
+  }); };
+
+  for (const { x, z, r } of spots) {
+    const c = context(x, z);
+    const b = nearBuilding.get(x, z);
+    const rd = nearRoad.get(x, z);
+    if (c === 'lot') {
+      if (r < 0.45) push('shopping_cart', x, z, r);
+      else if (r < 0.65) push('traffic_cones', x, z, r);
+      else if (r < 0.8) push('trash_can', x, z, r);
+      else push('jersey_barrier', x, z, r);
+    } else if (c === 'urban') {
+      if (b) {
+        if (r < 0.4) push('dumpster', x, z, r);
+        else if (r < 0.6) push('trash_can', x, z, r);
+        else if (r < 0.8) push('garbage_bags', x, z, r);
+        else push('bench', x, z, r);
+      } else if (rd) {
+        if (r < 0.4) push('hydrant', x, z, r);
+        else if (r < 0.7) push('trash_can', x, z, r);
+        else push('traffic_cones', x, z, r);
+      } else if (r < 0.5) push('bench', x, z, r);
+      else if (r < 0.75) push('shopping_cart', x, z, r);
+      else push('trash_can', x, z, r);
+    } else if (c === 'park') {
+      if (r < 0.5) push('bench', x, z, r);
+      else if (r < 0.7) push('trash_can', x, z, r);
+      else if (r < 0.85) push('garbage_bags', x, z, r);
+      else push('deer', x, z, r);
+    } else if (c === 'wood') {
+      push('deer', x, z, r);
+      if (r < 0.5) push('deer', x + 2.5, z + 1.5, r * 0.7);
+    } else if (c === 'yard') {
+      if (b) {
+        if (r < 0.3) push('wood_pile', x, z, r);
+        else if (r < 0.55) push('garbage_bags', x, z, r);
+        else if (r < 0.7) push('propane_tank', x, z, r);
+        else if (r < 0.85) push('bench', x, z, r);
+        else push('trash_can', x, z, r);
+      } else if (r < 0.5) push('deer', x, z, r);
+      else push('hay_bale', x, z, r);
+    } else {
+      // farm
+      if (b) {
+        if (r < 0.28) push('tractor', x, z, r);
+        else if (r < 0.52) push('wood_pile', x, z, r);
+        else if (r < 0.74) push('garbage_bags', x, z, r);
+        else if (r < 0.9) push('propane_tank', x, z, r);
+        else push('hay_bale', x, z, r);
+      } else if (rd) {
+        if (r < 0.5) push('garbage_bags', x, z, r);
+        else push('hay_bale', x, z, r);
+      } else if (r < 0.45) {
+        push('deer', x, z, r);
+        if (r < 0.25) push('deer', x + 3, z - 2, r * 0.8);
+        if (r < 0.12) push('deer', x - 2.5, z + 2.5, r * 0.6);
+      } else if (r < 0.85) {
+        push('hay_bale', x, z, r);
+        push('hay_bale', x + 2.2, z + 0.4, r * 0.9);
+        if (r > 0.6) push('hay_bale', x + 0.6, z + 2.6, r * 0.5);
+      }
+    }
+  }
+  return props;
+}
+
+/**
+ * Kerb boxes along both edges of a road piece: a strip 35 cm wide straddling the
+ * ribbon's edge, buried 5 cm into the ground and standing 12 cm above the road.
+ * One quad ring per segment, so it follows the terrain the way the ribbon does.
+ * Returns how many segments were built.
+ */
+function addKerbs(g, piece, hw, surface, roadY, junctionPts, maxSegment) {
+  const pts = densify(piece, maxSegment);
+  if (pts.length < 2) return 0;
+  let built = 0;
+  for (const side of [1, -1]) {
+    const inner = offsetLine(pts, side * (hw - 0.12));
+    const outer = offsetLine(pts, side * (hw + 0.23));
+    for (let i = 0; i < pts.length - 1; i++) {
+      if (nearJunction(pts[i][0], pts[i][1], junctionPts, 0)
+        || nearJunction(pts[i + 1][0], pts[i + 1][1], junctionPts, 0)) continue;
+      const rings = normalizeRings([[inner[i], outer[i], outer[i + 1], inner[i + 1]]]);
+      if (!rings.length) continue;
+      extrudeWalls(g, rings, (x, z) => surface(x, z) - 0.05, (x, z) => surface(x, z) + roadY + 0.12, { uvScale: 2 });
+      fillPolygon(g, rings, (x, z) => surface(x, z) + roadY + 0.12, { uvScale: 2 });
+      built++;
+    }
+  }
+  return built;
+}
+
+function nearJunction(x, z, junctionPts, extra) {
+  for (const j of junctionPts) {
+    const r = j.r + extra;
+    const dx = x - j.x;
+    const dz = z - j.z;
+    if (dx * dx + dz * dz < r * r) return true;
+  }
+  return false;
+}
+
+/**
+ * Painted bays in a car park: rows of 2.7 m stalls, 5 m deep, laid along the long
+ * axis of the lot's bounding box with a 6 m aisle between each pair of rows. A
+ * marked lot reads as a lot; an unmarked one is a grey shape. Returns the bay
+ * centres so some of them can be given a car.
+ */
+function addParkingStripes(builder, ring, surface, y) {
+  const box = orientedBox(ring);
+  if (!box || box.width < 11 || box.length < 11) return [];
+  const c = box.corners;
+  // Long axis unit vector and the short axis across it.
+  const a0 = box.axis === 0 ? c[0] : c[1];
+  const a1 = box.axis === 0 ? c[1] : c[2];
+  const b1 = box.axis === 0 ? c[3] : c[0];
+  const L = box.length;
+  const W = box.width;
+  const lx = (a1[0] - a0[0]) / L;
+  const lz = (a1[1] - a0[1]) / L;
+  const sx = (b1[0] - a0[0]) / W;
+  const sz = (b1[1] - a0[1]) / W;
+  const at = (u, v) => [a0[0] + lx * u + sx * v, a0[1] + lz * u + sz * v];
+
+  const g = builder.group('marking');
+  const stalls = [];
+  let stripes = 0;
+  const bay = 2.7;
+  const depth = 5;
+  const aisle = 6;
+  // Row pairs: bays back to back, then an aisle, repeating across the lot.
+  for (let v = 1.5; v + depth * 2 <= W - 1 && stripes < 600; v += depth * 2 + aisle) {
+    for (const [base, dir] of [[v, 1], [v + depth * 2, -1]]) {
+      for (let u = 1.5; u + bay <= L - 1; u += bay) {
+        const p0 = at(u, base);
+        const p1 = at(u, base + depth * dir);
+        if (!pointInRing(p0[0], p0[1], ring) || !pointInRing(p1[0], p1[1], ring)) continue;
+        // A stripe is a thin quad along the bay's edge.
+        const quad = normalizeRings([[
+          [p0[0] - lx * 0.06, p0[1] - lz * 0.06], [p0[0] + lx * 0.06, p0[1] + lz * 0.06],
+          [p1[0] + lx * 0.06, p1[1] + lz * 0.06], [p1[0] - lx * 0.06, p1[1] - lz * 0.06],
+        ]]);
+        if (!quad.length) continue;
+        fillPolygon(g, quad, (x, z) => surface(x, z) + y + 0.012, { uvScale: 1 });
+        stripes++;
+        const centre = at(u + bay / 2, base + (depth / 2) * dir);
+        if (pointInRing(centre[0], centre[1], ring)) {
+          const heading = Math.atan2(sx * dir, sz * dir);
+          stalls.push({ x: centre[0], z: centre[1], rotationDeg: (heading * 180) / Math.PI });
+        }
+      }
+    }
+  }
+  return stalls;
+}
+
+/**
+ * Cars parked along the kerb and in the bays, and utility poles down one side of
+ * the street. Seeded, so the same map parks the same cars.
+ */
+function placeStreetLife(streetPieces, parkingStalls, junctionPts, buildingRings, surface, boundary) {
+  let state = 20240907;
+  const rand = () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+  const props = [];
+  const blocked = (x, z) => {
+    if (!insideBounds(x, z, boundary)) return true;
+    for (const rings of buildingRings) if (pointInRing(x, z, rings[0])) return true;
+    return false;
+  };
+  const car = (x, z, headingRad) => ({
+    kind: 'car',
+    x: round(x, 2), z: round(z, 2), y: round(surface(x, z), 2),
+    rotationDeg: round((headingRad * 180) / Math.PI, 1),
+    variant: Math.floor(rand() * 6),
+  });
+
+  let cars = 0;
+  let poles = 0;
+  const maxCars = 360;
+  const maxPoles = 260;
+
+  for (const { id, piece, hw, kind } of streetPieces) {
+    // Only a street wide enough to park on, and only kinds people park along.
+    const parkable = hw >= 2.6 && /^(residential|unclassified|living_street|tertiary)$/.test(kind);
+    let run = 0;
+    let nextCar = 8 + rand() * 14;
+    let nextPole = 12 + rand() * 20;
+    let seq = 0;
+    for (let i = 0; i < piece.length - 1; i++) {
+      const [ax, az] = piece[i];
+      const [bx, bz] = piece[i + 1];
+      const len = Math.hypot(bx - ax, bz - az);
+      if (len < 0.01) continue;
+      const heading = Math.atan2(bx - ax, bz - az);   // yaw about +z, Unity style
+      // Unit left-of-travel offset for this segment, in the ribbon's sense.
+      const left = offsetLine([[ax, az], [bx, bz]], 1);
+      const ox = left[0][0] - ax;
+      const oz = left[0][1] - az;
+      for (let d = 0; d < len; d += 0.5) {
+        const t = d / len;
+        const x = ax + (bx - ax) * t;
+        const z = az + (bz - az) * t;
+        run += 0.5;
+
+        if (parkable && run >= nextCar && cars < maxCars) {
+          nextCar = run + 16 + rand() * 26;
+          const side = rand() < 0.5 ? 1 : -1;
+          const cx = x + ox * side * (hw - 1.15);
+          const cz = z + oz * side * (hw - 1.15);
+          if (!nearJunction(cx, cz, junctionPts, 6) && !blocked(cx, cz)) {
+            props.push(car(cx, cz, side > 0 ? heading : heading + Math.PI));
+            cars++;
+          }
+        }
+        if (run >= nextPole && poles < maxPoles) {
+          nextPole = run + 42 + rand() * 8;
+          const cx = x + ox * (hw + 1.1);
+          const cz = z + oz * (hw + 1.1);
+          if (!nearJunction(cx, cz, junctionPts, 3) && !blocked(cx, cz)) {
+            props.push({
+              kind: 'pole', run: id, seq: seq++,
+              x: round(cx, 2), z: round(cz, 2), y: round(surface(cx, cz), 2),
+            });
+            poles++;
+          }
+        }
+      }
+    }
+  }
+
+  // Roughly a third of the marked bays are taken.
+  for (const stall of parkingStalls) {
+    if (cars >= maxCars) break;
+    if (rand() > 0.34) continue;
+    if (blocked(stall.x, stall.z)) continue;
+    props.push(car(stall.x, stall.z, (stall.rotationDeg * Math.PI) / 180));
+    cars++;
+  }
+  return props;
+}
+
+/**
+ * The lip and the machinery on top of a flat roof. The parapet is the outline
+ * extruded a little past the roof plane, so the roof surface sits slightly sunk
+ * inside a rim, which is how a real one looks; the units are small boxes dropped
+ * inside the footprint. Deterministic in the building's seed.
+ */
+function addRoofDetail(builder, rings, eaveY, seed, roofGroup) {
+  let state = (seed >>> 0) || 1;
+  const rand = () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+
+  const parapet = 0.7 + rand() * 0.6;
+  extrudeWalls(roofGroup, rings, () => eaveY - 0.05, () => eaveY + parapet, { uvScale: 3 });
+
+  const ring = rings[0];
+  const box = bbox(ring);
+  const width = box.maxX - box.minX;
+  const depth = box.maxZ - box.minZ;
+  if (width < 8 || depth < 8) return;
+
+  const g = builder.group('roof_plant');
+  const wanted = Math.min(5, Math.max(1, Math.floor((width * depth) / 900)));
+  let placed = 0;
+  for (let attempt = 0; attempt < 40 && placed < wanted; attempt++) {
+    const x = box.minX + rand() * width;
+    const z = box.minZ + rand() * depth;
+    // Keep clear of the parapet, or a unit pokes through the wall.
+    if (!pointInRing(x, z, ring)) continue;
+    const half = 1.3 + rand() * 1.1;
+    if (!pointInRing(x + half + 1.5, z, ring) || !pointInRing(x - half - 1.5, z, ring)) continue;
+    if (!pointInRing(x, z + half + 1.5, ring) || !pointInRing(x, z - half - 1.5, ring)) continue;
+    const tall = 1.1 + rand() * 1.2;
+    const unit = [
+      [x - half, z - half], [x + half, z - half], [x + half, z + half], [x - half, z + half],
+    ];
+    const units = normalizeRings([unit]);
+    if (!units.length) continue;
+    extrudeWalls(g, units, () => eaveY, () => eaveY + tall, { uvScale: 2 });
+    fillPolygon(g, units, () => eaveY + tall, { uvScale: 2 });
+    placed++;
+  }
+}
+
+/**
+ * Dirt infield and a backstop for a ball field. OSM gives the outline and the
+ * sport but never says where home plate is; on the fan-shaped polygon these are
+ * usually mapped as, it is the sharpest corner, which is guess enough to make
+ * the shape read as a ball field from anywhere on the map.
+ */
+function addBallDiamond(builder, ring, surface, y, manifest, id) {
+  const n = ring.length;
+  if (n < 4) return;
+
+  let home = 0;
+  let sharpest = Infinity;
+  for (let i = 0; i < n; i++) {
+    const prev = ring[(i - 1 + n) % n];
+    const cur = ring[i];
+    const next = ring[(i + 1) % n];
+    const a1 = Math.atan2(prev[1] - cur[1], prev[0] - cur[0]);
+    const a2 = Math.atan2(next[1] - cur[1], next[0] - cur[0]);
+    let angle = Math.abs(a1 - a2);
+    if (angle > Math.PI) angle = 2 * Math.PI - angle;
+    if (angle < sharpest) {
+      sharpest = angle;
+      home = i;
+    }
+  }
+
+  const [hx, hz] = ring[home];
+  let far = 0;
+  for (const [px, pz] of ring) far = Math.max(far, Math.hypot(px - hx, pz - hz));
+  if (far < 20) return;                       // too small to be a ball field
+  const infield = Math.min(Math.max(far * 0.42, 12), 30);
+  const [cx, cz] = centroidXZ(ring);
+  const facing = Math.atan2(cz - hz, cx - hx);
+
+  // A 108 degree fan of dirt, which is what an infield looks like from above.
+  const half = Math.PI * 0.3;
+  const fan = [[hx, hz]];
+  for (let i = 0; i <= 18; i++) {
+    const t = facing - half + (2 * half * i) / 18;
+    fan.push([hx + Math.cos(t) * infield, hz + Math.sin(t) * infield]);
+  }
+  fillPolygon(builder.group('infield'), [fan], (x, z) => surface(x, z) + y + 0.012, { uvScale: 12 });
+
+  // On home plate, facing the field. rotationDeg is atan2(dx, dz) like every other
+  // heading in the manifest; the engine mirrors it for its flipped x.
+  manifest.props.push({
+    id: `${id}-backstop`,
+    kind: 'landmark',
+    prop: 'backstop',
+    x: round(hx, 2),
+    z: round(hz, 2),
+    y: round(surface(hx, hz), 2),
+    radiusMeters: 5.5,
+    heightMeters: 5,
+    rotationDeg: round((Math.atan2(Math.cos(facing), Math.sin(facing)) * 180) / Math.PI, 1),
+    source: 'osm',
+  });
+}
+
+function projectFeature(f, projector) {
+  const p = ([lat, lon]) => projector.toLocal(lat, lon);
+  if (f.kind === 'point') return { ...f, point: p(f.point) };
+  if (f.kind === 'line') return { ...f, line: f.line.map(p) };
+  return { ...f, rings: f.rings.map((r) => r.map(p)) };
+}
+
+function addImageryGround(builder, imagery, ground, detail = 0) {
+  imagery.tiles.forEach((tile, i) => {
+    const g = builder.group(`imagery_${i}`);
+    g.texture = { data: tile.data, mime: tile.mime };
+    const { x0, z0, x1, z1 } = tile;
+    // Follow the terrain as closely as the ground grid does, within reason:
+    // one imagery tile can cover 300m, and at full detail that is thousands of
+    // quads each. Roads sit on this surface, so a coarse tile shows as a road
+    // sunk into the hillside.
+    const cells = detail > 0
+      ? Math.min(Math.max(Math.round((x1 - x0) / detail), 4), 24)
+      : 4;
+    for (let a = 0; a < cells; a++) {
+      for (let b = 0; b < cells; b++) {
+        const px = [x0 + ((x1 - x0) * a) / cells, x0 + ((x1 - x0) * (a + 1)) / cells];
+        const pz = [z0 + ((z1 - z0) * b) / cells, z0 + ((z1 - z0) * (b + 1)) / cells];
+        const uv = [a / cells, (a + 1) / cells, b / cells, (b + 1) / cells];
+        const v = (xi, zi, ui, vi) =>
+          g.vertex(px[xi], ground(px[xi], pz[zi]) + 0.01, pz[zi], 0, 1, 0, uv[ui], uv[vi]);
+        const v00 = v(0, 0, 0, 2);
+        const v01 = v(0, 1, 0, 3);
+        const v11 = v(1, 1, 1, 3);
+        const v10 = v(1, 0, 1, 2);
+        g.quad(v00, v01, v11, v10);
+      }
+    }
+  });
+}
+
+/**
+ * The nearest point on a road to a building, used to decide which wall the
+ * front door belongs on. Only the centrelines already clipped into the map are
+ * considered, so a building with no road near it just keeps its longest wall.
+ */
+function nearestRoadPoint(ring, roadLines) {
+  const [cx, cz] = centroidXZ(ring);
+  let best = null;
+  let bestDist = 60;
+  for (const { line } of roadLines) {
+    for (const [x, z] of line) {
+      const d = Math.hypot(x - cx, z - cz);
+      if (d < bestDist) {
+        bestDist = d;
+        best = [x, z];
+      }
+    }
+  }
+  return best ?? undefined;
+}
+
+/** Underground volumes (metro concourses, car parks) are not part of the skyline. */
+function isUnderground(tags) {
+  return (
+    tags.location === 'underground' ||
+    tags.tunnel === 'yes' ||
+    (parseIntTag(tags.layer) ?? 0) < 0 ||
+    (parseIntTag(tags.level) ?? 0) < 0
+  );
+}
+
+/** Whether most of a line (sampled every 4 m) lies inside the indexed polygons. */
+function mostlyInside(line, index) {
+  let inside = 0;
+  let n = 0;
+  for (const [x, z] of sampleAlong(line, 4)) { n++; if (index.contains(x, z)) inside++; }
+  return n > 0 && inside / n >= 0.6;
+}
+
+/** Ground covers: painted only in real stretches (DEFAULTS.minPatchM2). */
+const GROUND_COVER = new Set(['grass', 'forest', 'scrub', 'farmland', 'sand', 'urban_ground', 'industrial_ground']);
+
+/**
+ * Whether the land-cover ground under a polygon is already this material at
+ * nearly every sample: the centroid and the midpoints from it to each vertex.
+ */
+function sameAsBase(ring, material, landcover) {
+  const [cx, cz] = centroidXZ(ring);
+  let same = landcover.materialAt(cx, cz) === material ? 1 : 0;
+  let n = 1;
+  const stride = Math.max(1, Math.floor(ring.length / 24));
+  for (let i = 0; i < ring.length; i += stride) {
+    const [x, z] = ring[i];
+    if (landcover.materialAt((x + cx) / 2, (z + cz) / 2) === material) same++;
+    n++;
+  }
+  return same / n >= 0.9;
+}
+
+function boxInside(inner, outer) {
+  return inner.minX >= outer.minX && inner.maxX <= outer.maxX && inner.minZ >= outer.minZ && inner.maxZ <= outer.maxZ;
+}
+
+/** Every vertex of `inner` lies inside `outer`. */
+function ringInside(inner, outer) {
+  for (const [x, z] of inner) if (!pointInRing(x, z, outer)) return false;
+  return true;
+}
+
+/**
+ * Bucketed point-in-area lookup over the drawn polygons, for cutting the base
+ * ground: `contains(x, z)` is true under any drawn polygon and outside its own
+ * holes. One bucket is 32 m; a cell test touches only the polygons whose box
+ * overlaps that bucket.
+ */
+class AreaIndex {
+  constructor(areas, half, bucket = 32) {
+    this.bucket = bucket;
+    this.half = half;
+    this.n = Math.ceil((half * 2) / bucket) + 1;
+    this.cells = new Map();
+    areas.forEach((a, id) => {
+      const b = a.box;
+      const i0 = this.slot(b.minX);
+      const i1 = this.slot(b.maxX);
+      const j0 = this.slot(b.minZ);
+      const j1 = this.slot(b.maxZ);
+      for (let i = i0; i <= i1; i++) {
+        for (let j = j0; j <= j1; j++) {
+          const key = i * this.n + j;
+          let list = this.cells.get(key);
+          if (!list) { list = []; this.cells.set(key, list); }
+          list.push(a);
+        }
+      }
+    });
+  }
+
+  slot(v) {
+    return Math.min(this.n - 1, Math.max(0, Math.floor((v + this.half) / this.bucket)));
+  }
+
+  contains(x, z) {
+    const list = this.cells.get(this.slot(x) * this.n + this.slot(z));
+    if (!list) return false;
+    for (const a of list) {
+      const b = a.box;
+      if (x < b.minX || x > b.maxX || z < b.minZ || z > b.maxZ) continue;
+      if (!pointInRing(x, z, a.norm[0])) continue;
+      if (this.inHole(a, x, z)) continue;
+      return true;
+    }
+    return false;
+  }
+
+  inHole(a, x, z) {
+    for (let k = 1; k < a.norm.length; k++) if (pointInRing(x, z, a.norm[k])) return true;
+    if (a.holes) for (const h of a.holes) if (pointInRing(x, z, h)) return true;
+    return false;
+  }
+
+  /** Material of the smallest drawn polygon under the point, or null. Areas are sorted big-first, so the last hit is the smallest. */
+  materialAt(x, z) {
+    const list = this.cells.get(this.slot(x) * this.n + this.slot(z));
+    if (!list) return null;
+    let out = null;
+    for (const a of list) {
+      const b = a.box;
+      if (x < b.minX || x > b.maxX || z < b.minZ || z > b.maxZ) continue;
+      if (!pointInRing(x, z, a.norm[0])) continue;
+      if (this.inHole(a, x, z)) continue;
+      out = a.cls.material;
+    }
+    return out;
+  }
+}
+
+function bbox(ring) {
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (const [x, z] of ring) {
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (z < minZ) minZ = z;
+    if (z > maxZ) maxZ = z;
+  }
+  return { minX, maxX, minZ, maxZ };
+}
+
+/** Ray-casting point-in-polygon on [x, z] rings. */
+function pointInRing(x, z, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, zi] = ring[i];
+    const [xj, zj] = ring[j];
+    if (zi > z !== zj > z && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+/** A regular n-gon ring, CCW in (u, v). */
+function discRing(cx, cz, radius, segments) {
+  const ring = [];
+  for (let i = 0; i < segments; i++) {
+    const t = (i / segments) * Math.PI * 2;
+    ring.push([cx + radius * Math.cos(t), cz - radius * Math.sin(t)]);
+  }
+  return ring;
+}
+
+/** Turns a polyline into a thin closed ring so it can be extruded. */
+function thickLine(line, thickness) {
+  const hw = thickness / 2;
+  const left = [];
+  const right = [];
+  for (let i = 0; i < line.length; i++) {
+    const prev = line[i - 1] ?? line[i];
+    const next = line[i + 1] ?? line[i];
+    const dx = next[0] - prev[0];
+    const dz = next[1] - prev[1];
+    const len = Math.hypot(dx, dz) || 1;
+    const nx = -dz / len;
+    const nz = dx / len;
+    left.push([line[i][0] + nx * hw, line[i][1] + nz * hw]);
+    right.push([line[i][0] - nx * hw, line[i][1] - nz * hw]);
+  }
+  return left.concat(right.reverse());
+}
+
+/** Evenly spaced points along a polyline, for tree rows. */
+function sampleAlong(line, spacing) {
+  const out = [];
+  let carry = 0;
+  for (let i = 0; i < line.length - 1; i++) {
+    const [ax, az] = line[i];
+    const [bx, bz] = line[i + 1];
+    const len = Math.hypot(bx - ax, bz - az);
+    let t = carry;
+    while (t < len) {
+      out.push([ax + ((bx - ax) * t) / len, az + ((bz - az) * t) / len]);
+      t += spacing;
+    }
+    carry = t - len;
+  }
+  return out;
+}
+
+function insideBounds(x, z, boundary) {
+  for (let i = 0; i < boundary.length; i++) {
+    const a = boundary[i];
+    const b = boundary[(i + 1) % boundary.length];
+    const dx = b[0] - a[0];
+    const dv = -b[1] + a[1];
+    if (dx * (-z + a[1]) - dv * (x - a[0]) < 0) return false;
+  }
+  return true;
+}
+
+function formatAddress(tags) {
+  const parts = [tags['addr:housenumber'], tags['addr:street']].filter(Boolean);
+  return parts.length ? parts.join(' ') : undefined;
+}
+
+function hash(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return Math.abs(h);
+}
+
+function round(n, digits) {
+  const f = 10 ** digits;
+  return Math.round(n * f) / f;
+}
+
+function roundRing(ring) {
+  return ring.map(([x, z]) => [round(x, 2), round(z, 2)]);
+}
+
+export { MATERIALS };

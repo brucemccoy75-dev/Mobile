@@ -1,0 +1,376 @@
+// Land cover: what the ground actually is, where OpenStreetMap doesn't say.
+//
+// OSM land-use polygons are excellent in cities and often absent in the
+// countryside - a New Hampshire township can have 60 roads mapped and not one
+// `natural=wood`, even though the whole place is forest. Without that, a rural
+// map comes out as a grey plane and there is nothing to walk through.
+//
+// NLCD (USGS National Land Cover Database, 30m, CONUS + AK/HI) fills the gap.
+// One WMS request returns a paletted PNG covering the map square, which we
+// decode and match to the standard NLCD legend by nearest colour - resampling
+// on the server shifts the palette slightly, so exact matching is too brittle.
+//
+// Coverage is the United States only. Elsewhere this returns null and the map
+// falls back to OSM polygons alone.
+
+import { NLCD_ENDPOINT } from './config.js';
+import { requestBytes, cacheKey, readCache, writeCache } from './net.js';
+import { platform } from './platform.js';
+
+/**
+ * NLCD legend. `canopy` is the fraction of ground we treat as tree-covered,
+ * used to decide how thickly to scatter; `material` picks the ground colour.
+ */
+export const NLCD_CLASSES = [
+  { code: 11, name: 'open water',        rgb: [70, 107, 159],  material: 'water',             canopy: 0 },
+  { code: 12, name: 'ice/snow',          rgb: [209, 222, 248], material: 'ground',            canopy: 0 },
+  { code: 21, name: 'developed open',    rgb: [222, 197, 197], material: 'grass',             canopy: 0.08 },
+  { code: 22, name: 'developed low',     rgb: [217, 146, 130], material: 'grass',             canopy: 0.15 },
+  { code: 23, name: 'developed medium',  rgb: [235, 0, 0],     material: 'urban_ground',      canopy: 0.08 },
+  { code: 24, name: 'developed high',    rgb: [171, 0, 0],     material: 'urban_ground',      canopy: 0.02 },
+  { code: 31, name: 'barren',            rgb: [179, 172, 159], material: 'sand',              canopy: 0 },
+  { code: 41, name: 'deciduous forest',  rgb: [104, 171, 95],  material: 'forest',            canopy: 1 },
+  { code: 42, name: 'evergreen forest',  rgb: [28, 95, 44],    material: 'forest',            canopy: 1 },
+  { code: 43, name: 'mixed forest',      rgb: [181, 197, 143], material: 'forest',            canopy: 1 },
+  { code: 52, name: 'shrub/scrub',       rgb: [204, 184, 121], material: 'scrub',             canopy: 0.25 },
+  { code: 71, name: 'grassland',         rgb: [223, 223, 194], material: 'grass',             canopy: 0.03 },
+  { code: 81, name: 'pasture/hay',       rgb: [220, 217, 57],  material: 'farmland',          canopy: 0.02 },
+  { code: 82, name: 'cultivated crops',  rgb: [171, 108, 40],  material: 'farmland',          canopy: 0 },
+  { code: 90, name: 'woody wetland',     rgb: [184, 217, 235], material: 'forest',            canopy: 0.75 },
+  { code: 95, name: 'herbaceous wetland', rgb: [108, 159, 184], material: 'grass',            canopy: 0.05 },
+];
+
+const UNKNOWN = { code: 0, name: 'unknown', material: 'ground', canopy: 0 };
+
+/**
+ * How far a pixel may sit from a legend colour and still be matched.
+ * Server-side resampling shifts colours by about 4 units in practice. The cap
+ * must stay below half the smallest gap between two legend entries - ice/snow
+ * and woody wetland are only 29 apart - or a pixel could fall inside the
+ * tolerance of two classes at once and the match would depend on table order.
+ */
+export const MATCH_TOLERANCE = 12;
+
+/**
+ * Fetches a land-cover raster over the map square.
+ * @param {import('./project.js').Projector} projector
+ * @param {number} half half-width of the map square, metres
+ * @returns {Promise<object|null>} sampler, or null where there is no coverage
+ */
+export async function fetchLandcover(projector, half, opts = {}) {
+  // ~3m per pixel is plenty: the source data is 30m, and we only use this to
+  // decide "forest or not" and to tint the ground.
+  const pixels = Math.min(1024, Math.max(256, Math.round((half * 2) / 3)));
+  const bbox = projector.bbox(half);
+
+  const url = new URL(opts.url ?? NLCD_ENDPOINT);
+  url.searchParams.set('SERVICE', 'WMS');
+  url.searchParams.set('VERSION', '1.1.1');
+  url.searchParams.set('REQUEST', 'GetMap');
+  url.searchParams.set('LAYERS', opts.layer ?? 'NLCD_2021_Land_Cover_L48');
+  url.searchParams.set('SRS', 'EPSG:4326');
+  url.searchParams.set('FORMAT', 'image/png');
+  url.searchParams.set('WIDTH', String(pixels));
+  url.searchParams.set('HEIGHT', String(pixels));
+  url.searchParams.set(
+    'BBOX',
+    `${bbox.west},${bbox.south},${bbox.east},${bbox.north}`,
+  );
+
+  const key = cacheKey('landcover', url.toString());
+  let png = await readCache(key, 'bin');
+  if (!png) {
+    png = await requestBytes(url, { headers: { accept: 'image/png' } });
+    await writeCache(key, png, 'bin');
+  }
+
+  const img = await platform.decodePng(png);
+  const lookup = buildLookup(img);
+
+  // A tile fully outside NLCD's footprint comes back blank. Treat that as
+  // "no coverage" rather than "the whole world is unknown".
+  const known = lookup.histogram.reduce(
+    (sum, n, i) => (NLCD_CLASSES[i] ? sum + n : sum),
+    0,
+  );
+  const coverage = known / (img.width * img.height);
+  if (coverage < 0.5) {
+    opts.log?.(`Land cover: only ${(coverage * 100).toFixed(0)}% recognised; ignoring`);
+    return null;
+  }
+
+  // Blocks of ~12 m, majority over +-3 blocks: roughly a 90 m window, then the
+  // patches themselves are cleaned up (see cleanPatches).
+  const blockPx = Math.max(2, Math.round(pixels / 128));
+  const blockMeters = blockPx * ((half * 2) / pixels);
+  const smoothMaterial = buildSmoothMaterial(img, lookup.index, blockPx, 3, {
+    minPatchM2: opts.minPatchM2 ?? 2500,
+    blockMeters,
+  });
+  const pixelOf = (x, z) => {
+    const u = (x + half) / (half * 2);
+    const v = (half - z) / (half * 2);
+    return [
+      Math.min(img.width - 1, Math.max(0, Math.round(u * img.width - 0.5))),
+      Math.min(img.height - 1, Math.max(0, Math.round((1 - v) * img.height - 0.5))),
+    ];
+  };
+
+  const classAt = (x, z) => {
+    // Local metres -> pixel. The raster spans exactly the map square, north up.
+    const u = (x + half) / (half * 2);
+    const v = (half - z) / (half * 2); // +Z is south, image row 0 is north
+    const px = Math.min(img.width - 1, Math.max(0, Math.round(u * img.width - 0.5)));
+    const py = Math.min(img.height - 1, Math.max(0, Math.round((1 - v) * img.height - 0.5)));
+    return lookup.at(px, py);
+  };
+
+  const summary = lookup.histogram
+    .map((n, i) => ({ n, cls: NLCD_CLASSES[i] }))
+    .filter((e) => e.cls && e.n > 0)
+    .sort((a, b) => b.n - a.n)
+    .slice(0, 4)
+    .map((e) => `${e.cls.name} ${Math.round((e.n / (img.width * img.height)) * 100)}%`);
+
+  return {
+    source: 'nlcd',
+    pixels,
+    resolutionMeters: (half * 2) / pixels,
+    summary,
+    classAt,
+    canopyAt: (x, z) => classAt(x, z).canopy,
+    // The ground is painted from the smoothed material; trees and clutter still
+    // read the raw class, which is right for them - a single wooded cell should
+    // still get its trees.
+    materialAt: (x, z) => { const [px, py] = pixelOf(x, z); return smoothMaterial(px, py); },
+  };
+}
+
+/**
+ * Maps each distinct colour in the image to a legend entry once, so per-pixel
+ * lookups are a table read rather than a search over the legend.
+ */
+function buildLookup(img) {
+  const cache = new Map();
+  const histogram = new Array(NLCD_CLASSES.length).fill(0);
+  const index = new Int8Array(img.width * img.height);
+
+  for (let i = 0, p = 0; p < img.data.length; i++, p += 4) {
+    const rgb = (img.data[p] << 16) | (img.data[p + 1] << 8) | img.data[p + 2];
+    let slot = cache.get(rgb);
+    if (slot === undefined) {
+      slot = img.data[p + 3] < 128 ? -1 : nearestClass(img.data[p], img.data[p + 1], img.data[p + 2]);
+      cache.set(rgb, slot);
+    }
+    index[i] = slot;
+    if (slot >= 0) histogram[slot]++;
+  }
+
+  return {
+    histogram,
+    index,
+    at: (px, py) => {
+      const slot = index[py * img.width + px];
+      return slot >= 0 ? NLCD_CLASSES[slot] : UNKNOWN;
+    },
+  };
+}
+
+/**
+ * The ground material by majority over a wide window, not by the pixel under
+ * the point. NLCD is a 30 m raster: sampled raw it paints a 30 m grey square
+ * wherever one cell says "developed" in a field of green, and a lawn looks like
+ * a patchwork of gravel. Here each block of the raster gets a histogram by
+ * material, and a block takes the material that wins across the blocks within
+ * `radiusBlocks` of it - about 90 m - with hard ground needing a clear majority
+ * before it displaces grass. That still leaves islands and wedges: a block that
+ * just tips the vote one way inside a window that tips the other. So the block
+ * grid is then cleaned as a whole (cleanPatches): nothing under `minPatchM2`
+ * survives, and every patch is made compact. A real town or a real wood keeps
+ * its shape; a triangle of gravel in a lawn does not.
+ */
+function buildSmoothMaterial(img, index, blockPx, radiusBlocks, opts = {}) {
+  const bw = Math.ceil(img.width / blockPx);
+  const bh = Math.ceil(img.height / blockPx);
+  const materials = [];
+  const matIndex = new Map();
+  for (const cls of NLCD_CLASSES) {
+    if (cls && !matIndex.has(cls.material)) { matIndex.set(cls.material, materials.length); materials.push(cls.material); }
+  }
+  const M = materials.length;
+  const hist = new Int32Array(bw * bh * M);
+  for (let py = 0; py < img.height; py++) {
+    const by = Math.floor(py / blockPx);
+    for (let px = 0; px < img.width; px++) {
+      const slot = index[py * img.width + px];
+      if (slot < 0) continue;
+      const m = matIndex.get(NLCD_CLASSES[slot].material);
+      hist[(by * bw + Math.floor(px / blockPx)) * M + m]++;
+    }
+  }
+  const hard = new Set(['urban_ground', 'industrial_ground', 'sand', 'water']);
+  const grid = new Array(bw * bh);
+  const sum = new Int32Array(M);
+  for (let by = 0; by < bh; by++) {
+    for (let bx = 0; bx < bw; bx++) {
+      sum.fill(0);
+      let total = 0;
+      for (let dy = -radiusBlocks; dy <= radiusBlocks; dy++) {
+        const y = by + dy;
+        if (y < 0 || y >= bh) continue;
+        for (let dx = -radiusBlocks; dx <= radiusBlocks; dx++) {
+          const x = bx + dx;
+          if (x < 0 || x >= bw) continue;
+          const base = (y * bw + x) * M;
+          for (let m = 0; m < M; m++) { sum[m] += hist[base + m]; total += hist[base + m]; }
+        }
+      }
+      let best = -1;
+      let bestN = -1;
+      for (let m = 0; m < M; m++) if (sum[m] > bestN) { bestN = sum[m]; best = m; }
+      let out = best >= 0 ? materials[best] : 'grass';
+      // Hard ground has to have won properly; a near-tie with grass is grass.
+      if (hard.has(out) && total > 0 && bestN / total < 0.5) {
+        let alt = -1;
+        let altN = -1;
+        for (let m = 0; m < M; m++) if (!hard.has(materials[m]) && sum[m] > altN) { altN = sum[m]; alt = m; }
+        out = alt >= 0 && altN > 0 ? materials[alt] : 'grass';
+      }
+      grid[by * bw + bx] = out;
+    }
+  }
+
+  const blockArea = (opts.blockMeters ?? 12) ** 2;
+  const minBlocks = Math.max(1, Math.ceil((opts.minPatchM2 ?? 2500) / blockArea));
+  cleanPatches(grid, bw, bh, minBlocks);
+
+  return (px, py) => {
+    const bx = Math.min(bw - 1, Math.floor(px / blockPx));
+    const by = Math.min(bh - 1, Math.floor(py / blockPx));
+    return grid[by * bw + bx];
+  };
+}
+
+/**
+ * Tidies a grid of material names in place. Two passes, applied until nothing
+ * changes: a mode filter, where a cell whose 8 neighbours mostly agree on some
+ * other material adopts it (this knocks off one-cell spurs and fills one-cell
+ * notches, so patches come out compact rather than ragged); and absorption,
+ * where every connected patch smaller than `minBlocks` cells is repainted with
+ * the material it shares the longest border with, smallest patches first. The
+ * rule Bruce asked for: a new ground cover only where there is a real stretch
+ * of it, and no wedges.
+ * @param {string[]} grid row-major, bw * bh
+ */
+export function cleanPatches(grid, bw, bh, minBlocks) {
+  for (let round = 0; round < 6; round++) {
+    let changed = modeFilter(grid, bw, bh);
+    changed = absorbSmallPatches(grid, bw, bh, minBlocks) || changed;
+    if (!changed) break;
+  }
+  return grid;
+}
+
+function modeFilter(grid, bw, bh) {
+  const next = grid.slice();
+  let changed = false;
+  const counts = new Map();
+  for (let y = 0; y < bh; y++) {
+    for (let x = 0; x < bw; x++) {
+      counts.clear();
+      let n = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (!dx && !dy) continue;
+          const yy = y + dy;
+          const xx = x + dx;
+          if (yy < 0 || yy >= bh || xx < 0 || xx >= bw) continue;
+          const m = grid[yy * bw + xx];
+          counts.set(m, (counts.get(m) ?? 0) + 1);
+          n++;
+        }
+      }
+      const own = grid[y * bw + x];
+      for (const [m, c] of counts) {
+        // Six of eight (or that share at an edge) is a spur or a notch; five is
+        // just the corner of a square, which must survive.
+        if (m !== own && c >= Math.ceil(n * 6 / 8)) { next[y * bw + x] = m; changed = true; break; }
+      }
+    }
+  }
+  if (changed) for (let i = 0; i < grid.length; i++) grid[i] = next[i];
+  return changed;
+}
+
+function absorbSmallPatches(grid, bw, bh, minBlocks) {
+  const label = new Int32Array(bw * bh).fill(-1);
+  const patches = [];   // { cells: number[], material }
+  const stack = [];
+  for (let i = 0; i < grid.length; i++) {
+    if (label[i] >= 0) continue;
+    const id = patches.length;
+    const patch = { cells: [], material: grid[i] };
+    patches.push(patch);
+    label[i] = id;
+    stack.push(i);
+    while (stack.length) {
+      const c = stack.pop();
+      patch.cells.push(c);
+      const x = c % bw;
+      const y = (c - x) / bw;
+      const nb = [];
+      if (x > 0) nb.push(c - 1);
+      if (x < bw - 1) nb.push(c + 1);
+      if (y > 0) nb.push(c - bw);
+      if (y < bh - 1) nb.push(c + bw);
+      for (const k of nb) if (label[k] < 0 && grid[k] === patch.material) { label[k] = id; stack.push(k); }
+    }
+  }
+  const small = patches.map((p, id) => ({ p, id })).filter((e) => e.p.cells.length < minBlocks);
+  small.sort((a, b) => a.p.cells.length - b.p.cells.length);
+  let changed = false;
+  for (const { p } of small) {
+    // Longest shared border wins; a patch already repainted to our own material
+    // does not count as a neighbour.
+    const border = new Map();
+    for (const c of p.cells) {
+      const x = c % bw;
+      const y = (c - x) / bw;
+      const nb = [];
+      if (x > 0) nb.push(c - 1);
+      if (x < bw - 1) nb.push(c + 1);
+      if (y > 0) nb.push(c - bw);
+      if (y < bh - 1) nb.push(c + bw);
+      for (const k of nb) {
+        const m = grid[k];
+        if (m !== p.material) border.set(m, (border.get(m) ?? 0) + 1);
+      }
+    }
+    let best = null;
+    let bestN = 0;
+    for (const [m, n] of border) if (n > bestN) { bestN = n; best = m; }
+    if (best === null) continue;   // the whole map, or an island with no neighbour
+    for (const c of p.cells) grid[c] = best;
+    p.material = best;
+    changed = true;
+  }
+  return changed;
+}
+
+/**
+ * Nearest legend colour, or -1 when nothing is close. The threshold rejects
+ * background and annotation pixels rather than snapping them to a real class.
+ */
+function nearestClass(r, g, b) {
+  let best = -1;
+  let bestDist = Infinity;
+  for (let i = 0; i < NLCD_CLASSES.length; i++) {
+    const [cr, cg, cb] = NLCD_CLASSES[i].rgb;
+    const d = (r - cr) ** 2 + (g - cg) ** 2 + (b - cb) ** 2;
+    if (d < bestDist) {
+      bestDist = d;
+      best = i;
+    }
+  }
+  return bestDist <= MATCH_TOLERANCE * MATCH_TOLERANCE ? best : -1;
+}
