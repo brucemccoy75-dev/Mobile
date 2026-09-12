@@ -965,6 +965,11 @@ export function grid(groupFor, half, cells, heightAt, opts = {}) {
   // on a hillside the lower one would show through the upper.
   const inside = opts.inside;
   const sub = Math.min(40, Math.max(2, Math.round(step / (opts.subCellMeters ?? 6))));
+  // groupFor can differ across a cell (a lawn polygon painted into the base): when
+  // the corners and centre disagree the cell is drawn as sub-cells, each with the
+  // group at its own centre, so the boundary is a short stair rather than a 6 m
+  // jump - and, unlike a polygon laid over the base, there is no step and no seam.
+  const paint = opts.paint === true;
   // Sub-cell heights must come from the same surface the polygons sit on - the
   // coarse mesh's interpolation (`subHeightAt`, normally gridSurface) - not the
   // raw terrain field, or on a bank the sub-cells rise through the fill beside
@@ -985,35 +990,43 @@ export function grid(groupFor, half, cells, heightAt, opts = {}) {
       if (keep && !keep(cx, cz)) continue;
       const group = groupFor(cx, cz);
       if (!group) continue;
+      const x0 = -half + i * step;
+      const z0 = -half + j * step;
+      let split = false;
+      let covered = 0;
       if (inside) {
-        const x0 = -half + i * step;
-        const z0 = -half + j * step;
-        let covered = 0;
         for (const [px, pz] of [[x0, z0], [x0 + step, z0], [x0, z0 + step], [x0 + step, z0 + step], [cx, cz]]) {
           if (inside(px, pz)) covered++;
         }
         if (covered === 5) continue;
-        if (covered > 0) {
-          const ss = step / sub;
-          for (let si = 0; si < sub; si++) {
-            for (let sj = 0; sj < sub; sj++) {
-              const sx = x0 + si * ss;
-              const sz = z0 + sj * ss;
-              // Drop a sub-cell only when all of it is under the polygon. Testing the
-              // centre alone leaves sawtooth holes along the edge, through which the
-              // dark back faces of the ground beyond show; a sliver of overlap under
-              // the fill is invisible.
-              if (inside(sx, sz) && inside(sx + ss, sz) && inside(sx, sz + ss) && inside(sx + ss, sz + ss) && inside(sx + ss / 2, sz + ss / 2)) continue;
-              const a = looseVertex(group, sx, sz);
-              const b = looseVertex(group, sx, sz + ss);
-              const c = looseVertex(group, sx + ss, sz + ss);
-              const d = looseVertex(group, sx + ss, sz);
-              group.quad(a, b, c, d);
-              tris += 2;
-            }
-          }
-          continue;
+        if (covered > 0) split = true;
+      }
+      if (paint && !split) {
+        for (const [px, pz] of [[x0, z0], [x0 + step, z0], [x0, z0 + step], [x0 + step, z0 + step]]) {
+          if (groupFor(px, pz) !== group) { split = true; break; }
         }
+      }
+      if (split) {
+        const ss = step / sub;
+        for (let si = 0; si < sub; si++) {
+          for (let sj = 0; sj < sub; sj++) {
+            const sx = x0 + si * ss;
+            const sz = z0 + sj * ss;
+            // Drop a sub-cell only when all of it is under a polygon. Testing the
+            // centre alone leaves sawtooth holes along the edge, through which the
+            // dark back faces of the ground beyond show; a sliver of overlap under
+            // the fill is invisible.
+            if (inside && inside(sx, sz) && inside(sx + ss, sz) && inside(sx, sz + ss) && inside(sx + ss, sz + ss) && inside(sx + ss / 2, sz + ss / 2)) continue;
+            const g = paint ? (groupFor(sx + ss / 2, sz + ss / 2) ?? group) : group;
+            const a = looseVertex(g, sx, sz);
+            const b = looseVertex(g, sx, sz + ss);
+            const c = looseVertex(g, sx + ss, sz + ss);
+            const d = looseVertex(g, sx + ss, sz);
+            g.quad(a, b, c, d);
+            tris += 2;
+          }
+        }
+        continue;
       }
       const a = vertexAt(group, i, j);
       const b = vertexAt(group, i, j + 1);

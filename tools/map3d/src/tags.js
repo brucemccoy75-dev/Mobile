@@ -280,7 +280,9 @@ export function classifyHighway(tags) {
   let material = 'road_minor';
   if (/^(motorway|trunk|primary)/.test(hw)) material = 'road_major';
   else if (/^(secondary|tertiary)/.test(hw)) material = 'road_secondary';
-  else if (minor) material = 'path';
+  // A city sidewalk is concrete; a path or a track through a wood is dirt. Painting
+  // every footway tan made downtown look laced with dirt tracks.
+  else if (minor) material = /^(path|track|bridleway)$/.test(hw) ? 'path' : 'footway';
   else if (hw === 'service') material = 'road_service';
 
   return { material, width, minor, kind: hw };
@@ -451,6 +453,7 @@ export const MATERIALS = {
   parking:            { color: [0.33, 0.33, 0.34], roughness: 0.95, metallic: 0 },
   pavement:           { color: [0.58, 0.57, 0.55], roughness: 1.0, metallic: 0 },
   path:               { color: [0.62, 0.56, 0.47], roughness: 1.0, metallic: 0 },
+  footway:            { color: [0.63, 0.63, 0.61], roughness: 1.0, metallic: 0 },
   road_major:         { color: [0.21, 0.21, 0.22], roughness: 0.9, metallic: 0 },
   road_secondary:     { color: [0.24, 0.24, 0.25], roughness: 0.9, metallic: 0 },
   road_minor:         { color: [0.27, 0.27, 0.28], roughness: 0.9, metallic: 0 },

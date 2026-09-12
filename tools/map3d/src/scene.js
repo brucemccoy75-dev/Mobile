@@ -120,18 +120,27 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
   // Drawn once the area polygons are known, so the base ground can stop where
   // they start rather than run on underneath them.
   let groundDrawn = false;
-  const drawGround = (insideArea) => {
+  // Paved polygons (plazas, car parks): a footway drawn across one is a tan stripe
+  // on a surface that is already paved, so those ribbons are dropped later.
+  let pavedIndex = null;
+  const drawGround = (insideArea, coverIndex) => {
     groundDrawn = true;
     if (imagery?.tiles?.length) {
       addImageryGround(builder, imagery, surface, detail);
       return;
     }
     // Land cover, where we have it, turns a flat grey plane into forest,
-    // pasture and scrub - which is most of what a rural map is made of.
-    const groupFor = landcover
-      ? (x, z) => builder.group(landcover.materialAt(x, z))
-      : () => builder.group('ground');
-    grid(groupFor, groundHalf, opts.terrainCells, ground, { keep: keepCell, inside: insideArea, subHeightAt: surface });
+    // pasture and scrub - which is most of what a rural map is made of. OSM's
+    // ground-cover polygons (a lawn, a wood, a beach) are painted straight into
+    // the same grid rather than laid on top of it: one surface, no step, no seam,
+    // and a boundary that is a stair of a couple of metres.
+    const baseAt = landcover ? (x, z) => landcover.materialAt(x, z) : () => 'ground';
+    const groupFor = coverIndex
+      ? (x, z) => builder.group(coverIndex.materialAt(x, z) ?? baseAt(x, z))
+      : (x, z) => builder.group(baseAt(x, z));
+    grid(groupFor, groundHalf, opts.terrainCells, ground, {
+      keep: keepCell, inside: insideArea, subHeightAt: surface, paint: !!coverIndex, subCellMeters: 2.2,
+    });
   };
 
   /* --------------------------- project + clip --------------------------- */
@@ -271,8 +280,14 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
         outer.holes.push(inner.norm[0]);
       }
     }
-    const index = new AreaIndex(drawn.filter((a) => a.draw), groundHalf);
-    drawGround((x, z) => index.contains(x, z));
+    // Ground covers are painted into the base grid (smallest polygon wins); the
+    // hard surfaces - water, car parks, pitches, plazas - are still drawn as
+    // polygons with crisp edges, and the base stops under them.
+    const covers = drawn.filter((a) => a.draw && GROUND_COVER.has(a.cls.material));
+    const hard = drawn.filter((a) => a.draw && !GROUND_COVER.has(a.cls.material));
+    const hardIndex = new AreaIndex(hard, groundHalf);
+    drawGround((x, z) => hardIndex.contains(x, z), covers.length ? new AreaIndex(covers, groundHalf) : null);
+    pavedIndex = new AreaIndex(drawn.filter((a) => a.draw && (a.cls.material === 'pavement' || a.cls.material === 'parking')), groundHalf);
 
     let skipped = 0;
     for (const { f, cls, norm, area, draw, holes } of areaFeatures) {
@@ -283,13 +298,15 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
       if (!draw) { skipped++; continue; }
       const y = LAYER_Y[cls.layer] ?? LAYER_Y.landuse;
       const g = builder.group(cls.material);
-      fillPolygon(g, holes.length ? [...norm, ...holes] : norm, (x, z) => surface(x, z) + y, {
-        uvScale: 24,
-        smooth: terrain.enabled,
-        // As fine as the roads, or on a hillside a fill's chord rises through
-        // the road above it.
-        maxEdge: terrain.enabled ? detail : 0,
-      });
+      if (!GROUND_COVER.has(cls.material)) {
+        fillPolygon(g, holes.length ? [...norm, ...holes] : norm, (x, z) => surface(x, z) + y, {
+          uvScale: 24,
+          smooth: terrain.enabled,
+          // As fine as the roads, or on a hillside a fill's chord rises through
+          // the road above it.
+          maxEdge: terrain.enabled ? detail : 0,
+        });
+      }
       if (cls.sport === 'baseball' || cls.sport === 'softball') {
         addBallDiamond(builder, norm[0], surface, y, manifest, f.id);
       }
@@ -378,8 +395,9 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
         for (let i = 0; i < f.nodes.length; i++) {
           const id = f.nodes[i];
           const prev = junctions.get(id);
-          const entry = prev ?? { count: 0, hw: 0, pt: f.line[i], material: cls.material };
+          const entry = prev ?? { count: 0, hw: 0, pt: f.line[i], material: cls.material, road: false };
           entry.count++;
+          if (!cls.minor) entry.road = true;
           if (cls.width / 2 > entry.hw) {
             entry.hw = cls.width / 2;
             entry.material = cls.material;
@@ -396,6 +414,7 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
       const y = (LAYER_Y[layerName] ?? LAYER_Y.road) + lift;
       const g = builder.group(cls.material);
       for (const piece of pieces) {
+        if (cls.minor && pavedIndex && mostlyInside(piece, pavedIndex)) continue;
         ribbon(g, piece, cls.width, (x, z) => surface(x, z) + y, {
           uvScale: cls.width,
           // A bridge deck is meant to be straight; only ground-level roads
@@ -409,6 +428,9 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
     // from the unclipped centrelines, so the patch has to be clipped too.
     for (const j of junctions.values()) {
       if (j.count < 2 || !j.pt) continue;
+      // Only where a road meets something. A footway junction plugged at road height
+      // was a tan octagon sitting on every car park and plaza.
+      if (!j.road) continue;
       junctionPts.push({ x: j.pt[0], z: j.pt[1], r: j.hw + 1.5 });
       const [x, z] = j.pt;
       const rings = clipPolygon([discRing(x, z, j.hw, 8)], boundary);
@@ -1291,6 +1313,14 @@ function isUnderground(tags) {
   );
 }
 
+/** Whether most of a line (sampled every 4 m) lies inside the indexed polygons. */
+function mostlyInside(line, index) {
+  let inside = 0;
+  let n = 0;
+  for (const [x, z] of sampleAlong(line, 4)) { n++; if (index.contains(x, z)) inside++; }
+  return n > 0 && inside / n >= 0.6;
+}
+
 /** Ground covers: painted only in real stretches (DEFAULTS.minPatchM2). */
 const GROUND_COVER = new Set(['grass', 'forest', 'scrub', 'farmland', 'sand', 'urban_ground', 'industrial_ground']);
 
@@ -1361,11 +1391,31 @@ class AreaIndex {
       const b = a.box;
       if (x < b.minX || x > b.maxX || z < b.minZ || z > b.maxZ) continue;
       if (!pointInRing(x, z, a.norm[0])) continue;
-      let inHole = false;
-      for (let k = 1; k < a.norm.length && !inHole; k++) if (pointInRing(x, z, a.norm[k])) inHole = true;
-      if (!inHole) return true;
+      if (this.inHole(a, x, z)) continue;
+      return true;
     }
     return false;
+  }
+
+  inHole(a, x, z) {
+    for (let k = 1; k < a.norm.length; k++) if (pointInRing(x, z, a.norm[k])) return true;
+    if (a.holes) for (const h of a.holes) if (pointInRing(x, z, h)) return true;
+    return false;
+  }
+
+  /** Material of the smallest drawn polygon under the point, or null. Areas are sorted big-first, so the last hit is the smallest. */
+  materialAt(x, z) {
+    const list = this.cells.get(this.slot(x) * this.n + this.slot(z));
+    if (!list) return null;
+    let out = null;
+    for (const a of list) {
+      const b = a.box;
+      if (x < b.minX || x > b.maxX || z < b.minZ || z > b.maxZ) continue;
+      if (!pointInRing(x, z, a.norm[0])) continue;
+      if (this.inHole(a, x, z)) continue;
+      out = a.cls.material;
+    }
+    return out;
   }
 }
 

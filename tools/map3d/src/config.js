@@ -54,13 +54,17 @@ export const DEFAULTS = {
 
 // Vertical stacking order so coplanar ground layers never z-fight.
 // (metres above the terrain surface)
+// Since the ground became a partition (nested polygons are holes, the base stops
+// where a polygon starts) the fills barely overlap, so the steps between them
+// can be a centimetre or two: a 5 cm step read as a ledge with a shadow line
+// across every lawn. Roads keep their height, because the kerb is built on it.
 export const LAYER_Y = {
   ground: 0.0,
-  landuse: 0.03,
-  park: 0.05,
-  water: 0.08,
-  parking: 0.10,
-  footway: 0.12,
+  landuse: 0.01,
+  park: 0.02,
+  water: 0.03,
+  parking: 0.04,
+  footway: 0.06,
   road: 0.15,
   railway: 0.20,
 };
