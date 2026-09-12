@@ -12,7 +12,7 @@ import {
   facadeDetail, orientedBox, offsetLine, densify,
 } from './mesh.js';
 import {
-  MATERIALS, AREA_CANOPY, buildingHeights, classifyBuilding, classifyArea,
+  MATERIALS, AREA_CANOPY, buildingHeights, classifyBuilding, classifyArea, classifyUse,
   classifyHighway, classifyRailway, classifyWaterway, classifyProp, parseLength, parseIntTag,
   wallMaterial, roofMaterial,
 } from './tags.js';
@@ -204,6 +204,8 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
         heightMeters: round(parseLength(f.tags.height) ?? cls.height, 1),
         rotationDeg: 0,
         source: 'osm',
+        wikipedia: f.tags.wikipedia,
+        wikidata: f.tags.wikidata,
       });
       landmarkCount++;
     }
@@ -320,6 +322,9 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
         kind: cls.material,
         sport: cls.sport || undefined,
         name: f.tags.name,
+        use: f.tags.landuse === 'cemetery' || f.tags.amenity === 'grave_yard' ? 'cemetery'
+          : f.tags.leisure === 'park' ? 'park' : f.tags.leisure === 'playground' ? 'playground' : undefined,
+        denomination: f.tags.religion ?? f.tags.denomination ?? undefined,
         areaM2: round(area, 1),
         outline: roundRing(norm[0]),
         holes: norm.length > 1 ? norm.slice(1).map(roundRing) : undefined,
@@ -328,6 +333,7 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
     manifest.stats.areasSkipped = skipped;
   }
   if (!groundDrawn) drawGround(null);
+
 
   /* ------------------------ roads, rails, streams ------------------------ */
 
@@ -580,12 +586,20 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
       }
 
       const [cx, cz] = centroidXZ(norm[0]);
+      const use = classifyUse(f.tags);
       manifest.buildings.push({
         id: f.id,
         type,
         material,
         isPart: isPart || undefined,
-        name: f.tags.name,
+        name: f.tags.name ?? use?.name,
+        use: use?.use,
+        brand: use?.brand,
+        cuisine: use?.cuisine,
+        denomination: use?.denomination,
+        historic: use?.historic,
+        wikipedia: use?.wikipedia,
+        wikidata: use?.wikidata,
         address: formatAddress(f.tags),
         centre: { x: round(cx, 2), z: round(cz, 2) },
         groundY: round(gMax, 2),
@@ -826,6 +840,68 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
     triangles: totals.triangles,
     meshes: totals.groups,
   };
+
+  // After the buildings exist, so a point can find the building it sits in.
+  /* ------------------------------ points of interest ------------------------------ */
+
+  // A shop or a church mapped as a point inside a building names that building; one
+  // with no building under it is kept as a point of its own.
+  {
+    const named = [];
+    const byBox = manifest.buildings.map((b) => ({ b, box: bbox(b.outline) }));
+    let attached = 0;
+    for (const f of local) {
+      if (f.kind !== 'point') continue;
+      const use = classifyUse(f.tags);
+      if (!use) continue;
+      const [x, z] = f.point;
+      if (!insideBounds(x, z, boundary)) continue;
+      let host = null;
+      for (const { b, box } of byBox) {
+        if (x < box.minX || x > box.maxX || z < box.minZ || z > box.maxZ) continue;
+        if (pointInRing(x, z, b.outline)) { host = b; break; }
+      }
+      if (host && (!host.use || !host.name)) {
+        if (!host.use) host.use = use.use;
+        if (!host.name && use.name) host.name = use.name;
+        host.brand = host.brand ?? use.brand;
+        host.cuisine = host.cuisine ?? use.cuisine;
+        host.denomination = host.denomination ?? use.denomination;
+        host.historic = host.historic ?? use.historic;
+        host.wikipedia = host.wikipedia ?? use.wikipedia;
+        attached++;
+      } else {
+        named.push({ id: f.id, x: round(x, 2), z: round(z, 2), y: round(surface(x, z), 2), use: use.use, name: use.name, brand: use.brand, historic: use.historic, buildingId: host?.id });
+      }
+    }
+    manifest.pois = named;
+    manifest.stats.pois = named.length;
+    manifest.stats.poisAttached = attached;
+  }
+
+  /* ---------------------------------- context ---------------------------------- */
+
+  // What kind of place this is, for the game's regional dressing and sounds.
+  {
+    const ctx = { coast: false, rail: false, motorway: false, harbour: false, churches: 0, cemeteries: 0, farms: 0, campus: 0 };
+    for (const f of local) {
+      const t = f.tags;
+      if (t.natural === 'coastline') ctx.coast = true;
+      if (t.railway && /^(rail|light_rail|subway|tram|monorail|narrow_gauge)$/.test(t.railway) && f.kind === 'line') ctx.rail = true;
+      if (t.highway && /^(motorway|trunk)$/.test(t.highway)) ctx.motorway = true;
+      if (t.harbour || t.leisure === 'marina' || t.man_made === 'pier' || t.waterway === 'dock') ctx.harbour = true;
+      if (t.landuse === 'farmland' || t.landuse === 'farmyard' || t.building === 'barn') ctx.farms++;
+      if (t.amenity === 'university' || t.amenity === 'college') ctx.campus++;
+    }
+    for (const b of manifest.buildings) if (b.use === 'church') ctx.churches++;
+    for (const a of manifest.areas) if (a.use === 'cemetery') ctx.cemeteries++;
+    // The sea: a water polygon that reaches the edge of the map is not a pond.
+    for (const a of manifest.areas) {
+      if (a.kind !== 'water' || !a.outline) continue;
+      for (const [x, z] of a.outline) if (Math.abs(x) > half - 2 || Math.abs(z) > half - 2) { ctx.coast = true; break; }
+    }
+    manifest.context = ctx;
+  }
 
   return { builder, manifest, boundary, half };
 }

@@ -26,7 +26,8 @@ export async function geocode(address, opts = {}) {
   }
 
   // v2: results now carry the parsed street address (used to find the home building).
-  const key = cacheKey('geocode2', provider, address);
+  // v3: county, state and country codes ride along for the lore.
+  const key = cacheKey('geocode3', provider, address);
   const cached = await readCache(key);
   if (cached) return { ...cached, cached: true };
 
@@ -77,8 +78,15 @@ async function geocodeNominatim(address) {
     address: {
       housenumber: a.house_number,
       street: a.road,
-      city: a.town ?? a.city ?? a.village ?? a.hamlet,
+      city: a.town ?? a.city ?? a.village ?? a.hamlet ?? a.municipality,
       postcode: a.postcode,
+      // For the lore: what county and state this is, and the ISO codes for
+      // licence plates and regional tables ("US-NH" -> "NH").
+      county: a.county,
+      state: a.state,
+      stateCode: (a['ISO3166-2-lvl4'] ?? '').split('-')[1] || undefined,
+      country: a.country,
+      countryCode: a.country_code ? a.country_code.toUpperCase() : undefined,
     },
   };
 }

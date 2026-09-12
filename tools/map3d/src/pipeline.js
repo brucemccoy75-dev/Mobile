@@ -10,6 +10,7 @@ import { Projector } from './project.js';
 import { buildQuery, runQuery, normalizeElements } from './overpass.js';
 import { fetchTerrain, flatTerrain } from './elevation.js';
 import { fetchLandcover } from './landcover.js';
+import { fetchPlaceFacts, fetchLandmarkBlurbs } from './lore.js';
 import { fetchImagery, imageryCredit } from './imagery.js';
 import { fetchFootprints, mergeFootprints, USA_STRUCTURES_CREDIT } from './footprints.js';
 import { buildScene } from './scene.js';
@@ -133,6 +134,18 @@ export async function buildMap(o = {}) {
   });
 
   manifest.address = { query: o.address, resolved: place.label, provider: place.provider };
+
+  /* 6. What the place is. */
+  if (o.lore !== false) {
+    log('Looking the place up ...');
+    try {
+      const facts = await fetchPlaceFacts(place, { log });
+      if (facts) manifest.place = facts;
+      await fetchLandmarkBlurbs(manifest.props, { log });
+    } catch (err) {
+      log(`  lore skipped: ${err.message}`);
+    }
+  }
   if (footprintStats) manifest.stats.footprints = footprintStats;
   if (credits.length) manifest.credits = credits;
   if (manifest.home) {

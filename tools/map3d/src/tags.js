@@ -288,6 +288,56 @@ export function classifyHighway(tags) {
   return { material, width, minor, kind: hw };
 }
 
+/* --------------------------------- uses ---------------------------------- */
+
+/**
+ * What a building is for, by the tags it or the point inside it carries: one
+ * of a short list the game knows how to dress (a sign, a steeple, a canopy).
+ * Returns null for a plain house or an untagged box.
+ * @returns {{use: string, name?: string, brand?: string, cuisine?: string, denomination?: string, historic?: string}|null}
+ */
+export function classifyUse(tags) {
+  const t = tags;
+  let use = null;
+  if (t.amenity === 'place_of_worship' || /^(church|cathedral|chapel|mosque|synagogue|temple|shrine)$/.test(t.building ?? '')) use = 'church';
+  else if (t.amenity === 'school' || t.building === 'school') use = 'school';
+  else if (t.amenity === 'college' || t.amenity === 'university' || /^(college|university)$/.test(t.building ?? '')) use = 'college';
+  else if (t.amenity === 'fuel') use = 'fuel';
+  else if (t.amenity === 'police') use = 'police';
+  else if (t.amenity === 'fire_station') use = 'fire_station';
+  else if (t.amenity === 'hospital' || t.building === 'hospital') use = 'hospital';
+  else if (t.amenity === 'clinic' || t.amenity === 'doctors' || t.amenity === 'dentist' || t.amenity === 'veterinary') use = 'clinic';
+  else if (t.amenity === 'pharmacy' || t.shop === 'chemist') use = 'pharmacy';
+  else if (t.amenity === 'bank') use = 'bank';
+  else if (t.amenity === 'post_office') use = 'post_office';
+  else if (t.amenity === 'library') use = 'library';
+  else if (t.amenity === 'townhall' || t.amenity === 'courthouse' || t.building === 'government') use = 'townhall';
+  else if (t.amenity === 'cinema' || t.amenity === 'theatre') use = 'theatre';
+  else if (t.amenity === 'bar' || t.amenity === 'pub') use = 'bar';
+  else if (t.amenity === 'restaurant' || t.amenity === 'fast_food' || t.amenity === 'cafe' || t.amenity === 'ice_cream') use = t.amenity === 'cafe' ? 'cafe' : 'restaurant';
+  else if (t.tourism === 'hotel' || t.tourism === 'motel' || t.building === 'hotel') use = 'hotel';
+  else if (t.tourism === 'museum' || t.building === 'museum' || t.tourism === 'gallery') use = 'museum';
+  else if (t.shop === 'supermarket' || t.shop === 'convenience' || t.shop === 'grocery' || t.shop === 'greengrocer' || t.building === 'supermarket') use = 'grocery';
+  else if (t.shop === 'car_repair' || t.amenity === 'car_repair' || t.shop === 'car') use = 'garage';
+  else if (t.shop) use = 'shop';
+  else if (t.office) use = 'office';
+  else if (t.craft) use = 'workshop';
+  else if (t.historic) use = 'historic';
+  else if (/^(warehouse|industrial|factory|works)$/.test(t.building ?? '')) use = 'industrial';
+  else if (/^(barn|farm|farm_auxiliary|silo)$/.test(t.building ?? '')) use = 'farm';
+  if (!use) return null;
+  return {
+    use,
+    name: t.name ?? t.brand ?? undefined,
+    brand: t.brand ?? undefined,
+    cuisine: t.cuisine ?? undefined,
+    denomination: t.denomination ?? t.religion ?? undefined,
+    historic: t.historic ?? undefined,
+    wikipedia: t.wikipedia ?? undefined,
+    wikidata: t.wikidata ?? undefined,
+  };
+}
+
 /* ------------------------------ area features ----------------------------- */
 
 /**

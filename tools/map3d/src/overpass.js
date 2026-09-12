@@ -34,6 +34,15 @@ export function buildQuery(lat, lon, radius, opts = {}) {
     `way["roller_coaster"]${a};`,
     `way["tourism"~"^(attraction|theme_park|artwork|viewpoint)$"]${a};`,
     `node["tourism"~"^(attraction|artwork|viewpoint)$"]${a};`,
+    // Points of interest: what a building is, by name. Shops and the amenities
+    // that put a sign over a door; not benches and bins.
+    `node["shop"]${a};`,
+    `node["amenity"~"^(restaurant|cafe|bar|pub|fast_food|pharmacy|bank|post_office|police|fire_station|library|place_of_worship|school|college|university|fuel|hospital|clinic|dentist|doctors|cinema|theatre|townhall|courthouse|community_centre|veterinary|car_repair|marketplace|ice_cream|bakery)$"]${a};`,
+    `node["office"]${a};`,
+    `node["craft"]${a};`,
+    `node["historic"]${a};`,
+    `way["historic"]${a};`,
+    `node["tourism"~"^(hotel|motel|museum|information|gallery)$"]${a};`,
   ];
   if (opts.barriers !== false) {
     clauses.push(`way["barrier"~"^(wall|fence|hedge|retaining_wall|city_wall)$"]${a};`);
