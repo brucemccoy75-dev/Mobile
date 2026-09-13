@@ -779,8 +779,11 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
       return landcover ? landcover.canopyAt(x, z) : 0;
     };
 
+    // Out to the edge of the ground, not the query radius: the 40 m padding strip
+    // stood bare where the forest ran on, and it is what the player sees from
+    // the map's edge walls.
     const spots = scatter({
-      half: radius,
+      half,
       spacing: opts.treeSpacing,
       canopyAt,
       accept: (x, z) => insideBounds(x, z, boundary) && !blockedMask.get(x, z),
