@@ -54,6 +54,7 @@ Data sources
 
 Content toggles
   --no-buildings  --no-roads  --no-areas  --no-trees  --no-barriers  --no-roofs
+  --no-trails            No trails through the woods, and the woods stay open ground
   --no-facades           Leave off trim, doors and windows
   --facade-budget <n>    Triangles to spend on them, nearest buildings first
   --no-jitter            Do not vary heights that had to be estimated
@@ -154,6 +155,7 @@ export async function main(argv) {
       roads: args.flags['no-roads'] !== true,
       areas: args.flags['no-areas'] !== true,
       trees: args.flags['no-trees'] !== true,
+      trails: args.flags['no-trails'] !== true,
       barriers: args.flags['no-barriers'] !== true,
       roofs: args.flags['no-roofs'] !== true,
       facades: args.flags['no-facades'] !== true,

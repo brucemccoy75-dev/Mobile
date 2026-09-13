@@ -16,6 +16,7 @@ import {
   classifyHighway, classifyRailway, classifyWaterway, classifyProp, parseLength, parseIntTag,
   wallMaterial, roofMaterial,
 } from './tags.js';
+import { buildTrails } from './trails.js';
 import { OccupancyMask, scatter } from './scatter.js';
 import { pickHome, doorstep } from './home.js';
 
@@ -41,6 +42,7 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
     streetLife: true,
     clutter: true,
     roofs: true,
+    trails: true,
     terrainCells: terrain.enabled ? DEFAULTS.terrainGrid : DEFAULTS.terrainFlatGrid,
     treeSpacing: DEFAULTS.treeSpacing,
     maxTrees: DEFAULTS.maxTrees,
@@ -146,6 +148,25 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
   /* --------------------------- project + clip --------------------------- */
 
   const local = features.map((f) => projectFeature(f, projector));
+
+  // Trails through the woods, and the woods as a mass you cannot enter. The
+  // trails join `local` as highway=path features so the road pass below draws
+  // them like any OSM track; the mass and the hedge come out further down.
+  let trailsOut = null;
+  if (opts.trails) {
+    trailsOut = buildTrails({
+      local, landcover, surface, half, radius, spawn: null,
+      seed: Math.abs(Math.round(projector.lat0 * 1e4)) + 11,
+      log: opts.log ?? (() => {}),
+    });
+    if (trailsOut) {
+      for (const w of trailsOut.ways) local.push(w);
+      manifest.trails = trailsOut.trails;
+      manifest.blocks = trailsOut.blocks;
+      manifest.trailSites = trailsOut.sites;
+      manifest.stats.trails = trailsOut.stats;
+    }
+  }
 
   // Collected while drawing, then used to decide where props may stand.
   const osmAreas = [];
@@ -791,6 +812,16 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
       seed: Math.abs(Math.round(projector.lat0 * 1e4)) + 1,
     });
 
+    // The hedge along the mass: bushes on its edge, a tree row inside. These
+    // are what make the wall you cannot pass one you cannot see through.
+    if (trailsOut) {
+      for (const h of trailsOut.hedge) {
+        if (!insideBounds(h.x, h.z, boundary)) continue;
+        if (opts.treeMeshes !== false) tree(builder, h.x, h.z, surface(h.x, h.z), h.height, h.crown, hash(`${h.x}:${h.z}`), h.kind === 'scrub' ? 'broadleaf' : h.kind);
+        planted.push({ x: h.x, z: h.z, height: h.height, crown: h.crown, kind: h.kind, hedge: true });
+      }
+    }
+
     for (const spot of spots) {
       const cls = landcover?.classAt(spot.x, spot.z);
       const conifer =
@@ -825,7 +856,7 @@ export function buildScene({ projector, features, terrain, radius, imagery, land
         y: round(surface(t.x, t.z), 2),
         heightMeters: round(t.height, 1),
         crownMeters: t.crown != null ? round(t.crown, 1) : undefined,
-        source: t.mapped ? 'osm' : 'scattered',
+        source: t.mapped ? 'osm' : t.hedge ? 'hedge' : 'scattered',
       });
     }
     manifest.stats.treeMeshes = opts.treeMeshes !== false;
