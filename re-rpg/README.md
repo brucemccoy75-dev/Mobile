@@ -8,6 +8,10 @@ Design docs live in [`docs/`](docs/): start with [`DECISIONS.md`](docs/DECISIONS
 
 Phaser 4 · TypeScript · Vite 8 · Vitest · Firebase (Hosting, Auth, Firestore; optional, see `docs/FIREBASE_SETUP.md`)
 
+## Play
+
+Latest build of the working branch: **https://brucemccoy75-dev.github.io/Mobile/** (open on a phone, rotate to landscape, add to home screen for fullscreen).
+
 ## Develop
 
 ```sh
@@ -38,4 +42,4 @@ src/save/   SaveStore interface, local + Firebase adapters
 
 ## Deploy
 
-GitHub Actions (`.github/workflows/re-rpg.yml`) runs typecheck, tests and build on every push, and deploys `dist/` to Firebase Hosting on pushes to `main` once the `FIREBASE_SERVICE_ACCOUNT` secret and `FIREBASE_PROJECT_ID` variable are set (milestone 4b). Until then the deploy job is skipped and the build is available as a workflow artifact.
+GitHub Actions (`.github/workflows/re-rpg.yml`) runs typecheck, tests and build on every push, publishes `dist/` to the `gh-pages` branch (served at the link above), and deploys to Firebase Hosting on pushes to `main` once the `FIREBASE_SERVICE_ACCOUNT` secret and `FIREBASE_PROJECT_ID` variable are set (see `docs/FIREBASE_SETUP.md`).

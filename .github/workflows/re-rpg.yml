@@ -36,9 +36,34 @@ jobs:
           name: dist
           path: re-rpg/dist
 
+  pages:
+    # Public test build: https://brucemccoy75-dev.github.io/Mobile/
+    # Publishes dist/ to the gh-pages branch, which GitHub Pages already serves from.
+    needs: check
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: pages
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: re-rpg/dist
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: re-rpg/dist
+          publish_branch: gh-pages
+          force_orphan: true
+          commit_message: "Deploy re-rpg ${{ github.sha }}"
+
   deploy:
-    # Live site: pushes to main only. Needs the FIREBASE_SERVICE_ACCOUNT secret
-    # and FIREBASE_PROJECT_ID variable (set up in milestone 4b; the job is skipped until then).
+    # Firebase Hosting: pushes to main only. Needs the FIREBASE_SERVICE_ACCOUNT secret
+    # and FIREBASE_PROJECT_ID variable (see docs/FIREBASE_SETUP.md; the job is skipped until then).
     needs: check
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.FIREBASE_PROJECT_ID != ''
     runs-on: ubuntu-latest
