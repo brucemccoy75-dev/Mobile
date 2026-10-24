@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
-import { getSet, getSkill } from '@data/index';
+import { getEnemy, getSet, getSkill } from '@data/index';
 import type { Enemy, Intent, Posture } from '@data/types';
 import { createCombat, step, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
-import { FIGHTS_BEFORE_BOSS, getSession, nextEnemy, setSession, type RunSession } from '@game/session';
+import { getSession, setSession, type PendingEncounter, type RunSession } from '@game/session';
 import { Button } from '@game/ui/Button';
 import { Card, CARD_W } from '@game/ui/Card';
 import { HpBar } from '@game/ui/HpBar';
@@ -16,6 +16,7 @@ import { floatText, tween, wait } from '@game/ui/tween';
  */
 export class CombatScene extends Phaser.Scene {
   private session!: RunSession;
+  private encounter!: PendingEncounter;
   private enemyDef!: Enemy;
   private state!: CombatState;
   private busy = false;
@@ -42,7 +43,9 @@ export class CombatScene extends Phaser.Scene {
 
   create() {
     this.session = getSession(this);
-    this.enemyDef = nextEnemy(this.session);
+    if (!this.session.pendingEncounter) throw new Error('Combat started without an encounter');
+    this.encounter = this.session.pendingEncounter;
+    this.enemyDef = getEnemy(this.encounter.enemyId);
     this.state = createCombat({
       player: { name: this.session.classId, stats: this.session.stats, hp: this.session.hp, deck: this.session.deck },
       enemy: this.enemyDef,
@@ -110,7 +113,7 @@ export class CombatScene extends Phaser.Scene {
     void this.enemyHp.set(this.state.enemy.hp, this.state.enemy.stats.maxHp);
     this.playerChips.set(this.state.player.statuses);
     this.enemyChips.set(this.state.enemy.statuses);
-    this.roundText.setText(`Round ${this.state.round}  ·  fight ${Math.min(this.session.fightsWon + 1, FIGHTS_BEFORE_BOSS + 1)} of ${FIGHTS_BEFORE_BOSS + 1}`);
+    this.roundText.setText(`Round ${this.state.round}  ·  screen ${this.session.screenIndex + 1}`);
     this.pileText.setText(`deck ${this.state.player.deck.length}  ·  hand ${this.state.player.hand.length}  ·  discard ${this.state.player.discard.length}`);
     this.rebuildHand();
   }
@@ -177,7 +180,7 @@ export class CombatScene extends Phaser.Scene {
     const pos = (side: 'player' | 'enemy') => (side === 'player' ? { x: this.px, y: this.py } : { x: this.ex, y: this.ey });
     switch (e.t) {
       case 'roundStart':
-        this.roundText.setText(`Round ${e.round}  ·  fight ${Math.min(this.session.fightsWon + 1, FIGHTS_BEFORE_BOSS + 1)} of ${FIGHTS_BEFORE_BOSS + 1}`);
+        this.roundText.setText(`Round ${e.round}  ·  screen ${this.session.screenIndex + 1}`);
         return;
       case 'deal': {
         this.rebuildHand();
@@ -282,23 +285,24 @@ export class CombatScene extends Phaser.Scene {
   private showResult() {
     const { width: W, height: H } = this.scale.gameSize;
     const won = this.state.outcome === 'won';
-    const isBoss = this.enemyDef.archetype === 'boss';
+    const isBoss = this.encounter.kind === 'boss';
     this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.6).setDepth(70);
-    const title = won ? (isBoss ? 'The Gatekeeper falls!' : 'Victory') : 'You died';
+    const title = won ? (isBoss ? `${this.enemyDef.name} falls!` : 'Victory') : 'You died';
     this.add.text(W / 2, H * 0.34, title, { ...text.title, color: won ? COLORS.gold : '#ff6b6b' }).setOrigin(0.5).setDepth(71);
 
     if (won) {
       this.session.hp = this.state.player.hp;
-      this.session.fightsWon += 1;
-      const sub = isBoss ? `Screen 1 cleared with ${this.session.hp} HP. Screen 2 arrives in milestone 5.` : `${this.session.hp}/${this.session.stats.maxHp} HP carried forward. No healing between fights.`;
+      this.session.encountersWon += 1;
+      this.session.lastResult = { encounter: this.encounter, won: true };
+      this.session.pendingEncounter = null;
+      const sub = isBoss
+        ? 'The way forward opens. You are fully healed.'
+        : `${this.session.hp}/${this.session.stats.maxHp} HP. No healing between fights.`;
       this.add.text(W / 2, H * 0.34 + 46, sub, text.body).setOrigin(0.5).setDepth(71);
-      if (!isBoss) {
-        new Button(this, W / 2, H * 0.62, 'Next fight', () => this.scene.restart(), { width: 220, fill: 0x1f2a44, edge: COLORS.goldHex }).setDepth(72);
-      } else {
-        new Button(this, W / 2, H * 0.62, 'Back to title', () => this.quit(), { width: 220, fill: 0x1f2a44, edge: COLORS.goldHex }).setDepth(72);
-      }
+      new Button(this, W / 2, H * 0.62, 'Continue', () => this.scene.start('Overworld'), { width: 220, fill: 0x1f2a44, edge: COLORS.goldHex }).setDepth(72);
     } else {
-      this.add.text(W / 2, H * 0.34 + 46, `Slain by ${this.enemyDef.name} in fight ${this.session.fightsWon + 1}. Seed ${this.session.seed}.`, text.body).setOrigin(0.5).setDepth(71);
+      this.session.lastResult = { encounter: this.encounter, won: false };
+      this.add.text(W / 2, H * 0.34 + 46, `Slain by ${this.enemyDef.name} on screen ${this.session.screenIndex + 1}. Seed ${this.session.seed}.`, text.body).setOrigin(0.5).setDepth(71);
       new Button(this, W / 2, H * 0.62, 'Back to title', () => this.quit(), { width: 220, fill: 0x1f2a44, edge: COLORS.goldHex }).setDepth(72);
     }
   }

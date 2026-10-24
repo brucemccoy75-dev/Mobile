@@ -27,7 +27,7 @@ src/
   core/        pure TypeScript, deterministic, no Phaser imports, 100% unit-testable
     rng.ts         seeded PRNG with named streams (map, encounter, loot, combat)
     combat/        turn resolver, deck/hand dealing, status effects, damage formula, enemy AI + intent lookahead
-    map/           screen generator, connectivity check, POI placement, danger zones
+    map/           screen generator, A* + cost field, threat meter, POI/guard placement, validation
     loot/          drop tables, rarity, pool composition from meta state
     run/           RunState machine: class select -> overworld -> combat -> reward -> ... -> death/victory
     meta/          MetaState: discovered skills/items, death count, unlock gates

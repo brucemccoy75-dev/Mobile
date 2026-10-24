@@ -78,7 +78,9 @@ One enemy per encounter for POC (multi-target adds UI and AI scope). **Intent**:
 
 ## 7. Overworld rules
 
-- Each screen: entry west, boss arena east, main road between. 1 shop, 2 chests, 1 shrine placed off-road behind danger tiles and a visible guard.
+- Each screen: entry west, boss arena east, main road between. 1 shop, 2 chests, 1 shrine placed off-road behind danger tiles and a visible guard. POIs are spread west→east in bands; each costs at least 8 danger-weighted steps from the road.
+- Threat meter numbers: road 0, grass 0.08, forest 0.2, swamp 0.3 per step; fires at 1.0 and resets to 0–0.35. Screen 2 multiplies by 1.3.
+- Open UX item: the camera only follows the player, there is no drag-to-pan, so far tiles are reached by walking in legs. Revisit after phone testing (candidates: drag-to-pan with a tap threshold, or a zoomed-out minimap toggle).
 - Encounter roll per tile entered, by tile type. A threat meter shows accumulated risk.
 - **No healing after fights.** HP is a run resource and HP drain is the main death driver. Sources: shrine (one use per screen, full heal), shop (buy heal, expensive), rare taxed healing skills, relics with a downside. Boss kill = full heal and screen transition.
 - No fleeing in POC. Route choice is the escape mechanism.

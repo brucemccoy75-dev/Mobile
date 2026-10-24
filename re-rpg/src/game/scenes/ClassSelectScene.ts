@@ -64,6 +64,6 @@ export class ClassSelectScene extends Phaser.Scene {
     const session = createSession(this.selected, this.devTomes);
     setSession(this, session);
     this.cameras.main.fadeOut(200, 11, 15, 26);
-    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('Combat'));
+    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('Overworld'));
   }
 }
