@@ -4,11 +4,11 @@ Status: planning draft (session 1). Target: mobile phones, landscape, playable i
 
 ## 1. Framework decision
 
-**Recommendation: Phaser 3 + TypeScript + Vite, shipped as a PWA to GitHub Pages. Wrap with Capacitor later for app stores.**
+**Decision: Phaser 4 + TypeScript + Vite, shipped as a PWA on Firebase Hosting (this repo's GitHub Pages site stays with map3d). Wrap with Capacitor later for app stores.**
 
 | Option | Verdict | Why |
 |---|---|---|
-| **Phaser 3 (TS, Vite)** | **Pick** | 2D-native, tilemaps, tweens, touch input, camera, A* plugins. Builds to static files, so the game is playable on any phone by opening a URL, which is the fastest POC loop there is. This repo already deploys to gh-pages. |
+| **Phaser 4 (TS, Vite)** | **Pick** | 2D-native, tilemaps, tweens, touch input, camera, A* plugins. Builds to static files, so the game is playable on any phone by opening a URL, which is the fastest POC loop there is. This repo already deploys to gh-pages. |
 | Godot 4 | Good second choice | Excellent 2D and mobile export, but the web export is heavy (~30 MB+, needs SharedArrayBuffer headers that GitHub Pages cannot set) so "share a link" iteration is worse. Worth revisiting if we leave the web. |
 | Unity | No for POC | Overkill, slow web builds, licensing noise. |
 | PixiJS / raw canvas | No | We would rebuild what Phaser gives us (tilemaps, input, scenes, tweens). |
@@ -107,7 +107,7 @@ interface MetaState {
 
 - Isometric costs: diamond grid pathfinding, depth sorting, far fewer free asset packs, and tiles look tiny on a 6" landscape phone. The payoff (depth) is small for a readable roguelike map.
 - Top-down 3/4 gives Zelda-like readability, square-grid A*, trivial collision, and lots of CC0 art (Kenney Tiny Town/Dungeon, 0x72 Dungeon Tileset II) for the POC.
-- Landscape phone at 3x: viewport ≈ 18 × 8 tiles. Each **screen** is a bounded region of about **48 × 24 tiles**; the camera follows the player with a deadzone. Big enough to feel open, small enough to read as one "stage".
+- Logical canvas is 540 px tall, width follows the device aspect (960 to 1260). At 48 px tiles that is roughly 20 to 26 × 11 tiles. Each **screen** is a bounded region of about **48 × 24 tiles**; the camera follows the player with a deadzone. Big enough to feel open, small enough to read as one "stage".
 - Fog of war is optional later. For POC everything is visible so shops/chests work as visible lures, as specified.
 
 ## 5. Touch movement
@@ -153,7 +153,7 @@ Players must be able to log in on any device and keep past-loop gains.
 
 ## 9. Deployment & repo layout
 
-- GitHub Actions: build on push to `main`, publish `dist/` to `gh-pages`.
+- GitHub Actions: typecheck, test and build on every push; deploy `dist/` to Firebase Hosting on `main` (job skipped until the Firebase secret/variable exist).
 - Re-RPG lives in its **own new repository** (this repo is the unrelated map3d project; these docs move over).
 - PWA manifest with `"orientation": "landscape"`. Browsers cannot force landscape outside fullscreen, so show a "rotate your phone" overlay in portrait and call `screen.orientation.lock('landscape')` on first tap where supported. Capacitor wrap locks it for real.
 - `touch-action: none`, `user-scalable=no`, safe-area insets for notches, `devicePixelRatio` capped at 2.

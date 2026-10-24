@@ -1,0 +1,52 @@
+name: re-rpg
+
+on:
+  push:
+    branches: [main, 'claude/**']
+    paths: ['re-rpg/**', '.github/workflows/re-rpg.yml']
+  pull_request:
+    paths: ['re-rpg/**', '.github/workflows/re-rpg.yml']
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: re-rpg
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: re-rpg/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: re-rpg/dist
+
+  deploy:
+    # Live site: pushes to main only. Needs the FIREBASE_SERVICE_ACCOUNT secret
+    # and FIREBASE_PROJECT_ID variable (set up in milestone 4b; the job is skipped until then).
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.FIREBASE_PROJECT_ID != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: re-rpg/dist
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: ${{ vars.FIREBASE_PROJECT_ID }}
+          channelId: live
+          entryPoint: re-rpg
