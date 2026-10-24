@@ -150,6 +150,7 @@ Players must be able to log in on any device and keep past-loop gains.
 - **Sync rules**: push after every meta change and every run transition (debounced); pull on launch and on auth link. Conflict: MetaState merges by set-union of discovered entries and max of counters; RunState takes the newer `updatedAt`.
 - Firestore security rules: a uid may read/write only its own doc. Anti-cheat is out of scope for POC.
 - `MetaState` and `RunState` are versioned JSON with migration functions.
+- Save points: run start, every overworld interaction, every reward taken, boss kill, screen change. Combat is not saved mid-fight: closing the app during a fight resumes on the map just before it (the encounter is rolled again). Death clears the run and saves meta.
 
 ## 9. Deployment & repo layout
 

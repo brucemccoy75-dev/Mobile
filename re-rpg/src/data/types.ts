@@ -92,3 +92,23 @@ export interface Enemy {
   table: MoveTable;
   phases?: EnemyPhase[];
 }
+
+export type Slot = 'body' | 'weapon' | 'relic';
+
+/** Everything an item does is a modifier (ARCHITECTURE §3). Triggers arrive post-POC. */
+export interface Modifier {
+  stat?: Partial<Stats>;
+}
+
+export interface Item {
+  id: string;
+  name: string;
+  slot: Slot;
+  rarity: Rarity;
+  text: string;
+  /** Restrict to classes; omitted = any class. */
+  classes?: ClassId[];
+  /** Set ids this item synergises with; doubles its weight while that set is active. */
+  tags?: SetId[];
+  mods: Modifier[];
+}

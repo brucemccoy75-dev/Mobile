@@ -4,6 +4,8 @@ import { TitleScene } from '@game/scenes/TitleScene';
 import { ClassSelectScene } from '@game/scenes/ClassSelectScene';
 import { CombatScene } from '@game/scenes/CombatScene';
 import { OverworldScene } from '@game/scenes/OverworldScene';
+import { RewardScene } from '@game/scenes/RewardScene';
+import { RunEndScene } from '@game/scenes/RunEndScene';
 import { computeGameSize, GAME_HEIGHT } from '@game/layout';
 
 // Logical resolution: fixed height, width follows the device aspect (16:9 .. 21:9)
@@ -23,7 +25,7 @@ const game = new Phaser.Game({
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
   input: { activePointers: 2 },
-  scene: [BootScene, TitleScene, ClassSelectScene, OverworldScene, CombatScene],
+  scene: [BootScene, TitleScene, ClassSelectScene, OverworldScene, CombatScene, RewardScene, RunEndScene],
 });
 
 // Re-fit when the phone rotates or the browser chrome collapses.

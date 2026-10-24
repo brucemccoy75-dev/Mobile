@@ -3,14 +3,14 @@ import { CLASSES, getSet } from '@data/index';
 import type { ClassId } from '@data/types';
 import { Button } from '@game/ui/Button';
 import { CLASS_COLORS, COLORS, text } from '@game/ui/theme';
-import { createSession, setSession } from '@game/session';
+import { createSession, getMeta, persistRun, setSession } from '@game/session';
+import { HEIRLOOM_DEATHS, heirloomUnlocked } from '@core/meta';
 
 export class ClassSelectScene extends Phaser.Scene {
   private selected: ClassId | null = null;
   private panels = new Map<ClassId, Phaser.GameObjects.Rectangle>();
   private setLabel!: Phaser.GameObjects.Text;
   private begin!: Button;
-  private devTomes = true;
 
   constructor() { super('ClassSelect'); }
 
@@ -44,10 +44,12 @@ export class ClassSelectScene extends Phaser.Scene {
 
     this.begin = new Button(this, width / 2, height - 46, 'Begin', () => this.start(), { width: 200, fill: 0x1f2a44, edge: COLORS.goldHex, disabled: true });
 
-    const dev = new Button(this, width - 110, height - 46, 'dev: tomes ON', () => {
-      this.devTomes = !this.devTomes;
-      dev.label.setText(`dev: tomes ${this.devTomes ? 'ON' : 'OFF'}`);
-    }, { width: 180, height: 40, fontSize: '14px' });
+    const meta = getMeta(this);
+    const pool = meta.discoveredSkills.length + meta.discoveredItems.length;
+    const heir = heirloomUnlocked(meta)
+      ? (pool > 0 ? 'Heirloom: you start with one discovered tome or item.' : 'Heirloom unlocked, but nothing discovered yet.')
+      : `Heirloom unlocks after ${HEIRLOOM_DEATHS} deaths.`;
+    this.add.text(width / 2, 62, heir, { ...text.small, color: COLORS.gold }).setOrigin(0.5);
 
     new Button(this, 70, height - 46, 'Back', () => this.scene.start('Title'), { width: 110, height: 40, fontSize: '14px' });
   }
@@ -61,8 +63,9 @@ export class ClassSelectScene extends Phaser.Scene {
 
   private start() {
     if (!this.selected) return;
-    const session = createSession(this.selected, this.devTomes);
+    const session = createSession(this.selected, getMeta(this));
     setSession(this, session);
+    void persistRun(this);
     this.cameras.main.fadeOut(200, 11, 15, 26);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('Overworld'));
   }

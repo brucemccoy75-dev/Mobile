@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CLASSES, ENEMIES, SETS, SKILLS, getSkill } from './index';
+import { CLASSES, ENEMIES, ITEMS, SETS, SKILLS, getSkill } from './index';
 
 describe('content integrity', () => {
   it('skill ids are unique', () => {
@@ -38,5 +38,14 @@ describe('content integrity', () => {
   it('starting HP matches the brief: 25 / 20 / 20', () => {
     const hp = Object.fromEntries(CLASSES.map((c) => [c.id, c.stats.maxHp]));
     expect(hp).toEqual({ warrior: 25, wizard: 20, shaman: 20 });
+  });
+
+  it('item ids are unique, every slot has commons for every class, tags reference real sets', () => {
+    const ids = ITEMS.map((i) => i.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const slot of ['body', 'weapon', 'relic'] as const) for (const c of CLASSES) {
+      expect(ITEMS.some((i) => i.slot === slot && i.rarity === 'common' && (!i.classes || i.classes.includes(c.id)))).toBe(true);
+    }
+    for (const i of ITEMS) for (const t of i.tags ?? []) expect(SETS.some((s) => s.id === t)).toBe(true);
   });
 });

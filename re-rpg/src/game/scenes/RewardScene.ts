@@ -1,0 +1,153 @@
+import Phaser from 'phaser';
+import { getSet, getSkill } from '@data/index';
+import type { Item, Skill, SkillId } from '@data/types';
+import { rollOffer, type Offer, type RewardChoice } from '@core/loot';
+import { compareItems } from '@core/run';
+import { DECK_CAP } from '@core/combat';
+import { getMeta, getSession, persistMeta, persistRun, takeChoice, type RunSession } from '@game/session';
+import { Button } from '@game/ui/Button';
+import { COLORS, FONT, RARITY_COLORS, text } from '@game/ui/theme';
+import { tween, wait } from '@game/ui/tween';
+
+const TITLES = { kill: 'Spoils', guard: 'Spoils', chest: 'Chest', boss: 'Boss hoard' } as const;
+
+/**
+ * Pick 1 of N (DECISIONS #4). Items with an occupied slot open a compare panel;
+ * tomes at the deck cap open a swap panel. Skip is always allowed.
+ */
+export class RewardScene extends Phaser.Scene {
+  private session!: RunSession;
+  private offer!: Offer;
+  private overlay: Phaser.GameObjects.GameObject[] = [];
+  private done = false;
+
+  constructor() { super('Reward'); }
+
+  create() {
+    this.session = getSession(this);
+    const pending = this.session.pendingOffer;
+    if (!pending) { this.scene.start('Overworld'); return; }
+    this.session.pendingOffer = null;
+    const meta = getMeta(this);
+    this.offer = rollOffer(pending.source, this.session.screenIndex, {
+      classId: this.session.classId, setId: this.session.setId, meta, deck: this.session.deck, equipment: this.session.equipment,
+    }, this.session.rng.stream('loot'), pending.gold);
+    this.session.gold += this.offer.gold;
+
+    const { width: W, height: H } = this.scale.gameSize;
+    this.cameras.main.setBackgroundColor(0x0b0f1a);
+    this.add.text(W / 2, 30, TITLES[this.offer.source], text.h2).setOrigin(0.5);
+    this.add.text(W / 2, 60, this.offer.gold > 0 ? `+${this.offer.gold} gold  ·  choose one` : 'choose one', { ...text.small, fontSize: '14px', color: COLORS.gold }).setOrigin(0.5);
+
+    const n = this.offer.choices.length;
+    const cw = 250, ch = 190, gap = 20;
+    const startX = W / 2 - ((n * cw + (n - 1) * gap) / 2) + cw / 2;
+    this.offer.choices.forEach((c, i) => this.drawChoice(c, startX + i * (cw + gap), H / 2 - 10, cw, ch));
+
+    this.add.text(W / 2, H - 92, this.statusLine(), text.small).setOrigin(0.5);
+    new Button(this, W / 2, H - 46, 'Skip', () => this.finish(), { width: 160, height: 44, fontSize: '15px' });
+  }
+
+  private statusLine() {
+    const s = this.session;
+    const eq = (['body', 'weapon', 'relic'] as const).map((k) => `${k}: ${s.equipment[k]?.name ?? '—'}`).join('   ');
+    return `HP ${s.hp}/${s.stats.maxHp}  ATK ${s.stats.atk}  DEF ${s.stats.def}   ·   deck ${s.deck.length}/${DECK_CAP}   ·   ${eq}`;
+  }
+
+  private drawChoice(c: RewardChoice, x: number, y: number, w: number, h: number) {
+    const rarity = c.kind === 'tome' ? c.skill.rarity : c.item.rarity;
+    const bg = this.add.rectangle(x, y, w, h, COLORS.panel).setStrokeStyle(3, RARITY_COLORS[rarity]);
+    const tag = c.kind === 'tome' ? `TOME · ${c.skill.setId ? getSet(c.skill.setId).name : 'skill'}` : `${c.item.slot.toUpperCase()} · ${rarity}`;
+    this.add.text(x, y - h / 2 + 16, tag, { fontFamily: FONT, fontSize: '12px', color: '#9aa3b8', fontStyle: 'bold' }).setOrigin(0.5);
+    const name = c.kind === 'tome' ? c.skill.name : c.item.name;
+    this.add.text(x, y - h / 2 + 46, name, { ...text.h2, fontSize: '21px', wordWrap: { width: w - 20 }, align: 'center' }).setOrigin(0.5);
+    const body = c.kind === 'tome' ? c.skill.text : c.item.text;
+    this.add.text(x, y + 4, body, { ...text.body, fontSize: '14px', wordWrap: { width: w - 28 }, align: 'center' }).setOrigin(0.5);
+    const footer = c.kind === 'item'
+      ? (this.session.equipment[c.item.slot] ? `replaces ${this.session.equipment[c.item.slot]!.name}` : 'empty slot')
+      : (this.session.deck.length >= DECK_CAP ? 'deck full: swap a card' : `deck ${this.session.deck.length + 1}/${DECK_CAP}`);
+    this.add.text(x, y + h / 2 - 18, footer, text.small).setOrigin(0.5);
+    const isNew = c.kind === 'tome' ? !getMeta(this).discoveredSkills.includes(c.skill.id) : !getMeta(this).discoveredItems.includes(c.item.id);
+    if (isNew) this.add.text(x + w / 2 - 8, y - h / 2 + 8, 'NEW', { fontFamily: FONT, fontSize: '11px', color: COLORS.gold, fontStyle: 'bold' }).setOrigin(1, 0);
+
+    bg.setInteractive({ useHandCursor: true });
+    bg.on('pointerup', () => this.pick(c));
+  }
+
+  private pick(c: RewardChoice) {
+    if (this.done) return;
+    if (c.kind === 'item' && this.session.equipment[c.item.slot]) return this.showCompare(c.item);
+    if (c.kind === 'tome' && this.session.deck.length >= DECK_CAP) return this.showSwap(c.skill);
+    void this.take(c);
+  }
+
+  private panel(w: number, h: number) {
+    const { width: W, height: H } = this.scale.gameSize;
+    const dim = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.7).setDepth(50).setInteractive();
+    const box = this.add.rectangle(W / 2, H / 2, w, h, COLORS.panel).setStrokeStyle(2, COLORS.goldHex).setDepth(51);
+    this.overlay.push(dim, box);
+    return { W, H };
+  }
+  private closeOverlay() { for (const o of this.overlay) o.destroy(); this.overlay = []; }
+
+  private showCompare(next: Item) {
+    const { W, H } = this.panel(560, 300);
+    const cur = this.session.equipment[next.slot]!;
+    const c = compareItems(this.session.base, this.session.equipment, next);
+    const t = (x: number, y: number, s: string, st = text.body) => { const o = this.add.text(x, y, s, st).setOrigin(0.5).setDepth(52); this.overlay.push(o); return o; };
+    t(W / 2, H / 2 - 120, `Replace ${cur.name} with ${next.name}?`, text.h2);
+    t(W / 2 - 150, H / 2 - 70, cur.name, { ...text.body, color: COLORS.muted });
+    t(W / 2 - 150, H / 2 - 46, cur.text, text.small);
+    t(W / 2 + 150, H / 2 - 70, next.name, { ...text.body, color: COLORS.gold });
+    t(W / 2 + 150, H / 2 - 46, next.text, text.small);
+    const d = (n: number) => (n > 0 ? `+${n}` : `${n}`);
+    const col = (n: number) => (n > 0 ? COLORS.heal : n < 0 ? '#ff6b6b' : COLORS.muted);
+    const rows: [string, number, number, number][] = [['max HP', c.before.maxHp, c.after.maxHp, c.delta.maxHp], ['ATK', c.before.atk, c.after.atk, c.delta.atk], ['DEF', c.before.def, c.after.def, c.delta.def]];
+    rows.forEach(([label, b, a, dl], i) => {
+      const y = H / 2 + i * 26;
+      t(W / 2 - 150, y, `${label} ${b}`, text.body);
+      t(W / 2, y, '→', text.small);
+      t(W / 2 + 150, y, `${label} ${a}  (${d(dl)})`, { ...text.body, color: col(dl) });
+    });
+    t(W / 2, H / 2 + 86, 'Binding: the old item is gone for this run.', text.small);
+    const b1 = new Button(this, W / 2 - 100, H / 2 + 124, 'Equip', () => { this.closeOverlay(); void this.take({ kind: 'item', item: next }); }, { width: 160, height: 44, fill: 0x1f2a44, edge: COLORS.goldHex });
+    const b2 = new Button(this, W / 2 + 100, H / 2 + 124, 'Back', () => this.closeOverlay(), { width: 160, height: 44 });
+    b1.setDepth(52); b2.setDepth(52); this.overlay.push(b1, b2);
+  }
+
+  private showSwap(skill: Skill) {
+    const { W, H } = this.panel(720, 330);
+    const t = (x: number, y: number, s: string, st = text.body) => { const o = this.add.text(x, y, s, st).setOrigin(0.5).setDepth(52); this.overlay.push(o); return o; };
+    t(W / 2, H / 2 - 135, `Deck full. Replace which card with ${skill.name}?`, text.h2);
+    const ids = this.session.deck;
+    const cw = 108, gap = 8;
+    const startX = W / 2 - ((ids.length * cw + (ids.length - 1) * gap) / 2) + cw / 2;
+    ids.forEach((id: SkillId, i) => {
+      const sk = getSkill(id);
+      const b = new Button(this, startX + i * (cw + gap), H / 2 - 30, sk.name, () => { this.closeOverlay(); void this.take({ kind: 'tome', skill }, id); }, { width: cw, height: 70, fontSize: '13px', fill: RARITY_COLORS[sk.rarity] });
+      b.label.setWordWrapWidth(cw - 10).setAlign('center');
+      b.setDepth(52); this.overlay.push(b);
+    });
+    const back = new Button(this, W / 2, H / 2 + 110, 'Back', () => this.closeOverlay(), { width: 160, height: 44 });
+    back.setDepth(52); this.overlay.push(back);
+  }
+
+  private async take(c: RewardChoice, replaceId?: SkillId) {
+    this.done = true;
+    const meta = getMeta(this);
+    const { isNew, replaced } = takeChoice(this.session, meta, c, replaceId);
+    await Promise.all([persistMeta(this), persistRun(this)]);
+    const { width: W, height: H } = this.scale.gameSize;
+    const name = c.kind === 'tome' ? c.skill.name : c.item.name;
+    const msg = `${isNew ? 'NEW DISCOVERY  ·  ' : ''}${name}${replaced ? `  (replaced ${replaced.name})` : ''}`;
+    const banner = this.add.text(W / 2, H / 2, msg, { ...text.h2, color: isNew ? COLORS.gold : COLORS.text, backgroundColor: '#000000cc', padding: { x: 16, y: 10 } }).setOrigin(0.5).setDepth(60).setAlpha(0);
+    await tween(this, { targets: banner, alpha: 1, duration: 150 });
+    await wait(this, isNew ? 1100 : 700);
+    this.finish();
+  }
+
+  private finish() {
+    this.done = true;
+    void persistRun(this).then(() => this.scene.start('Overworld'));
+  }
+}

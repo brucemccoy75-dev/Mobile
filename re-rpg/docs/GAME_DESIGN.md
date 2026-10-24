@@ -46,7 +46,7 @@ POC statuses: **Exposed** (takes 2x damage), **Guard** (blocks the next hit; sta
 
 Three slots: body, weapon, relic. No inventory. Finding a better item means replacing a worn one on the spot via a compare panel (old vs new, stat deltas coloured). Skip is allowed. Relics are the wild cards (big upside with a downside, e.g. +5 atk / −8 max HP) and the primary synergy hook later (triggers like "on heal: deal damage equal to amount healed").
 
-Rarity: common / uncommon / rare / boss. Rarity gates the modifier budget, not just numbers.
+Rarity: common / uncommon / rare / boss. Rarity gates the modifier budget, not just numbers. POC content: 22 items in `src/data/items.ts`, several class-limited and set-tagged so the affinity weighting has something to bite on. Equipping moves current HP by the max-HP delta, so a +6 amulet is 6 real HP and a −10 idol is a real wound.
 
 ## 5. Loot & pools (the replay engine)
 

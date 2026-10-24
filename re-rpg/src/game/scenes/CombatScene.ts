@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
-import { getEnemy, getSet, getSkill } from '@data/index';
+import { getEnemy, getSkill } from '@data/index';
 import type { Enemy, Intent, Posture } from '@data/types';
 import { createCombat, step, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
-import { getSession, setSession, type PendingEncounter, type RunSession } from '@game/session';
+import { getMeta, getSession, getStore, persistMeta, setName, setSession, type PendingEncounter, type RunSession } from '@game/session';
+import { recordDeath } from '@core/meta';
 import { Button } from '@game/ui/Button';
 import { Card, CARD_W } from '@game/ui/Card';
 import { HpBar } from '@game/ui/HpBar';
@@ -75,8 +76,8 @@ export class CombatScene extends Phaser.Scene {
     const esize = isBoss ? 120 : this.enemyDef.tier === 2 ? 92 : 76;
     this.enemySprite = this.add.rectangle(this.ex, this.ey, esize, esize, isBoss ? COLORS.boss : COLORS.enemy);
     this.add.text(this.ex, this.ey + esize / 2 + 12, this.enemyDef.name, text.small).setOrigin(0.5, 0);
-    const setName = getSet(this.session.setId).name;
-    this.add.text(this.px, this.py + 58, `${this.session.classId} · ${setName}`, text.small).setOrigin(0.5, 0);
+    const eq = Object.values(this.session.equipment).filter(Boolean).map((i) => i!.name).join(' · ');
+    this.add.text(this.px, this.py + 58, `${this.session.classId} · ${setName(this.session)}${eq ? `\n${eq}` : ''}`, { ...text.small, align: 'center' }).setOrigin(0.5, 0);
 
     // HP bars + status rows
     const barW = Math.min(300, W * 0.3);
@@ -299,15 +300,20 @@ export class CombatScene extends Phaser.Scene {
         ? 'The way forward opens. You are fully healed.'
         : `${this.session.hp}/${this.session.stats.maxHp} HP. No healing between fights.`;
       this.add.text(W / 2, H * 0.34 + 46, sub, text.body).setOrigin(0.5).setDepth(71);
-      new Button(this, W / 2, H * 0.62, 'Continue', () => this.scene.start('Overworld'), { width: 220, fill: 0x1f2a44, edge: COLORS.goldHex }).setDepth(72);
+      const source = this.encounter.kind === 'random' ? 'kill' : this.encounter.kind;
+      this.session.pendingOffer = { source };
+      new Button(this, W / 2, H * 0.62, 'Take spoils', () => this.scene.start('Reward'), { width: 220, fill: 0x1f2a44, edge: COLORS.goldHex }).setDepth(72);
     } else {
       this.session.lastResult = { encounter: this.encounter, won: false };
-      this.add.text(W / 2, H * 0.34 + 46, `Slain by ${this.enemyDef.name} on screen ${this.session.screenIndex + 1}. Seed ${this.session.seed}.`, text.body).setOrigin(0.5).setDepth(71);
-      new Button(this, W / 2, H * 0.62, 'Back to title', () => this.quit(), { width: 220, fill: 0x1f2a44, edge: COLORS.goldHex }).setDepth(72);
+      recordDeath(getMeta(this), this.session.screenIndex);
+      void Promise.all([persistMeta(this), getStore(this).clearRun()]);
+      this.add.text(W / 2, H * 0.34 + 46, `Slain by ${this.enemyDef.name} on screen ${this.session.screenIndex + 1}.`, text.body).setOrigin(0.5).setDepth(71);
+      new Button(this, W / 2, H * 0.62, 'Continue', () => this.scene.start('RunEnd', { won: false, killedBy: this.enemyDef.name }), { width: 220, fill: 0x1f2a44, edge: COLORS.goldHex }).setDepth(72);
     }
   }
 
   private quit() {
+    // Leaving mid-fight forfeits the fight but not the run: the map state was saved before the encounter.
     setSession(this, null);
     this.scene.start('Title');
   }

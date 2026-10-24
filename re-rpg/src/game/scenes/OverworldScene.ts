@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { getEnemy } from '@data/index';
 import { findPath, stepThreat, key, tileAt, type Tile, type TileType } from '@core/map';
-import { SCREEN_COUNT, getSession, randomEnemy, setSession, startScreen, type PendingEncounter, type RunSession } from '@game/session';
+import { SCREEN_COUNT, getMeta, getSession, getStore, persistMeta, persistRun, randomEnemy, setSession, startScreen, type PendingEncounter, type RunSession } from '@game/session';
+import { recordWin } from '@core/meta';
 import { Button } from '@game/ui/Button';
 import { CLASS_COLORS, COLORS, FONT, text } from '@game/ui/theme';
 import { tween, wait } from '@game/ui/tween';
@@ -53,7 +54,10 @@ export class OverworldScene extends Phaser.Scene {
     const zone = this.add.zone(0, 0, m.width * TILE, m.height * TILE).setOrigin(0).setInteractive().setDepth(0);
     zone.on('pointerup', (p: Phaser.Input.Pointer) => this.onTap(p));
 
-    void this.applyLastResult();
+    void this.applyLastResult().then(() => persistRun(this));
+    if (this.session.heirloomName && this.session.encountersWon === 0 && this.session.screenIndex === 0 && !this.session.lastResult) {
+      void this.toast(`Heirloom: ${this.session.heirloomName}`, 1800);
+    }
   }
 
   // ---------------------------------------------------------------- drawing
@@ -243,11 +247,12 @@ export class OverworldScene extends Phaser.Scene {
     if (poi) {
       if (poi.kind === 'chest' && !s.openedPois.has(poi.id)) {
         s.openedPois.add(poi.id);
-        const gold = 10 + Math.round(poi.cost / 2) * (s.screenIndex + 1);
-        s.gold += gold;
         this.poiSprites.get(poi.id)?.setAlpha(0.35);
-        this.syncHud();
-        void this.toast(`Chest: +${gold} gold. Items arrive in milestone 4.`);
+        const gold = 10 + Math.round(poi.cost / 2) * (s.screenIndex + 1);
+        s.pendingOffer = { source: 'chest', gold };
+        this.locked = true;
+        await persistRun(this);
+        this.scene.start('Reward');
         return true;
       }
       if (poi.kind === 'shrine' && !s.usedShrines.has(poi.id)) {
@@ -256,6 +261,7 @@ export class OverworldScene extends Phaser.Scene {
         this.poiSprites.get(poi.id)?.setAlpha(0.35);
         this.syncHud();
         void this.toast('Shrine: fully healed. It fades.');
+        void persistRun(this);
         return true;
       }
       if (poi.kind === 'shop') { void this.toast('Shop: opens in milestone 5.'); return true; }
@@ -309,17 +315,21 @@ export class OverworldScene extends Phaser.Scene {
     const dim = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.65).setScrollFactor(0).setDepth(120);
     const title = this.add.text(W / 2, H * 0.36, last ? 'You win!' : `Screen ${s.screenIndex + 1} cleared`, { ...text.title, color: COLORS.gold }).setOrigin(0.5).setScrollFactor(0).setDepth(121);
     const sub = this.add.text(W / 2, H * 0.36 + 48, last ? `Both screens cleared with ${s.encountersWon} fights won. Seed ${s.seed}.` : 'Fully healed. The next screen is harder.', text.body).setOrigin(0.5).setScrollFactor(0).setDepth(121);
-    const btn = new Button(this, W / 2, H * 0.64, last ? 'Back to title' : 'Onward', () => {
-      if (last) { this.quit(); return; }
+    const btn = new Button(this, W / 2, H * 0.64, last ? 'Continue' : 'Onward', () => {
+      if (last) {
+        recordWin(getMeta(this), SCREEN_COUNT);
+        void Promise.all([persistMeta(this), getStore(this).clearRun()]).then(() => this.scene.start('RunEnd', { won: true }));
+        return;
+      }
       startScreen(s, s.screenIndex + 1);
-      this.scene.restart();
+      void persistRun(this).then(() => this.scene.restart());
     }, { width: 220, fill: 0x1f2a44, edge: COLORS.goldHex });
     btn.setScrollFactor(0, 0, true).setDepth(122);
     void dim; void title; void sub;
   }
 
+  /** Leave to the title; the run stays saved and can be continued. */
   private quit() {
-    setSession(this, null);
-    this.scene.start('Title');
+    void persistRun(this).then(() => { setSession(this, null); this.scene.start('Title'); });
   }
 }

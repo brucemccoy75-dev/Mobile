@@ -7,10 +7,12 @@ export default defineConfig({
     alias: {
       '@core': fileURLToPath(new URL('./src/core', import.meta.url)),
       '@data': fileURLToPath(new URL('./src/data', import.meta.url)),
+      '@save': fileURLToPath(new URL('./src/save', import.meta.url)),
+      '@game': fileURLToPath(new URL('./src/game', import.meta.url)),
     },
   },
   test: {
-    include: ['src/core/**/*.test.ts', 'src/data/**/*.test.ts', 'src/save/**/*.test.ts'],
+    include: ['src/core/**/*.test.ts', 'src/data/**/*.test.ts', 'src/save/**/*.test.ts', 'src/game/session.test.ts'],
     environment: 'node',
   },
 });
