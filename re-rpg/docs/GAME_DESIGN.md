@@ -40,7 +40,7 @@ Healing skills honour the HP-drain rule: they are rare in the pool and carry a t
 
 Skills are data: `effects[]` of damage(mult), heal(flat/%), applyStatus(target, id, turns), guard, and `selfStatus`.
 
-POC statuses: **Exposed** (takes 2x damage, 2 turns), **Guard** (block next hit), **Burn** (N dmg per turn), **Chill** (skip next action), **Weak** (deal half damage).
+POC statuses: **Exposed** (takes 2x damage), **Guard** (blocks the next hit; stacks to 3), **Burn** (N dmg at end of round), **Chill** (skip next action), **Weak** (deal half damage). Durations count end-of-round ticks: a status applied on the player's turn with 1 turn covers the enemy's action that round; a self-status the enemy applies on its own turn needs 2 turns to be exploitable next round.
 
 ## 4. Equipment
 
@@ -71,8 +71,8 @@ Enemies are designed as *answers* to kits so set identity matters:
 | Armored | Shell Beetle | Iron Knight | High def → Exposing Strike / Lightning shine |
 | Caster | Hex Imp | Witch | Applies Exposed/Weak to player → sustain and tempo |
 | Swarm (single sprite, multi-hit) | Rat Pack | Harpies | Many small hits → Guard efficiency, Burn value |
-| **Boss 1 Gatekeeper** | 3-turn cycle: Guard → Big Hit → Exposed self. Reads as a rhythm puzzle. | | |
-| **Boss 2 Warden** | Two phases, summons a swarm at half HP, applies Weak. | | |
+| **Boss 1 Gatekeeper** | 3-turn cycle: Guard → Crush (2 hits, so one Defend only halves it) → Stagger (Exposed). Reads as a rhythm puzzle. | | |
+| **Boss 2 Warden** | Two phases: Slash/Guard/Smash, then at half HP Rend (3 hits)/Curse (Weak)/Smash. | | |
 
 One enemy per encounter for POC (multi-target adds UI and AI scope). **Intent**: the exact move for the current round is shown above the enemy (icon + number), plus a posture tell for the round after. Enemy move sets are sequences or weighted tables so the engine always knows one step beyond the shown intent.
 

@@ -7,7 +7,7 @@ Goal: a playable, tunable 2-screen loop on a phone via URL. Placeholder art is f
 | # | Milestone | Done when | Est. |
 |---|---|---|---|
 | 0 | **Scaffold** ✅ | Vite + TS + Phaser 4 + Vitest; landscape canvas (fixed 540 logical height, width follows aspect) with rotate overlay; CI workflow with Firebase Hosting deploy; Playwright smoke test; seeded RNG with streams | done |
-| 1 | **Combat core (headless)** | `core/combat` resolves a full fight from data; deck/hand dealing, statuses, two-step intents; Vitest covers formula and each status; `npm run sim` prints win rates vs each archetype | 1–1.5 days |
+| 1 | **Combat core (headless)** ✅ | `core/combat` resolves a full fight from data; deck/hand dealing, statuses, two-step intents, boss phases; 39 Vitest cases; `npm run sim` runs gauntlets per class/loadout and duels; baseline in `docs/BALANCE.md` | done |
 | 2 | **Combat scene** | Side view with coloured rectangles, HP bars, intent, 4-button skill bar, event-driven animations; class select → fight → win/lose | 1 day |
 | 3 | **Map gen + overworld** | Seeded screen generator with road, danger tiles, POIs, guards, boss; tap-to-move A*; threat meter; encounters open combat and return | 1.5–2 days |
 | 4 | **Loot + meta** | Drop tables, pick-1-of-N reward scene, compare panel for binding swaps, tomes with deck-cap swap, discovery + MetaState save, death screen, heirloom; `SaveStore` local adapter | 1.5 days |
