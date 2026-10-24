@@ -25,10 +25,6 @@ export class TitleScene extends Phaser.Scene {
       fontFamily: 'monospace', fontSize: '12px', color: '#4b5366',
     }).setOrigin(0, 1);
 
-    // Class select lands here at milestone 2. For now, a visible response to the tap.
-    this.input.once('pointerdown', () => {
-      this.cameras.main.flash(200, 230, 233, 242);
-      prompt.setText('class select coming in milestone 2');
-    });
+    this.input.once('pointerup', () => this.scene.start('ClassSelect'));
   }
 }

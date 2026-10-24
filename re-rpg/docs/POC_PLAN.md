@@ -8,7 +8,7 @@ Goal: a playable, tunable 2-screen loop on a phone via URL. Placeholder art is f
 |---|---|---|---|
 | 0 | **Scaffold** ✅ | Vite + TS + Phaser 4 + Vitest; landscape canvas (fixed 540 logical height, width follows aspect) with rotate overlay; CI workflow with Firebase Hosting deploy; Playwright smoke test; seeded RNG with streams | done |
 | 1 | **Combat core (headless)** ✅ | `core/combat` resolves a full fight from data; deck/hand dealing, statuses, two-step intents, boss phases; 39 Vitest cases; `npm run sim` runs gauntlets per class/loadout and duels; baseline in `docs/BALANCE.md` | done |
-| 2 | **Combat scene** | Side view with coloured rectangles, HP bars, intent, 4-button skill bar, event-driven animations; class select → fight → win/lose | 1 day |
+| 2 | **Combat scene** ✅ | Side view with placeholder shapes, HP bars, status chips, intent + posture tell, dealt hand of cards plus Attack/Defend, event-log animation playback, class select, mini-gauntlet (4 fights then Gatekeeper, HP carried) with a dev toggle to start with the rolled set's tomes | done |
 | 3 | **Map gen + overworld** | Seeded screen generator with road, danger tiles, POIs, guards, boss; tap-to-move A*; threat meter; encounters open combat and return | 1.5–2 days |
 | 4 | **Loot + meta** | Drop tables, pick-1-of-N reward scene, compare panel for binding swaps, tomes with deck-cap swap, discovery + MetaState save, death screen, heirloom; `SaveStore` local adapter | 1.5 days |
 | 4b | **Cloud save** | Firebase project, anonymous auth, Firestore doc per uid, sync adapter + merge rules, "Link Google" button | 0.5–1 day |
