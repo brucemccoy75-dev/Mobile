@@ -71,7 +71,7 @@ const { chromium } = require('playwright');
     // if a compare/swap panel opened (slot occupied), press Equip at (W/2-100, H/2+124)
     const stillReward = await page.evaluate(() => window.__rerpg.scene.isActive('Reward'));
     if (stillReward) {
-      const hasOverlay = await page.evaluate(() => { const sc = window.__rerpg.scene.getScene('Reward'); return sc.overlay.length > 0; });
+      const hasOverlay = await page.evaluate(() => { const sc = window.__rerpg.scene.getScene('Reward'); return sc.children.list.some(o => o.depth === 50); });
       if (hasOverlay) { await page.screenshot({ path: `${out}/m4-compare.png` }); await tap(g[0] / 2 - 100, g[1] / 2 + 124); }
     }
     await active('Overworld');
@@ -80,6 +80,13 @@ const { chromium } = require('playwright');
     console.log('after reward', JSON.stringify(s1));
     console.log('meta', JSON.stringify(await meta()));
     await page.screenshot({ path: `${out}/m4-afterreward.png` });
+    // Regression: controls must work again after combat + reward (scene fields are reused by Phaser).
+    const east = await page.evaluate(() => { const s = window.__rerpg.registry.get('session'); return s.map.entry; });
+    await tapTile(east.x + 1, east.y);
+    await page.waitForFunction(() => { const sc = window.__rerpg.scene.getScene('Overworld'); return sc && sc.walking === false && !window.__rerpg.scene.isActive('Combat'); }, null, { timeout: 20000 }).catch(() => {});
+    await page.waitForTimeout(300);
+    const moved = await page.evaluate(() => { const s = window.__rerpg.registry.get('session'); return s.playerPos; });
+    console.log('moved after reward', JSON.stringify({ from: s1.pos, to: moved, ok: moved.x !== s1.pos.x || moved.y !== s1.pos.y || window.__rerpg?.scene?.isActive?.('Combat') }));
     // reload: Continue should appear and restore the same run
     await page.reload({ waitUntil: 'networkidle' });
     await active('Title');

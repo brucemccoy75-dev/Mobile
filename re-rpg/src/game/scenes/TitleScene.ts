@@ -57,6 +57,10 @@ export class TitleScene extends Phaser.Scene {
 
     this.add.text(12, height - 12, `v${APP_VERSION}  ${width}x${height}`, text.mono).setOrigin(0, 1);
     this.cloudLine(cx, height - 16);
+    // Re-enter fullscreen after the browser's back gesture dropped it.
+    new Button(this, width - 170, height - 24, 'fullscreen', () => {
+      try { if (this.scale.fullscreen.available) this.scale.isFullscreen ? this.scale.stopFullscreen() : this.scale.startFullscreen(); } catch { /* ignore */ }
+    }, { width: 100, height: 28, fontSize: '12px' }).setAlpha(0.5);
     new Button(this, width - 80, height - 24, 'wipe save', async () => {
       await getStore(this).clearRun();
       const fresh = createMeta();

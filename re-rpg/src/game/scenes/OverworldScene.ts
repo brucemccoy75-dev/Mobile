@@ -38,6 +38,13 @@ export class OverworldScene extends Phaser.Scene {
   constructor() { super('Overworld'); }
 
   create() {
+    // Scene objects are reused by Phaser; never trust field initialisers here.
+    this.locked = false;
+    this.walking = false;
+    this.retarget = null;
+    this.guardSprites.clear();
+    this.poiSprites.clear();
+
     this.session = getSession(this);
     const m = this.session.map;
 
@@ -55,8 +62,10 @@ export class OverworldScene extends Phaser.Scene {
     zone.on('pointerup', (p: Phaser.Input.Pointer) => this.onTap(p));
 
     void this.applyLastResult().then(() => persistRun(this));
-    if (this.session.heirloomName && this.session.encountersWon === 0 && this.session.screenIndex === 0 && !this.session.lastResult) {
-      void this.toast(`Heirloom: ${this.session.heirloomName}`, 1800);
+    const freshArrival = !this.session.lastResult && key(this.session.playerPos) === key(m.entry) && this.session.openedPois.size === 0 && this.session.defeatedGuards.size === 0;
+    if (freshArrival) {
+      const heir = this.session.heirloomName && this.session.screenIndex === 0 ? `Heirloom: ${this.session.heirloomName}.  ` : '';
+      void this.toast(`${heir}Reach the boss in the east. Roads are safe; the wilds fill the threat meter. Guards hold the chests, shop and shrine.`, 4500);
     }
   }
 

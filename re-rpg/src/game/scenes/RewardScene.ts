@@ -23,6 +23,7 @@ export class RewardScene extends Phaser.Scene {
   constructor() { super('Reward'); }
 
   create() {
+    this.done = false;
     this.session = getSession(this);
     const pending = this.session.pendingOffer;
     if (!pending) { this.scene.start('Overworld'); return; }

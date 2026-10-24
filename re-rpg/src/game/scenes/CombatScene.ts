@@ -43,6 +43,8 @@ export class CombatScene extends Phaser.Scene {
   constructor() { super('Combat'); }
 
   create() {
+    this.busy = false;
+    this.hand = [];
     this.session = getSession(this);
     if (!this.session.pendingEncounter) throw new Error('Combat started without an encounter');
     this.encounter = this.session.pendingEncounter;

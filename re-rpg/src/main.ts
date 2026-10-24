@@ -42,15 +42,16 @@ window.addEventListener('resize', () => {
   }, 100);
 });
 
-// Best effort: lock landscape where the browser allows it (Android in fullscreen).
-document.addEventListener(
-  'pointerdown',
-  () => {
-    const so = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> };
-    so.lock?.('landscape').catch(() => {/* unsupported, overlay handles it */});
-  },
-  { once: true },
-);
+// First tap: go fullscreen where the browser allows it (Android, desktop; iOS only
+// via "Add to Home Screen"), then try to lock landscape, which needs fullscreen on Android.
+export function enterFullscreen(): void {
+  try {
+    if (game.scale.fullscreen.available && !game.scale.isFullscreen) game.scale.startFullscreen();
+  } catch { /* not allowed here */ }
+  const so = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> };
+  so.lock?.('landscape').catch(() => {/* unsupported, overlay handles it */});
+}
+document.addEventListener('pointerup', enterFullscreen, { once: true });
 
 // Exposed for debugging from the console / Playwright.
 (window as unknown as { __rerpg: Phaser.Game }).__rerpg = game;

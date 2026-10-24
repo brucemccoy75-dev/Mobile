@@ -15,6 +15,8 @@ export class ClassSelectScene extends Phaser.Scene {
   constructor() { super('ClassSelect'); }
 
   create() {
+    this.selected = null;
+    this.panels.clear();
     const { width, height } = this.scale.gameSize;
     this.add.text(width / 2, 34, 'Choose your class', text.h2).setOrigin(0.5);
 

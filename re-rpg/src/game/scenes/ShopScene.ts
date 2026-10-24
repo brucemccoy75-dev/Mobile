@@ -18,6 +18,8 @@ export class ShopScene extends Phaser.Scene {
   constructor() { super('Shop'); }
 
   create() {
+    this.busy = false;
+    this.cards = [];
     this.session = getSession(this);
     const { width: W, height: H } = this.scale.gameSize;
     this.cameras.main.setBackgroundColor(0x0b0f1a);
