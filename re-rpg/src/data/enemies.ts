@@ -53,7 +53,7 @@ export const ENEMIES: Enemy[] = [
   { id: 'gatekeeper', name: 'The Gatekeeper', tier: 'boss1', archetype: 'boss', stats: { maxHp: 40, atk: 6, def: 2 },
     table: { kind: 'sequence', moves: [guard(), charge('crush', 'Crush', 1.3, 2), stagger()] } },
   // Warden: phase two at half HP trades guard for a multi-hit rend and Weak.
-  { id: 'warden', name: 'The Warden', tier: 'boss2', archetype: 'boss', stats: { maxHp: 60, atk: 7, def: 3 },
-    table: { kind: 'sequence', moves: [hit('slash', 'Slash', 1.0), guard(), charge('smash', 'Smash', 2.0)] },
-    phases: [{ hpBelow: 0.5, table: { kind: 'sequence', moves: [hit('rend', 'Rend', 0.8, 'aggressive', 3), debuff('curse', 'Curse', 'weak', 2), charge('smash', 'Smash', 2.5)] } }] },
+  { id: 'warden', name: 'The Warden', tier: 'boss2', archetype: 'boss', stats: { maxHp: 50, atk: 7, def: 2 },
+    table: { kind: 'sequence', moves: [hit('slash', 'Slash', 1.0), guard(), charge('smash', 'Smash', 2.0), stagger()] },
+    phases: [{ hpBelow: 0.5, table: { kind: 'sequence', moves: [hit('rend', 'Rend', 0.7, 'aggressive', 3), debuff('curse', 'Curse', 'weak', 2), charge('smash', 'Smash', 2.5)] } }] },
 ];

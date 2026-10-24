@@ -144,7 +144,7 @@ Damage formula (POC, flat and readable): `dmg = max(1, round(atk * skillMult) - 
 
 Players must be able to log in on any device and keep past-loop gains.
 
-- Game code depends only on `SaveStore { loadMeta, saveMeta, loadRun, saveRun, clearRun }`.
+- Game code depends only on `SaveStore { loadMeta, saveMeta, loadRun, saveRun, clearRun }`. Implemented: `LocalSaveStore` (localStorage, memory fallback) and `SyncedSaveStore` (local-first over a `Cloud` interface) with `createFirebaseCloud` behind it; the Firebase SDK loads lazily only when a config is present. Setup steps in `docs/FIREBASE_SETUP.md`.
 - **Local adapter**: IndexedDB (via `idb-keyval`), always written first. The game works fully offline.
 - **Cloud adapter**: Firebase Auth + Firestore. **Anonymous auth on first launch** (no sign-in wall), later "Link Google account" upgrades the same uid so nothing is lost. One Firestore doc per uid: `{ meta: MetaState, run: RunState | null, updatedAt }`.
 - **Sync rules**: push after every meta change and every run transition (debounced); pull on launch and on auth link. Conflict: MetaState merges by set-union of discovered entries and max of counters; RunState takes the newer `updatedAt`.

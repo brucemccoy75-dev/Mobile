@@ -4,10 +4,35 @@ import { createMeta } from '@core/meta';
 import { APP_VERSION } from '@game/version';
 import { deserialize, getMeta, getStore, setMeta, setSession } from '@game/session';
 import { Button } from '@game/ui/Button';
+import type { FirebaseCloud } from '@save/firebase';
+import type { SyncedSaveStore } from '@save/SyncedSaveStore';
+import type { MetaState } from '@core/meta';
+import type { RunState } from '@core/run';
 import { COLORS, text } from '@game/ui/theme';
 
 export class TitleScene extends Phaser.Scene {
   constructor() { super('Title'); }
+
+  /** Cloud status + "Link Google" when running on Firebase; a quiet note otherwise. */
+  private cloudLine(cx: number, y: number) {
+    const cloud = this.registry.get('cloud') as FirebaseCloud<MetaState, RunState> | null;
+    if (!cloud) { this.add.text(cx, y, 'local save only · cloud not configured', text.mono).setOrigin(0.5, 1); return; }
+    const label = this.add.text(cx - 90, y, '', text.mono).setOrigin(1, 1);
+    const render = (a = cloud.account()) => label.setText(a ? (a.anonymous ? 'cloud: anonymous device' : `cloud: ${a.displayName ?? 'linked'}`) : 'cloud: signed out');
+    render();
+    cloud.onAccountChange((a) => render(a));
+    if (cloud.account()?.anonymous !== false) {
+      const btn = new Button(this, cx + 10, y - 14, 'Link Google account', async () => {
+        try {
+          await cloud.linkGoogle();
+          (getStore(this) as SyncedSaveStore<MetaState, RunState>).invalidate();
+          await getStore(this).loadMeta().then((m) => m && setMeta(this, m));
+          this.scene.restart();
+        } catch (e) { label.setText(`link failed: ${(e as Error).message}`); }
+      }, { width: 190, height: 28, fontSize: '12px' });
+      btn.setAlpha(0.8);
+    }
+  }
 
   create() {
     const { width, height } = this.scale.gameSize;
@@ -31,6 +56,7 @@ export class TitleScene extends Phaser.Scene {
     });
 
     this.add.text(12, height - 12, `v${APP_VERSION}  ${width}x${height}`, text.mono).setOrigin(0, 1);
+    this.cloudLine(cx, height - 16);
     new Button(this, width - 80, height - 24, 'wipe save', async () => {
       await getStore(this).clearRun();
       const fresh = createMeta();

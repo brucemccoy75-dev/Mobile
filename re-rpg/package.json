@@ -15,6 +15,7 @@
     "sim": "tsx --tsconfig tsconfig.json src/core/sim/cli.ts"
   },
   "dependencies": {
+    "firebase": "^13.1.0",
     "phaser": "^4.2.1"
   },
   "devDependencies": {

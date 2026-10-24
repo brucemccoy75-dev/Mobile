@@ -34,16 +34,16 @@ export const SKILLS: Skill[] = [
     effects: [{ type: 'damage', mult: 3.0 }, { type: 'status', target: 'self', status: 'exposed', turns: 2 }] },
 
   // Wizard / Frost
-  { id: 'frost_bolt', name: 'Frost Bolt', text: 'Deal 120% damage. 50% chance to Chill (enemy skips its next action).', classId: 'wizard', setId: 'wizard_frost', rarity: 'common',
-    effects: [{ type: 'damage', mult: 1.2 }, { type: 'status', target: 'enemy', status: 'chill', turns: 1, chance: 0.5 }] },
+  { id: 'frost_bolt', name: 'Frost Bolt', text: 'Deal 120% damage. 65% chance to Chill (enemy skips its next action).', classId: 'wizard', setId: 'wizard_frost', rarity: 'common',
+    effects: [{ type: 'damage', mult: 1.2 }, { type: 'status', target: 'enemy', status: 'chill', turns: 1, chance: 0.65 }] },
   { id: 'ice_armor', name: 'Ice Armor', text: 'Block the next 2 hits.', classId: 'wizard', setId: 'wizard_frost', rarity: 'uncommon',
     effects: [{ type: 'status', target: 'self', status: 'guard', turns: 99, magnitude: 2 }] },
 
   // Shaman / Spirit
-  { id: 'spirit_lash', name: 'Spirit Lash', text: 'Deal 120% damage and heal 25% of damage dealt.', classId: 'shaman', setId: 'shaman_spirit', rarity: 'common',
-    effects: [{ type: 'damage', mult: 1.2, lifesteal: 0.25 }] },
-  { id: 'mend', name: 'Mend', text: 'Heal 35% HP. You are Weak for 2 rounds.', classId: 'shaman', setId: 'shaman_spirit', rarity: 'uncommon',
-    effects: [{ type: 'heal', pct: 0.35 }, { type: 'status', target: 'self', status: 'weak', turns: 2 }] },
+  { id: 'spirit_lash', name: 'Spirit Lash', text: 'Deal 120% damage and heal 50% of damage dealt.', classId: 'shaman', setId: 'shaman_spirit', rarity: 'common',
+    effects: [{ type: 'damage', mult: 1.2, lifesteal: 0.5 }] },
+  { id: 'mend', name: 'Mend', text: 'Heal 35% HP. You are Weak this round.', classId: 'shaman', setId: 'shaman_spirit', rarity: 'uncommon',
+    effects: [{ type: 'heal', pct: 0.35 }, { type: 'status', target: 'self', status: 'weak', turns: 1 }] },
 
   // Shaman / Storm
   { id: 'lightning', name: 'Lightning', text: 'Deal 160% damage, ignoring defense.', classId: 'shaman', setId: 'shaman_storm', rarity: 'common',

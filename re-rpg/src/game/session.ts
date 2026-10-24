@@ -8,7 +8,7 @@ import { generateScreen, type ScreenMap, type Tile } from '@core/map';
 import { DECK_CAP } from '@core/combat';
 import { computeStats, emptyEquipment, equip as equipItem, equipmentFromIds, equipmentToIds, type Equipment, RUN_VERSION, type RunState } from '@core/run';
 import { createMeta, discoverItem, discoverSkill, rollHeirloom, type MetaState } from '@core/meta';
-import type { RewardChoice, RewardSource } from '@core/loot';
+import { rollShopStock, type RewardChoice, type RewardSource, type ShopStock } from '@core/loot';
 import type { SaveStore } from '@save/SaveStore';
 
 export const SCREEN_COUNT = 2;
@@ -41,6 +41,7 @@ export interface RunSession {
   encountersWon: number;
   newDiscoveries: string[];
   heirloomName: string | null;
+  shop: ShopStock;
 
   pendingEncounter: PendingEncounter | null;
   lastResult: CombatResult | null;
@@ -85,18 +86,18 @@ export function createSession(classId: ClassId, meta: MetaState, seed = newSeed(
     deck: [], equipment: emptyEquipment(),
     screenIndex: 0, map: undefined as unknown as ScreenMap, playerPos: { x: 0, y: 0 }, threat: 0,
     openedPois: new Set(), usedShrines: new Set(), defeatedGuards: new Set(), bossDefeated: false, encountersWon: 0,
-    newDiscoveries: [], heirloomName: null,
+    newDiscoveries: [], heirloomName: null, shop: { lines: [], healPrice: 0, healPct: 0.5, healUsed: true },
     pendingEncounter: null, lastResult: null, pendingOffer: null,
   };
   const heirloom = rollHeirloom(meta, classId, setId, rng.stream('meta'));
   if (heirloom?.kind === 'tome') { s.deck.push(heirloom.skill.id); s.heirloomName = heirloom.skill.name; }
   if (heirloom?.kind === 'item') { applyEquip(s, heirloom.item); s.heirloomName = heirloom.item.name; }
-  startScreen(s, 0);
+  startScreen(s, 0, meta);
   return s;
 }
 
-/** Generate screen `index` and put the player at its entry. Boss kills fully heal (DECISIONS #1). */
-export function startScreen(s: RunSession, index: number): void {
+/** Generate screen `index`, stock its shop, and put the player at its entry. */
+export function startScreen(s: RunSession, index: number, meta?: MetaState): void {
   s.screenIndex = index;
   s.map = generateScreen(s.rng.stream('map'), { seed: s.seed, screenIndex: index });
   s.playerPos = { ...s.map.entry };
@@ -105,6 +106,7 @@ export function startScreen(s: RunSession, index: number): void {
   s.usedShrines = new Set();
   s.defeatedGuards = new Set();
   s.bossDefeated = false;
+  s.shop = rollShopStock(index, { classId: s.classId, setId: s.setId, meta: meta ?? createMeta(), deck: s.deck, equipment: s.equipment }, s.rng.stream('loot'));
 }
 
 export const screenTier = (s: RunSession): 1 | 2 => (s.screenIndex === 0 ? 1 : 2);
@@ -157,6 +159,7 @@ export function serialize(s: RunSession): RunState {
     screenIndex: s.screenIndex, map: s.map, playerPos: { ...s.playerPos }, threat: s.threat,
     openedPois: [...s.openedPois], usedShrines: [...s.usedShrines], defeatedGuards: [...s.defeatedGuards],
     bossDefeated: s.bossDefeated, encountersWon: s.encountersWon, newDiscoveries: [...s.newDiscoveries], heirloomName: s.heirloomName,
+    shop: JSON.parse(JSON.stringify(s.shop)) as ShopStock,
   };
 }
 
@@ -171,6 +174,7 @@ export function deserialize(st: RunState): RunSession {
     screenIndex: st.screenIndex, map: st.map, playerPos: { ...st.playerPos }, threat: st.threat,
     openedPois: new Set(st.openedPois), usedShrines: new Set(st.usedShrines), defeatedGuards: new Set(st.defeatedGuards),
     bossDefeated: st.bossDefeated, encountersWon: st.encountersWon, newDiscoveries: [...st.newDiscoveries], heirloomName: st.heirloomName,
+    shop: st.shop,
     pendingEncounter: null, lastResult: null, pendingOffer: null,
   };
 }

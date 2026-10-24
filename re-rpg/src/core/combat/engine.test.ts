@@ -122,11 +122,18 @@ describe('statuses', () => {
   });
 
   it('Weak halves damage dealt', () => {
-    const s = fight(['mend'], DUMMY, 1, 10);
-    step(s, { type: 'card', index: 0 }); // weak 2
+    const s = fight([], DUMMY, 1, 10);
+    s.player.statuses.push({ id: 'weak', turns: 2, magnitude: 1 });
     step(s, { type: 'basic', id: 'attack' }); // floor(4*0.5)=2 - 0 = 2
     const hits = s.log.filter((e) => e.t === 'damage' && e.source === 'player');
     expect(hits[0]).toMatchObject({ amount: 2 });
+  });
+
+  it('Mend heals 35% and the Weak tax covers only that round', () => {
+    const s = fight(['mend'], DUMMY, 1, 10);
+    step(s, { type: 'card', index: 0 }); // +round(0.35*25)=9 → 19, then take 2 → 17; weak expires at end of round
+    expect(s.player.hp).toBe(17);
+    expect(hasStatus(s.player, 'weak')).toBe(false);
   });
 
   it('Burn ticks at end of round, ignores guard, and expires', () => {
@@ -159,11 +166,11 @@ describe('statuses', () => {
     expect(s.enemy.hp).toBe(24);
   });
 
-  it('Spirit Lash heals 25% of damage dealt', () => {
+  it('Spirit Lash heals 50% of damage dealt', () => {
     const s = fight(['spirit_lash'], DUMMY, 1, 10);
-    step(s, { type: 'card', index: 0 }); // round(4*1.2)=5 dmg → heal round(1.25)=1; then take 2
+    step(s, { type: 'card', index: 0 }); // round(4*1.2)=5 dmg → heal round(2.5)=3; then take 2
     expect(s.enemy.hp).toBe(25);
-    expect(s.player.hp).toBe(10 + 1 - 2);
+    expect(s.player.hp).toBe(10 + 3 - 2);
   });
 });
 
@@ -186,7 +193,7 @@ describe('intent and tells', () => {
 
   it('boss phase change rebuilds the queue and emits a phase event', () => {
     const s = fight([], 'warden');
-    s.enemy.hp = 30; // at the threshold; crossing is evaluated at end of round
+    s.enemy.hp = 25; // at the threshold; crossing is evaluated at end of round
     step(s, { type: 'basic', id: 'defend' });
     expect(s.enemy.phase).toBe(1);
     expect(s.log.some((e) => e.t === 'phase')).toBe(true);

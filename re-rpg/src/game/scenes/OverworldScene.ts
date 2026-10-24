@@ -264,7 +264,7 @@ export class OverworldScene extends Phaser.Scene {
         void persistRun(this);
         return true;
       }
-      if (poi.kind === 'shop') { void this.toast('Shop: opens in milestone 5.'); return true; }
+      if (poi.kind === 'shop') { this.locked = true; await persistRun(this); this.scene.start('Shop'); return true; }
     }
 
     // Plain tile: feed the threat meter.
@@ -321,7 +321,7 @@ export class OverworldScene extends Phaser.Scene {
         void Promise.all([persistMeta(this), getStore(this).clearRun()]).then(() => this.scene.start('RunEnd', { won: true }));
         return;
       }
-      startScreen(s, s.screenIndex + 1);
+      startScreen(s, s.screenIndex + 1, getMeta(this));
       void persistRun(this).then(() => this.scene.restart());
     }, { width: 220, fill: 0x1f2a44, edge: COLORS.goldHex });
     btn.setScrollFactor(0, 0, true).setDepth(122);

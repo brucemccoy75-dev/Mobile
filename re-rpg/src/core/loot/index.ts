@@ -91,3 +91,42 @@ export function rollOffer(source: RewardSource, screenIndex: number, ctx: PoolCo
   }
   return { source, choices, gold };
 }
+
+// ---------------------------------------------------------------- shop
+
+export type ShopLine = { kind: 'item'; id: string; price: number; sold: boolean } | { kind: 'tome'; id: string; price: number; sold: boolean };
+
+export interface ShopStock {
+  lines: ShopLine[];
+  healPrice: number;
+  healPct: number;
+  healUsed: boolean;
+}
+
+const PRICE: Record<Rarity, number> = { basic: 10, common: 20, uncommon: 35, rare: 60, boss: 90 };
+
+export const itemPrice = (rarity: Rarity, screenIndex: number) => PRICE[rarity] * (screenIndex + 1);
+export const tomePrice = (rarity: Rarity, screenIndex: number) => (PRICE[rarity] + 10) * (screenIndex + 1);
+
+/**
+ * GAME_DESIGN §7: the shop sells two items and a heal; one tome joins the
+ * shelf when the tome pool has anything. Stock is rolled once per screen with
+ * chest-grade rarity weights, and prices scale with the screen.
+ */
+export function rollShopStock(screenIndex: number, ctx: PoolContext, rng: Rng): ShopStock {
+  const pool = buildPool(ctx);
+  const rw = rarityWeights('chest', screenIndex);
+  const lines: ShopLine[] = [];
+  const taken = new Set<string>();
+  const items = pool.items.filter((i) => (rw[i.rarity] ?? 0) > 0);
+  for (let n = 0; n < 2 && items.length > taken.size; n++) {
+    const item = rng.weighted(items.filter((i) => !taken.has(i.id)), (i) => (rw[i.rarity] ?? 0) * (i.tags?.includes(ctx.setId) ? 2 : 1));
+    taken.add(item.id);
+    lines.push({ kind: 'item', id: item.id, price: itemPrice(item.rarity, screenIndex), sold: false });
+  }
+  if (pool.tomes.length > 0) {
+    const skill = rng.weighted(pool.tomes, (s) => Math.max(1, rw[s.rarity] ?? 0) * (s.setId === ctx.setId ? 2 : 1));
+    lines.push({ kind: 'tome', id: skill.id, price: tomePrice(skill.rarity, screenIndex), sold: false });
+  }
+  return { lines, healPrice: 30 * (screenIndex + 1), healPct: 0.5, healUsed: false };
+}

@@ -84,7 +84,7 @@ One enemy per encounter for POC (multi-target adds UI and AI scope). **Intent**:
 - Encounter roll per tile entered, by tile type. A threat meter shows accumulated risk.
 - **No healing after fights.** HP is a run resource and HP drain is the main death driver. Sources: shrine (one use per screen, full heal), shop (buy heal, expensive), rare taxed healing skills, relics with a downside. Boss kill = full heal and screen transition.
 - No fleeing in POC. Route choice is the escape mechanism.
-- Gold: dropped by enemies, reset on death. Shop sells 2 items + 1 heal, prices scale with screen.
+- Gold: dropped by enemies (4–8 per kill, 8–14 per guard, 30 per boss, chests by path cost), reset on death. Shop stock per screen: 2 items, 1 tome when the pool has one, and a 50% heal once per shop. Prices: common 20, uncommon 35, rare 60, boss 90 (tomes +10), heal 30, all × screen number.
 
 ## 8. Death & meta
 

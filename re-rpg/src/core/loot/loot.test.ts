@@ -86,3 +86,20 @@ describe('rollOffer', () => {
     expect(a).toEqual(b);
   });
 });
+
+describe('rollShopStock', () => {
+  it('stocks two distinct items, a tome when available, and a heal', async () => {
+    const { rollShopStock } = await import('./index');
+    const st = rollShopStock(0, ctx(), new Rng(7));
+    const items = st.lines.filter((l) => l.kind === 'item');
+    expect(items).toHaveLength(2);
+    expect(new Set(items.map((l) => l.id)).size).toBe(2);
+    expect(st.lines.filter((l) => l.kind === 'tome')).toHaveLength(1);
+    expect(st.healPrice).toBe(30);
+    expect(st.lines.every((l) => l.price > 0 && !l.sold)).toBe(true);
+    const dry = rollShopStock(1, ctx({ deck: ['shield_bash', 'bind_wound'] }), new Rng(7));
+    expect(dry.lines.some((l) => l.kind === 'tome')).toBe(false);
+    expect(dry.healPrice).toBe(60);
+    expect(dry.lines.every((l) => l.price >= 40)).toBe(true);
+  });
+});

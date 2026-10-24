@@ -6,7 +6,7 @@ Design docs live in [`docs/`](docs/): start with [`DECISIONS.md`](docs/DECISIONS
 
 ## Stack
 
-Phaser 4 · TypeScript · Vite 8 · Vitest · Firebase (Hosting, Auth, Firestore; from milestone 4b)
+Phaser 4 · TypeScript · Vite 8 · Vitest · Firebase (Hosting, Auth, Firestore; optional, see `docs/FIREBASE_SETUP.md`)
 
 ## Develop
 

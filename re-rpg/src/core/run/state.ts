@@ -5,9 +5,10 @@ import { getItem } from '@data/index';
 import type { ClassId, SetId, SkillId, Slot } from '@data/types';
 import type { ScreenMap, Tile } from '@core/map';
 import type { Equipment } from './equipment';
+import type { ShopStock } from '@core/loot';
 import type { Versioned } from '@save/SaveStore';
 
-export const RUN_VERSION = 1;
+export const RUN_VERSION = 2;
 
 export interface RunState extends Versioned {
   seed: string;
@@ -30,6 +31,7 @@ export interface RunState extends Versioned {
   /** Ids discovered during this run, for the end-of-run summary. */
   newDiscoveries: string[];
   heirloomName: string | null;
+  shop: ShopStock;
 }
 
 export const equipmentToIds = (eq: Equipment): Record<Slot, string | null> => ({ body: eq.body?.id ?? null, weapon: eq.weapon?.id ?? null, relic: eq.relic?.id ?? null });
