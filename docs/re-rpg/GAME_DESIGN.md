@@ -18,17 +18,27 @@ POC "win" = kill Boss 2. Expected first-run outcome = die before Boss 1.
 
 | Class | HP | Identity | POC sets (one rolled per run) |
 |---|---|---|---|
-| Warrior | 25 | Melee, armor, attrition | **Tank**: Defend, Bind Wound · **DPS**: Broadsword Strike, Exposing Strike |
+| Warrior | 25 | Melee, armor, attrition | **Tank**: Shield Bash (dmg + Guard), Bind Wound · **DPS**: Broadsword Strike, Exposing Strike |
 | Wizard | 20 | Burst, self-risk | **Fire**: Fireball, Inferno (ultimate, leaves caster Exposed) · **Frost**: Frost Bolt (chance to Chill = enemy skips a turn), Ice Armor (temporary def) |
 | Shaman | 20 | Sustain + nature damage over time | **Spirit**: Mend (heal), Spirit Lash (damage + heal small %) · **Storm**: Lightning (damage, ignores part of def), Static Field (Burn-like damage over time) |
 
-Shaman is deliberately the "healer with teeth" so the three classes read as tank / burst / sustain. Base stats: everyone starts with Attack only, no equipment, atk 4 / def 0, so an unequipped run is meant to be fragile.
+Shaman is deliberately the "healer with teeth" so the three classes read as tank / burst / sustain. Base stats: everyone starts with the basics Attack and Defend, an empty skill deck, no equipment, atk 4 / def 0, so an unequipped run is meant to be fragile.
 
-## 3. Skills
+## 3. Skills: the dealt hand
 
-- Each run holds **4 skill slots**: Attack (permanent) + 3 learned. Picking up a tome when full forces a swap or a skip. Binding, like equipment.
-- **Limiter: cooldowns**, no mana for POC. Attack has none. Set skills have 1–3 turn cooldowns; ultimates 4–5 plus a self-cost. Cooldowns make "which skill now" the whole fight without a second resource to teach.
-- Skills are data: `effects[]` of damage(mult), heal(flat/%), applyStatus(target, id, turns), guard, and `selfStatus`.
+Known skills form a **deck** (cap **6**). Every encounter:
+
+1. Shuffle the deck.
+2. Round 1 deals 1 skill into the hand, round 2 a second, round 3 a third. **Hand cap 3.**
+3. Once the hand is full, each new round still deals one and the **oldest card in hand is discarded**. Holding skills is punished.
+4. A played skill goes to the **discard pile**. When the deck is empty the discard is reshuffled.
+5. **Attack** and **Defend** are basics, always available outside the hand, so a bad draw is never a dead turn.
+
+Tomes add a skill to the deck. At the cap, a tome forces a binding swap or a skip, the same rule as equipment. Later knobs: a stamina meter for multi-play turns, deal 2 per round in long fights, "+1 deck size" and "+1 hand size" as item stats.
+
+Healing skills honour the HP-drain rule: they are rare in the pool and carry a tax (Bind Wound heals small and ends the turn; Mend heals more and applies Weak to the caster).
+
+Skills are data: `effects[]` of damage(mult), heal(flat/%), applyStatus(target, id, turns), guard, and `selfStatus`.
 
 POC statuses: **Exposed** (takes 2x damage, 2 turns), **Guard** (block next hit), **Burn** (N dmg per turn), **Chill** (skip next action), **Weak** (deal half damage).
 
@@ -40,7 +50,7 @@ Rarity: common / uncommon / rare / boss. Rarity gates the modifier budget, not j
 
 ## 5. Loot & pools (the replay engine)
 
-**Per-run pool** = class basics (the rolled set's 2 skills, 2–3 starter items) + everything in `MetaState.discovered*` for that class + class-agnostic discovered items.
+**Per-run pool** = the rolled set's 2 skills + 2–3 starter items + everything in `MetaState.discovered*` for that class + class-agnostic discovered items, **minus anything the player currently holds** (no duplicate drops). Early runs drain the tome pool after two tomes; offers then fall back to equipment and gold, which is intentional pressure toward discovery.
 
 Rules:
 
@@ -48,7 +58,7 @@ Rules:
 2. **Offer, don't grant**: rewards show **pick 1 of 2** (3 for chests/bosses). A growing pool with blind single drops would dilute; choice makes a bigger pool feel like power. Enemies still drop gold on top.
 3. **Set affinity weighting**: items tagged with the active set get 2x weight. This is how synergy emerges without hand-scripting.
 4. **Depth scales rarity**: encounter distance from the entry and screen index shift the rarity curve. Guards > randoms, chests > guards, bosses > chests. Boss drops always include a rare.
-5. **Heirloom**: once the player has discovered anything, each new run starts with **one random discovered item or tome**. This is the direct "previous unlocks make you stronger faster" mechanic and the main pacing knob for "a few deaths then you reach the boss".
+5. **Heirloom**: from death 2 onward, each new run starts with **one random discovered item or tome** for the class, weighted toward the rolled set. This is the direct "previous unlocks make you stronger faster" mechanic and the main pacing knob for "a few deaths then you reach the boss". Slot growth (two heirlooms after a boss kill, etc.) is a later knob.
 6. Later: discovered sets become rollable at class select; set tiers (Tank I → Tank II) widen the pool.
 
 ## 6. Enemies (POC roster)
@@ -64,13 +74,13 @@ Enemies are designed as *answers* to kits so set identity matters:
 | **Boss 1 Gatekeeper** | 3-turn cycle: Guard → Big Hit → Exposed self. Reads as a rhythm puzzle. | | |
 | **Boss 2 Warden** | Two phases, summons a swarm at half HP, applies Weak. | | |
 
-One enemy per encounter for POC (multi-target adds UI and AI scope). Intent is visible above the enemy every turn.
+One enemy per encounter for POC (multi-target adds UI and AI scope). **Intent**: the exact move for the current round is shown above the enemy (icon + number), plus a posture tell for the round after. Enemy move sets are sequences or weighted tables so the engine always knows one step beyond the shown intent.
 
 ## 7. Overworld rules
 
 - Each screen: entry west, boss arena east, main road between. 1 shop, 2 chests, 1 shrine placed off-road behind danger tiles and a visible guard.
 - Encounter roll per tile entered, by tile type. A threat meter shows accumulated risk.
-- **No healing after fights.** HP is a run resource. Sources: shrine (one use, full heal), shop (buy heal), Bind Wound/Mend, relics. Boss kill = full heal and screen transition.
+- **No healing after fights.** HP is a run resource and HP drain is the main death driver. Sources: shrine (one use per screen, full heal), shop (buy heal, expensive), rare taxed healing skills, relics with a downside. Boss kill = full heal and screen transition.
 - No fleeing in POC. Route choice is the escape mechanism.
 - Gold: dropped by enemies, reset on death. Shop sells 2 items + 1 heal, prices scale with screen.
 
@@ -82,13 +92,6 @@ Death screen shows: cause, how far you got, **newly discovered** entries (highli
 - Death 2+: heirloom active (if anything discovered).
 - Future: death milestones unlock new sets / relic slots.
 
-## 9. Open questions (need decisions)
+## 9. Decisions
 
-1. **Set roll semantics**: does the rolled set define the run's tome pool only (tomes still have to drop), or do you start the run with one set skill in hand? Draft assumes pool-only plus heirloom later.
-2. **Skill slots**: 4 total ok? Alternative is 3.
-3. **Enemy intents** visible (StS) or hidden (FF)? Draft assumes visible; it makes Defend/Chill/Guard real decisions.
-4. **Pick-1-of-2 vs single blind grant** on kills. Draft picks choice. Chests/boss 1-of-3.
-5. **Healing model**: no auto-heal between fights (draft) vs partial heal on screen clear.
-6. **Multi-enemy fights**: out of POC. Confirm.
-7. **Flee**: out of POC. Confirm.
-8. **Deploy target**: replace the map3d gh-pages site or deploy under a subpath.
+All planning questions are resolved; see `DECISIONS.md`. Remaining later knobs: heirloom slot growth, stamina meter, deal rate in long fights, set tiers.

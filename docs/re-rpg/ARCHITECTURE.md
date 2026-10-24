@@ -26,7 +26,7 @@ Supporting tools:
 src/
   core/        pure TypeScript, deterministic, no Phaser imports, 100% unit-testable
     rng.ts         seeded PRNG with named streams (map, encounter, loot, combat)
-    combat/        turn resolver, status effects, damage formula, enemy AI
+    combat/        turn resolver, deck/hand dealing, status effects, damage formula, enemy AI + intent lookahead
     map/           screen generator, connectivity check, POI placement, danger zones
     loot/          drop tables, rarity, pool composition from meta state
     run/           RunState machine: class select -> overworld -> combat -> reward -> ... -> death/victory
@@ -38,7 +38,7 @@ src/
     ui/            skill bar, HP bars, compare panel, toast, intents
     input/         tap-to-move controller, path preview
     render/        tilemap builder, sprite factories, fx
-  save/        versioned persistence (localStorage now, Capacitor Preferences later)
+  save/        SaveStore interface: local-first (IndexedDB) + Firebase sync adapter
   main.ts
 ```
 
@@ -70,18 +70,25 @@ interface Item { id: string; name: string; slot: Slot; rarity: Rarity; classes?:
 
 interface Skill {
   id: string; name: string; classId: ClassId; setId?: string; rarity: Rarity;
-  cooldown: number;                  // POC limiter: cooldowns, not mana
   effects: Effect[];                 // damage(mult), heal(amount), applyStatus(target, status, turns), guard...
   selfStatus?: StatusApply;          // e.g. Inferno applies Exposed to self
+  endsTurn?: boolean;                // tax for healing skills
+}
+
+interface CombatState {              // per encounter
+  deck: SkillId[]; hand: SkillId[]; discard: SkillId[];   // hand cap 3, oldest-out when full
+  round: number; playerStatuses: Status[]; enemyStatuses: Status[];
+  enemyIntent: EnemyMove; enemyNextTell: Posture;
 }
 
 interface Status { id: 'exposed'|'guard'|'burn'|'bleed'|'weak'; turns: number; magnitude?: number; }
 
-interface Enemy { id: string; name: string; tier: 1|2|'boss1'|'boss2'; stats: Stats; moves: EnemyMove[]; drops: DropTableId; }
+interface Enemy { id: string; name: string; tier: 1|2|'boss1'|'boss2'; stats: Stats; moves: EnemyMove[] | WeightedMoveTable; drops: DropTableId; }
+interface EnemyMove { id: string; intent: Intent; posture: Posture; effects: Effect[]; }
 
 interface RunState {
   seed: string; classId: ClassId; setId: string;
-  hp: number; gold: number; equipment: Record<Slot, Item|null>; skills: Skill[];  // Attack + up to 3
+  hp: number; gold: number; equipment: Record<Slot, Item|null>; deck: SkillId[];  // cap 6; Attack/Defend are basics, not in deck
   screenIndex: 0|1; map: ScreenMap; playerPos: Tile; clearedPois: string[];
   statuses: Status[]; log: RunEvent[];
 }
@@ -90,6 +97,7 @@ interface MetaState {
   version: number; deaths: number; wins: number; bestScreen: number;
   discoveredSkills: string[]; discoveredItems: string[];
   unlockedSets: Record<ClassId, string[]>;
+  updatedAt: number;                 // for cloud merge
 }
 ```
 
@@ -124,21 +132,29 @@ Each screen is procedurally generated from the run seed:
 
 ## 7. Combat scene
 
-Side view: player left, enemy right, HP bars top, **enemy intent** shown above the enemy (Slay the Spire style). Bottom bar: 4 skill buttons (Attack + 3 learned). Turn flow:
+Side view: player left, enemy right, HP bars top. Above the enemy: **current intent** (icon + number) and a smaller **posture tell** for next round. Bottom bar: the dealt **hand** (up to 3 cards) plus two fixed basics, **Attack** and **Defend**. Deck and discard counts shown small in a corner.
 
-`player picks skill → resolve → enemy intent executes → statuses tick → repeat until a side dies`
+Turn flow:
 
-Damage formula (POC, flat and readable): `dmg = max(1, round(atk * skillMult) - def * defMult)`. Exposed doubles damage taken (or halves def). Guard blocks the next hit.
+`deal (round ≥ 1, oldest-out at cap 3) → player plays a hand card or a basic → resolve → enemy intent executes → statuses tick → advance intent/tell → repeat until a side dies`
 
-## 8. Persistence
+Damage formula (POC, flat and readable): `dmg = max(1, round(atk * skillMult) - def * defMult)`. Exposed doubles damage taken. Guard blocks the next hit. Defend (basic) = Guard for one hit, no damage.
 
-- `MetaState` saved after every discovery/death/win. `RunState` saved after every state transition so closing the app mid-run resumes.
-- Versioned JSON with migration functions. localStorage for POC; swap to Capacitor Preferences behind the same interface.
+## 8. Persistence (Firebase, local-first)
+
+Players must be able to log in on any device and keep past-loop gains.
+
+- Game code depends only on `SaveStore { loadMeta, saveMeta, loadRun, saveRun, clearRun }`.
+- **Local adapter**: IndexedDB (via `idb-keyval`), always written first. The game works fully offline.
+- **Cloud adapter**: Firebase Auth + Firestore. **Anonymous auth on first launch** (no sign-in wall), later "Link Google account" upgrades the same uid so nothing is lost. One Firestore doc per uid: `{ meta: MetaState, run: RunState | null, updatedAt }`.
+- **Sync rules**: push after every meta change and every run transition (debounced); pull on launch and on auth link. Conflict: MetaState merges by set-union of discovered entries and max of counters; RunState takes the newer `updatedAt`.
+- Firestore security rules: a uid may read/write only its own doc. Anti-cheat is out of scope for POC.
+- `MetaState` and `RunState` are versioned JSON with migration functions.
 
 ## 9. Deployment & repo layout
 
 - GitHub Actions: build on push to `main`, publish `dist/` to `gh-pages`.
-- **Note:** `gh-pages` currently holds the unrelated three.js "map3d" address walker. Decide: replace it, or deploy the game under `/re-rpg/` so both coexist.
+- Re-RPG lives in its **own new repository** (this repo is the unrelated map3d project; these docs move over).
 - PWA manifest with `"orientation": "landscape"`. Browsers cannot force landscape outside fullscreen, so show a "rotate your phone" overlay in portrait and call `screen.orientation.lock('landscape')` on first tap where supported. Capacitor wrap locks it for real.
 - `touch-action: none`, `user-scalable=no`, safe-area insets for notches, `devicePixelRatio` capped at 2.
 
