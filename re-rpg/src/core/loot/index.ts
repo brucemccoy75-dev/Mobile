@@ -32,7 +32,7 @@ export interface PoolContext {
 export function buildPool(ctx: PoolContext): { tomes: Skill[]; items: Item[] } {
   const set = getSet(ctx.setId);
   const held = new Set<string>(Object.values(ctx.equipment).filter(Boolean).map((i) => i!.id));
-  const tomeIds = new Set<string>([...set.skills, ...ctx.meta.discoveredSkills]);
+  const tomeIds = new Set<string>([...set.skills, ...ctx.meta.discoveredSkills, ...SKILLS.filter((s) => s.classId === 'any' && s.rarity !== 'basic').map((s) => s.id)]);
   const copies = (id: string) => ctx.deck.filter((d) => d === id).length;
   const tomes = SKILLS.filter((s) => tomeIds.has(s.id) && s.rarity !== 'basic' && (s.classId === ctx.classId || s.classId === 'any') && copies(s.id) < TOME_COPY_CAP);
   // Rarity gating lives in the source weights (a kill almost never rolls rare), so the

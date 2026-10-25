@@ -57,6 +57,20 @@ export const SKILLS: Skill[] = [
     effects: [{ type: 'status', target: 'enemy', status: 'burn', turns: 3, magnitude: 3 }] },
 ];
 
+// Special tomes (DECISIONS #21), usable by every class. Rare ones are once per fight;
+// fleeting ones are spent for good when played. All enter the pool like any tome.
+export const SPECIAL_TOMES: Skill[] = [
+  { id: 'mighty_blow', name: 'Mighty Blow', text: 'Deal 200% damage. Once per fight.', classId: 'any', rarity: 'rare', uses: 'once_per_fight',
+    effects: [{ type: 'damage', mult: 2.0 }] },
+  { id: 'stand_firm', name: 'Stand Firm', text: 'Block every hit for 2 rounds. Once per fight.', classId: 'any', rarity: 'rare', uses: 'once_per_fight',
+    effects: [{ type: 'status', target: 'self', status: 'ward', turns: 2 }] },
+  { id: 'last_strike', name: 'Last Strike', text: 'Deal 300% damage. Fleeting: the tome is spent.', classId: 'any', rarity: 'uncommon', uses: 'fleeting',
+    effects: [{ type: 'damage', mult: 3.0 }] },
+  { id: 'final_stand', name: 'Final Stand', text: 'Block every hit for 3 rounds. Fleeting: the tome is spent.', classId: 'any', rarity: 'uncommon', uses: 'fleeting',
+    effects: [{ type: 'status', target: 'self', status: 'ward', turns: 3 }] },
+];
+SKILLS.push(...SPECIAL_TOMES);
+
 export const SETS: SkillSet[] = [
   { id: 'warrior_tank', classId: 'warrior', name: 'Bulwark', skills: ['shield_bash', 'bind_wound'] },
   { id: 'warrior_dps', classId: 'warrior', name: 'Berserker', skills: ['broadsword', 'exposing_strike'] },

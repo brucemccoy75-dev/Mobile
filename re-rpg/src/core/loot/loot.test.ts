@@ -8,25 +8,25 @@ import { buildPool, rollOffer, rarityWeights, type PoolContext } from './index';
 const ctx = (over: Partial<PoolContext> = {}): PoolContext => ({ classId: 'warrior', setId: 'warrior_tank', meta: createMeta(), deck: [], equipment: emptyEquipment(), ...over });
 
 describe('buildPool', () => {
-  it('fresh warrior: tomes are exactly the rolled set, items are class-usable', () => {
+  it('fresh warrior: tomes are the rolled set plus the class-agnostic specials; items are class-usable', () => {
     const p = buildPool(ctx());
-    expect(p.tomes.map((t) => t.id).sort()).toEqual(['bind_wound', 'shield_bash']);
+    expect(p.tomes.map((t) => t.id).sort()).toEqual(['bind_wound', 'final_stand', 'last_strike', 'mighty_blow', 'shield_bash', 'stand_firm']);
     expect(p.items.every((i) => !i.classes || i.classes.includes('warrior'))).toBe(true);
     expect(p.items.some((i) => i.id === 'oak_wand')).toBe(false);
   });
 
   it('equipped items leave the pool; tomes may drop again up to two copies', () => {
     const p = buildPool(ctx({ deck: ['shield_bash'], equipment: { ...emptyEquipment(), relic: getItem('bloodstone') } }));
-    expect(p.tomes.map((t) => t.id).sort()).toEqual(['bind_wound', 'shield_bash']);
+    expect(p.tomes.filter((t) => t.classId !== 'any').map((t) => t.id).sort()).toEqual(['bind_wound', 'shield_bash']);
     expect(p.items.some((i) => i.id === 'bloodstone')).toBe(false);
     const capped = buildPool(ctx({ deck: ['shield_bash', 'shield_bash'] }));
-    expect(capped.tomes.map((t) => t.id)).toEqual(['bind_wound']);
+    expect(capped.tomes.filter((t) => t.classId !== 'any').map((t) => t.id)).toEqual(['bind_wound']);
   });
 
   it('discovered skills of the other set join the pool', () => {
     const meta = createMeta(); meta.discoveredSkills.push('broadsword', 'fireball');
     const p = buildPool(ctx({ meta }));
-    expect(p.tomes.map((t) => t.id).sort()).toEqual(['bind_wound', 'broadsword', 'shield_bash']); // fireball is wizard-only
+    expect(p.tomes.filter((t) => t.classId !== 'any').map((t) => t.id).sort()).toEqual(['bind_wound', 'broadsword', 'shield_bash']); // fireball is wizard-only
   });
 
   it('never offers basics', () => {
@@ -51,8 +51,9 @@ describe('rollOffer', () => {
   it('falls back to items only when the tome pool is dry', () => {
     const rng = new Rng(2);
     const meta = createMeta();
-    const o = rollOffer('kill', 0, ctx({ meta, setId: 'warrior_tank', classId: 'wizard' as never }), rng);
-    // a wizard with a warrior set has no usable set tomes and nothing discovered
+    // a wizard with a warrior set has no usable set tomes; holding two of every special leaves nothing
+    const deck = ['mighty_blow', 'mighty_blow', 'stand_firm', 'stand_firm', 'last_strike', 'last_strike', 'final_stand', 'final_stand'];
+    const o = rollOffer('kill', 0, ctx({ meta, setId: 'warrior_tank', classId: 'wizard' as never, deck }), rng);
     expect(o.choices.every((c) => c.kind === 'item')).toBe(true);
   });
 
@@ -113,7 +114,7 @@ describe('rollShopStock', () => {
     expect(st.lines.filter((l) => l.kind === 'tome')).toHaveLength(1);
     expect(st.healPrice).toBe(30);
     expect(st.lines.every((l) => l.price > 0 && !l.sold)).toBe(true);
-    const dry = rollShopStock(1, ctx({ classId: 'wizard' as never, setId: 'warrior_tank' }), new Rng(7));
+    const dry = rollShopStock(1, ctx({ classId: 'wizard' as never, setId: 'warrior_tank', deck: ['mighty_blow', 'mighty_blow', 'stand_firm', 'stand_firm', 'last_strike', 'last_strike', 'final_stand', 'final_stand'] }), new Rng(7));
     expect(dry.lines.some((l) => l.kind === 'tome')).toBe(false);
     expect(dry.healPrice).toBe(60);
     expect(dry.lines.every((l) => l.price >= 40)).toBe(true);

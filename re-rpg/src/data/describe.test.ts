@@ -14,6 +14,11 @@ describe('describeSkill', () => {
     expect(describeSkill(getSkill('defend'), warrior)).toBe('Block the next hit.');
   });
 
+  it('special tomes state their usage rule', () => {
+    expect(describeSkill(getSkill('mighty_blow'), warrior)).toBe('Deal 8 damage. Once per fight.');
+    expect(describeSkill(getSkill('final_stand'), warrior)).toBe('Block every hit for 3 rounds. Fleeting: spent when played.');
+  });
+
   it('covers heals, guards, statuses, multi-hit and lifesteal', () => {
     expect(describeSkill(getSkill('bind_wound'), warrior)).toBe('Heal 9 HP. You are Exposed for 2 rounds.');
     expect(describeSkill(getSkill('ice_armor'), warrior)).toBe('Block the next 2 hits.');

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { getItem, getSkill } from '@data/index';
 import { createMeta } from '@core/meta';
-import { applyHeirlooms, createSession, currentQuest, deserialize, serialize, takeChoice, turnInQuest } from './session';
+import { applyHeirlooms, createSession, currentQuest, deserialize, serialize, spendConsumedTomes, takeChoice, turnInQuest } from './session';
 
 describe('session', () => {
   it('serialises and resumes identically, including RNG streams', () => {
@@ -64,6 +64,14 @@ describe('session', () => {
     takeChoice(s, meta, { kind: 'tome', skill: getSkill('broadsword') });
     expect(turnInQuest(s, q2).upgraded).toBe('Broadsword Strike +1');
     expect(s.skillUpgrades.broadsword).toBe(1);
+  });
+
+  it('fleeting tomes leave the deck once played, one copy per play', () => {
+    const s = createSession('warrior', createMeta(), 'FLEET-1');
+    s.deck = ['last_strike', 'last_strike', 'broadsword'];
+    expect(spendConsumedTomes(s, ['last_strike'])).toEqual(['Last Strike']);
+    expect(s.deck).toEqual(['last_strike', 'broadsword']);
+    expect(spendConsumedTomes(s, ['final_stand'])).toEqual([]);
   });
 
   it('no heirloom spread before the first death', () => {

@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { describeSkill, getEnemy, getSkill } from '@data/index';
 import type { Enemy, Intent, Posture } from '@data/types';
 import { createCombat, currentIntent, isPlayerStunned, skillInCombat, step, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
-import { getMeta, getSession, getStore, persistMeta, setName, setSession, type PendingEncounter, type RunSession } from '@game/session';
+import { getMeta, getSession, getStore, persistMeta, persistRun, setName, setSession, spendConsumedTomes, type PendingEncounter, type RunSession } from '@game/session';
 import { recordDeath } from '@core/meta';
 import { Button } from '@game/ui/Button';
 import { Card, CARD_W } from '@game/ui/Card';
@@ -298,6 +298,14 @@ export class CombatScene extends Phaser.Scene {
         this.pileText.setText(`deck ${this.state.player.deck.length}  ·  hand ${this.state.player.hand.length}  ·  discard ${this.state.player.discard.length}`);
         return;
       }
+      case 'exhaust': {
+        await floatText(this, this.px, this.py - 110, 'spent for this fight', COLORS.muted, 20, 900);
+        return;
+      }
+      case 'consumed': {
+        await floatText(this, this.px, this.py - 110, 'tome spent', '#ffd166', 24, 1000);
+        return;
+      }
       case 'hold': {
         const card = this.hand.find((c) => c.skillId === e.skill);
         if (card) { for (const c of this.hand) c.setEnabled(false); await tween(this, { targets: card, y: card.y + 70, alpha: 0, duration: 180, ease: 'Quad.In' }); }
@@ -453,14 +461,16 @@ export class CombatScene extends Phaser.Scene {
     const title = won ? (isBoss ? `${this.enemyDef.name} falls!` : 'Victory') : 'You died';
     this.add.text(W / 2, H * 0.34, title, { ...text.title, color: won ? COLORS.gold : '#ff6b6b' }).setOrigin(0.5).setDepth(71);
 
+    const spent = spendConsumedTomes(this.session, this.state.player.consumed);
+    if (spent.length) void persistRun(this);
     if (won) {
       this.session.hp = this.state.player.hp;
       this.session.encountersWon += 1;
       this.session.lastResult = { encounter: this.encounter, won: true };
       this.session.pendingEncounter = null;
-      const sub = isBoss
+      const sub = (isBoss
         ? 'The way forward opens. You are fully healed.'
-        : `${this.session.hp}/${this.session.stats.maxHp} HP. No healing between fights.`;
+        : `${this.session.hp}/${this.session.stats.maxHp} HP. No healing between fights.`) + (spent.length ? `  Spent: ${spent.join(', ')}.` : '');
       this.add.text(W / 2, H * 0.34 + 46, sub, text.body).setOrigin(0.5).setDepth(71);
       const source = this.encounter.kind === 'random' ? 'kill' : this.encounter.kind;
       this.session.pendingOffer = { source };

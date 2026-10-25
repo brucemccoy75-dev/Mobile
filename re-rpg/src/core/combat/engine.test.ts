@@ -342,6 +342,39 @@ describe('harden', () => {
   });
 });
 
+describe('special tomes', () => {
+  it('once-per-fight cards are exhausted, never reshuffled back', () => {
+    const s = fight(['mighty_blow'], PASSIVE);
+    play(s, 'mighty_blow'); // 8 dmg
+    expect(s.enemy.hp).toBe(22);
+    expect(s.player.exhausted).toEqual(['mighty_blow']);
+    expect(s.log.some((e) => e.t === 'exhaust')).toBe(true);
+    for (let i = 0; i < 4; i++) step(s, { type: 'skip' }); // empty deck: nothing comes back
+    expect(s.player.hand).toEqual([]);
+    expect(s.player.consumed).toEqual([]);
+  });
+
+  it('fleeting cards are marked consumed for the run to delete', () => {
+    const s = fight(['last_strike'], PASSIVE);
+    play(s, 'last_strike'); // 12 dmg
+    expect(s.enemy.hp).toBe(18);
+    expect(s.player.consumed).toEqual(['last_strike']);
+    expect(s.log.some((e) => e.t === 'consumed')).toBe(true);
+  });
+
+  it('Ward blocks every hit, multi-hit included, for its rounds and then expires', () => {
+    const swarm: Enemy = { ...DUMMY, id: 'swarm', table: { kind: 'sequence', moves: [{ id: 'sw', name: 'Swarm', posture: 'aggressive', intent: { kind: 'attack', mult: 1, hits: 3 }, effects: [{ type: 'damage', mult: 1, hits: 3 }] }] } };
+    const s = fight(['stand_firm', 'attack', 'attack'], swarm);
+    play(s, 'stand_firm'); // ward 2: this round's 3 hits blocked
+    expect(s.player.hp).toBe(25);
+    play(s, 'attack');     // still warded
+    expect(s.player.hp).toBe(25);
+    expect(hasStatus(s.player, 'ward')).toBe(false);
+    play(s, 'attack');     // now it lands: 3 x 2
+    expect(s.player.hp).toBe(19);
+  });
+});
+
 describe('skill upgrades', () => {
   it('a +1 Broadsword hits for one more in combat', () => {
     const s = createCombat({ player: { ...WARRIOR, deck: ['broadsword'], basics: [] }, enemy: PASSIVE, rng: new Rng(1), skillUpgrades: { broadsword: 1 } });

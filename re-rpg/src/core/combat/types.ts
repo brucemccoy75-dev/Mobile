@@ -15,6 +15,10 @@ export interface PlayerCombatant extends Combatant {
   deck: SkillId[];
   hand: SkillId[];     // index 0 is the oldest card
   discard: SkillId[];
+  /** Once-per-fight cards already played: out until the next fight. */
+  exhausted: SkillId[];
+  /** Fleeting tomes played this fight: the run must delete them from the deck afterwards. */
+  consumed: SkillId[];
 }
 
 export interface EnemyCombatant extends Combatant {
@@ -55,6 +59,8 @@ export type CombatEvent =
   | { t: 'intent'; intent: Intent; posture: Posture; predictedDamage: number; moveName: string }
   | { t: 'play'; side: Side; skill: SkillId; name: string }
   | { t: 'hold'; skill: SkillId }
+  | { t: 'exhaust'; skill: SkillId }
+  | { t: 'consumed'; skill: SkillId }
   | { t: 'counter'; amount: number; blocked: boolean }
   | { t: 'damage'; source: Side; target: Side; amount: number; blocked: boolean; hit: number; hits: number }
   | { t: 'heal'; side: Side; amount: number }

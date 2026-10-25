@@ -201,6 +201,16 @@ export function takeChoice(s: RunSession, meta: MetaState, choice: RewardChoice,
 
 export const setName = (s: RunSession) => getSet(s.setId).name;
 
+/** After a fight: fleeting tomes that were played leave the deck for good. Returns their names. */
+export function spendConsumedTomes(s: RunSession, consumed: SkillId[]): string[] {
+  const names: string[] = [];
+  for (const id of consumed) {
+    const i = s.deck.indexOf(id);
+    if (i >= 0) { s.deck.splice(i, 1); names.push(getSkill(id).name); }
+  }
+  return names;
+}
+
 // ---------------------------------------------------------------- (de)serialisation
 
 export function serialize(s: RunSession): RunState {

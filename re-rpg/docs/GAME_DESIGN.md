@@ -34,7 +34,8 @@ Known skills form a **deck** (cap **6**). Every encounter:
 4. A played skill goes to the **discard pile**. When the deck is empty the discard is reshuffled.
 5. **Attack** (×2) and **Defend** (×1) are shuffled into every fight's deck on top of the run deck and do not count against the cap. There is no always-available button: a hand of three Attacks when you needed a block is the game.
 6. **Hold**: discard one card to pass the turn. The out for a trap turn (a braced enemy and a hand of strikes); it costs the card and the tempo, so it is never the default.
-7. **Copies**: a deck holds at most 2 of any tome. Two Broadswords make the strike frequent; the brace makes that a risk, not a free lunch.
+7. **Copies**: a deck holds at most 2 of any tome.
+8. **Special tomes**: once-per-fight rares (Mighty Blow, Stand Firm) are exhausted when played and return next fight; fleeting tomes (Last Strike, Final Stand) are destroyed when played. **Warded** blocks every hit for N rounds. Two Broadswords make the strike frequent; the brace makes that a risk, not a free lunch.
 
 Tomes add a skill to the deck. At the cap, a tome forces a binding swap or a skip, the same rule as equipment. Big-hit skills scale with a **flat bonus** (Broadsword 100% + 4, Inferno 100% + 10) so gear does not multiply them. Later knobs: a stamina meter for multi-play turns, deal 2 per round in long fights, "+1 deck size" and "+1 hand size" as item stats.
 

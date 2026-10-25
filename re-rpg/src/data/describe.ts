@@ -1,7 +1,7 @@
 import type { Effect, Skill, Stats, StatusId } from './types';
 
 const STATUS_NAME: Record<StatusId, string> = {
-  exposed: 'Exposed', guard: 'Guard', burn: 'Burn', chill: 'Chill', weak: 'Weak', stun: 'Recovering', brace: 'Braced', scatter: 'Scattered', curse: 'Cursed', harden: 'Hardened',
+  exposed: 'Exposed', guard: 'Guard', burn: 'Burn', chill: 'Chill', weak: 'Weak', stun: 'Recovering', brace: 'Braced', scatter: 'Scattered', curse: 'Cursed', harden: 'Hardened', ward: 'Warded',
 };
 
 const rounds = (n: number) => `${n} round${n === 1 ? '' : 's'}`;
@@ -37,6 +37,7 @@ export function describeSkill(skill: Skill, stats: Stats): string {
         const chance = e.chance !== undefined && e.chance < 1 ? `${Math.round(e.chance * 100)}% chance: ` : '';
         if (e.target === 'self') {
           if (e.status === 'guard') parts.push(`Block the next ${e.magnitude === 1 || !e.magnitude ? 'hit' : `${e.magnitude} hits`}.`);
+          else if (e.status === 'ward') parts.push(`Block every hit for ${rounds(e.turns)}.`);
           else if (e.status === 'stun') parts.push(`Recovering: skip your next ${e.turns - 1} turn${e.turns - 1 === 1 ? '' : 's'}.`);
           else if (e.status === 'exposed') parts.push(e.turns === 1 ? 'You are Exposed this round.' : `You are Exposed for ${rounds(e.turns)}.`);
           else parts.push(`You are ${STATUS_NAME[e.status]} for ${rounds(e.turns)}.`);
@@ -49,5 +50,7 @@ export function describeSkill(skill: Skill, stats: Stats): string {
       }
     }
   }
+  if (skill.uses === 'once_per_fight') parts.push('Once per fight.');
+  if (skill.uses === 'fleeting') parts.push('Fleeting: spent when played.');
   return parts.join(' ');
 }

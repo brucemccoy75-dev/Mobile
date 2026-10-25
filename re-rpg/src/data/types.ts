@@ -13,7 +13,7 @@ export interface Stats {
   def: number;
 }
 
-export type StatusId = 'exposed' | 'guard' | 'burn' | 'chill' | 'weak' | 'stun' | 'brace' | 'scatter' | 'curse' | 'harden';
+export type StatusId = 'exposed' | 'guard' | 'burn' | 'chill' | 'weak' | 'stun' | 'brace' | 'scatter' | 'curse' | 'harden' | 'ward';
 
 /** A status instance on a combatant. `turns` ticks down at end of round; Guard and Chill are consumed instead. Stun: the player skips their turn while it lasts (turns N = N-1 skipped turns when self-applied). */
 export interface Status {
@@ -30,6 +30,9 @@ export type Effect =
   | { type: 'heal'; pct?: number; flat?: number }
   | { type: 'status'; target: Target; status: StatusId; turns: number; magnitude?: number; chance?: number };
 
+/** How often a tome may be played. Default: every time it is drawn. */
+export type SkillUses = 'once_per_fight' | 'fleeting';
+
 export interface Skill {
   id: SkillId;
   name: string;
@@ -38,6 +41,8 @@ export interface Skill {
   setId?: SetId;
   rarity: Rarity;
   effects: Effect[];
+  /** once_per_fight: exhausted when played, back next fight. fleeting: the tome is destroyed when played. */
+  uses?: SkillUses;
 }
 
 export interface SkillSet {

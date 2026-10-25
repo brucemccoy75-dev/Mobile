@@ -6,7 +6,7 @@ export type Policy = (s: CombatState) => PlayerAction;
 
 const has = (effects: Effect[], pred: (e: Effect) => boolean) => effects.some(pred);
 const isHeal = (e: Effect) => e.type === 'heal' || (e.type === 'damage' && !!e.lifesteal);
-const isGuard = (e: Effect) => e.type === 'status' && e.target === 'self' && e.status === 'guard';
+const isGuard = (e: Effect) => e.type === 'status' && e.target === 'self' && (e.status === 'guard' || e.status === 'ward');
 const isDamage = (e: Effect) => e.type === 'damage';
 const selfExposes = (e: Effect) => e.type === 'status' && e.target === 'self' && e.status === 'exposed';
 const dmgValue = (effects: Effect[], enemyAttacking: boolean) =>
@@ -30,7 +30,7 @@ export const greedy: Policy = (s) => {
   const { intent, predictedDamage } = currentIntent(s);
   const hp = s.player.hp;
   const maxHp = s.player.stats.maxHp;
-  const guarded = hasStatus(s.player, 'guard');
+  const guarded = hasStatus(s.player, 'guard') || hasStatus(s.player, 'ward');
   const hand = s.player.hand.map((id, index) => ({ index, skill: getSkill(id) }));
   const incomingAttack = intent.kind === 'attack';
   const enemyGuarded = hasStatus(s.enemy, 'guard');
@@ -67,7 +67,7 @@ export const greedy: Policy = (s) => {
   const heavy = incomingAttack && !guarded && (predictedDamage >= hp || bigMove || predictedDamage >= hp * 0.4);
   if (heavy) {
     const hits = intent.kind === 'attack' ? intent.hits : 1;
-    const guardOf = (h: { skill: { effects: Effect[] } }) => h.skill.effects.reduce((m, e) => (isGuard(e) && e.type === 'status' ? Math.max(m, e.magnitude ?? 1) : m), 0);
+    const guardOf = (h: { skill: { effects: Effect[] } }) => h.skill.effects.reduce((m, e) => (isGuard(e) && e.type === 'status' ? Math.max(m, e.status === 'ward' ? 99 : (e.magnitude ?? 1)) : m), 0);
     const full = hand.filter((h) => guardOf(h) >= hits).sort((a, b) => guardOf(b) - guardOf(a))[0];
     if (full && hits > 1) return { type: 'card', index: full.index };
     const guardCard = hand.find((h) => has(h.skill.effects, isGuard) && has(h.skill.effects, isDamage));

@@ -36,7 +36,7 @@ export function createCombat(opts: CombatOptions): CombatState {
   const player: PlayerCombatant = {
     side: 'player', name: opts.player.name ?? 'Hero',
     stats: { ...opts.player.stats }, hp: opts.player.hp ?? opts.player.stats.maxHp,
-    statuses: [], deck: opts.rng.shuffle([...(opts.player.basics ?? BASIC_DECK), ...opts.player.deck]), hand: [], discard: [],
+    statuses: [], deck: opts.rng.shuffle([...(opts.player.basics ?? BASIC_DECK), ...opts.player.deck]), hand: [], discard: [], exhausted: [], consumed: [],
   };
   const enemyBase = { side: 'enemy' as const, name: def.name, enemyId: def.id, stats: { ...def.stats }, hp: def.stats.maxHp, statuses: [], phase: 0, seqIndex: 0 };
   const enemy = enemyBase as unknown as EnemyCombatant;
@@ -91,6 +91,12 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
   } else {
     const skill = skillInCombat(state, playCard(state.player, action.index));
     events.push({ t: 'play', side: 'player', skill: skill.id, name: skill.name });
+    if (skill.uses) {
+      // Not back into the discard: once-per-fight waits for the next fight, fleeting is gone for good.
+      state.player.discard.pop();
+      if (skill.uses === 'once_per_fight') { state.player.exhausted.push(skill.id); events.push({ t: 'exhaust', skill: skill.id }); }
+      else { state.player.consumed.push(skill.id); events.push({ t: 'consumed', skill: skill.id }); }
+    }
     applyEffects(skill.effects, state.player, state.enemy, roll, events);
     if (checkDeaths(state, events)) return finish(state, rng, events);
   }
@@ -154,7 +160,7 @@ export function applyEffects(effects: Effect[], self: Combatant, other: Combatan
         for (let i = 0; i < hits; i++) {
           if (other.hp <= 0) break;
           const amount = computeHit(self, other, e.mult, e.ignoreDef, e.flat ?? 0, hits);
-          if (consumeGuard(other, events)) {
+          if (hasStatus(other, 'ward') || consumeGuard(other, events)) {
             events.push({ t: 'damage', source: self.side, target: other.side, amount: 0, blocked: true, hit: i + 1, hits });
             continue;
           }
@@ -164,7 +170,7 @@ export function applyEffects(effects: Effect[], self: Combatant, other: Combatan
           events.push({ t: 'damage', source: self.side, target: other.side, amount: applied, blocked: false, hit: i + 1, hits });
           // Brace: the first hit that lands is thrown back at the attacker (blockable by Guard, ignores def).
           if (i === 0 && applied > 0 && consumeBrace(other, events)) {
-            if (consumeGuard(self, events)) events.push({ t: 'counter', amount: 0, blocked: true });
+            if (hasStatus(self, 'ward') || consumeGuard(self, events)) events.push({ t: 'counter', amount: 0, blocked: true });
             else { const back = Math.min(self.hp, applied); self.hp -= back; events.push({ t: 'counter', amount: back, blocked: false }); }
           }
         }
