@@ -132,6 +132,13 @@ export class CombatScene extends Phaser.Scene {
       this.enemySprite = this.add.rectangle(this.ex, this.ey, esize, esize, isBoss ? COLORS.boss : COLORS.enemy);
     }
     this.add.text(this.ex, groundY + 12, this.enemyDef.name, text.small).setOrigin(0.5, 0);
+    // Stills come alive cheaply: both combatants fade in from a step back (the mirror of the death fade),
+    // then breathe with a slow scale bob. Frame animation (docs/ART.md) is parked until the loop is fun.
+    for (const [s, dir] of [[this.playerSprite, -1], [this.enemySprite, 1]] as const) {
+      const x = s.x;
+      s.setAlpha(0).setX(x + 24 * dir);
+      this.tweens.add({ targets: s, alpha: 1, x, duration: 420, ease: 'Quad.Out', onComplete: () => this.breathe(s) });
+    }
     const eq = Object.values(this.session.equipment).filter(Boolean).map((i) => i!.name).join(' · ');
     this.add.text(this.px, this.py + 58, `${this.session.classId} · ${setName(this.session)}${eq ? `\n${eq}` : ''}`, { ...text.small, align: 'center' }).setOrigin(0.5, 0);
 
@@ -234,6 +241,12 @@ export class CombatScene extends Phaser.Scene {
     const drain = intent.kind === 'attack' && !!intent.drain;
     const magic = intent.kind === 'attack' && intent.dmgType === 'magic';
     this.showInfo(`${this.enemyDef.name}, after your move`, `${describeIntent(intent.kind, moveName, predictedDamage, hits, status, drain, magic)}\n\nThe round after: ${tell.replace('then: ', '')}.`, '#ffb4b4');
+  }
+
+  /** Idle breathing: a slow 2.5% vertical squash on the feet-anchored sprite. Lunges tween x, so the two never fight. */
+  private breathe(s: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite) {
+    if (!s.active) return;
+    this.tweens.add({ targets: s, scaleY: s.scaleY * 1.025, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
   }
 
   private showHp(side: 'player' | 'enemy', delta: number) {
@@ -487,6 +500,7 @@ export class CombatScene extends Phaser.Scene {
       case 'death': {
         const s = sprite(e.side);
         if (s instanceof Phaser.GameObjects.Sprite) s.anims.stop();
+        this.tweens.killTweensOf(s); // the breathing stops with the body
         await tween(this, { targets: s, alpha: 0.15, y: s.y + 10, duration: 350 });
         return;
       }
