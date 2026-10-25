@@ -7,7 +7,7 @@ import { RunRng, newSeed } from '@core/rng';
 import { generateScreen, type ScreenMap, type Tile } from '@core/map';
 import { DECK_CAP } from '@core/combat';
 import { computeStats, emptyEquipment, equip as equipItem, equipmentFromIds, equipmentToIds, type Equipment, RUN_VERSION, type RunState } from '@core/run';
-import { createMeta, discoverItem, discoverSkill, rollHeirloom, type MetaState } from '@core/meta';
+import { createMeta, discoverItem, discoverSkill, rollHeirloomChoices, type Heirloom, type MetaState } from '@core/meta';
 import { rollShopStock, type RewardChoice, type RewardSource, type ShopStock } from '@core/loot';
 import type { SaveStore } from '@save/SaveStore';
 
@@ -46,6 +46,8 @@ export interface RunSession {
   pendingEncounter: PendingEncounter | null;
   lastResult: CombatResult | null;
   pendingOffer: PendingOffer | null;
+  /** Heirloom spread to pick from before the run starts; empty once chosen. */
+  heirloomChoices: Heirloom[];
 }
 
 export type Store = SaveStore<MetaState, RunState>;
@@ -87,13 +89,24 @@ export function createSession(classId: ClassId, meta: MetaState, seed = newSeed(
     screenIndex: 0, map: undefined as unknown as ScreenMap, playerPos: { x: 0, y: 0 }, threat: 0,
     openedPois: new Set(), usedShrines: new Set(), defeatedGuards: new Set(), bossDefeated: false, encountersWon: 0,
     newDiscoveries: [], heirloomName: null, shop: { lines: [], healPrice: 0, healPct: 0.5, healUsed: true },
-    pendingEncounter: null, lastResult: null, pendingOffer: null,
+    pendingEncounter: null, lastResult: null, pendingOffer: null, heirloomChoices: [],
   };
-  const heirloom = rollHeirloom(meta, classId, setId, rng.stream('meta'));
-  if (heirloom?.kind === 'tome') { s.deck.push(heirloom.skill.id); s.heirloomName = heirloom.skill.name; }
-  if (heirloom?.kind === 'item') { applyEquip(s, heirloom.item); s.heirloomName = heirloom.item.name; }
+  s.heirloomChoices = rollHeirloomChoices(meta, classId, setId, rng.stream('meta'));
   startScreen(s, 0, meta);
   return s;
+}
+
+/** Apply the chosen heirlooms (DECISIONS #6): items equip, tomes join the deck (copies allowed). */
+export function applyHeirlooms(s: RunSession, picks: Heirloom[]): void {
+  const names: string[] = [];
+  for (const h of picks) {
+    if (h.kind === 'tome') { if (s.deck.length < DECK_CAP) s.deck.push(h.skill.id); names.push(h.skill.name); }
+    else { applyEquip(s, h.item); names.push(h.item.name); }
+  }
+  s.heirloomName = names.length ? names.join(' + ') : null;
+  s.heirloomChoices = [];
+  // The shop was stocked before the picks; re-roll so it reflects what is now equipped.
+  s.shop = rollShopStock(s.screenIndex, { classId: s.classId, setId: s.setId, meta: createMeta(), deck: s.deck, equipment: s.equipment }, s.rng.stream('loot'));
 }
 
 /** Generate screen `index`, stock its shop, and put the player at its entry. */
@@ -175,6 +188,6 @@ export function deserialize(st: RunState): RunSession {
     openedPois: new Set(st.openedPois), usedShrines: new Set(st.usedShrines), defeatedGuards: new Set(st.defeatedGuards),
     bossDefeated: st.bossDefeated, encountersWon: st.encountersWon, newDiscoveries: [...st.newDiscoveries], heirloomName: st.heirloomName,
     shop: st.shop,
-    pendingEncounter: null, lastResult: null, pendingOffer: null,
+    pendingEncounter: null, lastResult: null, pendingOffer: null, heirloomChoices: [],
   };
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Rng } from '@core/rng';
-import { createMeta, discoverItem, discoverSkill, mergeMeta, recordDeath, rollHeirloom } from './index';
+import { createMeta, discoverItem, discoverSkill, mergeMeta, recordDeath, rollHeirloomChoices } from './index';
 
 describe('meta', () => {
   it('discovery is idempotent', () => {
@@ -11,24 +11,34 @@ describe('meta', () => {
     expect(m.discoveredSkills).toEqual(['fireball']);
   });
 
-  it('heirloom is locked until the first death and needs a discovery', () => {
+  it('heirloom choices are locked until the first death and need discoveries', () => {
     const m = createMeta();
     discoverSkill(m, 'fireball');
-    expect(rollHeirloom(m, 'wizard', 'wizard_fire', new Rng(1))).toBeNull();
+    expect(rollHeirloomChoices(m, 'wizard', 'wizard_fire', new Rng(1))).toEqual([]);
     recordDeath(m, 0);
-    const h = rollHeirloom(m, 'wizard', 'wizard_fire', new Rng(1));
-    expect(h).toMatchObject({ kind: 'tome', skill: { id: 'fireball' } });
-    expect(rollHeirloom(m, 'warrior', 'warrior_tank', new Rng(1))).toBeNull(); // fireball is not usable by a warrior
+    const h = rollHeirloomChoices(m, 'wizard', 'wizard_fire', new Rng(1));
+    expect(h).toHaveLength(1);
+    expect(h[0]).toMatchObject({ kind: 'tome', skill: { id: 'fireball' } });
+    expect(rollHeirloomChoices(m, 'warrior', 'warrior_tank', new Rng(1))).toEqual([]); // fireball is not usable by a warrior
   });
 
-  it('heirloom weights the active set double', () => {
-    const m = createMeta(); m.deaths = 2;
-    discoverSkill(m, 'fireball'); discoverSkill(m, 'frost_bolt');
-    let fire = 0;
+  it('offers up to 4 distinct choices, favouring the active set', () => {
+    const m = createMeta(); m.deaths = 1;
+    ['fireball', 'inferno', 'frost_bolt', 'ice_armor'].forEach((id) => discoverSkill(m, id));
+    ['oak_wand', 'heart_amulet', 'bloodstone', 'ember_staff', 'rime_staff'].forEach((id) => discoverItem(m, id));
+    let firstIsFire = 0;
     const rng = new Rng(5);
-    for (let i = 0; i < 3000; i++) if ((rollHeirloom(m, 'wizard', 'wizard_fire', rng) as { skill: { id: string } }).skill.id === 'fireball') fire++;
-    expect(fire / 3000).toBeGreaterThan(0.6);
-    expect(fire / 3000).toBeLessThan(0.74);
+    for (let i = 0; i < 2000; i++) {
+      const h = rollHeirloomChoices(m, 'wizard', 'wizard_fire', rng);
+      expect(h).toHaveLength(4);
+      const ids = h.map((x) => (x.kind === 'tome' ? x.skill.id : x.item.id));
+      expect(new Set(ids).size).toBe(4);
+      const f = h[0]!;
+      if ((f.kind === 'tome' && f.skill.setId === 'wizard_fire') || (f.kind === 'item' && f.item.tags?.includes('wizard_fire'))) firstIsFire++;
+    }
+    // 3 fire-tagged of 9 entries at double weight: 6/12 = 50% of first picks
+    expect(firstIsFire / 2000).toBeGreaterThan(0.42);
+    expect(firstIsFire / 2000).toBeLessThan(0.58);
   });
 
   it('merge unions discoveries and maxes counters', () => {

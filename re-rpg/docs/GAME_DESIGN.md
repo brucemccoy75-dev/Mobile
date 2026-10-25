@@ -50,15 +50,15 @@ Rarity: common / uncommon / rare / boss. Rarity gates the modifier budget, not j
 
 ## 5. Loot & pools (the replay engine)
 
-**Per-run pool** = the rolled set's 2 skills + 2–3 starter items + everything in `MetaState.discovered*` for that class + class-agnostic discovered items, **minus anything the player currently holds** (no duplicate drops). Early runs drain the tome pool after two tomes; offers then fall back to equipment and gold, which is intentional pressure toward discovery.
+**Per-run pool** = the rolled set's 2 skills + everything in `MetaState.discovered*` for that class + class-agnostic items, **minus equipped items** (a slot holds one). Tomes may repeat: a second copy of a skill in the deck makes it come up more often, which is the deck-building lever.
 
 Rules:
 
 1. **Discovery**: an item/skill becomes discovered the first time it is picked up (not merely seen). Death does not undo it.
-2. **Offer, don't grant**: rewards show **pick 1 of 2** (3 for chests/bosses). A growing pool with blind single drops would dilute; choice makes a bigger pool feel like power. Enemies still drop gold on top.
+2. **Offer, don't grant**: rewards show **pick 1 of 2** (3 for chests/bosses). A growing pool with blind single drops would dilute; choice makes a bigger pool feel like power. Enemies still drop gold on top. Any offered reward can be **sold** instead (≈40% of its shop price) and still counts as discovered, so a reward screen never feels wasted.
 3. **Set affinity weighting**: items tagged with the active set get 2x weight. This is how synergy emerges without hand-scripting.
 4. **Depth scales rarity**: encounter distance from the entry and screen index shift the rarity curve. Guards > randoms, chests > guards, bosses > chests. Boss drops always include a rare.
-5. **Heirloom**: from death 2 onward, each new run starts with **one random discovered item or tome** for the class, weighted toward the rolled set. This is the direct "previous unlocks make you stronger faster" mechanic and the main pacing knob for "a few deaths then you reach the boss". Slot growth (two heirlooms after a boss kill, etc.) is a later knob.
+5. **Heirlooms**: from the first death onward, each new run opens with a **spread of up to 4 random unlocks** for the class (weighted toward the rolled set) and the player **keeps 2**. This is the direct "previous unlocks make you stronger faster" mechanic and the main pacing knob for "a few deaths then you reach the boss". Spread size and pick count are the later knobs.
 6. Later: discovered sets become rollable at class select; set tiers (Tank I → Tank II) widen the pool.
 
 ## 6. Enemies (POC roster)

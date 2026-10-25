@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { getItem, getSkill } from '@data/index';
 import { createMeta } from '@core/meta';
-import { createSession, deserialize, serialize, takeChoice } from './session';
+import { applyHeirlooms, createSession, deserialize, serialize, takeChoice } from './session';
 
 describe('session', () => {
   it('serialises and resumes identically, including RNG streams', () => {
@@ -21,11 +21,21 @@ describe('session', () => {
     expect(r.rng.stream('encounter').next()).toBe(s.rng.stream('encounter').next());
   });
 
-  it('heirloom lands after the first death', () => {
-    const meta = createMeta(); meta.deaths = 1; meta.discoveredItems.push('heart_amulet');
+  it('heirloom spread is offered after the first death and picks apply', () => {
+    const meta = createMeta(); meta.deaths = 1; meta.discoveredItems.push('heart_amulet'); meta.discoveredSkills.push('broadsword');
     const s = createSession('warrior', meta, 'HEIR-1');
-    expect(s.heirloomName).toBe('Heart Amulet');
+    expect(s.heirloomChoices).toHaveLength(2);
+    expect(s.heirloomName).toBeNull();
+    applyHeirlooms(s, s.heirloomChoices);
+    expect(s.heirloomName).toContain('Heart Amulet');
     expect(s.stats.maxHp).toBe(31); expect(s.hp).toBe(31);
+    expect(s.deck).toEqual(['broadsword']);
+    expect(s.heirloomChoices).toEqual([]);
+  });
+
+  it('no heirloom spread before the first death', () => {
+    const meta = createMeta(); meta.discoveredItems.push('heart_amulet');
+    expect(createSession('warrior', meta, 'HEIR-0').heirloomChoices).toEqual([]);
   });
 
   it('tome at the deck cap requires a swap and records discovery once', () => {

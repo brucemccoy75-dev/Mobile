@@ -47,20 +47,29 @@ export function heirloomPool(meta: MetaState, classId: ClassId): { tomes: Skill[
   };
 }
 
+export const HEIRLOOM_OFFER = 4;
+export const HEIRLOOM_PICKS = 2;
+
 /**
- * DECISIONS #6 (amended: from the first death): a run starts with one random
- * discovered item or tome usable by this class, weighted 2x toward the rolled set.
+ * DECISIONS #6 (amended after phone test 2): from the first death, a run opens
+ * with a spread of up to 4 discovered items and tomes usable by this class,
+ * weighted 2x toward the rolled set, and the player keeps 2 of them.
  */
-export function rollHeirloom(meta: MetaState, classId: ClassId, setId: SetId, rng: Rng): Heirloom | null {
-  if (!heirloomUnlocked(meta)) return null;
+export function rollHeirloomChoices(meta: MetaState, classId: ClassId, setId: SetId, rng: Rng, count = HEIRLOOM_OFFER): Heirloom[] {
+  if (!heirloomUnlocked(meta)) return [];
   const set = getSet(setId);
   const { tomes, items } = heirloomPool(meta, classId);
-  const choices: { h: Heirloom; w: number }[] = [
-    ...tomes.map((skill) => ({ h: { kind: 'tome', skill } as Heirloom, w: set.skills.includes(skill.id) ? 2 : 1 })),
-    ...items.map((item) => ({ h: { kind: 'item', item } as Heirloom, w: item.tags?.includes(setId) ? 2 : 1 })),
+  let pool: { h: Heirloom; w: number; id: string }[] = [
+    ...tomes.map((skill) => ({ h: { kind: 'tome', skill } as Heirloom, w: set.skills.includes(skill.id) ? 2 : 1, id: `t:${skill.id}` })),
+    ...items.map((item) => ({ h: { kind: 'item', item } as Heirloom, w: item.tags?.includes(setId) ? 2 : 1, id: `i:${item.id}` })),
   ];
-  if (choices.length === 0) return null;
-  return rng.weighted(choices, (c) => c.w).h;
+  const out: Heirloom[] = [];
+  while (pool.length > 0 && out.length < count) {
+    const pick = rng.weighted(pool, (c) => c.w);
+    out.push(pick.h);
+    pool = pool.filter((c) => c.id !== pick.id);
+  }
+  return out;
 }
 
 /** Merge rule for cloud sync: union of discoveries, max of counters. */

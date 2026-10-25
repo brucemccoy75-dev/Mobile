@@ -4,7 +4,7 @@ import type { ClassId } from '@data/types';
 import { Button } from '@game/ui/Button';
 import { CLASS_COLORS, COLORS, text } from '@game/ui/theme';
 import { createSession, getMeta, persistRun, setSession } from '@game/session';
-import { HEIRLOOM_DEATHS, heirloomPool, heirloomUnlocked } from '@core/meta';
+import { HEIRLOOM_DEATHS, HEIRLOOM_OFFER, HEIRLOOM_PICKS, heirloomPool, heirloomUnlocked } from '@core/meta';
 
 export class ClassSelectScene extends Phaser.Scene {
   private selected: ClassId | null = null;
@@ -38,7 +38,7 @@ export class ClassSelectScene extends Phaser.Scene {
       this.add.text(x, y + 58, sets, { ...text.body, fontSize: '14px', color: COLORS.gold }).setOrigin(0.5);
       const pool = heirloomPool(getMeta(this), cls.id);
       const n = pool.tomes.length + pool.items.length;
-      this.add.text(x, y + 96, n > 0 && heirloomUnlocked(getMeta(this)) ? `heirloom pool: ${n} (${pool.tomes.length} tomes, ${pool.items.length} items)` : 'starts with Attack + Defend', { ...text.small, color: n > 0 ? COLORS.gold : COLORS.muted }).setOrigin(0.5);
+      this.add.text(x, y + 96, n > 0 && heirloomUnlocked(getMeta(this)) ? `${n} unlocked (${pool.tomes.length} tomes, ${pool.items.length} items)` : 'starts with Attack + Defend', { ...text.small, color: n > 0 ? COLORS.gold : COLORS.muted }).setOrigin(0.5);
 
       bg.setInteractive({ useHandCursor: true });
       bg.on('pointerup', () => this.select(cls.id));
@@ -51,8 +51,8 @@ export class ClassSelectScene extends Phaser.Scene {
     const meta = getMeta(this);
     const pool = meta.discoveredSkills.length + meta.discoveredItems.length;
     const heir = heirloomUnlocked(meta)
-      ? (pool > 0 ? 'Heirloom: you start with one discovered tome or item.' : 'Heirloom unlocked, but nothing discovered yet.')
-      : `Heirloom unlocks after ${HEIRLOOM_DEATHS} deaths.`;
+      ? (pool > 0 ? `Heirlooms: keep ${HEIRLOOM_PICKS} of ${HEIRLOOM_OFFER} random unlocks at the start of the run.` : 'Heirlooms unlocked, but nothing discovered yet.')
+      : `Heirlooms unlock after ${HEIRLOOM_DEATHS} death${HEIRLOOM_DEATHS === 1 ? '' : 's'}.`;
     this.add.text(width / 2, 62, heir, { ...text.small, color: COLORS.gold }).setOrigin(0.5);
 
     new Button(this, 70, height - 46, 'Back', () => this.scene.start('Title'), { width: 110, height: 40, fontSize: '14px' });
@@ -71,6 +71,6 @@ export class ClassSelectScene extends Phaser.Scene {
     setSession(this, session);
     void persistRun(this);
     this.cameras.main.fadeOut(200, 11, 15, 26);
-    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('Overworld'));
+    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(session.heirloomChoices.length > 0 ? 'Heirloom' : 'Overworld'));
   }
 }

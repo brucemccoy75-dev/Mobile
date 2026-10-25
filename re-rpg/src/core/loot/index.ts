@@ -23,15 +23,16 @@ export interface PoolContext {
 }
 
 /**
- * DECISIONS #5: the run's tome pool is the rolled set's skills plus everything
- * discovered for this class; the item pool is every item this class can use
- * (basics everyone can find) plus discovered items. Anything held is removed.
+ * DECISIONS #5 (amended after phone test 2): the run's tome pool is the rolled
+ * set's skills plus everything discovered for this class, and tomes may repeat
+ * (a second Broadsword means it comes up twice as often). The item pool is
+ * every item this class can use; equipped items are removed since a slot holds one.
  */
 export function buildPool(ctx: PoolContext): { tomes: Skill[]; items: Item[] } {
   const set = getSet(ctx.setId);
-  const held = new Set<string>([...ctx.deck, ...Object.values(ctx.equipment).filter(Boolean).map((i) => i!.id)]);
+  const held = new Set<string>(Object.values(ctx.equipment).filter(Boolean).map((i) => i!.id));
   const tomeIds = new Set<string>([...set.skills, ...ctx.meta.discoveredSkills]);
-  const tomes = SKILLS.filter((s) => tomeIds.has(s.id) && s.rarity !== 'basic' && (s.classId === ctx.classId || s.classId === 'any') && !held.has(s.id));
+  const tomes = SKILLS.filter((s) => tomeIds.has(s.id) && s.rarity !== 'basic' && (s.classId === ctx.classId || s.classId === 'any'));
   // Rarity gating lives in the source weights (a kill almost never rolls rare), so the
   // item pool is simply everything this class can use and does not already hold.
   const items = ITEMS.filter((i) => (!i.classes || i.classes.includes(ctx.classId)) && !held.has(i.id));
@@ -107,10 +108,15 @@ const PRICE: Record<Rarity, number> = { basic: 10, common: 20, uncommon: 35, rar
 
 export const itemPrice = (rarity: Rarity, screenIndex: number) => PRICE[rarity] * (screenIndex + 1);
 
-/** A shelf line the player already holds (found elsewhere since the stock was rolled). */
-export function isLineOwned(line: ShopLine, deck: SkillId[], equipment: Equipment): boolean {
-  if (line.kind === 'tome') return deck.includes(line.id);
+/** A shelf line the player already holds. Tomes may be bought again (copies stack in the deck); items may not. */
+export function isLineOwned(line: ShopLine, _deck: SkillId[], equipment: Equipment): boolean {
+  if (line.kind === 'tome') return false;
   return Object.values(equipment).some((i) => i?.id === line.id);
+}
+
+/** Gold for selling a reward instead of taking it: roughly 40% of its shop price. */
+export function sellValue(rarity: Rarity, screenIndex: number): number {
+  return Math.round(PRICE[rarity] * 0.4) * (screenIndex + 1);
 }
 export const tomePrice = (rarity: Rarity, screenIndex: number) => (PRICE[rarity] + 10) * (screenIndex + 1);
 

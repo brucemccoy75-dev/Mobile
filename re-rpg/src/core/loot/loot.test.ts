@@ -15,9 +15,9 @@ describe('buildPool', () => {
     expect(p.items.some((i) => i.id === 'oak_wand')).toBe(false);
   });
 
-  it('held tomes and items leave the pool (no duplicate drops)', () => {
+  it('equipped items leave the pool; tomes in the deck may drop again', () => {
     const p = buildPool(ctx({ deck: ['shield_bash'], equipment: { ...emptyEquipment(), relic: getItem('bloodstone') } }));
-    expect(p.tomes.map((t) => t.id)).toEqual(['bind_wound']);
+    expect(p.tomes.map((t) => t.id).sort()).toEqual(['bind_wound', 'shield_bash']);
     expect(p.items.some((i) => i.id === 'bloodstone')).toBe(false);
   });
 
@@ -48,7 +48,9 @@ describe('rollOffer', () => {
 
   it('falls back to items only when the tome pool is dry', () => {
     const rng = new Rng(2);
-    const o = rollOffer('kill', 0, ctx({ deck: ['shield_bash', 'bind_wound'] }), rng);
+    const meta = createMeta();
+    const o = rollOffer('kill', 0, ctx({ meta, setId: 'warrior_tank', classId: 'wizard' as never }), rng);
+    // a wizard with a warrior set has no usable set tomes and nothing discovered
     expect(o.choices.every((c) => c.kind === 'item')).toBe(true);
   });
 
@@ -91,7 +93,7 @@ describe('isLineOwned', () => {
   it('flags tomes in the deck and equipped items', async () => {
     const { isLineOwned } = await import('./index');
     const eq = { ...emptyEquipment(), weapon: getItem('iron_mace') };
-    expect(isLineOwned({ kind: 'tome', id: 'broadsword', price: 1, sold: false }, ['broadsword'], eq)).toBe(true);
+    expect(isLineOwned({ kind: 'tome', id: 'broadsword', price: 1, sold: false }, ['broadsword'], eq)).toBe(false); // copies allowed
     expect(isLineOwned({ kind: 'tome', id: 'broadsword', price: 1, sold: false }, [], eq)).toBe(false);
     expect(isLineOwned({ kind: 'item', id: 'iron_mace', price: 1, sold: false }, [], eq)).toBe(true);
     expect(isLineOwned({ kind: 'item', id: 'broad_axe', price: 1, sold: false }, [], eq)).toBe(false);
@@ -108,7 +110,7 @@ describe('rollShopStock', () => {
     expect(st.lines.filter((l) => l.kind === 'tome')).toHaveLength(1);
     expect(st.healPrice).toBe(30);
     expect(st.lines.every((l) => l.price > 0 && !l.sold)).toBe(true);
-    const dry = rollShopStock(1, ctx({ deck: ['shield_bash', 'bind_wound'] }), new Rng(7));
+    const dry = rollShopStock(1, ctx({ classId: 'wizard' as never, setId: 'warrior_tank' }), new Rng(7));
     expect(dry.lines.some((l) => l.kind === 'tome')).toBe(false);
     expect(dry.healPrice).toBe(60);
     expect(dry.lines.every((l) => l.price >= 40)).toBe(true);

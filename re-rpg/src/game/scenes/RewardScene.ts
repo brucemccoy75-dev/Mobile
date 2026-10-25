@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
 import { getSet } from '@data/index';
 import type { SkillId } from '@data/types';
-import { rollOffer, type Offer, type RewardChoice } from '@core/loot';
+import { rollOffer, sellValue, type Offer, type RewardChoice } from '@core/loot';
 import { DECK_CAP } from '@core/combat';
 import { getMeta, getSession, persistMeta, persistRun, takeChoice, type RunSession } from '@game/session';
+import { discoverItem, discoverSkill } from '@core/meta';
 import { Button } from '@game/ui/Button';
 import { openComparePanel, openSwapPanel } from '@game/ui/panels';
 import { COLORS, FONT, RARITY_COLORS, text } from '@game/ui/theme';
@@ -40,12 +41,12 @@ export class RewardScene extends Phaser.Scene {
     this.add.text(W / 2, 60, this.offer.gold > 0 ? `+${this.offer.gold} gold  ·  choose one` : 'choose one', { ...text.small, fontSize: '14px', color: COLORS.gold }).setOrigin(0.5);
 
     const n = this.offer.choices.length;
-    const cw = 250, ch = 190, gap = 20;
+    const cw = 250, ch = 170, gap = 20;
     const startX = W / 2 - ((n * cw + (n - 1) * gap) / 2) + cw / 2;
     this.offer.choices.forEach((c, i) => this.drawChoice(c, startX + i * (cw + gap), H / 2 - 10, cw, ch));
 
-    this.add.text(W / 2, H - 92, this.statusLine(), text.small).setOrigin(0.5);
-    new Button(this, W / 2, H - 46, 'Skip', () => this.finish(), { width: 160, height: 44, fontSize: '15px' });
+    this.add.text(W / 2, H - 78, this.statusLine(), text.small).setOrigin(0.5);
+    new Button(this, W / 2, H - 40, 'Take nothing', () => this.finish(), { width: 160, height: 40, fontSize: '14px' });
   }
 
   private statusLine() {
@@ -72,6 +73,25 @@ export class RewardScene extends Phaser.Scene {
 
     bg.setInteractive({ useHandCursor: true });
     bg.on('pointerup', () => this.pick(c));
+    // Sell instead: gold now, and it still counts as discovered.
+    const value = sellValue(rarity, this.session.screenIndex);
+    new Button(this, x, y + h / 2 + 24, `Sell · ${value} g`, () => this.sell(c, value), { width: w - 40, height: 32, fontSize: '13px', fill: 0x2a2416, edge: 0x8a6a2b });
+  }
+
+  private async sell(c: RewardChoice, value: number) {
+    if (this.done) return;
+    this.done = true;
+    const meta = getMeta(this);
+    const isNew = c.kind === 'tome' ? discoverSkill(meta, c.skill.id) : discoverItem(meta, c.item.id);
+    if (isNew) this.session.newDiscoveries.push(c.kind === 'tome' ? c.skill.id : c.item.id);
+    this.session.gold += value;
+    await Promise.all([persistMeta(this), persistRun(this)]);
+    const { width: W, height: H } = this.scale.gameSize;
+    const name = c.kind === 'tome' ? c.skill.name : c.item.name;
+    const banner = this.add.text(W / 2, H / 2, `${isNew ? 'NEW DISCOVERY  ·  ' : ''}sold ${name} for ${value} gold`, { ...text.h2, color: COLORS.gold, backgroundColor: '#000000cc', padding: { x: 16, y: 10 } }).setOrigin(0.5).setDepth(60).setAlpha(0);
+    await tween(this, { targets: banner, alpha: 1, duration: 150 });
+    await wait(this, isNew ? 1100 : 700);
+    this.finish();
   }
 
   private pick(c: RewardChoice) {
