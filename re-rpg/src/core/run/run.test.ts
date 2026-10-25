@@ -8,7 +8,7 @@ const base = { maxHp: 25, atk: 4, def: 1 };
 describe('equipment', () => {
   it('sums modifiers and floors stats', () => {
     const eq = { ...emptyEquipment(), relic: getItem('glass_idol'), body: getItem('plate_harness') };
-    expect(computeStats(base, eq)).toEqual({ maxHp: 9, atk: 8, def: 5 });
+    expect(computeStats(base, eq)).toEqual({ maxHp: 9, atk: 8, def: 5, gearAtk: 8 - base.atk });
     const harsh = { ...emptyEquipment(), relic: getItem('tortoise_charm') };
     expect(computeStats({ maxHp: 20, atk: 1, def: 0 }, harsh).atk).toBe(1);
   });

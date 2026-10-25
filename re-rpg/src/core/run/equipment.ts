@@ -18,6 +18,7 @@ export function computeStats(base: Stats, eq: Equipment): Stats {
   out.maxHp = Math.max(1, out.maxHp);
   out.def = Math.max(0, out.def);
   out.atk = Math.max(1, out.atk);
+  out.gearAtk = out.atk - base.atk;
   return out;
 }
 

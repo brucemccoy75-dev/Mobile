@@ -6,9 +6,10 @@ const STATUS_NAME: Record<StatusId, string> = {
 
 const rounds = (n: number) => `${n} round${n === 1 ? '' : 's'}`;
 
-/** Base damage of one hit with the given stats: attack × multiplier + flat. Enemy defence and intent are not considered. */
+/** Base damage of one hit with the given stats: class attack × multiplier + gear attack + flat. Enemy defence and intent are not considered. */
 export function baseHit(stats: Stats, e: Extract<Effect, { type: 'damage' }>): number {
-  return Math.max(1, Math.round(stats.atk * e.mult) + (e.flat ?? 0));
+  const gear = stats.gearAtk ?? 0;
+  return Math.max(1, Math.round((stats.atk - gear) * e.mult) + gear + (e.flat ?? 0));
 }
 
 /**

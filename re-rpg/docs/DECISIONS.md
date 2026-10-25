@@ -70,3 +70,7 @@ Enemy scripts are deterministic on purpose (reading the Boar is the fun), so var
 
 Target rounds per fight: trash 3–4, guards and duos 5–7, bosses 10+. Enemy HP came down about a third and attack went up one so damage per fight stays while rounds fall: Boar 12/5, Shell Beetle 10/4 def 1, Hex Imp 11/4, Necromancer 11/4 with Bone Bolt 1.5× and Lifetap healing half, Rat Pack 12/3; Ogre 24/7 (Smash 2.2×), Iron Knight 18/6 def 3, Witch 17/6, Harpies 18/4. Bosses got longer instead: Knight Andre 52/7, Warden 62/8. Greedy-sim duels for a fresh warrior now run 3–6 rounds (necromancer longest); the boss stays a long fight for the tank build. The player buff is deferred until telemetry from duos lands.
 
+## 31. Gear attack is flat, not multiplied
+
+Run log: three attack items took a warrior from 4 to 11 attack and Mighty Blow doubled that to 20, one-shotting every screen-1 enemy before it acted. Gear used to add to ATK and every card multiplied the total. Now a hit is class attack × card multiplier + gear attack + the card's flat bonus (`Stats.gearAtk`, set by `computeStats`). Attack is unchanged; Mighty Blow at +7 gear drops from 22 to 15, Broadsword from 18 to 15, and low-multiplier cards like Shield Bash gain a little. Stacking still matters, it stops compounding.
+

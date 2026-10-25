@@ -542,3 +542,13 @@ describe('duos (two enemies)', () => {
     expect(s.outcome).toBe('won');
   });
 });
+
+describe('gear attack is flat per hit', () => {
+  it('a 200% card with +7 gear deals round(4*2)+7, not round(11*2)', () => {
+    const s = createCombat({ player: { ...WARRIOR, stats: { maxHp: 25, atk: 11, def: 1, gearAtk: 7 }, deck: ['mighty_blow'], basics: [] }, enemy: PASSIVE, rng: new Rng(9) });
+    const hp = s.enemy.hp;
+    play(s, 'mighty_blow');
+    expect(hp - s.enemy.hp).toBe(15);
+  });
+});
+

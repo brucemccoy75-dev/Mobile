@@ -32,6 +32,15 @@ describe('describeSkill', () => {
   });
 });
 
+describe('gear adds flat damage (DECISIONS #31)', () => {
+  it('multiplies class attack only; gear attack is added per hit', () => {
+    const stacked = { maxHp: 20, atk: 11, def: 0, gearAtk: 7 };
+    expect(describeSkill(getSkill('attack'), stacked)).toBe('Deal 11 damage.');          // 4 + 7
+    expect(describeSkill(getSkill('mighty_blow'), stacked)).toContain('Deal 15 damage'); // 8 + 7, not 22
+    expect(describeSkill(getSkill('broadsword'), stacked)).toContain('Deal 15 damage');  // 4 + 7 + 4
+  });
+});
+
 describe('cardFace', () => {
   const warrior = { maxHp: 25, atk: 4, def: 1 };
   it('classifies cards and picks the headline number', () => {

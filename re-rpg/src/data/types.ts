@@ -11,6 +11,8 @@ export interface Stats {
   maxHp: number;
   atk: number;
   def: number;
+  /** The part of `atk` that comes from gear. Added flat to every hit, never multiplied by a card (DECISIONS #31). */
+  gearAtk?: number;
 }
 
 /** guard blocks the next physical hit; ward the next magic hit; aegis every hit for N rounds. */
