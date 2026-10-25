@@ -279,7 +279,7 @@ export class CombatScene extends Phaser.Scene {
     const startX = this.scale.gameSize.width / 2 - total / 2 + CARD_W / 2;
     ids.forEach((id, i) => {
       const sk = skillInCombat(this.state, id);
-      const card = new Card(this, startX + i * (CARD_W + gap), this.handY, sk, () => this.act(this.holdMode ? { type: 'hold', index: i } : { type: 'card', index: i }), describeSkill(sk, this.state.player.stats));
+      const card = new Card(this, startX + i * (CARD_W + gap), this.handY, sk, () => this.act(this.holdMode ? { type: 'hold', index: i } : { type: 'card', index: i }), describeSkill(sk, this.state.player.stats), this.state.player.stats);
       this.hand.push(card);
     });
   }

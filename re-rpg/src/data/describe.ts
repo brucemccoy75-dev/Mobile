@@ -57,3 +57,33 @@ export function describeSkill(skill: Skill, stats: Stats): string {
   if (skill.uses === 'fleeting') parts.push('Fleeting: spent when played.');
   return parts.join(' ');
 }
+
+/** Card face: colour family plus the one number that matters, shown large under the text (DECISIONS #28). */
+export type CardKind = 'attack' | 'defense' | 'heal' | 'magic';
+export interface CardFace { kind: CardKind; value: string; unit: string; }
+
+export function cardFace(skill: Skill, stats: Stats): CardFace {
+  const dmg = skill.effects.find((e): e is Extract<Effect, { type: 'damage' }> => e.type === 'damage');
+  const heal = skill.effects.find((e): e is Extract<Effect, { type: 'heal' }> => e.type === 'heal');
+  const st = skill.effects.filter((e): e is Extract<Effect, { type: 'status' }> => e.type === 'status');
+  if (dmg) {
+    const hits = dmg.hits ?? 1, n = baseHit(stats, dmg);
+    const magic = dmg.kind === 'magic';
+    return { kind: magic ? 'magic' : 'attack', value: hits > 1 ? `${n}×${hits}` : `${n}`, unit: magic ? 'magic' : 'damage' };
+  }
+  if (heal) return { kind: 'heal', value: `${Math.round((heal.flat ?? 0) + (heal.pct ?? 0) * stats.maxHp)}`, unit: 'heal' };
+  const block = st.find((e) => e.target === 'self' && (e.status === 'guard' || e.status === 'ward' || e.status === 'aegis'));
+  if (block) {
+    if (block.status === 'aegis') return { kind: 'defense', value: `${block.turns}`, unit: block.turns === 1 ? 'round' : 'rounds' };
+    const m = block.magnitude ?? 1;
+    return { kind: 'defense', value: `${m}`, unit: block.status === 'ward' ? (m === 1 ? 'spell' : 'spells') : (m === 1 ? 'hit' : 'hits') };
+  }
+  const hostile = st.find((e) => e.target === 'enemy');
+  if (hostile) {
+    if (hostile.status === 'burn' || hostile.status === 'curse') return { kind: 'magic', value: `${hostile.magnitude ?? 1}×${hostile.turns}`, unit: STATUS_NAME[hostile.status].toLowerCase() };
+    if (hostile.status === 'chill') return { kind: 'magic', value: '1', unit: 'skip' };
+    return { kind: 'magic', value: `${hostile.turns}`, unit: STATUS_NAME[hostile.status].toLowerCase() };
+  }
+  return { kind: 'defense', value: '', unit: '' };
+}
+

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { getSkill } from './index';
-import { describeSkill } from './describe';
+import { cardFace, describeSkill } from './describe';
 
 const warrior = { maxHp: 25, atk: 4, def: 1 };
 const geared = { maxHp: 31, atk: 7, def: 1 };
@@ -31,3 +31,19 @@ describe('describeSkill', () => {
     expect(describeSkill(getSkill('exposing_strike'), warrior)).toBe('Deal 4 damage. Enemy Exposed for 2 rounds.');
   });
 });
+
+describe('cardFace', () => {
+  const warrior = { maxHp: 25, atk: 4, def: 1 };
+  it('classifies cards and picks the headline number', () => {
+    expect(cardFace(getSkill('attack'), warrior)).toEqual({ kind: 'attack', value: '4', unit: 'damage' });
+    expect(cardFace(getSkill('defend'), warrior)).toEqual({ kind: 'defense', value: '1', unit: 'hit' });
+    expect(cardFace(getSkill('ward'), warrior)).toEqual({ kind: 'defense', value: '1', unit: 'spell' });
+    expect(cardFace(getSkill('bind_wound'), warrior)).toEqual({ kind: 'heal', value: '9', unit: 'heal' });
+    expect(cardFace(getSkill('fireball'), warrior)).toEqual({ kind: 'magic', value: '6', unit: 'magic' });
+    expect(cardFace(getSkill('ice_armor'), warrior)).toEqual({ kind: 'defense', value: '2', unit: 'hits' });
+    expect(cardFace(getSkill('static_field'), warrior)).toEqual({ kind: 'magic', value: '3×3', unit: 'burn' });
+    expect(cardFace(getSkill('stand_firm'), warrior)).toEqual({ kind: 'defense', value: '2', unit: 'rounds' });
+    expect(cardFace(getSkill('shield_bash'), warrior).kind).toBe('attack');
+  });
+});
+

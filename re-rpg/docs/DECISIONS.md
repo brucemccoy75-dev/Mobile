@@ -58,3 +58,7 @@ Balance calls were being made from the greedy sim and memory of phone sessions. 
 
 Phone test: Bind Wound's self-Exposed and an enemy Hex looked like one status. A repeat of a timed debuff used to take the longer duration only. Now Exposed and Weak add their rounds (capped at 4); the multiplier never compounds, so a double Exposed is longer, not ×4. Guard/Ward still stack hits, DoTs still take the larger magnitude and longer duration.
 
+## 28. Card faces: colour by kind, one big number
+
+Cards are coloured by what they do, not by rarity: attack red, defence blue, heal green, magic orange (rarity moved into the name colour). Under the text one headline number sits large in the corner with its unit (4 damage, 1 hit, 2 rounds, 9 heal, 3×3 burn), chosen by `cardFace()` in `src/data/describe.ts` from the first damage, heal, self-block or hostile status effect. Fleeting and once-per-fight cards carry a corner tag (purple FLEETING, gold ONCE). Cards grew to 150×112 to fit.
+
