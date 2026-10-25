@@ -139,6 +139,8 @@ Turn flow:
 
 `deal (round ≥ 1, oldest-out at cap 3) → player plays a hand card or a basic → resolve → enemy intent executes → statuses tick → advance intent/tell → repeat until a side dies`
 
+The player always acts first. The intent panel is labelled "after your move, it will…" because a shown Shell or Brace is a promise for after the player's card, not a state the enemy already has.
+
 Damage formula (POC, flat and readable): `dmg = max(1, ceil(base/2), base − def)` with `base = round(atk × skillMult)`, halved when Weak. Exposed doubles damage taken. Guard blocks the next hit. Defend is a card: Guard for one hit, no damage.
 
 ## 8. Persistence (Firebase, local-first)

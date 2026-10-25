@@ -8,7 +8,7 @@ import { Button } from '@game/ui/Button';
 import { Card, CARD_W } from '@game/ui/Card';
 import { HpBar } from '@game/ui/HpBar';
 import { StatusChips } from '@game/ui/StatusChips';
-import { CLASS_COLORS, COLORS, POSTURE_TEXT, STATUS_LABELS, describeIntent, text } from '@game/ui/theme';
+import { CLASS_COLORS, COLORS, FONT, POSTURE_TEXT, STATUS_LABELS, describeIntent, text } from '@game/ui/theme';
 import type { Status } from '@data/types';
 import { floatText, tween, wait } from '@game/ui/tween';
 
@@ -30,6 +30,7 @@ export class CombatScene extends Phaser.Scene {
   private playerChips!: StatusChips;
   private enemyChips!: StatusChips;
   private intentText!: Phaser.GameObjects.Text;
+  private intentBg!: Phaser.GameObjects.Rectangle;
   private intentNum!: Phaser.GameObjects.Text;
   private postureText!: Phaser.GameObjects.Text;
   private roundText!: Phaser.GameObjects.Text;
@@ -110,7 +111,10 @@ export class CombatScene extends Phaser.Scene {
     const ix = this.ex, iy = this.ey - esize / 2 - 58;
     const intentBg = this.add.rectangle(ix, iy, 230, 64, COLORS.panel, 0.9).setStrokeStyle(2, COLORS.panelEdge).setInteractive({ useHandCursor: true });
     intentBg.on('pointerup', () => this.explainIntent());
-    this.add.text(ix + 104, iy - 26, 'tap for details', { ...text.mono, fontSize: '10px' }).setOrigin(1, 1);
+    this.intentBg = intentBg;
+    // The panel is a promise, not a state: the enemy does this after your move.
+    this.add.text(ix - 104, iy - 34, 'AFTER YOUR MOVE, IT WILL', { fontFamily: FONT, fontSize: '10px', color: '#9aa3b8', fontStyle: 'bold' }).setOrigin(0, 1);
+    this.add.text(ix + 104, iy - 34, 'tap for details', { ...text.mono, fontSize: '10px' }).setOrigin(1, 1);
     this.intentText = this.add.text(ix - 104, iy - 10, '', { ...text.body, fontSize: '14px', fontStyle: 'bold' }).setOrigin(0, 0.5);
     this.intentNum = this.add.text(ix + 104, iy - 10, '', { ...text.h2, fontSize: '26px' }).setOrigin(1, 0.5);
     this.postureText = this.add.text(ix, iy + 16, '', text.small).setOrigin(0.5);
@@ -187,7 +191,7 @@ export class CombatScene extends Phaser.Scene {
     const hits = intent.kind === 'attack' ? intent.hits : 1;
     const tell = POSTURE_TEXT[this.state.enemy.next.posture] ?? '';
     const drain = intent.kind === 'attack' && !!intent.drain;
-    this.showInfo(`${this.enemyDef.name} this round`, `${describeIntent(intent.kind, moveName, predictedDamage, hits, status, drain)}\n\nAfter that: ${tell.replace('next: ', '')}.`, '#ffb4b4');
+    this.showInfo(`${this.enemyDef.name}, after your move`, `${describeIntent(intent.kind, moveName, predictedDamage, hits, status, drain)}\n\nThe round after: ${tell.replace('then: ', '')}.`, '#ffb4b4');
   }
 
   private syncAll() {
@@ -285,11 +289,18 @@ export class CombatScene extends Phaser.Scene {
     const sprite = (side: 'player' | 'enemy') => (side === 'player' ? this.playerSprite : this.enemySprite);
     const pos = (side: 'player' | 'enemy') => (side === 'player' ? { x: this.px, y: this.py } : { x: this.ex, y: this.ey });
     switch (e.t) {
-      case 'roundStart':
+      case 'roundStart': {
         this.roundText.setText(`Round ${e.round}  ·  screen ${this.session.screenIndex + 1}`);
         this.phaseText.setText('YOUR TURN').setColor(COLORS.gold);
+        this.intentBg.setStrokeStyle(2, COLORS.panelEdge);
+        // Belt and braces: the panel reflects this round's intent from the first frame of the round.
+        const ci = currentIntent(this.state);
+        this.showIntent(ci.intent, this.state.enemy.next.posture, ci.predictedDamage, ci.moveName);
+        // The hardened/warded/exposed countdowns ticked at end of round; show the ticked values now.
+        this.snapStatuses(); this.syncChips();
         await wait(this, 250);
         return;
+      }
       case 'deal': {
         this.displayHand = e.hand.slice();
         this.rebuildHand();
@@ -339,8 +350,9 @@ export class CombatScene extends Phaser.Scene {
         const s = sprite(e.side), p = pos(e.side);
         const dir = e.side === 'player' ? 1 : -1;
         if (e.side === 'enemy') {
-          // A clear beat between your action and the enemy's.
-          this.phaseText.setText('ENEMY TURN').setColor('#ffb4b4');
+          // A clear beat between your action and the enemy's, naming the move it promised.
+          this.phaseText.setText(`ENEMY TURN · ${e.name}`).setColor('#ffb4b4');
+          this.intentBg.setStrokeStyle(3, 0xff6b6b);
           await wait(this, 450);
         }
         if (e.side === 'player') {

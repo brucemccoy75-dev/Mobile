@@ -55,22 +55,22 @@ export const STATUS_LABELS: Record<StatusId, { label: string; color: string; des
 export function describeIntent(kind: string, moveName: string, predicted: number, hits: number, status?: StatusId, drain = false): string {
   switch (kind) {
     case 'attack': return hits > 1 ? `${moveName}: ${hits} hits for about ${predicted} total. Each Guard stack blocks one hit.` : `${moveName}: one hit for about ${predicted}. Defend blocks it.${drain ? ' It heals the caster for what it drains.' : ''}`;
-    case 'guard': return `${moveName}: raises a guard, so your next hit is blocked. Strip it with a cheap hit, or wait it out.`;
+    case 'guard': return `${moveName}: after your move it raises a guard, so your hit next round is blocked. Strip it with a cheap hit, or wait it out.`;
     case 'debuff': return `${moveName}: inflicts ${STATUS_LABELS[status!].label} on you. ${STATUS_LABELS[status!].desc}`;
-    case 'buff': return `${moveName}: ${STATUS_LABELS[status!].desc}`;
-    case 'stagger': return `${moveName}: it loses its footing and is Exposed for your next turn. Hit it hard.`;
+    case 'buff': return `${moveName}: after your move it will become ${STATUS_LABELS[status!].label}. ${STATUS_LABELS[status!].desc}`;
+    case 'stagger': return `${moveName}: after your move it loses its footing and is Exposed for your next turn. Hit it hard then.`;
     default: return moveName;
   }
 }
 
 export const POSTURE_TEXT: Record<string, string> = {
-  aggressive: 'next: attacks',
-  defensive: 'next: guards',
-  sinister: 'next: casts',
-  charging: 'next: winds up!',
-  reeling: 'next: staggers',
-  countering: 'next: braces to counter!',
-  evasive: 'next: scatters',
+  aggressive: 'then: attacks',
+  defensive: 'then: guards',
+  sinister: 'then: casts',
+  charging: 'then: winds up!',
+  reeling: 'then: staggers',
+  countering: 'then: braces to counter!',
+  evasive: 'then: scatters',
 };
 
 export const text = {

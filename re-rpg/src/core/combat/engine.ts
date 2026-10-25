@@ -128,11 +128,13 @@ function finish(state: CombatState, rng: Rng, events: CombatEvent[]): CombatEven
 function startRound(state: CombatState, _def: Enemy, rng: Rng, events: CombatEvent[]): void {
   state.round += 1;
   events.push({ t: 'roundStart', round: state.round });
+  // The new intent is announced before the deals, so the panel never shows last
+  // round's promise next to this round's state while cards are animating in.
+  const { intent, predictedDamage, moveName } = currentIntent(state);
+  events.push({ t: 'intent', intent, posture: state.enemy.next.posture, predictedDamage, moveName });
   // Opening hand fills to the cap so round 1 is a choice; afterwards one card per round.
   const deals = state.round === 1 ? HAND_CAP : 1;
   for (let i = 0; i < deals; i++) dealOne(state.player, (a) => rng.shuffle(a), events);
-  const { intent, predictedDamage, moveName } = currentIntent(state);
-  events.push({ t: 'intent', intent, posture: state.enemy.next.posture, predictedDamage, moveName });
 }
 
 function checkDeaths(state: CombatState, events: CombatEvent[]): boolean {
