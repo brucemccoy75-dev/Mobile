@@ -109,9 +109,10 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
     if (checkDeaths(state, events)) return finish(state, rng, events);
   }
 
-  // End of round
-  tickStatuses(state.player, events);
+  // End of round: the enemy's ticks first, so an enemy that burns to death never gets its curse ticking on you.
   tickStatuses(state.enemy, events);
+  if (checkDeaths(state, events)) return finish(state, rng, events);
+  tickStatuses(state.player, events);
   if (checkDeaths(state, events)) return finish(state, rng, events);
   advanceMoves(state.enemy, def, roll, events);
 
@@ -172,7 +173,8 @@ export function applyEffects(effects: Effect[], self: Combatant, other: Combatan
           dealt += applied;
           events.push({ t: 'damage', source: self.side, target: other.side, amount: applied, blocked: false, hit: i + 1, hits, kind: e.kind ?? 'physical' });
           // Brace: the first hit that lands is thrown back at the attacker (blockable by Guard, ignores def).
-          if (i === 0 && applied > 0 && consumeBrace(other, events)) {
+          // A killing blow is never countered: death ends everything the dead side had going.
+          if (i === 0 && applied > 0 && other.hp > 0 && consumeBrace(other, events)) {
             // The counter is a physical blow: Guard or Aegis stop it.
             if (hasStatus(self, 'aegis') || consumeBlock(self, 'guard', events)) events.push({ t: 'counter', amount: 0, blocked: true });
             else { const back = Math.min(self.hp, applied); self.hp -= back; events.push({ t: 'counter', amount: back, blocked: false }); }

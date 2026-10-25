@@ -46,3 +46,7 @@ Phone test with real tiles: per-tile random biomes read as noise, rocks among tr
 
 Phone test: the necromancer's Curse walked through Ward, and the Boar's Gore looked free because the HP bar had already dropped to the end-of-round value when the preceding counter played. Now a hostile status flagged `kind: 'magic'` (every enemy hex and curse) is a magic hit for blocking: Aegis ignores it, one Ward stack is spent to stop it, and the scene shows WARDED. Ward's text reads "magic hit or curse". The scene keeps its own displayed HP per side and moves it per damage, counter, heal and tick event, snapping to the real value only when the step ends, the same rule the hand and status chips already follow.
 
+## 25. Death ends everything; equipment never wounds
+
+Phone test. (a) A braced enemy countered the hit that killed it, and an enemy burning to death at end of round still got its curse tick on the player. Now a killing blow is never countered, and end-of-round ticks run enemy-first and stop the moment a side dies. (b) Swapping to a relic with lower max HP drained current HP by the difference. Now a max-HP gain is real HP gained, a max-HP loss only lowers the ceiling (current HP clamped), so changing gear is never a self-inflicted wound.
+

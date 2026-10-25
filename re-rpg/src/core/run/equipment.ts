@@ -36,6 +36,8 @@ export function equip(base: Stats, eq: Equipment, hp: number, next: Item): { equ
   const before = computeStats(base, eq);
   const equipment = { ...eq, [next.slot]: next };
   const after = computeStats(base, equipment);
-  const newHp = Math.max(1, Math.min(after.maxHp, hp + (after.maxHp - before.maxHp)));
+  // More max HP is real HP gained; less max HP only lowers the ceiling (clamped), it is not a wound.
+  const delta = after.maxHp - before.maxHp;
+  const newHp = Math.max(1, Math.min(after.maxHp, delta > 0 ? hp + delta : hp));
   return { equipment, hp: newHp, replaced: eq[next.slot] };
 }

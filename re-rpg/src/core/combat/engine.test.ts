@@ -466,3 +466,30 @@ describe('Ward against spell-statuses', () => {
   });
 });
 
+
+describe('death stops everything', () => {
+  const BRACED_WEAKLING: Enemy = {
+    ...DUMMY, id: 'weak_bracer', name: 'Weak Bracer', stats: { maxHp: 5, atk: 3, def: 0 },
+    table: { kind: 'sequence', moves: [{ id: 'poke', name: 'Poke', posture: 'aggressive', intent: { kind: 'attack', mult: 1, hits: 1 }, effects: [{ type: 'damage', mult: 1 }] }] },
+  };
+  it('a killing blow on a braced enemy is not countered', () => {
+    const s = fight(['broadsword'], BRACED_WEAKLING);
+    s.enemy.statuses.push({ id: 'brace', turns: 2, magnitude: 1 });
+    const hpBefore = s.player.hp;
+    play(s, 'broadsword');
+    expect(s.outcome).toBe('won');
+    expect(s.log.some((e) => e.t === 'counter')).toBe(false);
+    expect(s.player.hp).toBe(hpBefore);
+  });
+  it('an enemy that burns to death at end of round never ticks the curse on you', () => {
+    const s = fight(['defend'], PASSIVE);
+    s.enemy.hp = 2;
+    s.enemy.statuses.push({ id: 'burn', turns: 3, magnitude: 3 });
+    s.player.statuses.push({ id: 'curse', turns: 4, magnitude: 1 });
+    const hpBefore = s.player.hp;
+    play(s, 'defend');
+    expect(s.outcome).toBe('won');
+    expect(s.player.hp).toBe(hpBefore);
+    expect(s.log.filter((e) => e.t === 'burn' && e.side === 'player')).toHaveLength(0);
+  });
+});

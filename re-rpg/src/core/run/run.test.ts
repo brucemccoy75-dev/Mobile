@@ -13,13 +13,16 @@ describe('equipment', () => {
     expect(computeStats({ maxHp: 20, atk: 1, def: 0 }, harsh).atk).toBe(1);
   });
 
-  it('equip moves current HP by the max HP delta, min 1', () => {
+  it('equip adds gained max HP as real HP; lost max HP only lowers the ceiling', () => {
     const r1 = equip(base, emptyEquipment(), 20, getItem('heart_amulet'));
     expect(r1.hp).toBe(26); expect(r1.replaced).toBeNull();
+    // amulet (+6) -> idol (-12): max drops by 18 but current HP is only clamped to the new max
     const r2 = equip(base, r1.equipment, 26, getItem('glass_idol'));
-    expect(r2.hp).toBe(8); expect(r2.replaced?.id).toBe('heart_amulet');
-    const r3 = equip(base, emptyEquipment(), 2, getItem('glass_idol'));
-    expect(r3.hp).toBe(1);
+    expect(r2.hp).toBe(Math.min(26, computeStats(base, r2.equipment).maxHp)); expect(r2.replaced?.id).toBe('heart_amulet');
+    const r3 = equip(base, emptyEquipment(), 10, getItem('glass_idol'));
+    expect(r3.hp).toBe(10);
+    const r4 = equip(base, emptyEquipment(), 2, getItem('glass_idol'));
+    expect(r4.hp).toBe(Math.min(2, computeStats(base, r4.equipment).maxHp));
   });
 
   it('compare reports deltas', () => {
