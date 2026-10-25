@@ -7,3 +7,4 @@ dist/
 .env.*
 !.env.example
 smoke-out/
+art-src/packs/

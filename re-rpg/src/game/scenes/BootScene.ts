@@ -22,6 +22,9 @@ export class BootScene extends Phaser.Scene {
   preload() {
     this.load.on('loaderror', (file: { key: string }) => console.info(`art: no ${file.key}, using placeholder`));
     for (const [key, path] of Object.entries(ART_FILES)) this.load.image(key, path);
+    // overworld ground tileset + prop atlas (scripts/pack-tiles.py); missing files keep the flat-colour map
+    this.load.image('ground_c', 'art/c/ground.png');
+    this.load.atlas('props_c', 'art/c/props.png', 'art/c/props.json');
   }
 
   create() {

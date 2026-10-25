@@ -18,7 +18,13 @@ Fixed clauses, appended verbatim to every character/enemy prompt:
 
 Next assets in order: Boar (screen 1 enemy, facing left) and the forest backdrop, then the other four screen-1 enemies.
 
-### Tileset candidates (prototype, flat/vector top-down)
+### Tileset in use: CraftPix vector freebies
+
+The overworld draws from two free CraftPix packs (itch mirrors: [Summer Fantasy](https://free-game-assets.itch.io/free-summer-fantasy-top-down-vector-tileset), [Dark Swamp](https://free-game-assets.itch.io/free-dark-swamp-top-down-vector-tileset)). Their license allows commercial use without credit but forbids redistributing the source files, so the raw packs live in `art-src/packs/` (gitignored) and only the packed, half-size game sheets are committed: `public/art/c/ground.png` (96 px cells: summer 1-56, swamp 1-56 recoloured so its outer green matches summer grass, flat water) and `props.png/.json` (trees, bushes, rocks, boulders, reeds, chest, tent, tower, campfire). Regenerate with `python3 scripts/pack-tiles.py` after unzipping the packs to `art-src/packs/summer` and `art-src/packs/swamp`.
+
+`src/game/tiles.ts` maps the grid onto the sheet: roads use the narrow path pieces by 4-neighbour mask; arena and swamp use the blob edge/corner pieces (thin shapes degrade to islands); forest is grass plus a tree per tile; rock tiles are boulders; props are hashed from seed and position so they never change between visits. Known gaps: water has no shore tiles yet, and noisy swamp placement produces many single islands.
+
+### Tileset candidates considered
 
 | Pack | Cost | License | Notes |
 |---|---|---|---|

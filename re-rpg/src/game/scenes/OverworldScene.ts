@@ -7,6 +7,7 @@ import { recordWin } from '@core/meta';
 import { Button } from '@game/ui/Button';
 import { CLASS_COLORS, COLORS, FONT, text } from '@game/ui/theme';
 import { tween, wait } from '@game/ui/tween';
+import { GROUND_COLS, groundIndices, propsFor } from '@game/tiles';
 
 export const TILE = 48;
 
@@ -79,8 +80,11 @@ export class OverworldScene extends Phaser.Scene {
 
   // ---------------------------------------------------------------- drawing
 
+  private get hasArt() { return this.textures.exists('ground_c') && this.textures.exists('props_c'); }
+
   private drawTiles() {
     const m = this.session.map;
+    if (this.hasArt) { this.drawArtTiles(); return; }
     const g = this.add.graphics().setDepth(1);
     for (let y = 0; y < m.height; y++) for (let x = 0; x < m.width; x++) {
       const t = m.tiles[y * m.width + x]!;
@@ -104,6 +108,22 @@ export class OverworldScene extends Phaser.Scene {
     this.pathGfx = this.add.graphics().setDepth(3);
   }
 
+  /** Vector tileset + props (docs/ART.md). Sheet cells are 96 px, shown at half size so TILE stays 48. */
+  private drawArtTiles() {
+    const m = this.session.map;
+    const idx = groundIndices(m);
+    const data: number[][] = [];
+    for (let y = 0; y < m.height; y++) data.push(idx.slice(y * m.width, (y + 1) * m.width));
+    const tilemap = this.make.tilemap({ data, tileWidth: 96, tileHeight: 96 });
+    const tileset = tilemap.addTilesetImage('ground', 'ground_c', 96, 96, 0, 0);
+    if (tileset) tilemap.createLayer(0, tileset, 0, 0)?.setScale(TILE / 96).setDepth(1);
+    for (const p of propsFor(m)) {
+      // feet-anchored so a tree's trunk stays in its tile; drawn under actors, sorted by row
+      this.add.image(p.x * TILE, p.y * TILE, 'props_c', p.frame).setOrigin(0.5, 1).setScale(p.scale).setDepth(2 + p.y / m.height);
+    }
+    this.pathGfx = this.add.graphics().setDepth(3);
+  }
+
   private centre(t: Tile) { return { x: t.x * TILE + TILE / 2, y: t.y * TILE + TILE / 2 }; }
 
   private drawPois() {
@@ -111,7 +131,10 @@ export class OverworldScene extends Phaser.Scene {
     for (const p of m.pois) {
       const c = this.centre(p.pos);
       const cont = this.add.container(c.x, c.y).setDepth(4);
-      if (p.kind === 'chest') {
+      if (this.hasArt) {
+        const frame = p.kind === 'chest' ? 'chest' : p.kind === 'shop' ? 'tent' : 'tower';
+        cont.add(this.add.image(0, p.kind === 'shrine' ? 18 : 14, 'props_c', frame).setOrigin(0.5, 1).setScale(p.kind === 'chest' ? 0.4 : 0.5));
+      } else if (p.kind === 'chest') {
         cont.add([this.add.rectangle(0, 4, 30, 20, 0xc9a227), this.add.rectangle(0, -7, 30, 8, 0xe0c060), this.add.rectangle(0, 4, 6, 8, 0x5a3a10)]);
       } else if (p.kind === 'shop') {
         cont.add([this.add.rectangle(0, 2, 34, 30, 0x7a3fb9), this.add.text(0, 2, '$', { fontFamily: FONT, fontSize: '20px', color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5)]);
@@ -139,6 +162,7 @@ export class OverworldScene extends Phaser.Scene {
     const q = currentQuest(s);
     const gc = this.centre(m.questGiver);
     this.giverSprite = this.add.container(gc.x, gc.y).setDepth(5);
+    if (this.hasArt) this.giverSprite.add(this.add.image(-22, 14, 'props_c', 'campfire').setOrigin(0.5, 1).setScale(0.4));
     this.giverSprite.add([this.add.rectangle(0, 2, 24, 34, 0x7a5c3a).setStrokeStyle(2, 0xc9a227), this.add.text(0, 24, q?.giver.name ?? 'stranger', { fontFamily: FONT, fontSize: '11px', color: '#e0c060' }).setOrigin(0.5, 0)]);
     this.giverMark = this.add.text(0, -30, '', { fontFamily: FONT, fontSize: '22px', color: '#c9a227', fontStyle: 'bold' }).setOrigin(0.5);
     this.giverSprite.add(this.giverMark);
