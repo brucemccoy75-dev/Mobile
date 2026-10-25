@@ -20,6 +20,14 @@ export class HpBar extends Phaser.GameObjects.Container {
     scene.add.existing(this);
   }
 
+  /** Greyed out: the owner is dead. */
+  setDead(): this {
+    this.fill.setFillStyle(0x555b6a);
+    this.label.setText(`0/${this.maxHp}  ·  slain`);
+    this.setAlpha(0.45);
+    return this;
+  }
+
   async set(hp: number, max = this.maxHp): Promise<void> {
     this.maxHp = max;
     this.cur = Math.max(0, hp);

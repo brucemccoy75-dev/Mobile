@@ -171,11 +171,12 @@ export class CombatScene extends Phaser.Scene {
     const barW = Math.min(300, W * 0.3);
     this.playerHp = new HpBar(this, 24, 40, barW, this.session.classId.toUpperCase(), this.session.stats.maxHp);
     this.playerChips = new StatusChips(this, 24, 70);
+    // Duo bars sit side by side in the same left-to-right order as the enemies, so each bar is over its owner.
     for (const v of this.views) {
-      const ebarW = n === 1 ? barW : Math.min(220, W * 0.22);
-      const by = n === 1 ? 40 : 30 + v.slot * 46;
-      v.hp = new HpBar(this, W - 24, by, ebarW, v.def.name.toUpperCase(), v.def.stats.maxHp, true);
-      v.chips = new StatusChips(this, W - 24, n === 1 ? 70 : 122 + v.slot * 22, true);
+      const ebarW = n === 1 ? barW : Math.min(170, W * 0.18);
+      const right = n === 1 ? W - 24 : W - 24 - (n - 1 - v.slot) * (ebarW + 18);
+      v.hp = new HpBar(this, right, 40, ebarW, v.def.name.toUpperCase(), v.def.stats.maxHp, true);
+      v.chips = new StatusChips(this, right, 70, true);
     }
 
     // round + phase + piles
@@ -335,7 +336,7 @@ export class CombatScene extends Phaser.Scene {
   private syncAll() {
     this.dispHp = { player: this.state.player.hp, enemies: this.state.enemies.map((e) => e.hp) };
     void this.playerHp.set(this.state.player.hp, this.state.player.stats.maxHp);
-    for (const v of this.views) void v.hp.set(this.state.enemies[v.slot]!.hp, this.state.enemies[v.slot]!.stats.maxHp);
+    for (const v of this.views) { const en = this.state.enemies[v.slot]!; if (en.dead) v.hp.setDead(); else void v.hp.set(en.hp, en.stats.maxHp); }
     this.setTarget(this.target, true);
     this.snapStatuses();
     this.syncChips();
@@ -585,7 +586,7 @@ export class CombatScene extends Phaser.Scene {
         const s = sprite(e.side);
         if (s instanceof Phaser.GameObjects.Sprite) s.anims.stop();
         this.tweens.killTweensOf(s); // the breathing stops with the body
-        if (e.side === 'enemy') { s.disableInteractive(); this.hideIntent(who); }
+        if (e.side === 'enemy') { s.disableInteractive(); this.hideIntent(who); view.hp.setDead(); view.chips.set([]); view.nameText.setAlpha(0.4); }
         await tween(this, { targets: s, alpha: 0.15, y: s.y + 10, duration: 350 });
         if (e.side === 'enemy' && this.target === who) this.setTarget(-1, true);
         return;
