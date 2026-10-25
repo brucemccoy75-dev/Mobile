@@ -38,7 +38,7 @@ export const RARITY_COLORS: Record<Rarity, number> = {
 };
 
 export const STATUS_LABELS: Record<StatusId, { label: string; color: string; desc: string }> = {
-  exposed: { label: 'EXPOSED', color: '#ff6b6b', desc: 'Takes double damage from every hit while it lasts.' },
+  exposed: { label: 'EXPOSED', color: '#ff6b6b', desc: 'Takes double damage from every hit while it lasts. Another Exposed adds its rounds (up to 4).' },
   guard: { label: 'GUARD', color: '#7dd3fc', desc: 'Blocks the next physical hit completely. Spells go straight through. Each stack blocks one hit, then it is gone.' },
   ward: { label: 'WARD', color: '#c4b5fd', desc: 'Blocks the next magic hit or curse completely. Physical blows go straight through. Each stack blocks one spell, then it is gone.' },
   aegis: { label: 'AEGIS', color: '#7dd3fc', desc: 'Blocks every hit, physical or magic, however many, while it lasts. Burn and Curse still tick.' },

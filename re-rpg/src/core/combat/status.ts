@@ -2,6 +2,9 @@ import type { Status, StatusId } from '@data/types';
 import type { Combatant, CombatEvent } from './types';
 
 export const GUARD_CAP = 3;
+/** Timed debuffs whose durations add up when reapplied (Bind Wound's Exposed plus a Hex = four rounds), capped here. */
+export const STACKING_TURNS: ReadonlySet<StatusId> = new Set(['exposed', 'weak']);
+export const STACK_TURNS_CAP = 4;
 
 export function getStatus(c: Combatant, id: StatusId): Status | undefined {
   return c.statuses.find((s) => s.id === id);
@@ -11,13 +14,16 @@ export function hasStatus(c: Combatant, id: StatusId): boolean {
   return getStatus(c, id) !== undefined;
 }
 
-/** Apply or refresh a status. Guard stacks hits (capped); others take the longer duration and larger magnitude. */
+/** Apply or refresh a status. Guard/Ward stack hits (capped); Exposed/Weak add rounds (capped); others take the longer duration and larger magnitude. */
 export function applyStatus(c: Combatant, id: StatusId, turns: number, magnitude: number, events: CombatEvent[]): void {
   const existing = getStatus(c, id);
   if (!existing) {
     c.statuses.push({ id, turns, magnitude: id === 'guard' || id === 'ward' ? Math.min(GUARD_CAP, magnitude) : magnitude });
   } else if (id === 'guard' || id === 'ward') {
     existing.magnitude = Math.min(GUARD_CAP, existing.magnitude + magnitude);
+  } else if (STACKING_TURNS.has(id)) {
+    existing.turns = Math.min(STACK_TURNS_CAP, existing.turns + turns);
+    existing.magnitude = Math.max(existing.magnitude, magnitude);
   } else {
     existing.turns = Math.max(existing.turns, turns);
     existing.magnitude = Math.max(existing.magnitude, magnitude);

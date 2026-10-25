@@ -493,3 +493,16 @@ describe('death stops everything', () => {
     expect(s.log.filter((e) => e.t === 'burn' && e.side === 'player')).toHaveLength(0);
   });
 });
+
+describe('stacking debuffs', () => {
+  it('a second Exposed adds its rounds instead of refreshing, capped at 4', () => {
+    const s = fight(['bind_wound'], PASSIVE);
+    s.player.statuses.push({ id: 'exposed', turns: 2, magnitude: 1 }); // e.g. from an enemy Hex this round
+    play(s, 'bind_wound');            // Bind Wound: Exposed 2 more rounds; end-of-round tick takes one
+    expect(getStatus(s.player, 'exposed')?.turns).toBe(3);
+    s.player.statuses.find((x) => x.id === 'exposed')!.turns = 4;
+    play(s, 'bind_wound');
+    expect(getStatus(s.player, 'exposed')?.turns).toBe(3); // capped at 4 before the tick
+  });
+});
+

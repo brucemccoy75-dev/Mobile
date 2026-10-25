@@ -54,3 +54,7 @@ Phone test. (a) A braced enemy countered the hit that killed it, and an enemy bu
 
 Balance calls were being made from the greedy sim and memory of phone sessions. Now every real run writes a record (`src/core/telemetry`): seed, class, set, legacy, the deck and gear at the start, and per fight the screen, enemy, rounds, HP before/after, damage dealt/taken/blocked, counters, DoT, heals, cards played and holds, plus every reward offered/picked/sold and every shop purchase, and how the run ended. The last 20 runs live in local storage (`rerpg:telemetry`); "run log" on the title and end screens shares the JSON (Web Share on phones, clipboard elsewhere). Test Mode (title screen) fights any enemy with any deck and gear for quick checks; its fights are never recorded, never saved, and never touch the meta.
 
+## 27. Exposed and Weak stack by duration
+
+Phone test: Bind Wound's self-Exposed and an enemy Hex looked like one status. A repeat of a timed debuff used to take the longer duration only. Now Exposed and Weak add their rounds (capped at 4); the multiplier never compounds, so a double Exposed is longer, not ×4. Guard/Ward still stack hits, DoTs still take the larger magnitude and longer duration.
+
