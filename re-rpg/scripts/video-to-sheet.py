@@ -24,12 +24,34 @@ ap.add_argument('--fps', type=int, default=10); ap.add_argument('--once', action
 ap.add_argument('--min', type=float, default=0.8); ap.add_argument('--max', type=float, default=2.5)
 ap.add_argument('--cols', type=int, default=4)
 ap.add_argument('--pause', type=float, default=0, help='seconds to hold on the rest frame between loops')
+ap.add_argument('--from', dest='t0', type=float, default=0, help='only use the clip from this second')
+ap.add_argument('--until', dest='t1', type=float, default=0, help='only use the clip up to this second (0 = end); cut before a 4th-wall break')
+ap.add_argument('--anchor', choices=['body', 'full'], default='body', help="'body' pins the largest blob's feet (walkers); 'full' pins the lowest point of the whole figure, e.g. a hoverer's drop shadow, so the bob survives")
 args = ap.parse_args()
 
 tmp = tempfile.mkdtemp(prefix='v2s-')
 subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', args.video, '-vf', f'fps={args.fps}', os.path.join(tmp, 'f%04d.png')], check=True)
 files = sorted(f for f in os.listdir(tmp) if f.endswith('.png'))
-print(f'{len(files)} frames at {args.fps} fps')
+lo_i = int(args.t0 * args.fps); hi_i = int(args.t1 * args.fps) if args.t1 > 0 else len(files)
+files = files[lo_i:hi_i]
+print(f'{len(files)} frames at {args.fps} fps (window {args.t0}s..{args.t1 or "end"}s)')
+
+def clear_pockets(mask, px, is_bg, w, h, min_frac=0.003):
+    """Make large enclosed background-coloured pockets transparent."""
+    mp = mask.load(); seen = bytearray(w * h); limit = min_frac * w * h
+    for y0 in range(h):
+        for x0 in range(w):
+            i0 = y0 * w + x0
+            if seen[i0] or mp[x0, y0] == 0 or not is_bg(px[x0, y0]): continue
+            comp = [i0]; seen[i0] = 1; qi = 0
+            while qi < len(comp):
+                i = comp[qi]; qi += 1; x = i % w; y = i // w
+                for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+                    if 0 <= nx < w and 0 <= ny < h:
+                        j = ny * w + nx
+                        if not seen[j] and mp[nx, ny] and is_bg(px[nx, ny]): seen[j] = 1; comp.append(j)
+            if len(comp) >= limit:
+                for i in comp: mp[i % w, i // w] = 0
 
 def key_frame(im):
     im = im.convert('RGB'); w, h = im.size; px = im.load()
@@ -47,6 +69,7 @@ def key_frame(im):
         if x < w - 1: q.append((x + 1, y))
         if y > 0: q.append((x, y - 1))
         if y < h - 1: q.append((x, y + 1))
+    clear_pockets(mask, px, is_bg, w, h)
     mask = mask.filter(ImageFilter.MinFilter(3))
     rgba = im.convert('RGBA'); rgba.putalpha(mask)
     return rgba, mask
@@ -70,7 +93,7 @@ def largest_blob_bbox(mask):
 frames = []
 for f in files:
     rgba, mask = key_frame(Image.open(os.path.join(tmp, f)))
-    body = largest_blob_bbox(mask)
+    body = largest_blob_bbox(mask) if args.anchor == 'body' else (mask.getbbox() or (0, 0, 1, 1))
     frames.append((rgba, body))
 
 heights = sorted(b[3] - b[1] for _, b in frames)

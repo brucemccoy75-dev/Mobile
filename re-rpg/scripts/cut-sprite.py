@@ -18,6 +18,23 @@ px = im.load()
 corners = [px[0, 0], px[w - 1, 0], px[0, h - 1], px[w - 1, h - 1]]
 bg = tuple(sorted(c[i] for c in corners)[1] for i in range(3))
 
+def clear_pockets(mask, px, is_bg, w, h, min_frac=0.003):
+    """Make large enclosed background-coloured pockets transparent."""
+    mp = mask.load(); seen = bytearray(w * h); limit = min_frac * w * h
+    for y0 in range(h):
+        for x0 in range(w):
+            i0 = y0 * w + x0
+            if seen[i0] or mp[x0, y0] == 0 or not is_bg(px[x0, y0]): continue
+            comp = [i0]; seen[i0] = 1; qi = 0
+            while qi < len(comp):
+                i = comp[qi]; qi += 1; x = i % w; y = i // w
+                for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+                    if 0 <= nx < w and 0 <= ny < h:
+                        j = ny * w + nx
+                        if not seen[j] and mp[nx, ny] and is_bg(px[nx, ny]): seen[j] = 1; comp.append(j)
+            if len(comp) >= limit:
+                for i in comp: mp[i % w, i // w] = 0
+
 def is_bg(p):
     return abs(p[0] - bg[0]) + abs(p[1] - bg[1]) + abs(p[2] - bg[2]) <= TOL
 
@@ -42,6 +59,7 @@ while q:
     if y > 0: q.append((x, y - 1))
     if y < h - 1: q.append((x, y + 1))
 
+clear_pockets(mask, px, is_bg, w, h)
 mask = mask.filter(ImageFilter.MinFilter(3))  # erode the halo
 rgba = im.convert('RGBA'); rgba.putalpha(mask)
 box = mask.getbbox(); fig = rgba.crop(box)
