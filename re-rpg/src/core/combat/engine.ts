@@ -4,7 +4,7 @@ import type { Effect, Enemy, EnemyId, Intent, SkillId, Stats } from '@data/types
 import { Rng } from '@core/rng';
 import { advanceMoves, pickMove } from './ai';
 import { computeHit, predictDamage } from './damage';
-import { dealOne, playCard } from './deck';
+import { HAND_CAP, dealOne, playCard } from './deck';
 import { applyStatus, consumeChill, consumeGuard, getStatus, hasStatus, tickStatuses } from './status';
 import type { Combatant, CombatEvent, CombatState, EnemyCombatant, PlayerAction, PlayerCombatant } from './types';
 
@@ -114,7 +114,9 @@ function finish(state: CombatState, rng: Rng, events: CombatEvent[]): CombatEven
 function startRound(state: CombatState, _def: Enemy, rng: Rng, events: CombatEvent[]): void {
   state.round += 1;
   events.push({ t: 'roundStart', round: state.round });
-  dealOne(state.player, (a) => rng.shuffle(a), events);
+  // Opening hand fills to the cap so round 1 is a choice; afterwards one card per round.
+  const deals = state.round === 1 ? HAND_CAP : 1;
+  for (let i = 0; i < deals; i++) dealOne(state.player, (a) => rng.shuffle(a), events);
   const { intent, predictedDamage, moveName } = currentIntent(state);
   events.push({ t: 'intent', intent, posture: state.enemy.next.posture, predictedDamage, moveName });
 }

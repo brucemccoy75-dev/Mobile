@@ -29,20 +29,24 @@ const play = (s: CombatState, id: string) => {
 };
 
 describe('rounds and dealing', () => {
-  it('deals 1, 2, 3 cards over the first three rounds, then overflows oldest-first', () => {
+  it('opens with a full hand of 3, then deals 1 per round, overflowing oldest-first', () => {
     const s = fight(['broadsword', 'broadsword', 'broadsword', 'broadsword', 'broadsword'], PASSIVE);
     s.player.statuses.push({ id: 'stun', turns: 99, magnitude: 1 }); // pass every turn without playing
     expect(s.round).toBe(1);
-    expect(s.player.hand).toHaveLength(1);
-    step(s, { type: 'skip' });
-    expect(s.player.hand).toHaveLength(2);
-    step(s, { type: 'skip' });
     expect(s.player.hand).toHaveLength(3);
+    expect(s.player.deck).toHaveLength(2);
     const oldest = s.player.hand[0];
     const ev = step(s, { type: 'skip' });
     expect(s.player.hand).toHaveLength(3);
+    expect(ev.filter((e) => e.t === 'deal')).toHaveLength(1);
     expect(ev.find((e) => e.t === 'handOverflow')).toMatchObject({ discarded: oldest });
     expect(s.player.discard).toContain(oldest);
+  });
+
+  it('opens with fewer than 3 when the deck is smaller', () => {
+    const s = fight(['broadsword', 'exposing_strike'], PASSIVE);
+    expect(s.player.hand).toHaveLength(2);
+    expect(s.player.deck).toHaveLength(0);
   });
 
   it('basics are shuffled into every fight on top of the run deck', () => {
@@ -66,10 +70,10 @@ describe('rounds and dealing', () => {
 
   it('reshuffles the discard pile when the deck is empty', () => {
     const s = fight(['broadsword', 'exposing_strike'], PASSIVE);
-    step(s, { type: 'card', index: 0 });
+    // opening hand holds both; play one → deck empty, discard 1 → next deal reshuffles it back
     step(s, { type: 'card', index: 0 });
     expect(s.log.filter((e) => e.t === 'reshuffle')).toHaveLength(1);
-    expect(s.player.hand).toHaveLength(1);
+    expect(s.player.hand).toHaveLength(2);
     expect(s.player.deck.length + s.player.hand.length + s.player.discard.length).toBe(2);
   });
 

@@ -74,10 +74,13 @@ export const greedy: Policy = (s) => {
   const best = candidates[0];
   if (best && best.value > (enemyGuarded ? 0 : 0.9)) return { type: 'card', index: best.index };
 
-  // 5. Nothing worth playing: prefer a Defend card if the enemy attacks, else the cheapest damage, else anything.
+  // 5. Nothing worth playing. A guarding enemy must be stripped with the cheapest hit
+  //    (defending into a permanent guard is a stalemate); otherwise block an incoming
+  //    attack if a Defend is in hand, else throw the cheapest damage, else anything.
+  const anyDmg = hand.filter((h) => has(h.skill.effects, isDamage)).sort((a, b) => dmgValue(a.skill.effects, incomingAttack) - dmgValue(b.skill.effects, incomingAttack))[0];
+  if (enemyGuarded && anyDmg) return { type: 'card', index: anyDmg.index };
   const defend = hand.find((h) => h.skill.id === 'defend');
   if (defend && incomingAttack && !guarded) return { type: 'card', index: defend.index };
-  const anyDmg = hand.filter((h) => has(h.skill.effects, isDamage)).sort((a, b) => dmgValue(a.skill.effects, incomingAttack) - dmgValue(b.skill.effects, incomingAttack))[0];
   if (anyDmg) return { type: 'card', index: anyDmg.index };
   return { type: 'card', index: 0 };
 };

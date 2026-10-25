@@ -5,8 +5,9 @@ export const HAND_CAP = 3;
 export const DECK_CAP = 6;
 
 /**
- * Start-of-round deal (DECISIONS #2): one card per round. At the hand cap the
- * oldest card is discarded first. Empty deck reshuffles the discard pile.
+ * Start-of-round deal (DECISIONS #2): a full hand on round 1, then one card per
+ * round. At the hand cap the oldest card is discarded first. Empty deck
+ * reshuffles the discard pile.
  */
 export function dealOne(p: PlayerCombatant, shuffle: (a: SkillId[]) => SkillId[], events: CombatEvent[]): void {
   if (p.deck.length === 0 && p.discard.length > 0) {
