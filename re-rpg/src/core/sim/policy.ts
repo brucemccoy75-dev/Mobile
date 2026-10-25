@@ -1,6 +1,6 @@
 import { getSkill } from '@data/index';
 import type { Effect } from '@data/types';
-import { currentIntent, hasStatus, isPlayerStunned, type CombatState, type PlayerAction } from '@core/combat';
+import { currentIntents, hasStatus, isPlayerStunned, livingEnemies, type CombatState, type PlayerAction } from '@core/combat';
 
 export type Policy = (s: CombatState) => PlayerAction;
 
@@ -28,18 +28,28 @@ const dmgValue = (effects: Effect[], enemyAttacking: boolean) =>
  */
 export const greedy: Policy = (s) => {
   if (isPlayerStunned(s) || s.player.hand.length === 0) return { type: 'skip' };
-  const { intent, predictedDamage } = currentIntent(s);
+  // Duos: incoming damage is the sum over living enemies; the target is the weakest one that is not braced.
+  const intents = currentIntents(s);
+  const living = livingEnemies(s);
+  const targetEnemy = [...living].sort((a, b) => (hasStatus(a, 'brace') ? 1 : 0) - (hasStatus(b, 'brace') ? 1 : 0) || a.hp - b.hp)[0] ?? s.enemy;
+  const target = targetEnemy.slot;
+  const attackIntents = intents.filter((i) => i.intent.kind === 'attack');
+  const predictedDamage = intents.reduce((a, i) => a + i.predictedDamage, 0);
+  // The "intent" the single-enemy rules read: the heaviest incoming attack, else the first non-attack.
+  const primary = attackIntents.sort((a, b) => b.predictedDamage - a.predictedDamage)[0] ?? intents[0]!;
+  const intent = primary.intent;
   const hp = s.player.hp;
   const maxHp = s.player.stats.maxHp;
   const guarded = hasStatus(s.player, 'aegis') || (intent.kind === 'attack' && intent.dmgType === 'magic' ? hasStatus(s.player, 'ward') : hasStatus(s.player, 'guard'));
   const hand = s.player.hand.map((id, index) => ({ index, skill: getSkill(id) }));
-  const incomingAttack = intent.kind === 'attack';
-  const enemyGuarded = hasStatus(s.enemy, 'guard');
+  const incomingAttack = attackIntents.length > 0;
+  const enemyGuarded = hasStatus(targetEnemy, 'guard');
+  const card = (index: number): PlayerAction => ({ type: 'card', index, target });
 
-  // 0. The enemy is braced (counters the next hit) or scattered (halves a single hit):
+  // 0. The target is braced (counters the next hit) or scattered (halves a single hit):
   //    play something that is not a single big hit; failing that, hold back the weakest card.
-  const braced = hasStatus(s.enemy, 'brace');
-  const scattered = hasStatus(s.enemy, 'scatter');
+  const braced = hasStatus(targetEnemy, 'brace');
+  const scattered = hasStatus(targetEnemy, 'scatter');
   if (braced || scattered) {
     const safe = hand.filter((h) => {
       const dmg = h.skill.effects.find((e) => e.type === 'damage');
@@ -48,16 +58,16 @@ export const greedy: Policy = (s) => {
       return false;
     });
     const guardish = safe.find((h) => has(h.skill.effects, isGuard));
-    if (braced && guardish) return { type: 'card', index: guardish.index };
+    if (braced && guardish) return card(guardish.index);
     const multi = safe.find((h) => has(h.skill.effects, isDamage));
-    if (multi) return { type: 'card', index: multi.index };
-    if (safe[0] && braced) return { type: 'card', index: safe[0].index };
+    if (multi) return card(multi.index);
+    if (safe[0] && braced) return card(safe[0].index);
     if (braced) {
       // Nothing safe: a small hit is a small counter. Hold only if even the smallest hit would be ruinous.
       const weakest = hand.map((h) => ({ ...h, v: dmgValue(h.skill.effects, incomingAttack) })).sort((a, b) => a.v - b.v)[0]!;
       const smallHit = Math.round(s.player.stats.atk * 1.0);
       if (smallHit >= hp * 0.5) return { type: 'hold', index: weakest.index };
-      return { type: 'card', index: weakest.index };
+      return card(weakest.index);
     }
   }
 
@@ -71,10 +81,10 @@ export const greedy: Policy = (s) => {
     const hits = intent.kind === 'attack' ? intent.hits : 1;
     const guardOf = (h: { skill: { effects: Effect[] } }) => h.skill.effects.reduce((m, e) => (blocks(e, magicIn) && e.type === 'status' ? Math.max(m, e.status === 'aegis' ? 99 : (e.magnitude ?? 1)) : m), 0);
     const full = hand.filter((h) => guardOf(h) >= hits).sort((a, b) => guardOf(b) - guardOf(a))[0];
-    if (full && hits > 1) return { type: 'card', index: full.index };
+    if (full && hits > 1) return card(full.index);
     const guardCard = hand.find((h) => has(h.skill.effects, (e) => blocks(e, magicIn)) && has(h.skill.effects, isDamage));
-    if (guardCard) return { type: 'card', index: guardCard.index };
-    if (full) return { type: 'card', index: full.index };
+    if (guardCard) return card(guardCard.index);
+    if (full) return card(full.index);
     // no matching block in hand: fall through and hit back
   }
 
@@ -85,15 +95,15 @@ export const greedy: Policy = (s) => {
       if (!has(h.skill.effects, isHeal)) return false;
       const stuns = h.skill.effects.some((e) => e.type === 'status' && e.target === 'self' && e.status === 'stun');
       const healAmt = h.skill.effects.reduce((v, e) => v + (e.type === 'heal' ? (e.pct ?? 0) * maxHp + (e.flat ?? 0) : 0), 0);
-      const typicalHit = Math.max(1, s.enemy.stats.atk - s.player.stats.def);
+      const typicalHit = living.reduce((a, e) => a + Math.max(1, e.stats.atk - s.player.stats.def), 0);
       return !stuns || healAmt > typicalHit * 2 + 1 && hp > typicalHit * 2;
     });
-    if (healCard) return { type: 'card', index: healCard.index };
+    if (healCard) return card(healCard.index);
   }
   // 1b. A curse coming in: one Ward stack wards it off, and the DoT costs more than the card.
-  if (intent.kind === 'debuff' && intent.status === 'curse' && !hasStatus(s.player, 'ward') && !hasStatus(s.player, 'aegis')) {
+  if (intents.some((i) => i.intent.kind === 'debuff' && i.intent.status === 'curse') && !hasStatus(s.player, 'ward') && !hasStatus(s.player, 'aegis')) {
     const ward = hand.find((h) => h.skill.id === 'ward');
-    if (ward) return { type: 'card', index: ward.index };
+    if (ward) return card(ward.index);
   }
 
   // 3. Enemy is guarding: a single big hit is wasted; prefer multi-hit, statuses, or a cheap poke.
@@ -104,15 +114,15 @@ export const greedy: Policy = (s) => {
     .map((h) => ({ ...h, value: enemyGuarded ? dmgValue(h.skill.effects.filter((e) => e.type !== 'damage' || (e.hits ?? 1) > 1), incomingAttack) : dmgValue(h.skill.effects, incomingAttack) }))
     .sort((a, b) => b.value - a.value);
   const best = candidates[0];
-  if (best && best.value > (enemyGuarded ? 0 : 0.9)) return { type: 'card', index: best.index };
+  if (best && best.value > (enemyGuarded ? 0 : 0.9)) return card(best.index);
 
   // 5. Nothing worth playing. A guarding enemy must be stripped with the cheapest hit
   //    (defending into a permanent guard is a stalemate); otherwise block an incoming
   //    attack if a Defend is in hand, else throw the cheapest damage, else anything.
   const anyDmg = hand.filter((h) => has(h.skill.effects, isDamage)).sort((a, b) => dmgValue(a.skill.effects, incomingAttack) - dmgValue(b.skill.effects, incomingAttack))[0];
-  if (enemyGuarded && anyDmg) return { type: 'card', index: anyDmg.index };
+  if (enemyGuarded && anyDmg) return card(anyDmg.index);
   const defend = hand.find((h) => h.skill.id === (magicIn ? 'ward' : 'defend'));
-  if (defend && incomingAttack && !guarded) return { type: 'card', index: defend.index };
-  if (anyDmg) return { type: 'card', index: anyDmg.index };
-  return { type: 'card', index: 0 };
+  if (defend && incomingAttack && !guarded) return card(defend.index);
+  if (anyDmg) return card(anyDmg.index);
+  return card(0);
 };

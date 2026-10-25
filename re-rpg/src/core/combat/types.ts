@@ -24,6 +24,10 @@ export interface PlayerCombatant extends Combatant {
 export interface EnemyCombatant extends Combatant {
   side: 'enemy';
   enemyId: EnemyId;
+  /** Position in state.enemies; events name enemies by this (`who`). */
+  slot: number;
+  /** Dead enemies stay in the array (the log and the scene still refer to them) but never act. */
+  dead: boolean;
   phase: number;       // 0 = base table, 1.. = phases[i-1]
   seqIndex: number;    // cursor into a sequence table
   current: EnemyMove;  // this round's move (shown as intent)
@@ -38,6 +42,10 @@ export interface CombatState {
   round: number;
   outcome: Outcome;
   player: PlayerCombatant;
+  /** Every enemy in the fight, slot order (front first). One for singles, two for duos (DECISIONS #29). */
+  enemies: EnemyCombatant[];
+  enemyDefs: Enemy[];
+  /** Aliases of slot 0 (the same objects), kept for the many single-enemy call sites and tests. */
   enemy: EnemyCombatant;
   enemyDef: Enemy;     // the content definition (data, serialisable)
   rngState: number;    // combat stream snapshot, for save/resume
@@ -45,33 +53,35 @@ export interface CombatState {
 }
 
 export type PlayerAction =
-  | { type: 'card'; index: number }
+  /** `target` is an enemy slot; omitted or dead → the first living enemy. */
+  | { type: 'card'; index: number; target?: number }
   /** Hold back: discard this card and pass the turn. The universal out for a trap turn. */
   | { type: 'hold'; index: number }
   /** Only valid while Recovering (stunned) or with an empty hand: the turn passes. */
   | { type: 'skip' };
 
+/** `who` is the enemy slot an event concerns (source or target); absent means slot 0 / not enemy-specific. */
 export type CombatEvent =
   | { t: 'roundStart'; round: number }
   | { t: 'deal'; skill: SkillId; hand: SkillId[] }
   | { t: 'handOverflow'; discarded: SkillId }
   | { t: 'reshuffle'; count: number }
-  | { t: 'intent'; intent: Intent; posture: Posture; predictedDamage: number; moveName: string }
-  | { t: 'play'; side: Side; skill: SkillId; name: string }
+  | { t: 'intent'; intent: Intent; posture: Posture; predictedDamage: number; moveName: string; who?: number }
+  | { t: 'play'; side: Side; skill: SkillId; name: string; who?: number }
   | { t: 'hold'; skill: SkillId }
   | { t: 'exhaust'; skill: SkillId }
   | { t: 'consumed'; skill: SkillId }
-  | { t: 'counter'; amount: number; blocked: boolean }
-  | { t: 'damage'; source: Side; target: Side; amount: number; blocked: boolean; hit: number; hits: number; kind: DamageKind }
-  | { t: 'heal'; side: Side; amount: number }
-  | { t: 'statusApplied'; side: Side; status: StatusId; turns: number; magnitude: number }
-  | { t: 'statusResisted'; side: Side; status: StatusId; warded?: boolean }
-  | { t: 'statusExpired'; side: Side; status: StatusId }
-  | { t: 'burn'; side: Side; amount: number; status: 'burn' | 'curse' }
-  | { t: 'chilled'; side: Side }
+  | { t: 'counter'; amount: number; blocked: boolean; who?: number }
+  | { t: 'damage'; source: Side; target: Side; amount: number; blocked: boolean; hit: number; hits: number; kind: DamageKind; who?: number }
+  | { t: 'heal'; side: Side; amount: number; who?: number }
+  | { t: 'statusApplied'; side: Side; status: StatusId; turns: number; magnitude: number; who?: number }
+  | { t: 'statusResisted'; side: Side; status: StatusId; warded?: boolean; who?: number }
+  | { t: 'statusExpired'; side: Side; status: StatusId; who?: number }
+  | { t: 'burn'; side: Side; amount: number; status: 'burn' | 'curse'; who?: number }
+  | { t: 'chilled'; side: Side; who?: number }
   | { t: 'stunned'; side: Side; turnsLeft: number }
-  | { t: 'phase'; phase: number }
-  | { t: 'death'; side: Side }
+  | { t: 'phase'; phase: number; who?: number }
+  | { t: 'death'; side: Side; who?: number }
   | { t: 'end'; outcome: Exclude<Outcome, 'ongoing'> };
 
 export interface EffectContext {

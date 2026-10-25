@@ -18,26 +18,40 @@ import { floatText, tween, wait } from '@game/ui/tween';
  * Side-view turn-based combat. Phaser only renders: the engine in core/combat
  * owns the rules, and this scene replays its event log as animation.
  */
+interface EnemyView {
+  slot: number;
+  def: Enemy;
+  sprite: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite;
+  x: number; y: number;
+  nameText: Phaser.GameObjects.Text;
+  hp: HpBar;
+  chips: StatusChips;
+  intentBg: Phaser.GameObjects.Rectangle;
+  intentHead: Phaser.GameObjects.Text;
+  intentText: Phaser.GameObjects.Text;
+  intentNum: Phaser.GameObjects.Text;
+  postureText: Phaser.GameObjects.Text;
+}
+
 export class CombatScene extends Phaser.Scene {
   private session!: RunSession;
   private encounter!: PendingEncounter;
+  /** Primary enemy's definition (slot 0); per-slot defs live in state.enemyDefs. */
   private enemyDef!: Enemy;
   private state!: CombatState;
+  /** Enemy slot the next card goes to; tap an enemy to change it (DECISIONS #29). */
+  private target = 0;
   private busy = false;
 
   private playerSprite!: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image;
-  private enemySprite!: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite;
+  /** One view per enemy slot: sprite, bar, chips and intent panel. */
+  private views: EnemyView[] = [];
+  private targetArrow!: Phaser.GameObjects.Text;
   private playerHp!: HpBar;
-  private enemyHp!: HpBar;
   /** HP as the playback has shown it so far; bars never read live state mid-step. */
-  private dispHp = { player: 0, enemy: 0 };
+  private dispHp: { player: number; enemies: number[] } = { player: 0, enemies: [] };
   private hpBefore = 0;
   private playerChips!: StatusChips;
-  private enemyChips!: StatusChips;
-  private intentText!: Phaser.GameObjects.Text;
-  private intentBg!: Phaser.GameObjects.Rectangle;
-  private intentNum!: Phaser.GameObjects.Text;
-  private postureText!: Phaser.GameObjects.Text;
   private roundText!: Phaser.GameObjects.Text;
   private phaseText!: Phaser.GameObjects.Text;
   private pileText!: Phaser.GameObjects.Text;
@@ -49,12 +63,12 @@ export class CombatScene extends Phaser.Scene {
   /** What the hand looks like at this point of the playback. The engine state is already end-of-round. */
   private displayHand: string[] = [];
   /** Likewise for status chips: a Guard played this turn must show before the enemy's hit consumes it. */
-  private dispStatus: { player: Status[]; enemy: Status[] } = { player: [], enemy: [] };
+  private dispStatus: { player: Status[]; enemies: Status[][] } = { player: [], enemies: [] };
   private handHint!: Phaser.GameObjects.Text;
   private holdBtn!: Button;
   private holdMode = false;
   private handY = 0;
-  private px = 0; private py = 0; private ex = 0; private ey = 0;
+  private px = 0; private py = 0;
 
   constructor() { super('Combat'); }
 
@@ -68,9 +82,11 @@ export class CombatScene extends Phaser.Scene {
     this.encounter = this.session.pendingEncounter;
     this.enemyDef = getEnemy(this.encounter.enemyId);
     this.hpBefore = this.session.hp;
+    this.target = 0;
+    this.views = [];
     this.state = createCombat({
       player: { name: this.session.classId, stats: this.session.stats, hp: this.session.hp, deck: this.session.deck },
-      enemy: this.enemyDef,
+      enemies: [this.encounter.enemyId, ...(this.encounter.extra ?? [])],
       rng: this.session.rng.stream('combat'),
       skillUpgrades: this.session.skillUpgrades,
     });
@@ -85,10 +101,11 @@ export class CombatScene extends Phaser.Scene {
 
   private buildLayout() {
     const { width: W, height: H } = this.scale.gameSize;
-    const isBoss = this.enemyDef.archetype === 'boss';
     this.px = W * 0.27; this.py = H * 0.56;
-    this.ex = W * 0.73; this.ey = H * 0.54;
     this.handY = H - 66;
+    const n = this.state.enemies.length;
+    // One enemy stands at 73%; a duo spreads 62% / 84% with the rear one a touch smaller.
+    const slotX = (slot: number) => (n === 1 ? W * 0.73 : slot === 0 ? W * 0.62 : W * 0.84);
 
     const groundY = this.py + 46;
     const bgKey = backdropKey(this.encounter.tile);
@@ -118,23 +135,31 @@ export class CombatScene extends Phaser.Scene {
     } else {
       this.playerSprite = this.add.rectangle(this.px, this.py, 64, 92, CLASS_COLORS[this.session.classId] ?? COLORS.player);
     }
-    const esize = isBoss ? 120 : this.enemyDef.tier === 2 ? 92 : 76;
-    const enemyKey = artKey(this, `enemy_${this.enemyDef.id}`);
-    const enemyIdle = `anim_${this.enemyDef.id}_idle`;
-    if (this.anims.exists(enemyIdle)) {
-      // video-cut idle loop (docs/ART.md); frames are feet-anchored so the ground line holds
-      this.enemySprite = this.add.sprite(this.ex, groundY, `${this.enemyDef.id}_idle_c`).setOrigin(0.5, 1).setScale(0.5).play(enemyIdle);
-      this.ey = groundY - this.enemySprite.displayHeight / 2;
-    } else if (enemyKey) {
-      this.enemySprite = this.add.image(this.ex, groundY, enemyKey).setOrigin(0.5, 1).setScale(0.5);
-      this.ey = groundY - this.enemySprite.displayHeight / 2;
-    } else {
-      this.enemySprite = this.add.rectangle(this.ex, this.ey, esize, esize, isBoss ? COLORS.boss : COLORS.enemy);
+    for (const def of this.state.enemyDefs) {
+      const slot = this.views.length;
+      const isBoss = def.archetype === 'boss';
+      const esize = isBoss ? 120 : def.tier === 2 ? 92 : 76;
+      const ex = slotX(slot);
+      const scale = n === 1 || slot === 0 ? 0.5 : 0.44;
+      let sprite: EnemyView['sprite'];
+      let ey = H * 0.54;
+      const enemyKey = artKey(this, `enemy_${def.id}`);
+      if (enemyKey) {
+        sprite = this.add.image(ex, groundY, enemyKey).setOrigin(0.5, 1).setScale(scale);
+        ey = groundY - sprite.displayHeight / 2;
+      } else {
+        sprite = this.add.rectangle(ex, ey, esize * scale * 2, esize * scale * 2, isBoss ? COLORS.boss : COLORS.enemy);
+      }
+      sprite.setDepth(n - slot); // front enemy over the rear one
+      const nameText = this.add.text(ex, groundY + 12, def.name, text.small).setOrigin(0.5, 0);
+      // Tap an enemy to make it the target.
+      sprite.setInteractive({ useHandCursor: true });
+      sprite.on('pointerup', () => this.setTarget(slot));
+      this.views.push({ slot, def, sprite, x: ex, y: ey, nameText } as EnemyView);
     }
-    this.add.text(this.ex, groundY + 12, this.enemyDef.name, text.small).setOrigin(0.5, 0);
-    // Stills come alive cheaply: both combatants fade in from a step back (the mirror of the death fade),
-    // then breathe with a slow scale bob. Frame animation (docs/ART.md) is parked until the loop is fun.
-    for (const [s, dir] of [[this.playerSprite, -1], [this.enemySprite, 1]] as const) {
+    // Stills come alive cheaply: everyone fades in from a step back (the mirror of the death fade),
+    // then breathes with a slow scale bob. Frame animation (docs/ART.md) is parked until the loop is fun.
+    for (const [s, dir] of [[this.playerSprite, -1] as const, ...this.views.map((v) => [v.sprite, 1] as const)]) {
       const x = s.x;
       s.setAlpha(0).setX(x + 24 * dir);
       this.tweens.add({ targets: s, alpha: 1, x, duration: 420, ease: 'Quad.Out', onComplete: () => this.breathe(s) });
@@ -142,32 +167,41 @@ export class CombatScene extends Phaser.Scene {
     const eq = Object.values(this.session.equipment).filter(Boolean).map((i) => i!.name).join(' · ');
     this.add.text(this.px, this.py + 58, `${this.session.classId} · ${setName(this.session)}${eq ? `\n${eq}` : ''}`, { ...text.small, align: 'center' }).setOrigin(0.5, 0);
 
-    // HP bars + status rows
+    // HP bars + status rows: the player's on the left; one per enemy on the right, stacked for a duo.
     const barW = Math.min(300, W * 0.3);
     this.playerHp = new HpBar(this, 24, 40, barW, this.session.classId.toUpperCase(), this.session.stats.maxHp);
-    this.enemyHp = new HpBar(this, W - 24, 40, barW, this.enemyDef.name.toUpperCase(), this.enemyDef.stats.maxHp, true);
     this.playerChips = new StatusChips(this, 24, 70);
-    this.enemyChips = new StatusChips(this, W - 24, 70, true);
+    for (const v of this.views) {
+      const ebarW = n === 1 ? barW : Math.min(220, W * 0.22);
+      const by = n === 1 ? 40 : 30 + v.slot * 46;
+      v.hp = new HpBar(this, W - 24, by, ebarW, v.def.name.toUpperCase(), v.def.stats.maxHp, true);
+      v.chips = new StatusChips(this, W - 24, n === 1 ? 70 : 122 + v.slot * 22, true);
+    }
 
     // round + phase + piles
     this.roundText = this.add.text(W / 2, 16, '', { ...text.small, fontSize: '13px' }).setOrigin(0.5);
     this.phaseText = this.add.text(W / 2, 40, 'YOUR TURN', { ...text.body, fontSize: '16px', color: COLORS.gold, fontStyle: 'bold' }).setOrigin(0.5);
     this.pileText = this.add.text(W / 2, 60, '', text.mono).setOrigin(0.5);
 
-    // enemy intent panel
-    // Above the enemy; a tall boss would push it into the HUD or hide under it, so then it sits beside him instead.
-    const tall = this.enemySprite.displayHeight > 170;
-    const ix = tall ? Math.max(W / 2 - 40, this.ex - this.enemySprite.displayWidth / 2 - 125) : this.ex;
-    const iy = tall ? 190 : Math.max(126, this.ey - this.enemySprite.displayHeight / 2 - 58);
-    const intentBg = this.add.rectangle(ix, iy, 230, 64, COLORS.panel, 0.9).setStrokeStyle(2, COLORS.panelEdge).setInteractive({ useHandCursor: true });
-    intentBg.on('pointerup', () => this.explainIntent());
-    this.intentBg = intentBg;
-    // The panel is a promise, not a state: the enemy does this after your move.
-    this.add.text(ix - 104, iy - 34, 'AFTER YOUR MOVE, IT WILL', { fontFamily: FONT, fontSize: '10px', color: '#9aa3b8', fontStyle: 'bold' }).setOrigin(0, 1);
-    this.add.text(ix + 104, iy - 34, 'tap for details', { ...text.mono, fontSize: '10px' }).setOrigin(1, 1);
-    this.intentText = this.add.text(ix - 104, iy - 10, '', { ...text.body, fontSize: '14px', fontStyle: 'bold' }).setOrigin(0, 0.5);
-    this.intentNum = this.add.text(ix + 104, iy - 10, '', { ...text.h2, fontSize: '26px' }).setOrigin(1, 0.5);
-    this.postureText = this.add.text(ix, iy + 16, '', text.small).setOrigin(0.5);
+    // enemy intent panels: above each enemy; a tall boss would push it into the HUD, so then it sits beside him.
+    for (const v of this.views) {
+      const pw = n === 1 ? 230 : 176, half = pw / 2 - 11;
+      const tall = v.sprite.displayHeight > 170;
+      const ix = tall ? Math.max(W / 2 - 40, v.x - v.sprite.displayWidth / 2 - pw / 2 - 10) : Math.min(W - pw / 2 - 6, v.x);
+      // Duos sit the panels a little higher so the target arrow fits between panel and head.
+      const iy = tall ? 190 : n === 1 ? Math.max(126, v.y - v.sprite.displayHeight / 2 - 58) : Math.max(112, v.y - v.sprite.displayHeight / 2 - 72);
+      v.intentBg = this.add.rectangle(ix, iy, pw, 64, COLORS.panel, 0.9).setStrokeStyle(2, COLORS.panelEdge).setInteractive({ useHandCursor: true });
+      v.intentBg.on('pointerup', () => this.explainIntent(v.slot));
+      // The panel is a promise, not a state: the enemy does this after your move.
+      v.intentHead = this.add.text(ix - half, iy - 34, n === 1 ? 'AFTER YOUR MOVE, IT WILL' : `${v.def.name.toUpperCase()} WILL`, { fontFamily: FONT, fontSize: '10px', color: '#9aa3b8', fontStyle: 'bold' }).setOrigin(0, 1);
+      v.intentText = this.add.text(ix - half, iy - 10, '', { ...text.body, fontSize: n === 1 ? '14px' : '12px', fontStyle: 'bold', wordWrap: { width: pw - 60 } }).setOrigin(0, 0.5);
+      v.intentNum = this.add.text(ix + half, iy - 10, '', { ...text.h2, fontSize: n === 1 ? '26px' : '22px' }).setOrigin(1, 0.5);
+      v.postureText = this.add.text(ix, iy + 16, '', { ...text.small, fontSize: n === 1 ? text.small.fontSize : '11px' }).setOrigin(0.5);
+    }
+    // Target arrow: a gold chevron bobbing over the enemy the next card hits (duos only; a single enemy needs none).
+    this.targetArrow = this.add.text(0, 0, '▼', { fontFamily: FONT, fontSize: '26px', color: COLORS.gold, fontStyle: 'bold', stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5, 1).setDepth(8).setVisible(n > 1);
+    this.tweens.add({ targets: this.targetArrow, y: '+=6', duration: 500, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+    this.setTarget(0, true);
 
     // hand hint (shown while recovering or when the hand is empty)
     this.handHint = this.add.text(W / 2, this.handY, '', { ...text.body, color: '#ffd166', fontStyle: 'bold' }).setOrigin(0.5).setDepth(4);
@@ -184,26 +218,46 @@ export class CombatScene extends Phaser.Scene {
 
   private syncChips() {
     this.playerChips.set(this.dispStatus.player, (s) => this.explainStatus(s, 'you'));
-    this.enemyChips.set(this.dispStatus.enemy, (s) => this.explainStatus(s, this.enemyDef.name));
+    for (const v of this.views) v.chips.set(this.dispStatus.enemies[v.slot] ?? [], (s) => this.explainStatus(s, v.def.name));
   }
 
   /** Reset the displayed statuses from the engine (end of playback). */
   private snapStatuses() {
-    this.dispStatus = { player: this.state.player.statuses.map((s) => ({ ...s })), enemy: this.state.enemy.statuses.map((s) => ({ ...s })) };
+    this.dispStatus = { player: this.state.player.statuses.map((s) => ({ ...s })), enemies: this.state.enemies.map((e) => e.statuses.map((s) => ({ ...s }))) };
   }
 
-  private dispUpsert(side: 'player' | 'enemy', status: Status) {
-    const list = this.dispStatus[side];
+  private statusList(side: 'player' | 'enemy', who = 0): Status[] {
+    if (side === 'player') return this.dispStatus.player;
+    return (this.dispStatus.enemies[who] ??= []);
+  }
+  private dispUpsert(side: 'player' | 'enemy', status: Status, who = 0) {
+    const list = this.statusList(side, who);
     const i = list.findIndex((s) => s.id === status.id);
     if (i >= 0) list[i] = status; else list.push(status);
   }
-  private dispRemove(side: 'player' | 'enemy', id: Status['id']) {
-    this.dispStatus[side] = this.dispStatus[side].filter((s) => s.id !== id);
+  private dispRemove(side: 'player' | 'enemy', id: Status['id'], who = 0) {
+    const kept = this.statusList(side, who).filter((s) => s.id !== id);
+    if (side === 'player') this.dispStatus.player = kept; else this.dispStatus.enemies[who] = kept;
   }
-  private dispGuardHit(side: 'player' | 'enemy', id: 'guard' | 'ward' = 'guard') {
-    if (this.dispStatus[side].some((s) => s.id === 'aegis')) return; // aegis absorbs without being consumed
-    const g = this.dispStatus[side].find((s) => s.id === id);
-    if (g) { g.magnitude -= 1; if (g.magnitude <= 0) this.dispRemove(side, id); }
+  private dispGuardHit(side: 'player' | 'enemy', id: 'guard' | 'ward' = 'guard', who = 0) {
+    const list = this.statusList(side, who);
+    if (list.some((s) => s.id === 'aegis')) return; // aegis absorbs without being consumed
+    const g = list.find((s) => s.id === id);
+    if (g) { g.magnitude -= 1; if (g.magnitude <= 0) this.dispRemove(side, id, who); }
+  }
+
+  /** Make `slot` the target of the next card and park the arrow over it. Dead slots fall back to the front living one. */
+  private setTarget(slot: number, silent = false) {
+    const live = this.state.enemies.filter((e) => !e.dead);
+    const chosen = this.state.enemies[slot] && !this.state.enemies[slot]!.dead ? slot : (live[0]?.slot ?? 0);
+    this.target = chosen;
+    const v = this.views[chosen];
+    if (!v) return;
+    this.tweens.killTweensOf(this.targetArrow);
+    this.targetArrow.setPosition(v.x, v.y - v.sprite.displayHeight / 2 - 10);
+    this.tweens.add({ targets: this.targetArrow, y: '+=6', duration: 500, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+    for (const o of this.views) o.intentBg.setStrokeStyle(2, o.slot === chosen && this.views.length > 1 ? COLORS.goldHex : COLORS.panelEdge);
+    void silent;
   }
 
   /** Tap-to-explain panel for a status or the enemy's intent. Any tap dismisses it. */
@@ -236,14 +290,29 @@ export class CombatScene extends Phaser.Scene {
     const dur = s.id === 'guard' || s.id === 'ward' ? `${s.magnitude} hit${s.magnitude === 1 ? '' : 's'} left` : s.id === 'burn' ? `${s.magnitude} per round, ${s.turns} round${s.turns === 1 ? '' : 's'} left` : s.id === 'chill' || s.id === 'brace' || s.id === 'scatter' ? 'until it triggers' : s.id === 'stun' ? `${Math.max(0, s.turns - 1)} turn${s.turns - 1 === 1 ? '' : 's'} left` : `${s.turns} round${s.turns === 1 ? '' : 's'} left`;
     this.showInfo(`${m.label} on ${who}  ·  ${dur}`, m.desc, m.color);
   }
-  private explainIntent() {
-    const { intent, predictedDamage, moveName } = currentIntent(this.state);
+  private explainIntent(who = 0) {
+    const { intent, predictedDamage, moveName } = currentIntent(this.state, who);
     const status = 'status' in intent ? intent.status : undefined;
     const hits = intent.kind === 'attack' ? intent.hits : 1;
-    const tell = POSTURE_TEXT[this.state.enemy.next.posture] ?? '';
+    const tell = POSTURE_TEXT[this.state.enemies[who]!.next.posture] ?? '';
     const drain = intent.kind === 'attack' && !!intent.drain;
     const magic = intent.kind === 'attack' && intent.dmgType === 'magic';
-    this.showInfo(`${this.enemyDef.name}, after your move`, `${describeIntent(intent.kind, moveName, predictedDamage, hits, status, drain, magic)}\n\nThe round after: ${tell.replace('then: ', '')}.`, '#ffb4b4');
+    this.showInfo(`${this.state.enemyDefs[who]!.name}, after your move`, `${describeIntent(intent.kind, moveName, predictedDamage, hits, status, drain, magic)}\n\nThe round after: ${tell.replace('then: ', '')}.`, '#ffb4b4');
+  }
+
+  private hideIntent(who: number) {
+    const v = this.views[who];
+    if (!v) return;
+    for (const o of [v.intentBg, v.intentHead, v.intentText, v.intentNum, v.postureText]) o.setVisible(false);
+  }
+
+  /** The enemy whose hit (or tick) took the last HP; the primary enemy if the log is unclear. */
+  private killerName(): string {
+    for (let i = this.state.log.length - 1; i >= 0; i--) {
+      const e = this.state.log[i]!;
+      if ((e.t === 'damage' && e.target === 'player' && !e.blocked) || e.t === 'counter' || (e.t === 'burn' && e.side === 'player')) return this.state.enemyDefs[(e as { who?: number }).who ?? 0]!.name;
+    }
+    return this.enemyDef.name;
   }
 
   /** Idle breathing: a slow 2.5% vertical squash on the feet-anchored sprite. Lunges tween x, so the two never fight. */
@@ -252,16 +321,22 @@ export class CombatScene extends Phaser.Scene {
     this.tweens.add({ targets: s, scaleY: s.scaleY * 1.025, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
   }
 
-  private showHp(side: 'player' | 'enemy', delta: number) {
-    const c = side === 'player' ? this.state.player : this.state.enemy;
-    this.dispHp[side] = Math.max(0, Math.min(c.stats.maxHp, this.dispHp[side] + delta));
-    void (side === 'player' ? this.playerHp : this.enemyHp).set(this.dispHp[side], c.stats.maxHp);
+  private showHp(side: 'player' | 'enemy', delta: number, who = 0) {
+    if (side === 'player') {
+      this.dispHp.player = Math.max(0, Math.min(this.state.player.stats.maxHp, this.dispHp.player + delta));
+      void this.playerHp.set(this.dispHp.player, this.state.player.stats.maxHp);
+      return;
+    }
+    const c = this.state.enemies[who]!, v = this.views[who]!;
+    this.dispHp.enemies[who] = Math.max(0, Math.min(c.stats.maxHp, (this.dispHp.enemies[who] ?? c.hp) + delta));
+    void v.hp.set(this.dispHp.enemies[who]!, c.stats.maxHp);
   }
 
   private syncAll() {
-    this.dispHp = { player: this.state.player.hp, enemy: this.state.enemy.hp };
+    this.dispHp = { player: this.state.player.hp, enemies: this.state.enemies.map((e) => e.hp) };
     void this.playerHp.set(this.state.player.hp, this.state.player.stats.maxHp);
-    void this.enemyHp.set(this.state.enemy.hp, this.state.enemy.stats.maxHp);
+    for (const v of this.views) void v.hp.set(this.state.enemies[v.slot]!.hp, this.state.enemies[v.slot]!.stats.maxHp);
+    this.setTarget(this.target, true);
     this.snapStatuses();
     this.syncChips();
     this.roundText.setText(`Round ${this.state.round}  ·  screen ${this.session.screenIndex + 1}`);
@@ -279,7 +354,7 @@ export class CombatScene extends Phaser.Scene {
     const startX = this.scale.gameSize.width / 2 - total / 2 + CARD_W / 2;
     ids.forEach((id, i) => {
       const sk = skillInCombat(this.state, id);
-      const card = new Card(this, startX + i * (CARD_W + gap), this.handY, sk, () => this.act(this.holdMode ? { type: 'hold', index: i } : { type: 'card', index: i }), describeSkill(sk, this.state.player.stats), this.state.player.stats);
+      const card = new Card(this, startX + i * (CARD_W + gap), this.handY, sk, () => this.act(this.holdMode ? { type: 'hold', index: i } : { type: 'card', index: i, target: this.target }), describeSkill(sk, this.state.player.stats), this.state.player.stats);
       this.hand.push(card);
     });
   }
@@ -313,15 +388,16 @@ export class CombatScene extends Phaser.Scene {
     this.act({ type: 'skip' });
   }
 
-  private showIntent(intent: Intent, posture: Posture, predicted: number, moveName: string) {
+  private showIntent(intent: Intent, posture: Posture, predicted: number, moveName: string, who = 0) {
+    const v = this.views[who]!;
     const label = intent.kind === 'attack' ? `${moveName}${intent.hits > 1 ? ` x${intent.hits}` : ''}${intent.dmgType === 'magic' ? ' · magic' : ''}${intent.drain ? ' · drains' : ''}`
       : intent.kind === 'guard' ? `${moveName} (guard)`
       : intent.kind === 'debuff' ? `${moveName} → ${STATUS_LABELS[intent.status].label}`
       : intent.kind === 'buff' ? (intent.status === 'brace' ? `${moveName}: counters next hit` : intent.status === 'scatter' ? `${moveName}: halves single hits` : intent.status === 'harden' ? `${moveName}: takes half damage` : `${moveName} (+${intent.status})`)
       : `${moveName} (stagger)`;
-    this.intentText.setText(label);
-    this.intentNum.setText(intent.kind === 'attack' ? String(predicted) : intent.kind === 'guard' ? '🛡' : '');
-    this.postureText.setText(POSTURE_TEXT[posture] ?? '');
+    v.intentText.setText(label);
+    v.intentNum.setText(intent.kind === 'attack' ? String(predicted) : intent.kind === 'guard' ? '🛡' : '');
+    v.postureText.setText(POSTURE_TEXT[posture] ?? '');
   }
 
   // ---------------------------------------------------------------- actions
@@ -351,16 +427,21 @@ export class CombatScene extends Phaser.Scene {
   }
 
   private async playEvent(e: CombatEvent): Promise<void> {
-    const sprite = (side: 'player' | 'enemy') => (side === 'player' ? this.playerSprite : this.enemySprite);
-    const pos = (side: 'player' | 'enemy') => (side === 'player' ? { x: this.px, y: this.py } : { x: this.ex, y: this.ey });
+    const who = (e as { who?: number }).who ?? 0;
+    const view = this.views[who] ?? this.views[0]!;
+    const sprite = (side: 'player' | 'enemy') => (side === 'player' ? this.playerSprite : view.sprite);
+    const pos = (side: 'player' | 'enemy') => (side === 'player' ? { x: this.px, y: this.py } : { x: view.x, y: view.y });
     switch (e.t) {
       case 'roundStart': {
         this.roundText.setText(`Round ${e.round}  ·  screen ${this.session.screenIndex + 1}`);
         this.phaseText.setText('YOUR TURN').setColor(COLORS.gold);
-        this.intentBg.setStrokeStyle(2, COLORS.panelEdge);
-        // Belt and braces: the panel reflects this round's intent from the first frame of the round.
-        const ci = currentIntent(this.state);
-        this.showIntent(ci.intent, this.state.enemy.next.posture, ci.predictedDamage, ci.moveName);
+        // Belt and braces: every panel reflects this round's intent from the first frame of the round.
+        for (const en of this.state.enemies) {
+          if (en.dead) { this.hideIntent(en.slot); continue; }
+          const ci = currentIntent(this.state, en.slot);
+          this.showIntent(ci.intent, en.next.posture, ci.predictedDamage, ci.moveName, en.slot);
+        }
+        this.setTarget(this.target, true);
         // The hardened/warded/exposed countdowns ticked at end of round; show the ticked values now.
         this.snapStatuses(); this.syncChips();
         await wait(this, 250);
@@ -409,15 +490,15 @@ export class CombatScene extends Phaser.Scene {
         await this.toast('deck reshuffled');
         return;
       case 'intent':
-        this.showIntent(e.intent, e.posture, e.predictedDamage, e.moveName);
+        this.showIntent(e.intent, e.posture, e.predictedDamage, e.moveName, who);
         return;
       case 'play': {
         const s = sprite(e.side), p = pos(e.side);
         const dir = e.side === 'player' ? 1 : -1;
         if (e.side === 'enemy') {
           // A clear beat between your action and the enemy's, naming the move it promised.
-          this.phaseText.setText(`ENEMY TURN · ${e.name}`).setColor('#ffb4b4');
-          this.intentBg.setStrokeStyle(3, 0xff6b6b);
+          this.phaseText.setText(`ENEMY TURN · ${view.def.name}: ${e.name}`).setColor('#ffb4b4');
+          view.intentBg.setStrokeStyle(3, 0xff6b6b);
           await wait(this, 450);
         }
         if (e.side === 'player') {
@@ -439,13 +520,13 @@ export class CombatScene extends Phaser.Scene {
       case 'damage': {
         const s = sprite(e.target), p = pos(e.target);
         if (e.blocked) {
-          this.dispGuardHit(e.target, e.kind === 'magic' ? 'ward' : 'guard');
+          this.dispGuardHit(e.target, e.kind === 'magic' ? 'ward' : 'guard', who);
           this.syncChips();
           await floatText(this, p.x, p.y - 30, 'BLOCKED', COLORS.block, 30, 900);
         } else {
           this.cameras.main.shake(90, 0.005);
           void tween(this, { targets: s, x: p.x + (e.target === 'player' ? -10 : 10), duration: 50, yoyo: true, repeat: 1 });
-          this.showHp(e.target, -e.amount);
+          this.showHp(e.target, -e.amount, who);
           // Multi-hit numbers stagger sideways so they do not stack on top of each other.
           const dx = e.hits > 1 ? (e.hit - (e.hits + 1) / 2) * 34 : 0;
           const p2 = floatText(this, p.x + dx, p.y - 30, `-${e.amount}`, COLORS.damage, 40, 1100);
@@ -455,19 +536,19 @@ export class CombatScene extends Phaser.Scene {
       }
       case 'heal': {
         const p = pos(e.side);
-        this.showHp(e.side, e.amount);
+        this.showHp(e.side, e.amount, who);
         await floatText(this, p.x, p.y - 30, `+${e.amount}`, COLORS.heal, 36);
         return;
       }
       case 'burn': {
         const p = pos(e.side);
         this.phaseText.setText('END OF ROUND').setColor(COLORS.muted);
-        this.showHp(e.side, -e.amount);
+        this.showHp(e.side, -e.amount, who);
         await floatText(this, p.x, p.y - 30, `${e.status === 'curse' ? 'curse' : 'burn'} -${e.amount}`, e.status === 'curse' ? '#c084fc' : COLORS.burn, 28);
         return;
       }
       case 'statusApplied': {
-        this.dispUpsert(e.side, { id: e.status, turns: e.turns, magnitude: e.magnitude });
+        this.dispUpsert(e.side, { id: e.status, turns: e.turns, magnitude: e.magnitude }, who);
         this.syncChips();
         // Guard is self-evident from the chip and the card name; everything else gets a callout.
         if (e.status === 'guard') { await wait(this, 350); return; }
@@ -477,12 +558,12 @@ export class CombatScene extends Phaser.Scene {
         return;
       }
       case 'statusExpired':
-        this.dispRemove(e.side, e.status);
+        this.dispRemove(e.side, e.status, who);
         this.syncChips();
         return;
       case 'statusResisted': {
         const p = pos(e.side);
-        if (e.warded) { this.dispGuardHit(e.side, 'ward'); this.syncChips(); await floatText(this, p.x, p.y - 30, 'WARDED', COLORS.block, 30, 900); return; }
+        if (e.warded) { this.dispGuardHit(e.side, 'ward', who); this.syncChips(); await floatText(this, p.x, p.y - 30, 'WARDED', COLORS.block, 30, 900); return; }
         await floatText(this, p.x, p.y - 30, 'resisted', '#c7b3ff', 26, 900);
         return;
       }
@@ -498,13 +579,15 @@ export class CombatScene extends Phaser.Scene {
         return;
       }
       case 'phase':
-        await this.bannerShow(`${this.enemyDef.name} rages!`);
+        await this.bannerShow(`${view.def.name} rages!`);
         return;
       case 'death': {
         const s = sprite(e.side);
         if (s instanceof Phaser.GameObjects.Sprite) s.anims.stop();
         this.tweens.killTweensOf(s); // the breathing stops with the body
+        if (e.side === 'enemy') { s.disableInteractive(); this.hideIntent(who); }
         await tween(this, { targets: s, alpha: 0.15, y: s.y + 10, duration: 350 });
+        if (e.side === 'enemy' && this.target === who) this.setTarget(-1, true);
         return;
       }
       case 'end':
@@ -534,13 +617,14 @@ export class CombatScene extends Phaser.Scene {
     const won = this.state.outcome === 'won';
     const isBoss = this.encounter.kind === 'boss';
     this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.6).setDepth(70);
-    const title = won ? (isBoss ? `${this.enemyDef.name} falls!` : 'Victory') : 'You died';
+    const names = this.state.enemyDefs.map((d) => d.name).join(' & ');
+    const title = won ? (isBoss ? `${names} fall${this.state.enemyDefs.length === 1 ? 's' : ''}!` : 'Victory') : 'You died';
     this.add.text(W / 2, H * 0.34, title, { ...text.title, color: won ? COLORS.gold : '#ff6b6b' }).setOrigin(0.5).setDepth(71);
     recordFight(this, this.session, this.encounter, this.hpBefore, this.state.player.hp, this.state.log, won ? 'won' : 'lost');
 
     if (this.session.testMode) {
       // Sandbox: no spoils, no death, nothing saved. Straight back into the same fight or the setup.
-      this.add.text(W / 2, H * 0.34 + 46, `${won ? 'Won' : 'Lost'} in ${this.state.round} rounds  ·  ${this.state.player.hp}/${this.session.stats.maxHp} HP left  ·  enemy ${this.state.enemy.hp}/${this.enemyDef.stats.maxHp}`, text.body).setOrigin(0.5).setDepth(71);
+      this.add.text(W / 2, H * 0.34 + 46, `${won ? 'Won' : 'Lost'} in ${this.state.round} rounds  ·  ${this.state.player.hp}/${this.session.stats.maxHp} HP left  ·  ${this.state.enemies.map((en) => `${this.state.enemyDefs[en.slot]!.name} ${en.hp}/${en.stats.maxHp}`).join(', ')}`, text.body).setOrigin(0.5).setDepth(71);
       new Button(this, W / 2 - 120, H * 0.62, 'Fight again', () => { this.session.hp = this.session.stats.maxHp; this.scene.start('Combat'); }, { width: 200, fill: 0x1f2a44, edge: COLORS.goldHex }).setDepth(72);
       new Button(this, W / 2 + 120, H * 0.62, 'Setup', () => this.scene.start('TestMode'), { width: 200 }).setDepth(72);
       return;
@@ -564,8 +648,9 @@ export class CombatScene extends Phaser.Scene {
       this.session.lastResult = { encounter: this.encounter, won: false };
       recordDeath(getMeta(this), this.session.screenIndex);
       void Promise.all([persistMeta(this), getStore(this).clearRun()]);
-      this.add.text(W / 2, H * 0.34 + 46, `Slain by ${this.enemyDef.name} on screen ${this.session.screenIndex + 1}.`, text.body).setOrigin(0.5).setDepth(71);
-      new Button(this, W / 2, H * 0.62, 'Continue', () => this.scene.start('RunEnd', { won: false, killedBy: this.enemyDef.name }), { width: 220, fill: 0x1f2a44, edge: COLORS.goldHex }).setDepth(72);
+      const killer = this.killerName();
+      this.add.text(W / 2, H * 0.34 + 46, `Slain by ${killer} on screen ${this.session.screenIndex + 1}.`, text.body).setOrigin(0.5).setDepth(71);
+      new Button(this, W / 2, H * 0.62, 'Continue', () => this.scene.start('RunEnd', { won: false, killedBy: killer }), { width: 220, fill: 0x1f2a44, edge: COLORS.goldHex }).setDepth(72);
     }
   }
 

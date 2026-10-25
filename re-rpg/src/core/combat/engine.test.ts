@@ -506,3 +506,39 @@ describe('stacking debuffs', () => {
   });
 });
 
+
+describe('duos (two enemies)', () => {
+  const SECOND: Enemy = { ...DUMMY, id: 'dummy2', name: 'Dummy Two', stats: { maxHp: 6, atk: 2, def: 0 } };
+  it('both enemies announce intents and both act every round', () => {
+    const s = createCombat({ player: { ...WARRIOR, deck: ['defend'], basics: [] }, enemies: [DUMMY, SECOND], rng: new Rng(3) });
+    expect(s.enemies).toHaveLength(2);
+    expect(s.enemy).toBe(s.enemies[0]);
+    expect(s.log.filter((e) => e.t === 'intent').map((e) => (e as { who?: number }).who)).toEqual([0, 1]);
+    const hp = s.player.hp;
+    step(s, { type: 'hold', index: 0 });
+    const hits = s.log.filter((e) => e.t === 'damage' && e.target === 'player');
+    expect(hits).toHaveLength(2);
+    expect(hits.map((e) => (e as { who?: number }).who)).toEqual([0, 1]);
+    expect(s.player.hp).toBe(hp - (3 - 1) - Math.max(1, Math.ceil(2 * 0.5), 2 - 1));
+  });
+  it('cards hit the chosen slot; a dead slot falls back to the front living enemy', () => {
+    const s = createCombat({ player: { ...WARRIOR, deck: ['broadsword', 'broadsword', 'broadsword'], basics: [] }, enemies: [DUMMY, SECOND], rng: new Rng(4) });
+    step(s, { type: 'card', index: 0, target: 1 });       // 8 into the 6 hp second enemy
+    expect(s.enemies[1]!.dead).toBe(true);
+    expect(s.outcome).toBe('ongoing');
+    expect(s.log.some((e) => e.t === 'death' && (e as { who?: number }).who === 1)).toBe(true);
+    const before = s.enemies[0]!.hp;
+    step(s, { type: 'card', index: 0, target: 1 });       // dead target → front enemy takes it
+    expect(s.enemies[0]!.hp).toBe(before - 8);
+    // only the survivor acted this round
+    const lastRound = s.log.slice(s.log.length - 12).filter((e) => e.t === 'play' && e.side === 'enemy');
+    expect(lastRound.every((e) => (e as { who?: number }).who === 0)).toBe(true);
+  });
+  it('the fight is won only when every enemy is dead', () => {
+    const s = createCombat({ player: { ...WARRIOR, deck: ['broadsword', 'broadsword', 'broadsword', 'broadsword'], basics: [] }, enemies: [SECOND, { ...SECOND, id: 'dummy3' }], rng: new Rng(5) });
+    step(s, { type: 'card', index: 0, target: 0 });
+    expect(s.outcome).toBe('ongoing');
+    step(s, { type: 'card', index: 0, target: 1 });
+    expect(s.outcome).toBe('won');
+  });
+});

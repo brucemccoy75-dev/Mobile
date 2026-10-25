@@ -20,7 +20,9 @@ export interface PlayerSetup {
 
 export interface CombatOptions {
   player: PlayerSetup;
-  enemy: EnemyId | Enemy;
+  /** A single enemy, or `enemies` for a pack (front first). One of the two is required. */
+  enemy?: EnemyId | Enemy;
+  enemies?: (EnemyId | Enemy)[];
   rng: Rng;             // the run's 'combat' stream
   skillUpgrades?: SkillUpgrades;
 }
@@ -28,9 +30,20 @@ export interface CombatOptions {
 /** The skill as it plays in this fight, with any run-local upgrade applied. */
 export const skillInCombat = (state: CombatState, id: SkillId) => skillWith(getSkill(id), state.skillUpgrades);
 
-/** Build the state and run the first round start (deal + intent). */
+export const livingEnemies = (state: CombatState): EnemyCombatant[] => state.enemies.filter((e) => !e.dead);
+
+/** The enemy a player action hits: the asked-for slot if alive, else the front-most living one. */
+export function resolveTarget(state: CombatState, slot?: number): EnemyCombatant {
+  const asked = slot !== undefined ? state.enemies[slot] : undefined;
+  if (asked && !asked.dead) return asked;
+  return livingEnemies(state)[0] ?? state.enemies[0]!;
+}
+
+/** Build the state and run the first round start (deal + intents). */
 export function createCombat(opts: CombatOptions): CombatState {
-  const def = typeof opts.enemy === 'string' ? getEnemy(opts.enemy) : opts.enemy;
+  const sources = opts.enemies ?? (opts.enemy !== undefined ? [opts.enemy] : []);
+  if (sources.length === 0) throw new Error('createCombat: no enemy');
+  const defs = sources.map((e) => (typeof e === 'string' ? getEnemy(e) : e));
   const roll = () => opts.rng.next();
 
   const player: PlayerCombatant = {
@@ -38,14 +51,17 @@ export function createCombat(opts: CombatOptions): CombatState {
     stats: { ...opts.player.stats }, hp: opts.player.hp ?? opts.player.stats.maxHp,
     statuses: [], deck: opts.rng.shuffle([...(opts.player.basics ?? BASIC_DECK), ...opts.player.deck]), hand: [], discard: [], exhausted: [], consumed: [],
   };
-  const enemyBase = { side: 'enemy' as const, name: def.name, enemyId: def.id, stats: { ...def.stats }, hp: def.stats.maxHp, statuses: [], phase: 0, seqIndex: 0 };
-  const enemy = enemyBase as unknown as EnemyCombatant;
-  enemy.current = pickMove(enemy, def, roll);
-  enemy.next = pickMove(enemy, def, roll);
+  const enemies = defs.map((def, slot) => {
+    const base = { side: 'enemy' as const, name: def.name, enemyId: def.id, slot, dead: false, stats: { ...def.stats }, hp: def.stats.maxHp, statuses: [], phase: 0, seqIndex: 0 };
+    const e = base as unknown as EnemyCombatant;
+    e.current = pickMove(e, def, roll);
+    e.next = pickMove(e, def, roll);
+    return e;
+  });
 
-  const state: CombatState = { skillUpgrades: { ...(opts.skillUpgrades ?? {}) }, round: 0, outcome: 'ongoing', player, enemy, enemyDef: def, rngState: opts.rng.getState(), log: [] };
+  const state: CombatState = { skillUpgrades: { ...(opts.skillUpgrades ?? {}) }, round: 0, outcome: 'ongoing', player, enemies, enemyDefs: defs, enemy: enemies[0]!, enemyDef: defs[0]!, rngState: opts.rng.getState(), log: [] };
   const events: CombatEvent[] = [];
-  startRound(state, def, opts.rng, events);
+  startRound(state, opts.rng, events);
   state.rngState = opts.rng.getState();
   state.log.push(...events);
   return state;
@@ -56,26 +72,38 @@ export function eventsSince(state: CombatState, fromIndex: number): CombatEvent[
   return state.log.slice(fromIndex);
 }
 
-/** The intent display for the current round, with damage predicted against current statuses. */
-export function currentIntent(state: CombatState): { intent: Intent; predictedDamage: number; moveName: string } {
-  const m = state.enemy.current;
+/** The intent display for one enemy this round, with damage predicted against current statuses. */
+export function currentIntent(state: CombatState, who = 0): { intent: Intent; predictedDamage: number; moveName: string } {
+  const e = state.enemies[who] ?? state.enemy;
+  const m = e.current;
   const predictedDamage = m.intent.kind === 'attack'
-    ? predictDamage(state.enemy, state.player, m.intent.mult, m.intent.hits, m.intent.ignoreDef)
+    ? predictDamage(e, state.player, m.intent.mult, m.intent.hits, m.intent.ignoreDef)
     : 0;
   return { intent: m.intent, predictedDamage, moveName: m.name };
 }
 
+/** Every living enemy's intent this round, in slot order. */
+export const currentIntents = (state: CombatState) => livingEnemies(state).map((e) => ({ who: e.slot, ...currentIntent(state, e.slot) }));
+
 /** True while the player is Recovering and must pass the turn (the scene auto-steps with `skip`). */
 export const isPlayerStunned = (state: CombatState) => hasStatus(state.player, 'stun');
 
+/** Stamp the enemy slot on every event pushed since `from` (events only know sides). */
+function tagWho(events: CombatEvent[], from: number, who: number): void {
+  for (let i = from; i < events.length; i++) {
+    const e = events[i] as CombatEvent & { who?: number };
+    if ('who' in e || e.t === 'roundStart' || e.t === 'deal' || e.t === 'handOverflow' || e.t === 'reshuffle' || e.t === 'hold' || e.t === 'exhaust' || e.t === 'consumed' || e.t === 'end') continue;
+    e.who = who;
+  }
+}
+
 /**
  * One full round from the player's decision:
- *   player acts → enemy acts (unless Chilled) → end-of-round ticks → next round start.
+ *   player acts on a target → each living enemy acts (unless Chilled) → end-of-round ticks → next round start.
  * Returns the events of this step; they are also appended to state.log.
  */
 export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
   if (state.outcome !== 'ongoing') throw new Error('Combat is over');
-  const def = state.enemyDef;
   const rng = new Rng(state.rngState);
   const roll = () => rng.next();
   const events: CombatEvent[] = [];
@@ -89,7 +117,9 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
     const id = playCard(state.player, action.index);
     events.push({ t: 'hold', skill: id });
   } else {
+    const target = resolveTarget(state, action.target);
     const skill = skillInCombat(state, playCard(state.player, action.index));
+    const from = events.length;
     events.push({ t: 'play', side: 'player', skill: skill.id, name: skill.name });
     if (skill.uses) {
       // Not back into the discard: once-per-fight waits for the next fight, fleeting is gone for good.
@@ -97,26 +127,39 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
       if (skill.uses === 'once_per_fight') { state.player.exhausted.push(skill.id); events.push({ t: 'exhaust', skill: skill.id }); }
       else { state.player.consumed.push(skill.id); events.push({ t: 'consumed', skill: skill.id }); }
     }
-    applyEffects(skill.effects, state.player, state.enemy, roll, events);
+    applyEffects(skill.effects, state.player, target, roll, events);
+    tagWho(events, from, target.slot);
     if (checkDeaths(state, events)) return finish(state, rng, events);
   }
 
-  // Enemy turn
-  if (!consumeChill(state.enemy, events)) {
-    const move = state.enemy.current;
-    events.push({ t: 'play', side: 'enemy', skill: move.id, name: move.name });
-    applyEffects(move.effects, state.enemy, state.player, roll, events);
+  // Enemy turns, front to back
+  for (const e of livingEnemies(state)) {
+    const from = events.length;
+    if (!consumeChill(e, events)) {
+      const move = e.current;
+      events.push({ t: 'play', side: 'enemy', skill: move.id, name: move.name });
+      applyEffects(move.effects, e, state.player, roll, events);
+    }
+    tagWho(events, from, e.slot);
     if (checkDeaths(state, events)) return finish(state, rng, events);
   }
 
-  // End of round: the enemy's ticks first, so an enemy that burns to death never gets its curse ticking on you.
-  tickStatuses(state.enemy, events);
-  if (checkDeaths(state, events)) return finish(state, rng, events);
+  // End of round: enemies tick first, so an enemy that burns to death never gets its curse ticking on you.
+  for (const e of livingEnemies(state)) {
+    const from = events.length;
+    tickStatuses(e, events);
+    tagWho(events, from, e.slot);
+    if (checkDeaths(state, events)) return finish(state, rng, events);
+  }
   tickStatuses(state.player, events);
   if (checkDeaths(state, events)) return finish(state, rng, events);
-  advanceMoves(state.enemy, def, roll, events);
+  for (const e of livingEnemies(state)) {
+    const from = events.length;
+    advanceMoves(e, state.enemyDefs[e.slot]!, roll, events);
+    tagWho(events, from, e.slot);
+  }
 
-  startRound(state, def, rng, events);
+  startRound(state, rng, events);
   return finish(state, rng, events);
 }
 
@@ -126,21 +169,27 @@ function finish(state: CombatState, rng: Rng, events: CombatEvent[]): CombatEven
   return events;
 }
 
-function startRound(state: CombatState, _def: Enemy, rng: Rng, events: CombatEvent[]): void {
+function startRound(state: CombatState, rng: Rng, events: CombatEvent[]): void {
   state.round += 1;
   events.push({ t: 'roundStart', round: state.round });
-  // The new intent is announced before the deals, so the panel never shows last
+  // The new intents are announced before the deals, so the panels never show last
   // round's promise next to this round's state while cards are animating in.
-  const { intent, predictedDamage, moveName } = currentIntent(state);
-  events.push({ t: 'intent', intent, posture: state.enemy.next.posture, predictedDamage, moveName });
+  for (const e of livingEnemies(state)) {
+    const { intent, predictedDamage, moveName } = currentIntent(state, e.slot);
+    events.push({ t: 'intent', intent, posture: e.next.posture, predictedDamage, moveName, who: e.slot });
+  }
   // Opening hand fills to the cap so round 1 is a choice; afterwards one card per round.
   const deals = state.round === 1 ? HAND_CAP : 1;
   for (let i = 0; i < deals; i++) dealOne(state.player, (a) => rng.shuffle(a), events);
 }
 
 function checkDeaths(state: CombatState, events: CombatEvent[]): boolean {
-  if (state.enemy.hp <= 0) {
-    events.push({ t: 'death', side: 'enemy' });
+  for (const e of state.enemies) {
+    if (e.dead || e.hp > 0) continue;
+    e.dead = true;
+    events.push({ t: 'death', side: 'enemy', who: e.slot });
+  }
+  if (state.enemies.every((e) => e.dead)) {
     state.outcome = 'won';
     events.push({ t: 'end', outcome: 'won' });
     return true;

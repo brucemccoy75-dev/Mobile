@@ -18,7 +18,7 @@ export const SCREEN_COUNT = 2;
 
 export type EncounterKind = 'random' | 'guard' | 'boss';
 /** `tile` is where the fight started; the combat backdrop is chosen from it (docs/ART.md). */
-export interface PendingEncounter { kind: EncounterKind; enemyId: EnemyId; guardId?: string; tile?: TileType; }
+export interface PendingEncounter { kind: EncounterKind; enemyId: EnemyId; guardId?: string; tile?: TileType; /** Further enemies behind the first (duos, DECISIONS #29). */ extra?: EnemyId[]; }
 export interface CombatResult { encounter: PendingEncounter; won: boolean; }
 export interface PendingOffer { source: RewardSource; gold?: number; }
 
