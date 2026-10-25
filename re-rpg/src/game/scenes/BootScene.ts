@@ -19,6 +19,7 @@ export const ART_FILES: Record<string, string> = {
   hero_warrior_a: 'art/a/hero_warrior@2x.png', // pixel, kept for on-device comparison
   enemy_boar_c: 'art/c/boar@2x.png',
   enemy_hex_imp_c: 'art/c/hex_imp@2x.png',
+  enemy_adept_necromancer_c: 'art/c/adept_necromancer@2x.png',
   bg_forest: 'art/c/bg_forest.jpg',
 };
 
