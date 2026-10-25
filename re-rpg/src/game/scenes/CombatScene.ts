@@ -97,8 +97,15 @@ export class CombatScene extends Phaser.Scene {
       this.playerSprite = this.add.rectangle(this.px, this.py, 64, 92, CLASS_COLORS[this.session.classId] ?? COLORS.player);
     }
     const esize = isBoss ? 120 : this.enemyDef.tier === 2 ? 92 : 76;
-    this.enemySprite = this.add.rectangle(this.ex, this.ey, esize, esize, isBoss ? COLORS.boss : COLORS.enemy);
-    this.add.text(this.ex, this.ey + esize / 2 + 12, this.enemyDef.name, text.small).setOrigin(0.5, 0);
+    const groundY = this.py + 46;
+    const enemyKey = artKey(this, `enemy_${this.enemyDef.id}`);
+    if (enemyKey) {
+      this.enemySprite = this.add.image(this.ex, groundY, enemyKey).setOrigin(0.5, 1).setScale(0.5);
+      this.ey = groundY - this.enemySprite.displayHeight / 2;
+    } else {
+      this.enemySprite = this.add.rectangle(this.ex, this.ey, esize, esize, isBoss ? COLORS.boss : COLORS.enemy);
+    }
+    this.add.text(this.ex, groundY + 12, this.enemyDef.name, text.small).setOrigin(0.5, 0);
     const eq = Object.values(this.session.equipment).filter(Boolean).map((i) => i!.name).join(' · ');
     this.add.text(this.px, this.py + 58, `${this.session.classId} · ${setName(this.session)}${eq ? `\n${eq}` : ''}`, { ...text.small, align: 'center' }).setOrigin(0.5, 0);
 
@@ -115,7 +122,7 @@ export class CombatScene extends Phaser.Scene {
     this.pileText = this.add.text(W / 2, 60, '', text.mono).setOrigin(0.5);
 
     // enemy intent panel
-    const ix = this.ex, iy = this.ey - esize / 2 - 58;
+    const ix = this.ex, iy = this.ey - this.enemySprite.displayHeight / 2 - 58;
     const intentBg = this.add.rectangle(ix, iy, 230, 64, COLORS.panel, 0.9).setStrokeStyle(2, COLORS.panelEdge).setInteractive({ useHandCursor: true });
     intentBg.on('pointerup', () => this.explainIntent());
     this.intentBg = intentBg;
