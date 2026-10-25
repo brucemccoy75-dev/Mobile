@@ -12,7 +12,7 @@ Decisions made in planning session 1. Each entry: decision, rationale, implicati
 | 6 | Heirloom | From the first death onward, each run opens with a **spread of up to 4 random unlocks** (discovered items and tomes usable by the class, weighted toward the rolled set) and the player **keeps 2**. Amended after phone test 2 from one random heirloom. Slot growth is a later knob. |
 | 7 | POC scope out | Multi-enemy fights, fleeing, fog of war, inventory. All out. |
 | 8 | Persistence | Firebase. Anonymous auth on first launch, link Google account later. Firestore: one document per player (MetaState + current RunState). Local-first with a sync adapter; game code only sees a `SaveStore` interface. |
-| 9 | Deck cap | 6 known skills. Tomes beyond the cap force a binding swap or skip. Cap becomes an item/set stat later. If long fights stale, first lever is dealing 2 cards per round after round 5. |
+| 9 | Deck cap | 10 known skills (was 6: with one card per round the small deck got repetitive by screen 2). Tomes beyond the cap force a binding swap or skip. Cap becomes an item/set stat later. If long fights stale, first lever is dealing 2 cards per round after round 5. |
 | 10 | Repo | Built in `re-rpg/` inside this repo; GitHub Pages (gh-pages) now serves the game, map3d is gone. Firebase Hosting on `main` once a project exists. |
 | 11 | Healing cost | Healing skills heal 35% and leave you **Exposed for 2 rounds**: a heal is a bet that you can block or outpace the next two doubled hits. History: a one-round Exposed was no deterrent (phone test 1); two skipped turns (Recovering) made the heal not worth playing (phone test 5). The Recovering status stays in the engine for future enemies and skills. |
 | 13 | Attack budget | Flat attack on a base of 4 was +25% per point, so +5 gear made screen 1 trivial. Budget: common +1 free; uncommon +2 only with a cost (DEF or HP); rare +3 with a real cost; relics are the only way higher and always pay in HP (Bloodstone +3/−6 HP, Glass Idol +4/−12 HP). A maxed hero sits near +5, not +9. |
@@ -49,4 +49,8 @@ Phone test: the necromancer's Curse walked through Ward, and the Boar's Gore loo
 ## 25. Death ends everything; equipment never wounds
 
 Phone test. (a) A braced enemy countered the hit that killed it, and an enemy burning to death at end of round still got its curse tick on the player. Now a killing blow is never countered, and end-of-round ticks run enemy-first and stop the moment a side dies. (b) Swapping to a relic with lower max HP drained current HP by the difference. Now a max-HP gain is real HP gained, a max-HP loss only lowers the ceiling (current HP clamped), so changing gear is never a self-inflicted wound.
+
+## 26. Run telemetry and Test Mode
+
+Balance calls were being made from the greedy sim and memory of phone sessions. Now every real run writes a record (`src/core/telemetry`): seed, class, set, legacy, the deck and gear at the start, and per fight the screen, enemy, rounds, HP before/after, damage dealt/taken/blocked, counters, DoT, heals, cards played and holds, plus every reward offered/picked/sold and every shop purchase, and how the run ended. The last 20 runs live in local storage (`rerpg:telemetry`); "run log" on the title and end screens shares the JSON (Web Share on phones, clipboard elsewhere). Test Mode (title screen) fights any enemy with any deck and gear for quick checks; its fights are never recorded, never saved, and never touch the meta.
 

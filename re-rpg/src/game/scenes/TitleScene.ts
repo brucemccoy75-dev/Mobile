@@ -6,6 +6,7 @@ import { deserialize, getMeta, getStore, setMeta, setSession } from '@game/sessi
 import { legacySummary } from '@core/meta';
 import { Button } from '@game/ui/Button';
 import { ART_STYLE_LABEL, getArtStyle, nextArtStyle, setArtStyle } from '@game/art';
+import { shareRunLog } from '@game/telemetry';
 import type { FirebaseCloud } from '@save/firebase';
 import type { SyncedSaveStore } from '@save/SyncedSaveStore';
 import type { MetaState } from '@core/meta';
@@ -63,6 +64,9 @@ export class TitleScene extends Phaser.Scene {
     new Button(this, width - 170, height - 24, 'fullscreen', () => {
       try { if (this.scale.fullscreen.available) this.scale.isFullscreen ? this.scale.stopFullscreen() : this.scale.startFullscreen(); } catch { /* ignore */ }
     }, { width: 100, height: 28, fontSize: '12px' }).setAlpha(0.5);
+    // Dev row: sandbox fights and the run log export (DECISIONS #26).
+    new Button(this, width - 80, height - 58, 'test mode', () => this.scene.start('TestMode'), { width: 120, height: 28, fontSize: '12px' }).setAlpha(0.7);
+    const logBtn = new Button(this, width - 210, height - 58, 'run log', () => void shareRunLog(this).then((m) => { logBtn.label.setText(m); logBtn.bg.width = Math.max(120, logBtn.label.width + 24); }), { width: 120, height: 28, fontSize: '12px' }).setAlpha(0.7);
     // Art style A/B switch (docs/ART.md): C is the chosen look, A stays for comparison.
     const artBtn = new Button(this, width - 290, height - 24, `art ${ART_STYLE_LABEL[getArtStyle()]}`, () => {
       setArtStyle(nextArtStyle(getArtStyle()));
@@ -74,6 +78,6 @@ export class TitleScene extends Phaser.Scene {
       setMeta(this, fresh);
       await getStore(this).saveMeta(fresh);
       this.scene.restart();
-    }, { width: 120, height: 28, fontSize: '12px' }).setAlpha(0.5);
+    }, { width: 100, height: 28, fontSize: '12px' }).setAlpha(0.5);
   }
 }

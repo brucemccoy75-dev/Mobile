@@ -4,6 +4,7 @@ import type { SkillId } from '@data/types';
 import { rollOffer, sellValue, type Offer, type RewardChoice } from '@core/loot';
 import { DECK_CAP } from '@core/combat';
 import { getMeta, getSession, persistMeta, persistRun, takeChoice, type RunSession } from '@game/session';
+import { recordReward } from '@game/telemetry';
 import { discoverItem, discoverSkill } from '@core/meta';
 import { Button } from '@game/ui/Button';
 import { openComparePanel, openSwapPanel } from '@game/ui/panels';
@@ -16,6 +17,8 @@ const TITLES = { kill: 'Spoils', guard: 'Spoils', chest: 'Chest', boss: 'Boss ho
  * Pick 1 of N (DECISIONS #4). Items with an occupied slot open a compare panel;
  * tomes at the deck cap open a swap panel. Skip is always allowed.
  */
+const choiceId = (c: RewardChoice) => (c.kind === 'tome' ? c.skill.id : c.item.id);
+
 export class RewardScene extends Phaser.Scene {
   private session!: RunSession;
   private offer!: Offer;
@@ -85,6 +88,7 @@ export class RewardScene extends Phaser.Scene {
     const isNew = c.kind === 'tome' ? discoverSkill(meta, c.skill.id) : discoverItem(meta, c.item.id);
     if (isNew) this.session.newDiscoveries.push(c.kind === 'tome' ? c.skill.id : c.item.id);
     this.session.gold += value;
+    recordReward(this, this.session, { source: this.offer.source, offered: this.offer.choices.map(choiceId), sold: choiceId(c), gold: this.offer.gold + value });
     await Promise.all([persistMeta(this), persistRun(this)]);
     const { width: W, height: H } = this.scale.gameSize;
     const name = c.kind === 'tome' ? c.skill.name : c.item.name;
@@ -105,6 +109,7 @@ export class RewardScene extends Phaser.Scene {
     this.done = true;
     const meta = getMeta(this);
     const { isNew, replaced } = takeChoice(this.session, meta, c, replaceId);
+    recordReward(this, this.session, { source: this.offer.source, offered: this.offer.choices.map(choiceId), picked: choiceId(c), replaced: replaced?.id, gold: this.offer.gold });
     await Promise.all([persistMeta(this), persistRun(this)]);
     const { width: W, height: H } = this.scale.gameSize;
     const name = c.kind === 'tome' ? c.skill.name : c.item.name;

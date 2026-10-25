@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { getItem, getSkill } from '@data/index';
+import { DECK_CAP } from '@core/combat';
 import { createMeta } from '@core/meta';
 import { applyHeirlooms, createSession, currentQuest, deserialize, serialize, spendConsumedTomes, takeChoice, turnInQuest } from './session';
 
@@ -82,11 +83,14 @@ describe('session', () => {
   it('tome at the deck cap requires a swap and records discovery once', () => {
     const meta = createMeta();
     const s = createSession('warrior', meta, 'CAP-1');
-    s.deck = ['shield_bash', 'bind_wound', 'exposing_strike', 'fireball', 'frost_bolt', 'lightning'];
+    const filler = ['fireball', 'frost_bolt', 'lightning', 'spirit_lash', 'mend', 'static_field', 'inferno', 'ice_armor'];
+    s.deck = ['shield_bash', 'bind_wound', 'exposing_strike', ...filler].slice(0, DECK_CAP);
+    expect(s.deck).toHaveLength(DECK_CAP);
     expect(() => takeChoice(s, meta, { kind: 'tome', skill: getSkill('broadsword') })).toThrow();
     const r = takeChoice(s, meta, { kind: 'tome', skill: getSkill('broadsword') }, 'exposing_strike');
     expect(r.isNew).toBe(true);
-    expect(s.deck).toEqual(['shield_bash', 'bind_wound', 'broadsword', 'fireball', 'frost_bolt', 'lightning']);
+    expect(s.deck[2]).toBe('broadsword');
+    expect(s.deck).toHaveLength(DECK_CAP);
     expect(takeChoice(s, meta, { kind: 'tome', skill: getSkill('broadsword') }, 'shield_bash').isNew).toBe(false);
   });
 });

@@ -55,6 +55,8 @@ export interface RunSession {
   pendingOffer: PendingOffer | null;
   /** Heirloom spread to pick from before the run starts; empty once chosen. */
   heirloomChoices: Heirloom[];
+  /** Test Mode sandbox: never saved, logged or counted. */
+  testMode?: boolean;
 }
 
 export type Store = SaveStore<MetaState, RunState>;
@@ -74,7 +76,7 @@ export const getStore = (scene: Phaser.Scene): Store => scene.registry.get('stor
 
 export async function persistRun(scene: Phaser.Scene): Promise<void> {
   const s = peekSession(scene);
-  if (s) await getStore(scene).saveRun(serialize(s));
+  if (s && !s.testMode) await getStore(scene).saveRun(serialize(s));
 }
 export async function persistMeta(scene: Phaser.Scene): Promise<void> {
   await getStore(scene).saveMeta(getMeta(scene));

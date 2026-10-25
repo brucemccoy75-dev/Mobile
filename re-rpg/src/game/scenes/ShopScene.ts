@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { describeSkill, getItem, getSkill } from '@data/index';
 import { isLineOwned, type ShopLine } from '@core/loot';
 import { DECK_CAP } from '@core/combat';
+import { recordShop } from '@game/telemetry';
 import { getMeta, getSession, persistMeta, persistRun, takeChoice, type RunSession } from '@game/session';
 import { Button } from '@game/ui/Button';
 import { openComparePanel, openSwapPanel } from '@game/ui/panels';
@@ -67,6 +68,7 @@ export class ShopScene extends Phaser.Scene {
     if (this.busy) return;
     const s = this.session;
     if (!line) {
+      recordShop(this, s, 'heal', s.shop.healPrice);
       s.gold -= s.shop.healPrice; s.shop.healUsed = true;
       s.hp = Math.min(s.stats.maxHp, s.hp + Math.round(s.stats.maxHp * s.shop.healPct));
       void persistRun(this); this.render(); return;
@@ -74,6 +76,7 @@ export class ShopScene extends Phaser.Scene {
     const commit = async (replaceId?: string) => {
       this.busy = true;
       s.gold -= line.price; line.sold = true;
+      recordShop(this, s, line.id, line.price);
       takeChoice(s, getMeta(this), line.kind === 'item' ? { kind: 'item', item: getItem(line.id) } : { kind: 'tome', skill: getSkill(line.id) }, replaceId);
       await Promise.all([persistMeta(this), persistRun(this)]);
       this.busy = false; this.render();

@@ -10,6 +10,7 @@ import { ShopScene } from '@game/scenes/ShopScene';
 import { HeirloomScene } from '@game/scenes/HeirloomScene';
 import { LegacyScene } from '@game/scenes/LegacyScene';
 import { QuestScene } from '@game/scenes/QuestScene';
+import { TestModeScene } from '@game/scenes/TestModeScene';
 import { computeGameSize, GAME_HEIGHT } from '@game/layout';
 
 // Logical resolution: fixed height, width follows the device aspect (16:9 .. 21:9)
@@ -29,7 +30,7 @@ const game = new Phaser.Game({
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
   input: { activePointers: 2 },
-  scene: [BootScene, TitleScene, ClassSelectScene, OverworldScene, CombatScene, RewardScene, RunEndScene, ShopScene, HeirloomScene, LegacyScene, QuestScene],
+  scene: [BootScene, TitleScene, ClassSelectScene, OverworldScene, CombatScene, RewardScene, RunEndScene, ShopScene, HeirloomScene, LegacyScene, QuestScene, TestModeScene],
 });
 
 // Re-fit when the phone rotates or the browser chrome collapses.

@@ -2,7 +2,7 @@ import type { SkillId } from '@data/types';
 import type { CombatEvent, PlayerCombatant } from './types';
 
 export const HAND_CAP = 3;
-export const DECK_CAP = 6;
+export const DECK_CAP = 10;
 
 /**
  * Start-of-round deal (DECISIONS #2): a full hand on round 1, then one card per

@@ -7,6 +7,7 @@ import { createFirebaseCloud } from '@save/firebase';
 import { firebaseConfig } from '@save/config';
 import { mergeMeta } from '@core/meta';
 import { setMeta } from '@game/session';
+import { TelemetryStore } from '@game/telemetry';
 import ANIMS from '@data/anims.json';
 
 /** Spritesheets cut from generated video by scripts/video-to-sheet.py; keyed `<name>_<anim>` (e.g. boar_idle). */
@@ -46,6 +47,7 @@ export class BootScene extends Phaser.Scene {
     this.createAnims();
     const local = new LocalSaveStore<MetaState, RunState>(browserKeyValue());
     this.registry.set('store', local);
+    this.registry.set('telemetry', new TelemetryStore());
     this.registry.set('cloud', null);
     void (async () => {
       // Cloud save is optional: without a Firebase config the game is local-only.

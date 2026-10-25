@@ -8,6 +8,7 @@ import { Button } from '@game/ui/Button';
 import { CLASS_COLORS, COLORS, FONT, text } from '@game/ui/theme';
 import { tween, wait } from '@game/ui/tween';
 import { GROUND_COLS, groundIndices, propsFor } from '@game/tiles';
+import { ensureRun } from '@game/telemetry';
 
 export const TILE = 48;
 
@@ -51,6 +52,7 @@ export class OverworldScene extends Phaser.Scene {
     this.retarget = null;
     this.guardSprites.clear();
     this.poiSprites.clear();
+    ensureRun(this, getSession(this), getMeta(this));
     this.npcSprite = null;
     this.follower = null;
 

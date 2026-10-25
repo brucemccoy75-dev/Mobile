@@ -4,6 +4,7 @@ import { HEIRLOOM_DEATHS, HEIRLOOM_OFFER, HEIRLOOM_PICKS, classUnlocked } from '
 import { getMeta, peekSession, setSession } from '@game/session';
 import { Button } from '@game/ui/Button';
 import { COLORS, text } from '@game/ui/theme';
+import { recordRunEnd, shareRunLog } from '@game/telemetry';
 
 export interface RunEndData { won: boolean; killedBy?: string; }
 
@@ -16,6 +17,7 @@ export class RunEndScene extends Phaser.Scene {
     const meta = getMeta(this);
     const { width: W, height: H } = this.scale.gameSize;
     this.cameras.main.setBackgroundColor(0x0b0f1a);
+    if (s) recordRunEnd(this, s, data.won ? 'won' : 'died', data.killedBy);
 
     this.add.text(W / 2, 48, data.won ? 'Victory' : 'You died', { ...text.title, color: data.won ? COLORS.gold : '#ff6b6b' }).setOrigin(0.5);
     const where = s ? `screen ${s.screenIndex + 1}, ${s.encountersWon} fights won, ${s.gold} gold` : '';
@@ -42,6 +44,7 @@ export class RunEndScene extends Phaser.Scene {
     ];
     this.add.text(W / 2, H - 150, lines.join('\n'), { ...text.small, fontSize: '14px', align: 'center', lineSpacing: 6 }).setOrigin(0.5);
 
+    const logBtn = new Button(this, W / 2 - 250, H - 50, 'share run log', () => void shareRunLog(this).then((m) => logBtn.label.setText(m)), { width: 200, height: 40, fontSize: '13px' });
     new Button(this, W / 2, H - 50, data.won ? 'Back to title' : 'Try again', () => {
       setSession(this, null);
       this.scene.start(data.won ? 'Title' : 'ClassSelect');

@@ -5,6 +5,7 @@ import type { Enemy, Intent, Posture } from '@data/types';
 import { createCombat, currentIntent, isPlayerStunned, skillInCombat, step, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
 import { getMeta, getSession, getStore, persistMeta, persistRun, setName, setSession, spendConsumedTomes, type PendingEncounter, type RunSession } from '@game/session';
 import { recordDeath } from '@core/meta';
+import { recordFight } from '@game/telemetry';
 import { Button } from '@game/ui/Button';
 import { Card, CARD_W } from '@game/ui/Card';
 import { HpBar } from '@game/ui/HpBar';
@@ -30,6 +31,7 @@ export class CombatScene extends Phaser.Scene {
   private enemyHp!: HpBar;
   /** HP as the playback has shown it so far; bars never read live state mid-step. */
   private dispHp = { player: 0, enemy: 0 };
+  private hpBefore = 0;
   private playerChips!: StatusChips;
   private enemyChips!: StatusChips;
   private intentText!: Phaser.GameObjects.Text;
@@ -65,6 +67,7 @@ export class CombatScene extends Phaser.Scene {
     if (!this.session.pendingEncounter) throw new Error('Combat started without an encounter');
     this.encounter = this.session.pendingEncounter;
     this.enemyDef = getEnemy(this.encounter.enemyId);
+    this.hpBefore = this.session.hp;
     this.state = createCombat({
       player: { name: this.session.classId, stats: this.session.stats, hp: this.session.hp, deck: this.session.deck },
       enemy: this.enemyDef,
@@ -516,6 +519,15 @@ export class CombatScene extends Phaser.Scene {
     this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.6).setDepth(70);
     const title = won ? (isBoss ? `${this.enemyDef.name} falls!` : 'Victory') : 'You died';
     this.add.text(W / 2, H * 0.34, title, { ...text.title, color: won ? COLORS.gold : '#ff6b6b' }).setOrigin(0.5).setDepth(71);
+    recordFight(this, this.session, this.encounter, this.hpBefore, this.state.player.hp, this.state.log, won ? 'won' : 'lost');
+
+    if (this.session.testMode) {
+      // Sandbox: no spoils, no death, nothing saved. Straight back into the same fight or the setup.
+      this.add.text(W / 2, H * 0.34 + 46, `${won ? 'Won' : 'Lost'} in ${this.state.round} rounds  ·  ${this.state.player.hp}/${this.session.stats.maxHp} HP left  ·  enemy ${this.state.enemy.hp}/${this.enemyDef.stats.maxHp}`, text.body).setOrigin(0.5).setDepth(71);
+      new Button(this, W / 2 - 120, H * 0.62, 'Fight again', () => { this.session.hp = this.session.stats.maxHp; this.scene.start('Combat'); }, { width: 200, fill: 0x1f2a44, edge: COLORS.goldHex }).setDepth(72);
+      new Button(this, W / 2 + 120, H * 0.62, 'Setup', () => this.scene.start('TestMode'), { width: 200 }).setDepth(72);
+      return;
+    }
 
     const spent = spendConsumedTomes(this.session, this.state.player.consumed);
     if (spent.length) void persistRun(this);
@@ -541,6 +553,7 @@ export class CombatScene extends Phaser.Scene {
   }
 
   private quit() {
+    if (this.session.testMode) { this.scene.start('TestMode'); return; }
     // Leaving mid-fight forfeits the fight but not the run: the map state was saved before the encounter.
     setSession(this, null);
     this.scene.start('Title');
