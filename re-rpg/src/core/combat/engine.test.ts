@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Rng } from '@core/rng';
-import { createCombat, step, currentIntent } from './engine';
+import { createCombat, step, currentIntent, isPlayerStunned } from './engine';
 import { hasStatus, getStatus } from './status';
 import type { CombatState } from './types';
 import type { Enemy } from '@data/types';
@@ -17,36 +17,55 @@ const PASSIVE: Enemy = {
   table: { kind: 'sequence', moves: [{ id: 'wait', name: 'Wait', posture: 'defensive', intent: { kind: 'stagger' }, effects: [] }] },
 };
 
-const fight = (deck: string[], enemy: Enemy | string = DUMMY, seed = 1, hp?: number): CombatState =>
-  createCombat({ player: { ...WARRIOR, deck, hp }, enemy, rng: new Rng(seed) });
+/** Fights in tests carry no basics unless asked, so the deck is exactly what the test says. */
+const fight = (deck: string[], enemy: Enemy | string = DUMMY, seed = 1, hp?: number, basics: string[] = []): CombatState =>
+  createCombat({ player: { ...WARRIOR, deck, hp, basics }, enemy, rng: new Rng(seed) });
+
+/** Play `id` from the hand; tests may inject a card that was not dealt. */
+const play = (s: CombatState, id: string) => {
+  let i = s.player.hand.indexOf(id);
+  if (i < 0) { s.player.hand.push(id); i = s.player.hand.length - 1; }
+  return step(s, { type: 'card', index: i });
+};
 
 describe('rounds and dealing', () => {
   it('deals 1, 2, 3 cards over the first three rounds, then overflows oldest-first', () => {
-    const s = fight(['a1', 'a2', 'a3', 'a4', 'a5'].map(() => 'broadsword'), PASSIVE);
+    const s = fight(['broadsword', 'broadsword', 'broadsword', 'broadsword', 'broadsword'], PASSIVE);
+    s.player.statuses.push({ id: 'stun', turns: 99, magnitude: 1 }); // pass every turn without playing
     expect(s.round).toBe(1);
     expect(s.player.hand).toHaveLength(1);
-    step(s, { type: 'basic', id: 'defend' });
+    step(s, { type: 'skip' });
     expect(s.player.hand).toHaveLength(2);
-    step(s, { type: 'basic', id: 'defend' });
+    step(s, { type: 'skip' });
     expect(s.player.hand).toHaveLength(3);
     const oldest = s.player.hand[0];
-    const ev = step(s, { type: 'basic', id: 'defend' });
+    const ev = step(s, { type: 'skip' });
     expect(s.player.hand).toHaveLength(3);
     expect(ev.find((e) => e.t === 'handOverflow')).toMatchObject({ discarded: oldest });
     expect(s.player.discard).toContain(oldest);
   });
 
-  it('with an empty deck, only basics are available and nothing is dealt', () => {
+  it('basics are shuffled into every fight on top of the run deck', () => {
+    const s = createCombat({ player: { ...WARRIOR, deck: ['broadsword'] }, enemy: PASSIVE, rng: new Rng(1) });
+    const all = [...s.player.deck, ...s.player.hand].sort();
+    expect(all).toEqual(['attack', 'attack', 'broadsword', 'defend']);
+  });
+
+  it('with no cards at all, skip passes the turn and nothing is dealt', () => {
     const s = fight([], PASSIVE);
     expect(s.player.hand).toHaveLength(0);
-    step(s, { type: 'basic', id: 'attack' });
+    step(s, { type: 'skip' });
     expect(s.player.hand).toHaveLength(0);
     expect(s.log.some((e) => e.t === 'deal')).toBe(false);
   });
 
+  it('refuses to skip with cards in hand', () => {
+    const s = fight(['attack'], PASSIVE);
+    expect(() => step(s, { type: 'skip' })).toThrow();
+  });
+
   it('reshuffles the discard pile when the deck is empty', () => {
     const s = fight(['broadsword', 'exposing_strike'], PASSIVE);
-    // round 1: 1 dealt (deck 1 left). play it. round 2: deal last (deck 0). play it. round 3: reshuffle 2 from discard.
     step(s, { type: 'card', index: 0 });
     step(s, { type: 'card', index: 0 });
     expect(s.log.filter((e) => e.t === 'reshuffle')).toHaveLength(1);
@@ -56,8 +75,8 @@ describe('rounds and dealing', () => {
 
   it('is deterministic for a seed', () => {
     const run = (seed: number) => {
-      const s = fight(['fireball', 'frost_bolt', 'inferno'], undefined, seed);
-      while (s.outcome === 'ongoing') step(s, s.player.hand.length ? { type: 'card', index: 0 } : { type: 'basic', id: 'attack' });
+      const s = createCombat({ player: { ...WARRIOR, deck: ['fireball', 'frost_bolt', 'inferno'] }, enemy: DUMMY, rng: new Rng(seed) });
+      while (s.outcome === 'ongoing') step(s, s.player.hand.length ? { type: 'card', index: 0 } : { type: 'skip' });
       return JSON.stringify(s.log);
     };
     expect(run(7)).toBe(run(7));
@@ -67,19 +86,29 @@ describe('rounds and dealing', () => {
 
 describe('damage and basics', () => {
   it('Attack deals round(atk*1) - def, min 1', () => {
-    const s = fight([], DUMMY);
-    step(s, { type: 'basic', id: 'attack' });
+    const s = fight(['attack'], DUMMY);
+    play(s, 'attack');
     const hit = s.log.find((e) => e.t === 'damage' && e.source === 'player');
     expect(hit).toMatchObject({ amount: 4, blocked: false });
-    // enemy atk 3 - player def 1 = 2
-    const back = s.log.find((e) => e.t === 'damage' && e.source === 'enemy');
+    const back = s.log.find((e) => e.t === 'damage' && e.source === 'enemy'); // enemy atk 3 - player def 1 = 2
     expect(back).toMatchObject({ amount: 2 });
     expect(s.player.hp).toBe(23);
   });
 
+  it('defence never removes more than half a hit', () => {
+    const wall: Enemy = { ...DUMMY, stats: { maxHp: 30, atk: 3, def: 3 } };
+    const s = fight(['attack'], wall);
+    play(s, 'attack'); // 4 - 3 = 1, floored to ceil(4*0.5) = 2
+    expect(s.enemy.hp).toBe(28);
+    const heavy: Enemy = { ...DUMMY, stats: { maxHp: 30, atk: 3, def: 10 } };
+    const s2 = fight(['broadsword'], heavy);
+    play(s2, 'broadsword'); // 8 - 10 → floor 4
+    expect(s2.enemy.hp).toBe(26);
+  });
+
   it('Defend blocks the next hit and is consumed', () => {
-    const s = fight([], DUMMY);
-    step(s, { type: 'basic', id: 'defend' });
+    const s = fight(['defend'], DUMMY);
+    play(s, 'defend');
     const back = s.log.find((e) => e.t === 'damage' && e.source === 'enemy');
     expect(back).toMatchObject({ amount: 0, blocked: true });
     expect(s.player.hp).toBe(25);
@@ -87,15 +116,15 @@ describe('damage and basics', () => {
   });
 
   it('Guard stacks are capped at 3', () => {
-    const s = fight([], PASSIVE);
-    for (let i = 0; i < 5; i++) step(s, { type: 'basic', id: 'defend' });
+    const s = fight(['defend'], PASSIVE);
+    for (let i = 0; i < 5; i++) play(s, 'defend');
     expect(getStatus(s.player, 'guard')?.magnitude).toBe(3);
   });
 
   it('multi-hit attacks consume one guard per hit', () => {
     const swarm: Enemy = { ...DUMMY, id: 'swarm', table: { kind: 'sequence', moves: [{ id: 'sw', name: 'Swarm', posture: 'aggressive', intent: { kind: 'attack', mult: 1, hits: 3 }, effects: [{ type: 'damage', mult: 1, hits: 3 }] }] } };
-    const s = fight([], swarm);
-    step(s, { type: 'basic', id: 'defend' });
+    const s = fight(['defend'], swarm);
+    play(s, 'defend');
     const hits = s.log.filter((e) => e.t === 'damage' && e.source === 'enemy');
     expect(hits.map((h) => (h as { blocked: boolean }).blocked)).toEqual([true, false, false]);
     expect(s.player.hp).toBe(25 - 2 - 2);
@@ -104,56 +133,53 @@ describe('damage and basics', () => {
 
 describe('statuses', () => {
   it('Exposed doubles damage taken and expires after its rounds', () => {
-    const s = fight(['exposing_strike'], DUMMY);
-    step(s, { type: 'card', index: 0 }); // 4 dmg, enemy exposed 2 rounds (ticks to 1 at end of round 1)
+    const s = fight(['exposing_strike', 'attack'], DUMMY);
+    play(s, 'exposing_strike'); // 4 dmg, enemy exposed 2 rounds
     expect(s.enemy.hp).toBe(26);
     expect(hasStatus(s.enemy, 'exposed')).toBe(true);
-    step(s, { type: 'basic', id: 'attack' }); // 8 dmg; ticks to 0 → expires
+    play(s, 'attack'); // 8 dmg; ticks to 0 → expires
     expect(s.enemy.hp).toBe(18);
     expect(hasStatus(s.enemy, 'exposed')).toBe(false);
   });
 
-  it('Bind Wound heals 30% and leaves you Exposed for that round only', () => {
+  it('Bind Wound heals 40% and then costs two full turns', () => {
     const s = fight(['bind_wound'], DUMMY, 1, 10);
-    step(s, { type: 'card', index: 0 });
-    // heal round(0.3*25)=8 → 18, then enemy hits 2 doubled = 4 → 14; exposed expires at end of round
+    play(s, 'bind_wound'); // +10 → 20, enemy hits 2 → 18
+    expect(s.player.hp).toBe(18);
+    expect(isPlayerStunned(s)).toBe(true);
+    const ev1 = step(s, { type: 'card', index: 0 }); // ignored: recovering
+    expect(ev1.some((e) => e.t === 'stunned')).toBe(true);
+    expect(ev1.some((e) => e.t === 'play' && e.side === 'player')).toBe(false);
+    expect(s.player.hp).toBe(16);
+    step(s, { type: 'skip' });
     expect(s.player.hp).toBe(14);
-    expect(hasStatus(s.player, 'exposed')).toBe(false);
+    expect(isPlayerStunned(s)).toBe(false); // two turns skipped, acting again
   });
 
   it('Weak halves damage dealt', () => {
-    const s = fight([], DUMMY, 1, 10);
+    const s = fight(['attack'], DUMMY, 1, 10);
     s.player.statuses.push({ id: 'weak', turns: 2, magnitude: 1 });
-    step(s, { type: 'basic', id: 'attack' }); // floor(4*0.5)=2 - 0 = 2
+    play(s, 'attack'); // floor(4*0.5)=2 - 0 = 2
     const hits = s.log.filter((e) => e.t === 'damage' && e.source === 'player');
     expect(hits[0]).toMatchObject({ amount: 2 });
   });
 
-  it('Mend heals 35% and the Weak tax covers only that round', () => {
-    const s = fight(['mend'], DUMMY, 1, 10);
-    step(s, { type: 'card', index: 0 }); // +round(0.35*25)=9 → 19, then take 2 → 17; weak expires at end of round
-    expect(s.player.hp).toBe(17);
-    expect(hasStatus(s.player, 'weak')).toBe(false);
-  });
-
   it('Burn ticks at end of round, ignores guard, and expires', () => {
     const s = fight(['static_field'], PASSIVE);
-    step(s, { type: 'card', index: 0 }); // burn 3 x3: tick 1
+    play(s, 'static_field'); // burn 3 x3: tick 1
     expect(s.enemy.hp).toBe(27);
-    step(s, { type: 'basic', id: 'defend' });
-    step(s, { type: 'basic', id: 'defend' });
+    play(s, 'defend');
+    play(s, 'defend');
     expect(s.enemy.hp).toBe(21);
     expect(hasStatus(s.enemy, 'burn')).toBe(false);
-    step(s, { type: 'basic', id: 'defend' });
+    play(s, 'defend');
     expect(s.enemy.hp).toBe(21);
   });
 
   it('Chill makes the enemy skip its action and is consumed', () => {
-    const chiller: Enemy = { ...DUMMY };
-    // Force the chance roll to succeed by using a skill without chance.
-    const s = createCombat({ player: { ...WARRIOR, deck: [] }, enemy: chiller, rng: new Rng(3) });
+    const s = fight(['attack'], DUMMY, 3);
     s.enemy.statuses.push({ id: 'chill', turns: 1, magnitude: 1 });
-    step(s, { type: 'basic', id: 'attack' });
+    play(s, 'attack');
     expect(s.player.hp).toBe(25);
     expect(s.log.some((e) => e.t === 'chilled')).toBe(true);
     expect(hasStatus(s.enemy, 'chill')).toBe(false);
@@ -162,13 +188,13 @@ describe('statuses', () => {
   it('Lightning ignores defense', () => {
     const tank: Enemy = { ...DUMMY, stats: { maxHp: 30, atk: 3, def: 5 } };
     const s = fight(['lightning'], tank);
-    step(s, { type: 'card', index: 0 }); // round(4*1.6)=6, def ignored
+    play(s, 'lightning'); // round(4*1.6)=6, def ignored
     expect(s.enemy.hp).toBe(24);
   });
 
   it('Spirit Lash heals 50% of damage dealt', () => {
     const s = fight(['spirit_lash'], DUMMY, 1, 10);
-    step(s, { type: 'card', index: 0 }); // round(4*1.2)=5 dmg → heal round(2.5)=3; then take 2
+    play(s, 'spirit_lash'); // round(4*1.2)=5 dmg → heal round(2.5)=3; then take 2
     expect(s.enemy.hp).toBe(25);
     expect(s.player.hp).toBe(10 + 3 - 2);
   });
@@ -176,11 +202,11 @@ describe('statuses', () => {
 
 describe('intent and tells', () => {
   it('shows the current move and the posture of the next one, and advances', () => {
-    const s = fight([], 'boar');
+    const s = fight(['defend'], 'boar');
     const first = s.log.find((e) => e.t === 'intent')!;
     expect(first).toMatchObject({ moveName: 'Tusk', posture: 'aggressive' });
-    step(s, { type: 'basic', id: 'defend' });
-    step(s, { type: 'basic', id: 'defend' });
+    play(s, 'defend');
+    play(s, 'defend');
     const third = s.log.filter((e) => e.t === 'intent')[2]!;
     expect(third).toMatchObject({ moveName: 'Gore', predictedDamage: 7 }); // round(4*2)=8 - def 1
   });
@@ -192,9 +218,9 @@ describe('intent and tells', () => {
   });
 
   it('boss phase change rebuilds the queue and emits a phase event', () => {
-    const s = fight([], 'warden');
+    const s = fight(['defend'], 'warden');
     s.enemy.hp = 25; // at the threshold; crossing is evaluated at end of round
-    step(s, { type: 'basic', id: 'defend' });
+    play(s, 'defend');
     expect(s.enemy.phase).toBe(1);
     expect(s.log.some((e) => e.t === 'phase')).toBe(true);
     expect(['rend', 'curse', 'smash']).toContain(s.enemy.current.id);
@@ -203,16 +229,16 @@ describe('intent and tells', () => {
 
 describe('outcomes', () => {
   it('ends when the enemy dies and refuses further steps', () => {
-    const s = fight([], DUMMY);
+    const s = fight(['attack'], DUMMY);
     s.enemy.hp = 3;
-    step(s, { type: 'basic', id: 'attack' });
+    play(s, 'attack');
     expect(s.outcome).toBe('won');
-    expect(() => step(s, { type: 'basic', id: 'attack' })).toThrow();
+    expect(() => play(s, 'attack')).toThrow();
   });
 
   it('ends when the player dies', () => {
-    const s = fight([], DUMMY, 1, 2);
-    step(s, { type: 'basic', id: 'attack' });
+    const s = fight(['attack'], DUMMY, 1, 2);
+    play(s, 'attack');
     expect(s.outcome).toBe('lost');
     expect(s.log.at(-1)).toEqual({ t: 'end', outcome: 'lost' });
   });
@@ -220,13 +246,13 @@ describe('outcomes', () => {
 
 describe('stagger', () => {
   it('leaves the boss Exposed for the player\'s following turn', () => {
-    const s = fight([], 'gatekeeper');
-    step(s, { type: 'basic', id: 'attack' }); // boss guards
-    step(s, { type: 'basic', id: 'defend' }); // boss crushes into guard
-    step(s, { type: 'basic', id: 'attack' }); // boss staggers
+    const s = fight(['attack', 'defend'], 'gatekeeper');
+    play(s, 'attack'); // boss guards
+    play(s, 'defend'); // boss crushes into guard
+    play(s, 'attack'); // boss staggers
     expect(hasStatus(s.enemy, 'exposed')).toBe(true);
     const before = s.enemy.hp;
-    step(s, { type: 'basic', id: 'attack' }); // (4-2)*2 = 4
+    play(s, 'attack'); // (4-2)*2 = 4
     expect(before - s.enemy.hp).toBe(4);
   });
 });

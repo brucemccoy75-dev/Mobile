@@ -18,7 +18,7 @@ POC "win" = kill Boss 2. Expected first-run outcome = die before Boss 1.
 
 | Class | HP | Identity | POC sets (one rolled per run) |
 |---|---|---|---|
-| Warrior | 25 | Melee, armor, attrition | **Tank**: Shield Bash (dmg + Guard), Bind Wound · **DPS**: Broadsword Strike, Exposing Strike |
+| Warrior | 25 | Melee, armor, attrition | **Tank**: Shield Bash (dmg + Guard), Bind Wound (heal, Recovering) · **DPS**: Broadsword Strike, Exposing Strike |
 | Wizard | 20 | Burst, self-risk | **Fire**: Fireball, Inferno (ultimate, leaves caster Exposed) · **Frost**: Frost Bolt (chance to Chill = enemy skips a turn), Ice Armor (temporary def) |
 | Shaman | 20 | Sustain + nature damage over time | **Spirit**: Mend (heal), Spirit Lash (damage + heal small %) · **Storm**: Lightning (damage, ignores part of def), Static Field (Burn-like damage over time) |
 
@@ -32,15 +32,15 @@ Known skills form a **deck** (cap **6**). Every encounter:
 2. Round 1 deals 1 skill into the hand, round 2 a second, round 3 a third. **Hand cap 3.**
 3. Once the hand is full, each new round still deals one and the **oldest card in hand is discarded**. Holding skills is punished.
 4. A played skill goes to the **discard pile**. When the deck is empty the discard is reshuffled.
-5. **Attack** and **Defend** are basics, always available outside the hand, so a bad draw is never a dead turn.
+5. **Attack** (×2) and **Defend** (×1) are shuffled into every fight's deck on top of the run deck and do not count against the cap. There is no always-available button: a hand of three Attacks when you needed a block is the game.
 
 Tomes add a skill to the deck. At the cap, a tome forces a binding swap or a skip, the same rule as equipment. Later knobs: a stamina meter for multi-play turns, deal 2 per round in long fights, "+1 deck size" and "+1 hand size" as item stats.
 
-Healing skills honour the HP-drain rule: they are rare in the pool and carry a tax (Bind Wound heals small and ends the turn; Mend heals more and applies Weak to the caster).
+Healing skills honour the HP-drain rule: they are rare in the pool and cost tempo. Bind Wound and Mend heal 40% and apply **Recovering**: you skip your next two turns while the enemy keeps acting, so a heal is a bet on surviving two free hits.
 
 Skills are data: `effects[]` of damage(mult), heal(flat/%), applyStatus(target, id, turns), guard, and `selfStatus`.
 
-POC statuses: **Exposed** (takes 2x damage), **Guard** (blocks the next hit; stacks to 3), **Burn** (N dmg at end of round), **Chill** (skip next action), **Weak** (deal half damage). Durations count end-of-round ticks: a status applied on the player's turn with 1 turn covers the enemy's action that round; a self-status the enemy applies on its own turn needs 2 turns to be exploitable next round.
+POC statuses: **Exposed** (takes 2x damage), **Guard** (blocks the next hit; stacks to 3), **Burn** (N dmg at end of round), **Chill** (skip next action), **Weak** (deal half damage), **Recovering** (player skips their turns while it lasts). Durations count end-of-round ticks: a status applied on the player's turn with 1 turn covers the enemy's action that round; a self-status the enemy applies on its own turn needs 2 turns to be exploitable next round.
 
 ## 4. Equipment
 

@@ -1,11 +1,11 @@
-import { ATTACK, DEFEND } from '@data/skills';
+import { BASIC_DECK } from '@data/skills';
 import { getEnemy, getSkill } from '@data/index';
-import type { Effect, Enemy, EnemyId, Intent, Skill, SkillId, Stats } from '@data/types';
+import type { Effect, Enemy, EnemyId, Intent, SkillId, Stats } from '@data/types';
 import { Rng } from '@core/rng';
 import { advanceMoves, pickMove } from './ai';
 import { computeHit, predictDamage } from './damage';
 import { dealOne, playCard } from './deck';
-import { applyStatus, consumeChill, consumeGuard, tickStatuses } from './status';
+import { applyStatus, consumeChill, consumeGuard, getStatus, hasStatus, tickStatuses } from './status';
 import type { Combatant, CombatEvent, CombatState, EnemyCombatant, PlayerAction, PlayerCombatant } from './types';
 
 export interface PlayerSetup {
@@ -13,6 +13,8 @@ export interface PlayerSetup {
   stats: Stats;
   hp?: number;          // carried-over HP; defaults to maxHp
   deck: SkillId[];
+  /** Cards added to every fight's deck; defaults to BASIC_DECK. Tests pass [] for control. */
+  basics?: SkillId[];
 }
 
 export interface CombatOptions {
@@ -29,7 +31,7 @@ export function createCombat(opts: CombatOptions): CombatState {
   const player: PlayerCombatant = {
     side: 'player', name: opts.player.name ?? 'Hero',
     stats: { ...opts.player.stats }, hp: opts.player.hp ?? opts.player.stats.maxHp,
-    statuses: [], deck: opts.rng.shuffle(opts.player.deck), hand: [], discard: [],
+    statuses: [], deck: opts.rng.shuffle([...(opts.player.basics ?? BASIC_DECK), ...opts.player.deck]), hand: [], discard: [],
   };
   const enemyBase = { side: 'enemy' as const, name: def.name, enemyId: def.id, stats: { ...def.stats }, hp: def.stats.maxHp, statuses: [], phase: 0, seqIndex: 0 };
   const enemy = enemyBase as unknown as EnemyCombatant;
@@ -58,6 +60,9 @@ export function currentIntent(state: CombatState): { intent: Intent; predictedDa
   return { intent: m.intent, predictedDamage, moveName: m.name };
 }
 
+/** True while the player is Recovering and must pass the turn (the scene auto-steps with `skip`). */
+export const isPlayerStunned = (state: CombatState) => hasStatus(state.player, 'stun');
+
 /**
  * One full round from the player's decision:
  *   player acts → enemy acts (unless Chilled) → end-of-round ticks → next round start.
@@ -71,10 +76,16 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
   const events: CombatEvent[] = [];
 
   // Player turn
-  const skill = resolvePlayerAction(state.player, action);
-  events.push({ t: 'play', side: 'player', skill: skill.id, name: skill.name });
-  applyEffects(skill.effects, state.player, state.enemy, roll, events);
-  if (checkDeaths(state, events)) return finish(state, rng, events);
+  if (isPlayerStunned(state)) {
+    events.push({ t: 'stunned', side: 'player', turnsLeft: getStatus(state.player, 'stun')!.turns - 1 });
+  } else if (action.type === 'skip') {
+    if (state.player.hand.length > 0) throw new Error('Cannot skip with cards in hand');
+  } else {
+    const skill = getSkill(playCard(state.player, action.index));
+    events.push({ t: 'play', side: 'player', skill: skill.id, name: skill.name });
+    applyEffects(skill.effects, state.player, state.enemy, roll, events);
+    if (checkDeaths(state, events)) return finish(state, rng, events);
+  }
 
   // Enemy turn
   if (!consumeChill(state.enemy, events)) {
@@ -106,11 +117,6 @@ function startRound(state: CombatState, _def: Enemy, rng: Rng, events: CombatEve
   dealOne(state.player, (a) => rng.shuffle(a), events);
   const { intent, predictedDamage, moveName } = currentIntent(state);
   events.push({ t: 'intent', intent, posture: state.enemy.next.posture, predictedDamage, moveName });
-}
-
-function resolvePlayerAction(p: PlayerCombatant, action: PlayerAction): Skill {
-  if (action.type === 'basic') return action.id === 'attack' ? ATTACK : DEFEND;
-  return getSkill(playCard(p, action.index));
 }
 
 function checkDeaths(state: CombatState, events: CombatEvent[]): boolean {

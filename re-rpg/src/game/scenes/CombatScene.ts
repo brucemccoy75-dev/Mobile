@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { getEnemy, getSkill } from '@data/index';
 import type { Enemy, Intent, Posture } from '@data/types';
-import { createCombat, step, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
+import { createCombat, isPlayerStunned, step, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
 import { getMeta, getSession, getStore, persistMeta, setName, setSession, type PendingEncounter, type RunSession } from '@game/session';
 import { recordDeath } from '@core/meta';
 import { Button } from '@game/ui/Button';
@@ -35,8 +35,7 @@ export class CombatScene extends Phaser.Scene {
   private pileText!: Phaser.GameObjects.Text;
   private banner!: Phaser.GameObjects.Text;
   private hand: Card[] = [];
-  private attackBtn!: Button;
-  private defendBtn!: Button;
+  private handHint!: Phaser.GameObjects.Text;
   private handY = 0;
   private px = 0; private py = 0; private ex = 0; private ey = 0;
 
@@ -99,9 +98,8 @@ export class CombatScene extends Phaser.Scene {
     this.intentNum = this.add.text(ix + 84, iy - 10, '', { ...text.h2, fontSize: '26px' }).setOrigin(1, 0.5);
     this.postureText = this.add.text(ix, iy + 16, '', text.small).setOrigin(0.5);
 
-    // basics
-    this.attackBtn = new Button(this, 92, this.handY, 'Attack', () => this.act({ type: 'basic', id: 'attack' }), { width: 140, height: 56, fill: 0x3a2a1f, edge: 0x8a5a2b });
-    this.defendBtn = new Button(this, W - 92, this.handY, 'Defend', () => this.act({ type: 'basic', id: 'defend' }), { width: 140, height: 56, fill: 0x1f2a3a, edge: 0x2b6a8a });
+    // hand hint (shown while recovering or when the hand is empty)
+    this.handHint = this.add.text(W / 2, this.handY, '', { ...text.body, color: '#ffd166', fontStyle: 'bold' }).setOrigin(0.5).setDepth(4);
 
     // banner for big moments
     this.banner = this.add.text(W / 2, H * 0.3, '', { ...text.title, fontSize: '34px' }).setOrigin(0.5).setAlpha(0).setDepth(60);
@@ -138,9 +136,18 @@ export class CombatScene extends Phaser.Scene {
   }
 
   private setInputEnabled(on: boolean) {
-    this.attackBtn.setEnabled(on);
-    this.defendBtn.setEnabled(on);
     for (const c of this.hand) c.setEnabled(on);
+  }
+
+  /** Recovering (or an empty hand): the turn passes on its own after a beat. */
+  private async autoPass() {
+    const stunned = isPlayerStunned(this.state);
+    const left = stunned ? Math.max(0, (this.state.player.statuses.find((s) => s.id === 'stun')?.turns ?? 1) - 1) : 0;
+    this.handHint.setText(stunned ? `Recovering… ${left} turn${left === 1 ? '' : 's'} to go` : 'No cards. The turn passes.');
+    for (const c of this.hand) c.setEnabled(false);
+    await wait(this, 900);
+    this.handHint.setText('');
+    this.act({ type: 'skip' });
   }
 
   private showIntent(intent: Intent, posture: Posture, predicted: number, moveName: string) {
@@ -169,6 +176,7 @@ export class CombatScene extends Phaser.Scene {
     this.busy = false;
     if (this.state.outcome === 'ongoing') {
       this.syncAll();
+      if (isPlayerStunned(this.state) || this.state.player.hand.length === 0) { void this.autoPass(); return; }
       this.setInputEnabled(true);
     } else {
       this.syncAll();
@@ -253,6 +261,12 @@ export class CombatScene extends Phaser.Scene {
       case 'chilled': {
         const p = pos(e.side);
         await floatText(this, p.x, p.y - 30, 'CHILLED', '#9ad7ff', 26);
+        return;
+      }
+      case 'stunned': {
+        const p = pos(e.side);
+        this.playerChips.set(this.state.player.statuses);
+        await floatText(this, p.x, p.y - 30, 'recovering', '#ffd166', 22);
         return;
       }
       case 'phase':

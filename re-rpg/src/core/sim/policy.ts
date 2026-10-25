@@ -1,6 +1,6 @@
 import { getSkill } from '@data/index';
 import type { Effect } from '@data/types';
-import { currentIntent, hasStatus, type CombatState, type PlayerAction } from '@core/combat';
+import { currentIntent, hasStatus, isPlayerStunned, type CombatState, type PlayerAction } from '@core/combat';
 
 export type Policy = (s: CombatState) => PlayerAction;
 
@@ -26,6 +26,7 @@ const dmgValue = (effects: Effect[], enemyAttacking: boolean) =>
  * baseline the balance should be tuned around.
  */
 export const greedy: Policy = (s) => {
+  if (isPlayerStunned(s) || s.player.hand.length === 0) return { type: 'skip' };
   const { intent, predictedDamage } = currentIntent(s);
   const hp = s.player.hp;
   const maxHp = s.player.stats.maxHp;
@@ -47,12 +48,19 @@ export const greedy: Policy = (s) => {
     const guardCard = hand.find((h) => has(h.skill.effects, isGuard) && has(h.skill.effects, isDamage));
     if (guardCard) return { type: 'card', index: guardCard.index };
     if (full) return { type: 'card', index: full.index };
-    return { type: 'basic', id: 'defend' };
+    // no block in hand: fall through and hit back
   }
 
-  // 2. Low HP and a heal in hand, when the enemy is not about to punish Exposed hard.
+  // 2. Low HP and a heal in hand. Recovering heals cost two turns: only when the heal outweighs
+  //    what the enemy will do in the meantime (rough: two enemy hits).
   if (hp <= maxHp * 0.4) {
-    const healCard = hand.find((h) => has(h.skill.effects, isHeal) && !(has(h.skill.effects, selfExposes) && incomingAttack && predictedDamage * 2 >= hp));
+    const healCard = hand.find((h) => {
+      if (!has(h.skill.effects, isHeal)) return false;
+      const stuns = h.skill.effects.some((e) => e.type === 'status' && e.target === 'self' && e.status === 'stun');
+      const healAmt = h.skill.effects.reduce((v, e) => v + (e.type === 'heal' ? (e.pct ?? 0) * maxHp + (e.flat ?? 0) : 0), 0);
+      const typicalHit = Math.max(1, s.enemy.stats.atk - s.player.stats.def);
+      return !stuns || healAmt > typicalHit * 2 + 1 && hp > typicalHit * 2;
+    });
     if (healCard) return { type: 'card', index: healCard.index };
   }
 
@@ -64,8 +72,12 @@ export const greedy: Policy = (s) => {
     .map((h) => ({ ...h, value: enemyGuarded ? dmgValue(h.skill.effects.filter((e) => e.type !== 'damage' || (e.hits ?? 1) > 1), incomingAttack) : dmgValue(h.skill.effects, incomingAttack) }))
     .sort((a, b) => b.value - a.value);
   const best = candidates[0];
-  if (best && best.value > (enemyGuarded ? 0 : 1.0)) return { type: 'card', index: best.index };
+  if (best && best.value > (enemyGuarded ? 0 : 0.9)) return { type: 'card', index: best.index };
 
-  // 5. Basics: attack, unless the enemy guards (then still attack; it strips the guard).
-  return { type: 'basic', id: 'attack' };
+  // 5. Nothing worth playing: prefer a Defend card if the enemy attacks, else the cheapest damage, else anything.
+  const defend = hand.find((h) => h.skill.id === 'defend');
+  if (defend && incomingAttack && !guarded) return { type: 'card', index: defend.index };
+  const anyDmg = hand.filter((h) => has(h.skill.effects, isDamage)).sort((a, b) => dmgValue(a.skill.effects, incomingAttack) - dmgValue(b.skill.effects, incomingAttack))[0];
+  if (anyDmg) return { type: 'card', index: anyDmg.index };
+  return { type: 'card', index: 0 };
 };

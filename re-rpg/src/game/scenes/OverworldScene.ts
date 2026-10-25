@@ -158,9 +158,10 @@ export class OverworldScene extends Phaser.Scene {
     hud.add(this.threatFill);
     this.goldText = this.add.text(W - 240, 24, '', { fontFamily: FONT, fontSize: '13px', color: COLORS.gold, fontStyle: 'bold' }).setOrigin(1, 0.5);
     hud.add(this.goldText);
-    // quit
-    const quit = new Button(this, W - 24, 26, '✕', () => this.quit(), { width: 32, height: 32, fontSize: '14px' });
-    quit.setScrollFactor(0, 0, true).setDepth(101);
+    // quit: a bare interactive rectangle, not a Button container (container children with scrollFactor 0 do not hit-test)
+    const quitBg = this.add.rectangle(W - 24, 26, 32, 32, COLORS.panel).setStrokeStyle(2, COLORS.panelEdge).setScrollFactor(0).setDepth(101).setInteractive({ useHandCursor: true });
+    this.add.text(W - 24, 26, '✕', { fontFamily: FONT, fontSize: '14px', color: COLORS.text, fontStyle: 'bold' }).setOrigin(0.5).setScrollFactor(0).setDepth(102);
+    quitBg.on('pointerup', () => this.quit());
     // toast
     this.toastText = this.add.text(W / 2, 74, '', { fontFamily: FONT, fontSize: '15px', color: COLORS.text, backgroundColor: '#000000aa', padding: { x: 10, y: 6 } }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(101).setAlpha(0);
     this.syncHud();
@@ -321,10 +322,17 @@ export class OverworldScene extends Phaser.Scene {
     const { width: W, height: H } = this.scale.gameSize;
     const s = this.session;
     const last = s.screenIndex + 1 >= SCREEN_COUNT;
-    const dim = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.65).setScrollFactor(0).setDepth(120);
-    const title = this.add.text(W / 2, H * 0.36, last ? 'You win!' : `Screen ${s.screenIndex + 1} cleared`, { ...text.title, color: COLORS.gold }).setOrigin(0.5).setScrollFactor(0).setDepth(121);
-    const sub = this.add.text(W / 2, H * 0.36 + 48, last ? `Both screens cleared with ${s.encountersWon} fights won. Seed ${s.seed}.` : 'Fully healed. The next screen is harder.', text.body).setOrigin(0.5).setScrollFactor(0).setDepth(121);
-    const btn = new Button(this, W / 2, H * 0.64, last ? 'Continue' : 'Onward', () => {
+    // Drawn in world space at the camera's current view: the camera is parked while locked,
+    // and Button containers only hit-test reliably without scroll factors. The camera's
+    // scroll is only settled after a frame has rendered, so wait one beat before reading it.
+    await wait(this, 80);
+    const cam = this.cameras.main;
+    cam.stopFollow();
+    const cx = cam.scrollX + W / 2, top = cam.scrollY;
+    const dim = this.add.rectangle(cx, top + H / 2, W, H, 0x000000, 0.65).setDepth(120);
+    const title = this.add.text(cx, top + H * 0.36, last ? 'You win!' : `Screen ${s.screenIndex + 1} cleared`, { ...text.title, color: COLORS.gold }).setOrigin(0.5).setDepth(121);
+    const sub = this.add.text(cx, top + H * 0.36 + 48, last ? `Both screens cleared with ${s.encountersWon} fights won. Seed ${s.seed}.` : 'Fully healed. The next screen is harder.', text.body).setOrigin(0.5).setDepth(121);
+    const btn = new Button(this, cx, top + H * 0.64, last ? 'Continue' : 'Onward', () => {
       if (last) {
         recordWin(getMeta(this), SCREEN_COUNT);
         void Promise.all([persistMeta(this), getStore(this).clearRun()]).then(() => this.scene.start('RunEnd', { won: true }));
@@ -333,7 +341,7 @@ export class OverworldScene extends Phaser.Scene {
       startScreen(s, s.screenIndex + 1, getMeta(this));
       void persistRun(this).then(() => this.scene.restart());
     }, { width: 220, fill: 0x1f2a44, edge: COLORS.goldHex });
-    btn.setScrollFactor(0, 0, true).setDepth(122);
+    btn.setDepth(122);
     void dim; void title; void sub;
   }
 

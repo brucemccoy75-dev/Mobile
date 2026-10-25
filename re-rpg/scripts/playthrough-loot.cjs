@@ -81,12 +81,13 @@ const { chromium } = require('playwright');
     console.log('meta', JSON.stringify(await meta()));
     await page.screenshot({ path: `${out}/m4-afterreward.png` });
     // Regression: controls must work again after combat + reward (scene fields are reused by Phaser).
-    const east = await page.evaluate(() => { const s = window.__rerpg.registry.get('session'); return s.map.entry; });
-    await tapTile(east.x + 1, east.y);
+    const nb = await page.evaluate(() => { const s = window.__rerpg.registry.get('session'); const m = s.map; const p = s.playerPos; const ok = (x, y) => { const t = m.tiles[y * m.width + x]; return t && t !== 'rock' && t !== 'water' && !m.guards.some(g => g.pos.x === x && g.pos.y === y && !s.defeatedGuards.has(g.id)) && !(m.boss.x === x && m.boss.y === y); }; return [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => ({ x: p.x + dx, y: p.y + dy })).find(t => ok(t.x, t.y)); });
+    await tapTile(nb.x, nb.y);
     await page.waitForFunction(() => { const sc = window.__rerpg.scene.getScene('Overworld'); return sc && sc.walking === false && !window.__rerpg.scene.isActive('Combat'); }, null, { timeout: 20000 }).catch(() => {});
     await page.waitForTimeout(300);
-    const moved = await page.evaluate(() => { const s = window.__rerpg.registry.get('session'); return s.playerPos; });
-    console.log('moved after reward', JSON.stringify({ from: s1.pos, to: moved, ok: moved.x !== s1.pos.x || moved.y !== s1.pos.y || window.__rerpg?.scene?.isActive?.('Combat') }));
+    const moved = await page.evaluate(() => { const s = window.__rerpg.registry.get('session'); return { pos: s.playerPos, inCombat: window.__rerpg.scene.isActive('Combat') }; });
+    console.log('moved after reward', JSON.stringify({ from: s1.pos, to: moved.pos, ok: moved.pos.x !== s1.pos.x || moved.pos.y !== s1.pos.y || moved.inCombat }));
+    if (moved.inCombat) { console.log('walked straight into another ambush; skipping the reload check'); console.log('errors', JSON.stringify(errors)); await browser.close(); return; }
     // reload: Continue should appear and restore the same run
     await page.reload({ waitUntil: 'networkidle' });
     await active('Title');

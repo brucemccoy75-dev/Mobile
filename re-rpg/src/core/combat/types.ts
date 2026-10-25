@@ -39,8 +39,9 @@ export interface CombatState {
 }
 
 export type PlayerAction =
-  | { type: 'basic'; id: 'attack' | 'defend' }
-  | { type: 'card'; index: number };
+  | { type: 'card'; index: number }
+  /** Only valid while Recovering (stunned) or with an empty hand: the turn passes. */
+  | { type: 'skip' };
 
 export type CombatEvent =
   | { t: 'roundStart'; round: number }
@@ -56,6 +57,7 @@ export type CombatEvent =
   | { t: 'statusExpired'; side: Side; status: StatusId }
   | { t: 'burn'; side: Side; amount: number }
   | { t: 'chilled'; side: Side }
+  | { t: 'stunned'; side: Side; turnsLeft: number }
   | { t: 'phase'; phase: number }
   | { t: 'death'; side: Side }
   | { t: 'end'; outcome: Exclude<Outcome, 'ongoing'> };

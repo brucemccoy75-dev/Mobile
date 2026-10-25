@@ -132,13 +132,13 @@ Each screen is procedurally generated from the run seed:
 
 ## 7. Combat scene
 
-Side view: player left, enemy right, HP bars top. Above the enemy: **current intent** (icon + number) and a smaller **posture tell** for next round. Bottom bar: the dealt **hand** (up to 3 cards) plus two fixed basics, **Attack** and **Defend**. Deck and discard counts shown small in a corner.
+Side view: player left, enemy right, HP bars top. Above the enemy: **current intent** (icon + number) and a smaller **posture tell** for next round. Bottom bar: the dealt **hand** (up to 3 cards; Attack and Defend are cards in the deck). While Recovering the turn passes on its own after a beat. Deck and discard counts shown small in a corner.
 
 Turn flow:
 
 `deal (round ≥ 1, oldest-out at cap 3) → player plays a hand card or a basic → resolve → enemy intent executes → statuses tick → advance intent/tell → repeat until a side dies`
 
-Damage formula (POC, flat and readable): `dmg = max(1, round(atk * skillMult) - def * defMult)`. Exposed doubles damage taken. Guard blocks the next hit. Defend (basic) = Guard for one hit, no damage.
+Damage formula (POC, flat and readable): `dmg = max(1, ceil(base/2), base − def)` with `base = round(atk × skillMult)`, halved when Weak. Exposed doubles damage taken. Guard blocks the next hit. Defend is a card: Guard for one hit, no damage.
 
 ## 8. Persistence (Firebase, local-first)
 

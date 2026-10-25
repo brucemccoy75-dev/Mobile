@@ -1,6 +1,6 @@
 import type { Skill, SkillSet } from './types';
 
-// Basics: always available, never in the deck.
+// Basics: shuffled into every fight's deck on top of the run deck (DECISIONS #2, amended).
 export const ATTACK: Skill = {
   id: 'attack', name: 'Attack', text: 'Deal 100% damage.', classId: 'any', rarity: 'basic',
   effects: [{ type: 'damage', mult: 1.0 }],
@@ -9,6 +9,8 @@ export const DEFEND: Skill = {
   id: 'defend', name: 'Defend', text: 'Block the next hit.', classId: 'any', rarity: 'basic',
   effects: [{ type: 'status', target: 'self', status: 'guard', turns: 99, magnitude: 1 }],
 };
+/** Cards every fight starts with, in addition to the run deck. Not counted against DECK_CAP. */
+export const BASIC_DECK: string[] = ['attack', 'attack', 'defend'];
 
 // Healing is rare and taxed on purpose (DECISIONS #1): every heal carries a self-debuff.
 export const SKILLS: Skill[] = [
@@ -18,8 +20,8 @@ export const SKILLS: Skill[] = [
   // Warrior / Tank
   { id: 'shield_bash', name: 'Shield Bash', text: 'Deal 60% damage and block the next hit.', classId: 'warrior', setId: 'warrior_tank', rarity: 'common',
     effects: [{ type: 'damage', mult: 0.6 }, { type: 'status', target: 'self', status: 'guard', turns: 99, magnitude: 1 }] },
-  { id: 'bind_wound', name: 'Bind Wound', text: 'Heal 30% HP. You are Exposed this round.', classId: 'warrior', setId: 'warrior_tank', rarity: 'uncommon',
-    effects: [{ type: 'heal', pct: 0.3 }, { type: 'status', target: 'self', status: 'exposed', turns: 1 }] },
+  { id: 'bind_wound', name: 'Bind Wound', text: 'Heal 40% HP. Recovering: you skip your next 2 turns.', classId: 'warrior', setId: 'warrior_tank', rarity: 'uncommon',
+    effects: [{ type: 'heal', pct: 0.4 }, { type: 'status', target: 'self', status: 'stun', turns: 3 }] },
 
   // Warrior / DPS
   { id: 'broadsword', name: 'Broadsword Strike', text: 'Deal 200% damage.', classId: 'warrior', setId: 'warrior_dps', rarity: 'common',
@@ -42,8 +44,8 @@ export const SKILLS: Skill[] = [
   // Shaman / Spirit
   { id: 'spirit_lash', name: 'Spirit Lash', text: 'Deal 120% damage and heal 50% of damage dealt.', classId: 'shaman', setId: 'shaman_spirit', rarity: 'common',
     effects: [{ type: 'damage', mult: 1.2, lifesteal: 0.5 }] },
-  { id: 'mend', name: 'Mend', text: 'Heal 35% HP. You are Weak this round.', classId: 'shaman', setId: 'shaman_spirit', rarity: 'uncommon',
-    effects: [{ type: 'heal', pct: 0.35 }, { type: 'status', target: 'self', status: 'weak', turns: 1 }] },
+  { id: 'mend', name: 'Mend', text: 'Heal 40% HP. Recovering: you skip your next 2 turns.', classId: 'shaman', setId: 'shaman_spirit', rarity: 'uncommon',
+    effects: [{ type: 'heal', pct: 0.4 }, { type: 'status', target: 'self', status: 'stun', turns: 3 }] },
 
   // Shaman / Storm
   { id: 'lightning', name: 'Lightning', text: 'Deal 160% damage, ignoring defense.', classId: 'shaman', setId: 'shaman_storm', rarity: 'common',

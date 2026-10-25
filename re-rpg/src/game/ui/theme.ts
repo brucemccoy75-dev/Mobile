@@ -43,6 +43,7 @@ export const STATUS_LABELS: Record<StatusId, { label: string; color: string }> =
   burn: { label: 'BURN', color: '#ff8c42' },
   chill: { label: 'CHILL', color: '#9ad7ff' },
   weak: { label: 'WEAK', color: '#c7b3ff' },
+  stun: { label: 'RECOVERING', color: '#ffd166' },
 };
 
 export const POSTURE_TEXT: Record<string, string> = {
