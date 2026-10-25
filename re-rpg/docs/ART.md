@@ -1,6 +1,22 @@
 # Re-RPG — Art Direction & Pipeline
 
-Status: style exploration. Nothing here is final; the point is to pick a style on the phone before producing sets.
+Status: **style chosen — Style C (flat vector / cel-shaded)**, picked from the warrior test on the phone. Section 0 is the style sheet every new asset follows; sections 1–6 are the pipeline and the (finished) style test.
+
+## 0. Style sheet — Style C
+
+Canonical reference: `art-src/hero_warrior_styleC.jpg` (bearded warrior, round shield forward, short sword). Feed it as the style/image reference for every new character prompt. Runner-up Style A (pixel) lives at `public/art/a/` and is switchable from the title screen (`art C · vector` / `art A · pixel`) for comparison only; no new Style A assets.
+
+Fixed clauses, appended verbatim to every character/enemy prompt:
+
+> flat vector cel-shaded, chunky proportions about 4 heads tall, oversized hands and weapon, thick uniform dark outline, flat fills, two tones per material (base + one shadow), no texture, no gradients, warm orange and leather against cool grey mail, strict side view facing right, light from top-left, plain white background
+
+- Enemies: same clauses but **facing left**; bosses may go to 5 heads tall and fill more of the frame.
+- Battle size: hero 176 px tall on a 192 px canvas (`hero_<class>.png`) plus a `@2x` (352 on 384). Normal enemies ≈ 150 px, tier-2 ≈ 190, bosses ≈ 250 (on 2× canvases 320/400/512).
+- Backdrops (next test): *"flat vector illustration game background, <biome>, layered paper-cut shapes in three depths, soft two-tone sky, clean flat ground along the bottom third, thick outlines only on foreground shapes, no characters, no text, 1280x540"*. One per biome: grass, forest, swamp, road/clearing, and the two boss arenas.
+- Tiles: flat 32 px at 2× (64 on screen) with the same two-tone rule; thick outlines only on object tiles (trees, rocks, POIs), never on ground fills, or the grid shows.
+- Cut-out process: median-of-corners background key (tolerance 60), border flood fill, 3 px edge erosion, crop to bounds, LANCZOS resize to the battle height, paste bottom-centre. Keep the source JPG under `art-src/`.
+
+Next assets in order: Boar (screen 1 enemy, facing left) and the forest backdrop, then the other four screen-1 enemies.
 
 ## 1. The three pipelines
 
@@ -47,7 +63,7 @@ public/art/<style>/
 ```
 A manifest (`art.json`) lists what exists; anything missing keeps today's placeholder shape, so a style can be tested with four files.
 
-## 3. The style test (do this first)
+## 3. The style test (done — C won)
 
 Three candidates. For each, make the **same four assets**: one battle backdrop (forest), the warrior idle (one frame is enough), the Boar (one frame), and a 3 × 3 patch of grass/forest/road tiles. Drop them under `public/art/<style>/` and compare on the phone in landscape. Judge: readability at arm's length, how the hero reads against the backdrop, and how much work a full set would be.
 
@@ -83,8 +99,8 @@ Either way the combat scene already drives everything from events (play, damage,
 
 ## 5. Process
 
-1. Style test (section 3): three folders, four assets each, compare on the phone. Half a day of generation.
-2. Pick one. Write its style sheet: palette, outline, light direction, proportion guide, one reference image per category.
+1. ~~Style test~~ done: Style C chosen (section 0 is its style sheet).
+2. Extend the style sheet with one reference image per category as each category's first asset lands.
 3. Produce in this order: backdrops (6) → hero base + 6 gear layers → the 5 screen-1 enemies → tileset → POIs → effects → screen-2 enemies and bosses.
 4. For sheets from sprite tools, clean in Aseprite; pack with free-tex-packer; drop into `public/art/<style>/`.
 

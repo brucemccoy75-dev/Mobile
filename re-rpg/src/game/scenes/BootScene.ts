@@ -10,7 +10,8 @@ import { setMeta } from '@game/session';
 
 /** Optional art, keyed by the texture name the scenes look for (docs/ART.md). Missing files keep the placeholder shapes. */
 export const ART_FILES: Record<string, string> = {
-  hero_warrior: 'art/test/hero_warrior@2x.png',
+  hero_warrior_c: 'art/c/hero_warrior@2x.png', // chosen style (flat vector)
+  hero_warrior_a: 'art/a/hero_warrior@2x.png', // pixel, kept for on-device comparison
 };
 
 /** Wires persistence and loads meta before the title shows. Optional art loads here too. */

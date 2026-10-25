@@ -5,6 +5,7 @@ import { APP_VERSION } from '@game/version';
 import { deserialize, getMeta, getStore, setMeta, setSession } from '@game/session';
 import { legacySummary } from '@core/meta';
 import { Button } from '@game/ui/Button';
+import { ART_STYLE_LABEL, getArtStyle, nextArtStyle, setArtStyle } from '@game/art';
 import type { FirebaseCloud } from '@save/firebase';
 import type { SyncedSaveStore } from '@save/SyncedSaveStore';
 import type { MetaState } from '@core/meta';
@@ -62,6 +63,11 @@ export class TitleScene extends Phaser.Scene {
     new Button(this, width - 170, height - 24, 'fullscreen', () => {
       try { if (this.scale.fullscreen.available) this.scale.isFullscreen ? this.scale.stopFullscreen() : this.scale.startFullscreen(); } catch { /* ignore */ }
     }, { width: 100, height: 28, fontSize: '12px' }).setAlpha(0.5);
+    // Art style A/B switch (docs/ART.md): C is the chosen look, A stays for comparison.
+    const artBtn = new Button(this, width - 290, height - 24, `art ${ART_STYLE_LABEL[getArtStyle()]}`, () => {
+      setArtStyle(nextArtStyle(getArtStyle()));
+      artBtn.label.setText(`art ${ART_STYLE_LABEL[getArtStyle()]}`);
+    }, { width: 120, height: 28, fontSize: '12px' }).setAlpha(0.5);
     new Button(this, width - 80, height - 24, 'wipe save', async () => {
       await getStore(this).clearRun();
       const fresh = createMeta();

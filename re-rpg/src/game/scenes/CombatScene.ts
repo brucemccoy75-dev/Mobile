@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { artKey } from '@game/art';
 import { describeSkill, getEnemy, getSkill } from '@data/index';
 import type { Enemy, Intent, Posture } from '@data/types';
 import { createCombat, currentIntent, isPlayerStunned, skillInCombat, step, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
@@ -88,8 +89,8 @@ export class CombatScene extends Phaser.Scene {
     this.add.rectangle(W / 2, H * 0.66, W, 2, COLORS.panelEdge);
 
     // combatants: real art when a texture was loaded (see BootScene.ART_FILES), placeholder shapes otherwise
-    const heroKey = `hero_${this.session.classId}`;
-    if (this.textures.exists(heroKey)) {
+    const heroKey = artKey(this, `hero_${this.session.classId}`);
+    if (heroKey) {
       // @2x source shown at half size; feet on the ground line the placeholder's bottom edge sat on.
       this.playerSprite = this.add.image(this.px, this.py + 46, heroKey).setOrigin(0.5, 1).setScale(0.5);
     } else {
