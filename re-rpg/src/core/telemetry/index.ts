@@ -44,6 +44,9 @@ export interface RunRecord {
   seed: string;
   classId: string;
   setId: string;
+  /** Heirloom families this run (DECISIONS #32) and the class level at run start. */
+  families?: string[];
+  level?: number;
   legacy: Stats;
   /** Deck and gear at the moment the run first entered the overworld (heirlooms included). */
   start: { deck: string[]; equipment: Record<string, string | null>; stats: Stats };

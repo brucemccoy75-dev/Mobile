@@ -17,7 +17,8 @@ export interface Offer {
 
 export interface PoolContext {
   classId: ClassId;
-  setId: SetId;
+  /** The run's card families (the heirloom picks' sets, DECISIONS #32): only their tomes drop. */
+  families: SetId[];
   meta: MetaState;
   deck: SkillId[];
   equipment: Equipment;
@@ -30,9 +31,9 @@ export interface PoolContext {
  * every item this class can use; equipped items are removed since a slot holds one.
  */
 export function buildPool(ctx: PoolContext): { tomes: Skill[]; items: Item[] } {
-  const set = getSet(ctx.setId);
   const held = new Set<string>(Object.values(ctx.equipment).filter(Boolean).map((i) => i!.id));
-  const tomeIds = new Set<string>([...set.skills, ...ctx.meta.discoveredSkills, ...SKILLS.filter((s) => s.classId === 'any' && s.rarity !== 'basic').map((s) => s.id)]);
+  // Families decide the tomes (plus the always-on general tomes); equipment is still gated by discovery and class.
+  const tomeIds = new Set<string>([...ctx.families.flatMap((id) => getSet(id).skills), ...SKILLS.filter((s) => s.classId === 'any' && s.rarity !== 'basic').map((s) => s.id)]);
   const copies = (id: string) => ctx.deck.filter((d) => d === id).length;
   const tomes = SKILLS.filter((s) => tomeIds.has(s.id) && s.rarity !== 'basic' && (s.classId === ctx.classId || s.classId === 'any') && copies(s.id) < TOME_COPY_CAP);
   // Rarity gating lives in the source weights (a kill almost never rolls rare), so the
@@ -77,8 +78,8 @@ export function rollOffer(source: RewardSource, screenIndex: number, ctx: PoolCo
   const rw = rarityWeights(source, screenIndex);
   const choices: RewardChoice[] = [];
   const taken = new Set<string>();
-  const weightItem = (i: Item) => (rw[i.rarity] ?? 0) * (i.tags?.includes(ctx.setId) ? 2 : 1);
-  const weightTome = (s: Skill) => Math.max(1, rw[s.rarity] ?? 0) * (s.setId === ctx.setId ? 2 : 1);
+  const weightItem = (i: Item) => (rw[i.rarity] ?? 0) * (i.tags?.some((t) => ctx.families.includes(t as SetId)) ? 2 : 1);
+  const weightTome = (s: Skill) => Math.max(1, rw[s.rarity] ?? 0);
 
   for (let n = 0; n < CHOICE_COUNT[source]; n++) {
     const tomes = pool.tomes.filter((s) => !taken.has(s.id));
@@ -134,12 +135,12 @@ export function rollShopStock(screenIndex: number, ctx: PoolContext, rng: Rng): 
   const taken = new Set<string>();
   const items = pool.items.filter((i) => (rw[i.rarity] ?? 0) > 0);
   for (let n = 0; n < 2 && items.length > taken.size; n++) {
-    const item = rng.weighted(items.filter((i) => !taken.has(i.id)), (i) => (rw[i.rarity] ?? 0) * (i.tags?.includes(ctx.setId) ? 2 : 1));
+    const item = rng.weighted(items.filter((i) => !taken.has(i.id)), (i) => (rw[i.rarity] ?? 0) * (i.tags?.some((t) => ctx.families.includes(t as SetId)) ? 2 : 1));
     taken.add(item.id);
     lines.push({ kind: 'item', id: item.id, price: itemPrice(item.rarity, screenIndex), sold: false });
   }
   if (pool.tomes.length > 0) {
-    const skill = rng.weighted(pool.tomes, (s) => Math.max(1, rw[s.rarity] ?? 0) * (s.setId === ctx.setId ? 2 : 1));
+    const skill = rng.weighted(pool.tomes, (s) => Math.max(1, rw[s.rarity] ?? 0));
     lines.push({ kind: 'tome', id: skill.id, price: tomePrice(skill.rarity, screenIndex), sold: false });
   }
   return { lines, healPrice: 30 * (screenIndex + 1), healPct: 0.5, healUsed: false };

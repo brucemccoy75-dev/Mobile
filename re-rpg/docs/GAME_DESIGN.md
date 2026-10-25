@@ -111,3 +111,8 @@ Death screen shows: cause, how far you got, **newly discovered** entries (highli
 ## 9. Decisions
 
 All planning questions are resolved; see `DECISIONS.md`. Remaining later knobs: heirloom slot growth, stamina meter, deal rate in long fights, set tiers.
+
+## Progression (DECISIONS #32)
+
+Each class levels 1–10 from kill EXP on a steep curve. Each level is one skill point for that class's tree, whose nodes are card families; unlocking a family puts its cards in the game. Every run starts by keeping 2 of 4 random tomes drawn from the unlocked families; their families are the run's loot. Cards never level: veterans have more ways to build, not bigger numbers, so early screens stay lethal.
+

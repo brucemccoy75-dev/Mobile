@@ -1,11 +1,11 @@
 import Phaser from 'phaser';
 import { describeSkill, getSet } from '@data/index';
 import { HEIRLOOM_PICKS, type Heirloom } from '@core/meta';
-import { applyHeirlooms, getSession, persistRun, type RunSession } from '@game/session';
+import { applyHeirlooms, getMeta, getSession, persistRun, type RunSession } from '@game/session';
 import { Button } from '@game/ui/Button';
 import { COLORS, FONT, RARITY_COLORS, text } from '@game/ui/theme';
 
-/** Run start after a death: a spread of unlocked tomes and items, keep up to two. */
+/** Run start: a random spread of tomes from the class's unlocked families; keep two, their families fill the run (DECISIONS #32). */
 export class HeirloomScene extends Phaser.Scene {
   private session!: RunSession;
   private picked = new Set<number>();
@@ -25,7 +25,7 @@ export class HeirloomScene extends Phaser.Scene {
     const { width: W, height: H } = this.scale.gameSize;
     this.cameras.main.setBackgroundColor(0x0b0f1a);
     this.add.text(W / 2, 30, 'Heirlooms', text.h2).setOrigin(0.5);
-    this.add.text(W / 2, 60, `Your past runs left these behind. Keep up to ${Math.min(HEIRLOOM_PICKS, choices.length)}.`, { ...text.small, fontSize: '14px', color: COLORS.gold }).setOrigin(0.5);
+    this.add.text(W / 2, 60, `Keep ${Math.min(HEIRLOOM_PICKS, choices.length)}. They start in your deck, and only their families drop this run.`, { ...text.small, fontSize: '14px', color: COLORS.gold }).setOrigin(0.5);
 
     const n = choices.length, cw = Math.min(240, (W - 80) / n - 16), ch = 180, gap = 16;
     const startX = W / 2 - ((n * cw + (n - 1) * gap) / 2) + cw / 2;
@@ -54,12 +54,14 @@ export class HeirloomScene extends Phaser.Scene {
 
   private sync() {
     this.frames.forEach((f, i) => f.setStrokeStyle(this.picked.has(i) ? 4 : 3, this.picked.has(i) ? COLORS.goldHex : RARITY_COLORS[(this.session.heirloomChoices[i]!.kind === 'tome' ? this.session.heirloomChoices[i]!.skill.rarity : this.session.heirloomChoices[i]!.item.rarity)]).setFillStyle(this.picked.has(i) ? 0x1f2a44 : COLORS.panel));
-    this.counter.setText(`${this.picked.size} of ${Math.min(HEIRLOOM_PICKS, this.session.heirloomChoices.length)} chosen${this.picked.size === 0 ? '  ·  or begin with nothing' : ''}`);
+    const need = Math.min(HEIRLOOM_PICKS, this.session.heirloomChoices.length);
+    this.counter.setText(`${this.picked.size} of ${need} chosen`);
+    this.begin.setEnabled(this.picked.size >= need);
   }
 
   private finish() {
     const picks = [...this.picked].sort().map((i) => this.session.heirloomChoices[i]!);
-    applyHeirlooms(this.session, picks);
+    applyHeirlooms(this.session, picks, getMeta(this));
     void persistRun(this).then(() => this.scene.start('Overworld'));
   }
 }

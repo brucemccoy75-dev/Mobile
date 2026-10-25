@@ -74,3 +74,11 @@ Target rounds per fight: trash 3–4, guards and duos 5–7, bosses 10+. Enemy H
 
 Run log: three attack items took a warrior from 4 to 11 attack and Mighty Blow doubled that to 20, one-shotting every screen-1 enemy before it acted. Gear used to add to ATK and every card multiplied the total. Now a hit is class attack × card multiplier + gear attack + the card's flat bonus (`Stats.gearAtk`, set by `computeStats`). Attack is unchanged; Mighty Blow at +7 gear drops from 22 to 15, Broadsword from 18 to 15, and low-multiplier cards like Shield Bash gain a little. Stacking still matters, it stops compounding.
 
+## 32. Per-class progression: EXP, skill tree, heirloom families
+
+The run log showed power coming from volume of rewards and stacked gear, and veterans needed something to grow that is not raw numbers. Progression is breadth, never depth: cards never level, so a maxed player's cards hit exactly as hard as a new player's and screen 1 stays dangerous by construction.
+- **EXP per kill**, by tier (10 / 18, bosses 60 / 90), ×1.33 as a guard, ×1.5 per member of a duo; a win pays 120. Levels 1–10 on a steep curve: 30 EXP to level 2, each step ×1.6, about 3400 total, the last step alone ~1300. A screen-1 clear is worth about 200.
+- **One skill point per level**, spent on a per-class skill tree whose nodes are card families (the existing sets). Costs are per node in `src/data/progression.ts` so a tree can be any shape and need not have ten families; the two current sets per class are free nodes. Nothing is shared between classes and nothing is refunded. The tree is spent between runs (ClassSelect → Skill tree).
+- **Heirlooms every run**: a random spread of 4 tomes drawn across the class's unlocked families (not one per family, so the dice decide the direction). Keep 2; they start in the deck and *only their families* fill the run's tome pool, plus the always-on general tomes. Items left the spread; equipment stays its own discovery-gated pool. Discovery no longer gates tomes.
+- Legacy stat points stay as they are for now; folding them into the tree is a later call. Meta v4 (`progress` per class), run state carries `families`, telemetry records families and level.
+

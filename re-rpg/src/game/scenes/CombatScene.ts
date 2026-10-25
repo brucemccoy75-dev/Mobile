@@ -4,7 +4,8 @@ import { describeSkill, getEnemy, getSkill } from '@data/index';
 import type { Enemy, Intent, Posture } from '@data/types';
 import { createCombat, currentIntent, isPlayerStunned, skillInCombat, step, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
 import { getMeta, getSession, getStore, persistMeta, persistRun, setName, setSession, spendConsumedTomes, type PendingEncounter, type RunSession } from '@game/session';
-import { recordDeath } from '@core/meta';
+import { gainExp, recordDeath } from '@core/meta';
+import { expForEnemy } from '@data/progression';
 import { recordFight } from '@game/telemetry';
 import { Button } from '@game/ui/Button';
 import { Card, CARD_W } from '@game/ui/Card';
@@ -634,6 +635,12 @@ export class CombatScene extends Phaser.Scene {
     const spent = spendConsumedTomes(this.session, this.state.player.consumed);
     if (spent.length) void persistRun(this);
     if (won) {
+      // EXP for the kill(s) goes to this class's progression (DECISIONS #32) and survives the run.
+      const exp = this.state.enemyDefs.reduce((a, d) => a + expForEnemy(d, this.encounter.kind, this.state.enemyDefs.length), 0);
+      const gained = gainExp(getMeta(this), this.session.classId, exp);
+      void persistMeta(this);
+      const lvl = gained.to > gained.from ? `   ·   LEVEL ${gained.to}!  +${gained.points} skill point${gained.points === 1 ? '' : 's'}` : '';
+      this.add.text(W / 2, H * 0.34 + 74, `+${exp} EXP${lvl}`, { ...text.body, fontSize: '15px', color: COLORS.gold, fontStyle: 'bold' }).setOrigin(0.5).setDepth(71);
       this.session.hp = this.state.player.hp;
       this.session.encountersWon += 1;
       this.session.lastResult = { encounter: this.encounter, won: true };

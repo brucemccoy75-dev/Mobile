@@ -5,13 +5,15 @@ import { Button } from '@game/ui/Button';
 import { CLASS_COLORS, COLORS, text } from '@game/ui/theme';
 import { baseStatsFor, createSession, getMeta, persistRun, setSession } from '@game/session';
 import { legacySummary } from '@core/meta';
-import { CLASS_UNLOCK_HINT, HEIRLOOM_DEATHS, HEIRLOOM_OFFER, HEIRLOOM_PICKS, classUnlocked, heirloomPool, heirloomUnlocked } from '@core/meta';
+import { CLASS_UNLOCK_HINT, HEIRLOOM_OFFER, HEIRLOOM_PICKS, classProgress, classUnlocked, heirloomPool } from '@core/meta';
+import { expToReach } from '@data/progression';
 
 export class ClassSelectScene extends Phaser.Scene {
   private selected: ClassId | null = null;
   private panels = new Map<ClassId, Phaser.GameObjects.Rectangle>();
   private setLabel!: Phaser.GameObjects.Text;
   private begin!: Button;
+  private skills!: Button;
 
   constructor() { super('ClassSelect'); }
 
@@ -40,8 +42,8 @@ export class ClassSelectScene extends Phaser.Scene {
       this.add.text(x, y + 36, 'sets', text.small).setOrigin(0.5);
       this.add.text(x, y + 58, sets, { ...text.body, fontSize: '14px', color: COLORS.gold }).setOrigin(0.5);
       const pool = heirloomPool(getMeta(this), cls.id);
-      const n = pool.tomes.length + pool.items.length;
-      if (unlocked) this.add.text(x, y + 96, n > 0 && heirloomUnlocked(getMeta(this)) ? `${n} unlocked (${pool.tomes.length} tomes, ${pool.items.length} items)` : 'starts with Attack + Defend', { ...text.small, color: n > 0 ? COLORS.gold : COLORS.muted }).setOrigin(0.5);
+      const prog = classProgress(getMeta(this), cls.id);
+      if (unlocked) this.add.text(x, y + 96, `Level ${prog.level}  ·  ${prog.unlocked.length} families, ${pool.tomes.length} tomes${prog.points ? `  ·  ${prog.points} skill point${prog.points === 1 ? '' : 's'}!` : ''}`, { ...text.small, fontSize: '12px', color: prog.points ? COLORS.gold : COLORS.muted, wordWrap: { width: panelW - 20 }, align: 'center' }).setOrigin(0.5);
 
       if (unlocked) {
         bg.setInteractive({ useHandCursor: true });
@@ -58,21 +60,21 @@ export class ClassSelectScene extends Phaser.Scene {
 
     this.begin = new Button(this, width / 2, height - 46, 'Begin', () => this.start(), { width: 200, fill: 0x1f2a44, edge: COLORS.goldHex, disabled: true });
 
-    const meta = getMeta(this);
-    const pool = meta.discoveredSkills.length + meta.discoveredItems.length;
-    const heir = heirloomUnlocked(meta)
-      ? (pool > 0 ? `Heirlooms: keep ${HEIRLOOM_PICKS} of ${HEIRLOOM_OFFER} random unlocks at the start of the run.` : 'Heirlooms unlocked, but nothing discovered yet.')
-      : `Heirlooms unlock after ${HEIRLOOM_DEATHS} death${HEIRLOOM_DEATHS === 1 ? '' : 's'}.`;
-    this.add.text(width / 2, 62, heir, { ...text.small, color: COLORS.gold }).setOrigin(0.5);
+    this.add.text(width / 2, 62, `Each run opens with ${HEIRLOOM_OFFER} random tomes from your unlocked families; keep ${HEIRLOOM_PICKS}. Their families fill the run's loot.`, { ...text.small, color: COLORS.gold }).setOrigin(0.5);
 
     new Button(this, 70, height - 46, 'Back', () => this.scene.start('Title'), { width: 110, height: 40, fontSize: '14px' });
+    this.skills = new Button(this, width - 90, height - 46, 'Skill tree', () => { if (this.selected) this.scene.start('SkillTree', { classId: this.selected }); }, { width: 150, height: 40, fontSize: '14px' });
+    this.skills.setEnabled(false);
+    void expToReach;
   }
 
   private select(id: ClassId) {
     this.selected = id;
     for (const [cid, bg] of this.panels) bg.setStrokeStyle(3, cid === id ? COLORS.goldHex : COLORS.panelEdge);
-    this.setLabel.setText('your set is rolled when the run begins');
+    const prog = classProgress(getMeta(this), id);
+    this.setLabel.setText(`Level ${prog.level}  ·  ${prog.exp}/${expToReach(Math.min(10, prog.level + 1))} EXP  ·  ${prog.points} skill point${prog.points === 1 ? '' : 's'}`);
     this.begin.setEnabled(true);
+    this.skills.setEnabled(true);
   }
 
   private start() {

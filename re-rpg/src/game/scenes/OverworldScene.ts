@@ -3,7 +3,8 @@ import { getEnemy } from '@data/index';
 import { findPath, stepThreat, key, tileAt, type Tile, type TileType } from '@core/map';
 import { SCREEN_COUNT, currentQuest, getMeta, getSession, getStore, isEscorting, persistMeta, persistRun, rollEncounter, setSession, startScreen, type PendingEncounter, type RunSession } from '@game/session';
 import { ESCORT_THREAT_MULT, noteKill, questProgress, questReady } from '@core/quest';
-import { recordWin } from '@core/meta';
+import { gainExp, recordWin } from '@core/meta';
+import { WIN_EXP } from '@data/progression';
 import { Button } from '@game/ui/Button';
 import { CLASS_COLORS, COLORS, FONT, text } from '@game/ui/theme';
 import { tween, wait } from '@game/ui/tween';
@@ -416,6 +417,7 @@ export class OverworldScene extends Phaser.Scene {
     const btn = new Button(this, cx, top + H * 0.64, last ? 'Continue' : 'Onward', () => {
       if (last) {
         recordWin(getMeta(this), SCREEN_COUNT, s.classId);
+      if (!s.testMode) gainExp(getMeta(this), s.classId, WIN_EXP); // the win bonus (DECISIONS #32)
         void Promise.all([persistMeta(this), getStore(this).clearRun()]).then(() => this.scene.start('RunEnd', { won: true }));
         return;
       }

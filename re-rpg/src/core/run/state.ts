@@ -18,6 +18,8 @@ export interface RunState extends Versioned {
   rngStates: Record<string, number>;
   classId: ClassId;
   setId: SetId;
+  /** The run's card families (heirloom picks, DECISIONS #32). Older saves fall back to [setId]. */
+  families?: SetId[];
   /** Class base plus Legacy at run start, so a later allocation never changes a run in progress. */
   base?: Stats;
   hp: number;

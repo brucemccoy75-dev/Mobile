@@ -7,7 +7,7 @@ import { getItem, getSkill } from '@data/index';
 import { generateQuest, noteKill, questReady, type QuestContext } from './index';
 import { upgradeItem, upgradeSkill } from '@core/run/upgrade';
 
-const ctx: QuestContext = { classId: 'warrior', setId: 'warrior_tank', meta: createMeta(), deck: [], equipment: emptyEquipment(), screenIndex: 0 };
+const ctx: QuestContext = { classId: 'warrior', families: ['warrior_tank'], meta: createMeta(), deck: [], equipment: emptyEquipment(), screenIndex: 0 };
 const mapFor = (seed: string) => generateScreen(new RunRng(seed).stream('map'), { seed, screenIndex: 0 });
 
 describe('generateQuest', () => {

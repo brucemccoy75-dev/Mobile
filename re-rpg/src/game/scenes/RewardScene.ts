@@ -34,7 +34,7 @@ export class RewardScene extends Phaser.Scene {
     this.session.pendingOffer = null;
     const meta = getMeta(this);
     this.offer = rollOffer(pending.source, this.session.screenIndex, {
-      classId: this.session.classId, setId: this.session.setId, meta, deck: this.session.deck, equipment: this.session.equipment,
+      classId: this.session.classId, families: this.session.families, meta, deck: this.session.deck, equipment: this.session.equipment,
     }, this.session.rng.stream('loot'), pending.gold);
     this.session.gold += this.offer.gold;
 

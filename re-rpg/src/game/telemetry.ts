@@ -1,6 +1,6 @@
 import type Phaser from 'phaser';
 import type { CombatEvent } from '@core/combat';
-import type { MetaState } from '@core/meta';
+import { classProgress, type MetaState } from '@core/meta';
 import { equipmentToIds } from '@core/run';
 import { describeRuns, emptyLog, endRun, startRun, summarizeFight, type FightRecord, type TelemetryLog } from '@core/telemetry';
 import { browserKeyValue, type KeyValue } from '@save/LocalSaveStore';
@@ -33,7 +33,7 @@ const snapshot = (s: RunSession) => ({ deck: [...s.deck], equipment: equipmentTo
 export function ensureRun(scene: Phaser.Scene, s: RunSession, meta: MetaState): void {
   if (s.testMode) return;
   const t = getTelemetry(scene);
-  startRun(t.log, { appVersion: APP_VERSION, seed: s.seed, classId: s.classId, setId: s.setId, legacy: { ...meta.legacy }, start: snapshot(s), startedAt: Date.now() });
+  startRun(t.log, { appVersion: APP_VERSION, seed: s.seed, classId: s.classId, setId: s.setId, families: [...s.families], level: classProgress(meta, s.classId).level, legacy: { ...meta.legacy }, start: snapshot(s), startedAt: Date.now() });
   t.save();
 }
 

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { getItem, getSkill, ITEMS, SKILLS } from '@data/index';
-import { HEIRLOOM_DEATHS, HEIRLOOM_OFFER, HEIRLOOM_PICKS, classUnlocked } from '@core/meta';
+import { classProgress, classUnlocked } from '@core/meta';
+import { expToReach } from '@data/progression';
 import { getMeta, peekSession, setSession } from '@game/session';
 import { Button } from '@game/ui/Button';
 import { COLORS, text } from '@game/ui/theme';
@@ -38,9 +39,7 @@ export class RunEndScene extends Phaser.Scene {
     const lines = [
       `Loot pool: ${poolSkills}/${maxSkills} tomes, ${poolItems}/${maxItems} items discovered`,
       `Deaths ${meta.deaths}  ·  Wins ${meta.wins}  ·  Best screen ${meta.bestScreen}`,
-      meta.deaths >= HEIRLOOM_DEATHS
-        ? `Heirlooms active: each run opens with ${HEIRLOOM_OFFER} random unlocks, keep ${HEIRLOOM_PICKS}.`
-        : `Heirlooms unlock after ${HEIRLOOM_DEATHS} death: start each run with ${HEIRLOOM_PICKS} of your unlocks.`,
+      s ? `${s.classId} level ${classProgress(meta, s.classId).level}  ·  ${classProgress(meta, s.classId).exp}/${expToReach(Math.min(10, classProgress(meta, s.classId).level + 1))} EXP  ·  ${classProgress(meta, s.classId).points} skill point${classProgress(meta, s.classId).points === 1 ? '' : 's'} to spend` : '',
     ];
     this.add.text(W / 2, H - 150, lines.join('\n'), { ...text.small, fontSize: '14px', align: 'center', lineSpacing: 6 }).setOrigin(0.5);
 

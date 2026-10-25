@@ -28,7 +28,7 @@ export const ESCORT_THREAT_MULT = 1.25;
 
 export interface QuestContext {
   classId: ClassId;
-  setId: SetId;
+  families: SetId[];
   meta: MetaState;
   deck: SkillId[];
   equipment: Equipment;
@@ -53,7 +53,7 @@ export function generateQuest(map: ScreenMap, ctx: QuestContext, rng: Rng, giver
   });
 
   if (kind === 'fetch') {
-    const pool = buildPool({ classId: ctx.classId, setId: ctx.setId, meta: ctx.meta, deck: ctx.deck, equipment: ctx.equipment });
+    const pool = buildPool({ classId: ctx.classId, families: ctx.families, meta: ctx.meta, deck: ctx.deck, equipment: ctx.equipment });
     const options: { type: 'item' | 'tome'; id: string; name: string }[] = [
       ...pool.items.filter((i) => i.rarity === 'common' || i.rarity === 'uncommon').map((i) => ({ type: 'item' as const, id: i.id, name: i.name })),
       ...pool.tomes.map((t) => ({ type: 'tome' as const, id: t.id, name: t.name })),

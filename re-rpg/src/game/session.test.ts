@@ -22,16 +22,18 @@ describe('session', () => {
     expect(r.rng.stream('encounter').next()).toBe(s.rng.stream('encounter').next());
   });
 
-  it('heirloom spread is offered after the first death and picks apply', () => {
-    const meta = createMeta(); meta.deaths = 1; meta.discoveredItems.push('heart_amulet'); meta.discoveredSkills.push('broadsword');
+  it('every run opens with a heirloom spread; the picks set the run families and the tome pool', () => {
+    const meta = createMeta();
     const s = createSession('warrior', meta, 'HEIR-1');
-    expect(s.heirloomChoices).toHaveLength(2);
-    expect(s.heirloomName).toBeNull();
-    applyHeirlooms(s, s.heirloomChoices);
-    expect(s.heirloomName).toContain('Heart Amulet');
-    expect(s.stats.maxHp).toBe(31); expect(s.hp).toBe(31);
-    expect(s.deck).toEqual(['broadsword']);
+    expect(s.heirloomChoices).toHaveLength(4);
+    expect(s.families).toEqual(['warrior_tank', 'warrior_dps']);
+    const tank = s.heirloomChoices.filter((h) => h.kind === 'tome' && h.skill.setId === 'warrior_tank');
+    applyHeirlooms(s, tank.slice(0, 2), meta);
+    expect(s.families).toEqual(['warrior_tank']);
+    expect(s.setId).toBe('warrior_tank');
+    expect(s.deck.every((id) => ['shield_bash', 'bind_wound'].includes(id))).toBe(true);
     expect(s.heirloomChoices).toEqual([]);
+    expect(s.shop.lines.every((l) => l.kind !== 'tome' || getSkill(l.id).setId === 'warrior_tank' || getSkill(l.id).classId === 'any')).toBe(true);
   });
 
   it('legacy bonuses raise the run base and are frozen into the save', () => {
@@ -75,10 +77,6 @@ describe('session', () => {
     expect(spendConsumedTomes(s, ['final_stand'])).toEqual([]);
   });
 
-  it('no heirloom spread before the first death', () => {
-    const meta = createMeta(); meta.discoveredItems.push('heart_amulet');
-    expect(createSession('warrior', meta, 'HEIR-0').heirloomChoices).toEqual([]);
-  });
 
   it('tome at the deck cap requires a swap and records discovery once', () => {
     const meta = createMeta();

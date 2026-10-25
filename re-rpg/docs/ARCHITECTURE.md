@@ -172,3 +172,7 @@ Players must be able to log in on any device and keep past-loop gains.
 
 `CombatState.enemies[]` with `enemyDefs[]`; `enemy`/`enemyDef` alias slot 0 for single-enemy call sites. `PlayerAction.card.target` picks a slot; `resolveTarget` falls back to the front living enemy. Events carry `who` (enemy slot) and the scene keeps one `EnemyView` per slot (sprite, bar, chips, intent panel). Encounters carry `extra: EnemyId[]` behind the primary `enemyId`.
 
+## Addendum: progression (DECISIONS #32)
+
+`src/data/progression.ts` holds the trees (nodes = set ids with per-node costs), the EXP curve and per-enemy EXP. `MetaState.progress[classId]` = `{ level, exp, points, unlocked }`; `gainExp`, `nodeState`, `unlockNode`, `unlockedSets` in `src/core/meta`. `RunSession.families` (from the heirloom picks) drives `PoolContext.families` for loot, shop and quests. Scenes: `SkillTreeScene` (spend), `HeirloomScene` (pick 2 every run), EXP shown on the combat result.
+

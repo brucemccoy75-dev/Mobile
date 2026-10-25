@@ -9,7 +9,7 @@ import { DECK_CAP } from '@core/combat';
 import { DUO_CHANCE, PAIRS } from '@data/packs';
 import { TOME_COPY_CAP } from '@data/skills';
 import { computeStats, emptyEquipment, equip as equipItem, equipmentFromIds, equipmentToIds, type Equipment, RUN_VERSION, type RunState } from '@core/run';
-import { createMeta, discoverItem, discoverSkill, rollHeirloomChoices, type Heirloom, type MetaState } from '@core/meta';
+import { createMeta, discoverItem, discoverSkill, rollHeirloomChoices, unlockedSets, type Heirloom, type MetaState } from '@core/meta';
 import { rollShopStock, type RewardChoice, type RewardSource, type ShopStock } from '@core/loot';
 import { generateQuest, questReady, type Quest } from '@core/quest';
 import { upgradeItem, upgradeSkill, type SkillUpgrades } from '@core/run/upgrade';
@@ -27,7 +27,10 @@ export interface RunSession {
   seed: string;
   rng: RunRng;
   classId: ClassId;
+  /** Primary family (the first heirloom pick); kept for labels and telemetry. */
   setId: SetId;
+  /** Families whose tomes drop this run: the heirloom picks' sets (DECISIONS #32). */
+  families: SetId[];
   base: Stats;
   stats: Stats;
   hp: number;
@@ -100,30 +103,42 @@ export function createSession(classId: ClassId, meta: MetaState, seed = newSeed(
   const setId = rollSet(classId, rng);
   const base = baseStatsFor(classId, meta);
   const s: RunSession = {
-    seed, rng, classId, setId, base: { ...base }, stats: { ...base }, hp: base.maxHp, gold: 0,
+    seed, rng, classId, setId, families: unlockedSets(meta, classId), base: { ...base }, stats: { ...base }, hp: base.maxHp, gold: 0,
     deck: [], equipment: emptyEquipment(),
     screenIndex: 0, map: undefined as unknown as ScreenMap, playerPos: { x: 0, y: 0 }, threat: 0,
     openedPois: new Set(), usedShrines: new Set(), defeatedGuards: new Set(), bossDefeated: false, encountersWon: 0,
     newDiscoveries: [], heirloomName: null, shop: { lines: [], healPrice: 0, healPct: 0.5, healUsed: true }, quests: [], skillUpgrades: {}, customItems: [],
     pendingEncounter: null, lastResult: null, pendingOffer: null, heirloomChoices: [],
   };
-  s.heirloomChoices = rollHeirloomChoices(meta, classId, setId, rng.stream('meta'));
+  s.heirloomChoices = rollHeirloomChoices(meta, classId, rng.stream('meta'));
   startScreen(s, 0, meta);
   return s;
 }
 
-/** Apply the chosen heirlooms (DECISIONS #6): items equip, tomes join the deck (copies allowed). */
-export function applyHeirlooms(s: RunSession, picks: Heirloom[]): void {
+/**
+ * Apply the heirloom picks (DECISIONS #32): tomes join the deck, and their families become the run's
+ * tome pool. With no picks the pool stays every unlocked family.
+ */
+export function applyHeirlooms(s: RunSession, picks: Heirloom[], meta?: MetaState): void {
   const names: string[] = [];
+  const fams: SetId[] = [];
   for (const h of picks) {
-    if (h.kind === 'tome') { if (s.deck.length < DECK_CAP && s.deck.filter((d) => d === h.skill.id).length < TOME_COPY_CAP) s.deck.push(h.skill.id); names.push(h.skill.name); }
-    else { applyEquip(s, h.item); names.push(h.item.name); }
+    if (h.kind === 'tome') {
+      if (s.deck.length < DECK_CAP && s.deck.filter((d) => d === h.skill.id).length < TOME_COPY_CAP) s.deck.push(h.skill.id);
+      names.push(h.skill.name);
+      if (h.skill.setId && !fams.includes(h.skill.setId)) fams.push(h.skill.setId);
+    } else { applyEquip(s, h.item); names.push(h.item.name); }
   }
+  if (fams.length) { s.families = fams; s.setId = fams[0]!; }
   s.heirloomName = names.length ? names.join(' + ') : null;
   s.heirloomChoices = [];
-  // The shop was stocked before the picks; re-roll so it reflects what is now equipped.
-  s.shop = rollShopStock(s.screenIndex, { classId: s.classId, setId: s.setId, meta: createMeta(), deck: s.deck, equipment: s.equipment }, s.rng.stream('loot'));
+  // The shop and quest were rolled before the picks; re-roll so they draw from the run's families.
+  s.shop = rollShopStock(s.screenIndex, poolCtx(s, meta), s.rng.stream('loot'));
+  s.quests = [...s.quests.filter((q) => !q.id.startsWith(`quest_${s.screenIndex}_`)), generateQuest(s.map, { ...poolCtx(s, meta), screenIndex: s.screenIndex }, s.rng.stream('quest'), s.map.questGiver, s.map.npcSpot)];
 }
+
+/** Loot/quest context for this run: class, families, what is held. */
+export const poolCtx = (s: RunSession, meta?: MetaState) => ({ classId: s.classId, families: s.families, meta: meta ?? createMeta(), deck: s.deck, equipment: s.equipment });
 
 /** Generate screen `index`, stock its shop, and put the player at its entry. */
 export function startScreen(s: RunSession, index: number, meta?: MetaState): void {
@@ -135,9 +150,9 @@ export function startScreen(s: RunSession, index: number, meta?: MetaState): voi
   s.usedShrines = new Set();
   s.defeatedGuards = new Set();
   s.bossDefeated = false;
-  s.shop = rollShopStock(index, { classId: s.classId, setId: s.setId, meta: meta ?? createMeta(), deck: s.deck, equipment: s.equipment }, s.rng.stream('loot'));
+  s.shop = rollShopStock(index, poolCtx(s, meta), s.rng.stream('loot'));
   // One randomised quest per screen (DECISIONS #19). Earlier screens' quests are kept for the run summary.
-  s.quests = [...s.quests.filter((q) => !q.id.startsWith(`quest_${index}_`)), generateQuest(s.map, { classId: s.classId, setId: s.setId, meta: meta ?? createMeta(), deck: s.deck, equipment: s.equipment, screenIndex: index }, s.rng.stream('quest'), s.map.questGiver, s.map.npcSpot)];
+  s.quests = [...s.quests.filter((q) => !q.id.startsWith(`quest_${index}_`)), generateQuest(s.map, { ...poolCtx(s, meta), screenIndex: index }, s.rng.stream('quest'), s.map.questGiver, s.map.npcSpot)];
 }
 
 export const currentQuest = (s: RunSession): Quest | undefined => s.quests.find((q) => q.id.startsWith(`quest_${s.screenIndex}_`));
@@ -214,7 +229,7 @@ export function takeChoice(s: RunSession, meta: MetaState, choice: RewardChoice,
   return { isNew, replaced };
 }
 
-export const setName = (s: RunSession) => getSet(s.setId).name;
+export const setName = (s: RunSession) => s.families.map((id) => getSet(id).name).join(' + ');
 
 /** After a fight: fleeting tomes that were played leave the deck for good. Returns their names. */
 export function spendConsumedTomes(s: RunSession, consumed: SkillId[]): string[] {
@@ -231,7 +246,7 @@ export function spendConsumedTomes(s: RunSession, consumed: SkillId[]): string[]
 export function serialize(s: RunSession): RunState {
   return {
     version: RUN_VERSION, updatedAt: Date.now(),
-    seed: s.seed, rngStates: s.rng.snapshot(), classId: s.classId, setId: s.setId, base: { ...s.base },
+    seed: s.seed, rngStates: s.rng.snapshot(), classId: s.classId, setId: s.setId, families: [...s.families], base: { ...s.base },
     hp: s.hp, gold: s.gold, deck: [...s.deck], equipment: equipmentToIds(s.equipment),
     screenIndex: s.screenIndex, map: s.map, playerPos: { ...s.playerPos }, threat: s.threat,
     openedPois: [...s.openedPois], usedShrines: [...s.usedShrines], defeatedGuards: [...s.defeatedGuards],
@@ -247,7 +262,7 @@ export function deserialize(st: RunState, meta: MetaState): RunSession {
   const base = st.base ?? baseStatsFor(st.classId, meta);
   const equipment = equipmentFromIds(st.equipment, st.customItems ?? []);
   return {
-    seed: st.seed, rng, classId: st.classId, setId: st.setId, base, stats: computeStats(base, equipment),
+    seed: st.seed, rng, classId: st.classId, setId: st.setId, families: st.families ?? [st.setId], base, stats: computeStats(base, equipment),
     hp: st.hp, gold: st.gold, deck: [...st.deck], equipment,
     screenIndex: st.screenIndex, map: st.map, playerPos: { ...st.playerPos }, threat: st.threat,
     openedPois: new Set(st.openedPois), usedShrines: new Set(st.usedShrines), defeatedGuards: new Set(st.defeatedGuards),
