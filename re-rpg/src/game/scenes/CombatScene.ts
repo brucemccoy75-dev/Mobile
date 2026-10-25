@@ -150,9 +150,10 @@ export class CombatScene extends Phaser.Scene {
   private dispRemove(side: 'player' | 'enemy', id: Status['id']) {
     this.dispStatus[side] = this.dispStatus[side].filter((s) => s.id !== id);
   }
-  private dispGuardHit(side: 'player' | 'enemy') {
-    const g = this.dispStatus[side].find((s) => s.id === 'guard');
-    if (g) { g.magnitude -= 1; if (g.magnitude <= 0) this.dispRemove(side, 'guard'); }
+  private dispGuardHit(side: 'player' | 'enemy', id: 'guard' | 'ward' = 'guard') {
+    if (this.dispStatus[side].some((s) => s.id === 'aegis')) return; // aegis absorbs without being consumed
+    const g = this.dispStatus[side].find((s) => s.id === id);
+    if (g) { g.magnitude -= 1; if (g.magnitude <= 0) this.dispRemove(side, id); }
   }
 
   /** Tap-to-explain panel for a status or the enemy's intent. Any tap dismisses it. */
@@ -182,7 +183,7 @@ export class CombatScene extends Phaser.Scene {
   }
   private explainStatus(s: Status, who: string) {
     const m = STATUS_LABELS[s.id];
-    const dur = s.id === 'guard' ? `${s.magnitude} hit${s.magnitude === 1 ? '' : 's'} left` : s.id === 'burn' ? `${s.magnitude} per round, ${s.turns} round${s.turns === 1 ? '' : 's'} left` : s.id === 'chill' || s.id === 'brace' || s.id === 'scatter' ? 'until it triggers' : s.id === 'stun' ? `${Math.max(0, s.turns - 1)} turn${s.turns - 1 === 1 ? '' : 's'} left` : `${s.turns} round${s.turns === 1 ? '' : 's'} left`;
+    const dur = s.id === 'guard' || s.id === 'ward' ? `${s.magnitude} hit${s.magnitude === 1 ? '' : 's'} left` : s.id === 'burn' ? `${s.magnitude} per round, ${s.turns} round${s.turns === 1 ? '' : 's'} left` : s.id === 'chill' || s.id === 'brace' || s.id === 'scatter' ? 'until it triggers' : s.id === 'stun' ? `${Math.max(0, s.turns - 1)} turn${s.turns - 1 === 1 ? '' : 's'} left` : `${s.turns} round${s.turns === 1 ? '' : 's'} left`;
     this.showInfo(`${m.label} on ${who}  ·  ${dur}`, m.desc, m.color);
   }
   private explainIntent() {
@@ -191,7 +192,8 @@ export class CombatScene extends Phaser.Scene {
     const hits = intent.kind === 'attack' ? intent.hits : 1;
     const tell = POSTURE_TEXT[this.state.enemy.next.posture] ?? '';
     const drain = intent.kind === 'attack' && !!intent.drain;
-    this.showInfo(`${this.enemyDef.name}, after your move`, `${describeIntent(intent.kind, moveName, predictedDamage, hits, status, drain)}\n\nThe round after: ${tell.replace('then: ', '')}.`, '#ffb4b4');
+    const magic = intent.kind === 'attack' && intent.dmgType === 'magic';
+    this.showInfo(`${this.enemyDef.name}, after your move`, `${describeIntent(intent.kind, moveName, predictedDamage, hits, status, drain, magic)}\n\nThe round after: ${tell.replace('then: ', '')}.`, '#ffb4b4');
   }
 
   private syncAll() {
@@ -249,7 +251,7 @@ export class CombatScene extends Phaser.Scene {
   }
 
   private showIntent(intent: Intent, posture: Posture, predicted: number, moveName: string) {
-    const label = intent.kind === 'attack' ? `${moveName}${intent.hits > 1 ? ` x${intent.hits}` : ''}${intent.drain ? ' · drains' : ''}`
+    const label = intent.kind === 'attack' ? `${moveName}${intent.hits > 1 ? ` x${intent.hits}` : ''}${intent.dmgType === 'magic' ? ' · magic' : ''}${intent.drain ? ' · drains' : ''}`
       : intent.kind === 'guard' ? `${moveName} (guard)`
       : intent.kind === 'debuff' ? `${moveName} → ${STATUS_LABELS[intent.status].label}`
       : intent.kind === 'buff' ? (intent.status === 'brace' ? `${moveName}: counters next hit` : intent.status === 'scatter' ? `${moveName}: halves single hits` : intent.status === 'harden' ? `${moveName}: takes half damage` : `${moveName} (+${intent.status})`)
@@ -374,7 +376,7 @@ export class CombatScene extends Phaser.Scene {
       case 'damage': {
         const s = sprite(e.target), p = pos(e.target);
         if (e.blocked) {
-          this.dispGuardHit(e.target);
+          this.dispGuardHit(e.target, e.kind === 'magic' ? 'ward' : 'guard');
           this.syncChips();
           await floatText(this, p.x, p.y - 30, 'BLOCKED', COLORS.block, 30, 900);
         } else {

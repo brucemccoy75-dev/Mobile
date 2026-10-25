@@ -15,8 +15,8 @@ export function hasStatus(c: Combatant, id: StatusId): boolean {
 export function applyStatus(c: Combatant, id: StatusId, turns: number, magnitude: number, events: CombatEvent[]): void {
   const existing = getStatus(c, id);
   if (!existing) {
-    c.statuses.push({ id, turns, magnitude: id === 'guard' ? Math.min(GUARD_CAP, magnitude) : magnitude });
-  } else if (id === 'guard') {
+    c.statuses.push({ id, turns, magnitude: id === 'guard' || id === 'ward' ? Math.min(GUARD_CAP, magnitude) : magnitude });
+  } else if (id === 'guard' || id === 'ward') {
     existing.magnitude = Math.min(GUARD_CAP, existing.magnitude + magnitude);
   } else {
     existing.turns = Math.max(existing.turns, turns);
@@ -33,14 +33,16 @@ export function removeStatus(c: Combatant, id: StatusId, events: CombatEvent[]):
   events.push({ t: 'statusExpired', side: c.side, status: id });
 }
 
-/** Consume one Guard hit if present. Returns true if the hit was blocked. */
-export function consumeGuard(c: Combatant, events: CombatEvent[]): boolean {
-  const g = getStatus(c, 'guard');
+/** Consume one stack of a per-hit block (Guard for physical, Ward for magic). Returns true if the hit was blocked. */
+export function consumeBlock(c: Combatant, id: 'guard' | 'ward', events: CombatEvent[]): boolean {
+  const g = getStatus(c, id);
   if (!g) return false;
   g.magnitude -= 1;
-  if (g.magnitude <= 0) removeStatus(c, 'guard', events);
+  if (g.magnitude <= 0) removeStatus(c, id, events);
   return true;
 }
+/** Guard: the next physical hit. */
+export const consumeGuard = (c: Combatant, events: CombatEvent[]) => consumeBlock(c, 'guard', events);
 
 /** Consume Brace if present. Returns true if the hit should be countered. */
 export function consumeBrace(c: Combatant, events: CombatEvent[]): boolean {
@@ -71,7 +73,7 @@ export function tickStatuses(c: Combatant, events: CombatEvent[]): void {
     }
   }
   for (const s of c.statuses.slice()) {
-    if (s.id === 'guard' || s.id === 'chill') continue;
+    if (s.id === 'guard' || s.id === 'ward' || s.id === 'chill') continue;
     s.turns -= 1;
     if (s.turns <= 0) removeStatus(c, s.id, events);
   }

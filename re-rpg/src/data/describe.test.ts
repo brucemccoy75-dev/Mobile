@@ -11,7 +11,9 @@ describe('describeSkill', () => {
     expect(describeSkill(getSkill('attack'), geared)).toBe('Deal 7 damage.');
     expect(describeSkill(getSkill('broadsword'), warrior)).toBe('Deal 8 damage. You are Exposed this round.');
     expect(describeSkill(getSkill('broadsword'), geared)).toBe('Deal 11 damage. You are Exposed this round.');
-    expect(describeSkill(getSkill('defend'), warrior)).toBe('Block the next hit.');
+    expect(describeSkill(getSkill('defend'), warrior)).toBe('Block the next physical hit.');
+    expect(describeSkill(getSkill('ward'), warrior)).toBe('Block the next magic hit.');
+    expect(describeSkill(getSkill('shield_bash'), warrior)).toBe('Deal 2 damage. Block the next physical hit. Tiring: Weak next turn.');
   });
 
   it('special tomes state their usage rule', () => {
@@ -21,11 +23,11 @@ describe('describeSkill', () => {
 
   it('covers heals, guards, statuses, multi-hit and lifesteal', () => {
     expect(describeSkill(getSkill('bind_wound'), warrior)).toBe('Heal 9 HP. You are Exposed for 2 rounds.');
-    expect(describeSkill(getSkill('ice_armor'), warrior)).toBe('Block the next 2 hits.');
-    expect(describeSkill(getSkill('fireball'), { maxHp: 20, atk: 5, def: 0 })).toBe('Deal 8 damage. Burn 2 per round for 2 rounds.');
-    expect(describeSkill(getSkill('frost_bolt'), { maxHp: 20, atk: 5, def: 0 })).toBe('Deal 6 damage. 65% chance: Chill: the enemy skips its next action.');
+    expect(describeSkill(getSkill('ice_armor'), warrior)).toBe('Block the next 2 physical hits.');
+    expect(describeSkill(getSkill('fireball'), { maxHp: 20, atk: 5, def: 0 })).toBe('Deal 8 magic damage. Burn 2 per round for 2 rounds.');
+    expect(describeSkill(getSkill('frost_bolt'), { maxHp: 20, atk: 5, def: 0 })).toBe('Deal 6 magic damage. 65% chance: Chill: the enemy skips its next action.');
     expect(describeSkill(getSkill('spirit_lash'), { maxHp: 20, atk: 4, def: 1 })).toBe('Deal 5 damage, heal half of it.');
-    expect(describeSkill(getSkill('lightning'), { maxHp: 20, atk: 4, def: 1 })).toBe('Deal 6 damage, ignoring defence.');
+    expect(describeSkill(getSkill('lightning'), { maxHp: 20, atk: 4, def: 1 })).toBe('Deal 6 magic damage, ignoring defence.');
     expect(describeSkill(getSkill('exposing_strike'), warrior)).toBe('Deal 4 damage. Enemy Exposed for 2 rounds.');
   });
 });

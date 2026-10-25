@@ -39,7 +39,9 @@ export const RARITY_COLORS: Record<Rarity, number> = {
 
 export const STATUS_LABELS: Record<StatusId, { label: string; color: string; desc: string }> = {
   exposed: { label: 'EXPOSED', color: '#ff6b6b', desc: 'Takes double damage from every hit while it lasts.' },
-  guard: { label: 'GUARD', color: '#7dd3fc', desc: 'Blocks the next hit completely. Each stack blocks one hit, then it is gone.' },
+  guard: { label: 'GUARD', color: '#7dd3fc', desc: 'Blocks the next physical hit completely. Spells go straight through. Each stack blocks one hit, then it is gone.' },
+  ward: { label: 'WARD', color: '#c4b5fd', desc: 'Blocks the next magic hit completely. Physical blows go straight through. Each stack blocks one hit, then it is gone.' },
+  aegis: { label: 'AEGIS', color: '#7dd3fc', desc: 'Blocks every hit, physical or magic, however many, while it lasts. Burn and Curse still tick.' },
   burn: { label: 'BURN', color: '#ff8c42', desc: 'Loses HP at the end of every round. Burn ignores Guard.' },
   chill: { label: 'CHILL', color: '#9ad7ff', desc: 'Skips its next action.' },
   weak: { label: 'WEAK', color: '#c7b3ff', desc: 'Deals half damage while it lasts.' },
@@ -48,13 +50,12 @@ export const STATUS_LABELS: Record<StatusId, { label: string; color: string; des
   scatter: { label: 'SCATTERED', color: '#b8f0c8', desc: 'The next single hit does half damage. Attacks with several hits are unaffected.' },
   curse: { label: 'CURSED', color: '#c084fc', desc: 'Loses HP at the end of every round and healing is halved while it lasts. Ignores Guard.' },
   harden: { label: 'HARDENED', color: '#a8b3c7', desc: 'Takes half damage from every hit while it lasts. Hits still land, so Exposed and Burn still work.' },
-  ward: { label: 'WARDED', color: '#7dd3fc', desc: 'Blocks every hit, however many, while it lasts. Burn and Curse still tick.' },
 };
 
 /** Plain-language reading of an enemy intent for the tap-to-explain panel. */
-export function describeIntent(kind: string, moveName: string, predicted: number, hits: number, status?: StatusId, drain = false): string {
+export function describeIntent(kind: string, moveName: string, predicted: number, hits: number, status?: StatusId, drain = false, magic = false): string {
   switch (kind) {
-    case 'attack': return hits > 1 ? `${moveName}: ${hits} hits for about ${predicted} total. Each Guard stack blocks one hit.` : `${moveName}: one hit for about ${predicted}. Defend blocks it.${drain ? ' It heals the caster for what it drains.' : ''}`;
+    case 'attack': { const blk = magic ? 'Ward' : 'Defend'; return hits > 1 ? `${moveName}: ${hits} ${magic ? 'magic ' : ''}hits for about ${predicted} total. Each ${magic ? 'Ward' : 'Guard'} stack blocks one hit.` : `${moveName}: one ${magic ? 'magic ' : ''}hit for about ${predicted}. ${blk} blocks it.${drain ? ' It heals the caster for what it drains.' : ''}`; }
     case 'guard': return `${moveName}: after your move it raises a guard, so your hit next round is blocked. Strip it with a cheap hit, or wait it out.`;
     case 'debuff': return `${moveName}: inflicts ${STATUS_LABELS[status!].label} on you. ${STATUS_LABELS[status!].desc}`;
     case 'buff': return `${moveName}: after your move it will become ${STATUS_LABELS[status!].label}. ${STATUS_LABELS[status!].desc}`;

@@ -5,8 +5,13 @@ import type { Enemy, EnemyMove, StatusId } from './types';
 // reward Guard and Burn.
 
 const hit = (id: string, name: string, mult: number, posture: EnemyMove['posture'] = 'aggressive', hits = 1): EnemyMove => ({
-  id, name, posture, intent: { kind: 'attack', mult, hits },
-  effects: [{ type: 'damage', mult, hits }],
+  id, name, posture, intent: { kind: 'attack', mult, hits, dmgType: 'physical' },
+  effects: [{ type: 'damage', mult, hits, kind: 'physical' }],
+});
+/** A spell: stopped by Ward, not by Guard. */
+const spell = (id: string, name: string, mult: number, posture: EnemyMove['posture'] = 'sinister', hits = 1): EnemyMove => ({
+  id, name, posture, intent: { kind: 'attack', mult, hits, dmgType: 'magic' },
+  effects: [{ type: 'damage', mult, hits, kind: 'magic' }],
 });
 const guard = (id = 'guard', name = 'Guard', hits = 1): EnemyMove => ({
   id, name, posture: 'defensive', intent: { kind: 'guard', hits },
@@ -48,8 +53,8 @@ const curse = (id = 'curse_dot', name = 'Curse', magnitude = 1, turns = 4): Enem
   effects: [{ type: 'status', target: 'enemy', status: 'curse', turns, magnitude }],
 });
 const drain = (id: string, name: string, mult: number): EnemyMove => ({
-  id, name, posture: 'sinister', intent: { kind: 'attack', mult, hits: 1, drain: true },
-  effects: [{ type: 'damage', mult, lifesteal: 1 }],
+  id, name, posture: 'sinister', intent: { kind: 'attack', mult, hits: 1, drain: true, dmgType: 'magic' },
+  effects: [{ type: 'damage', mult, lifesteal: 1, kind: 'magic' }],
 });
 
 export const ENEMIES: Enemy[] = [
@@ -61,7 +66,7 @@ export const ENEMIES: Enemy[] = [
   { id: 'hex_imp', name: 'Hex Imp', tier: 1, archetype: 'caster', stats: { maxHp: 16, atk: 3, def: 0 },
     table: { kind: 'sequence', moves: [debuff('hex', 'Hex', 'exposed', 2), hit('jab', 'Jab', 1.0), debuff('curse', 'Curse', 'weak', 2), hit('jab', 'Jab', 1.0)] } },
   { id: 'adept_necromancer', name: 'Adept Necromancer', tier: 1, archetype: 'caster', stats: { maxHp: 16, atk: 3, def: 0 },
-    table: { kind: 'sequence', moves: [curse(), drain('lifetap', 'Lifetap', 1.0), hit('bone_bolt', 'Bone Bolt', 1.0), drain('lifetap', 'Lifetap', 1.0)] } },
+    table: { kind: 'sequence', moves: [curse(), drain('lifetap', 'Lifetap', 1.0), spell('bone_bolt', 'Bone Bolt', 1.0), drain('lifetap', 'Lifetap', 1.0)] } },
   { id: 'rat_pack', name: 'Rat Pack', tier: 1, archetype: 'swarm', stats: { maxHp: 18, atk: 2, def: 0 },
     table: { kind: 'weighted', moves: [{ move: hit('swarm', 'Swarm', 0.6, 'aggressive', 3), weight: 2 }, { move: hit('nibble', 'Nibble', 1.0), weight: 1 }, { move: scatter(), weight: 1 }] } },
 
@@ -71,7 +76,7 @@ export const ENEMIES: Enemy[] = [
   { id: 'iron_knight', name: 'Iron Knight', tier: 2, archetype: 'armored', stats: { maxHp: 26, atk: 5, def: 4 },
     table: { kind: 'sequence', moves: [hit('slash', 'Slash', 1.0), harden('brace_plate', 'Brace Plate'), hit('slash', 'Slash', 1.0), charge('bash', 'Bash', 1.5)] } },
   { id: 'witch', name: 'Witch', tier: 2, archetype: 'caster', stats: { maxHp: 24, atk: 5, def: 0 },
-    table: { kind: 'sequence', moves: [debuff('hex', 'Hex', 'exposed', 2), hit('bolt', 'Bolt', 1.2), debuff('curse', 'Curse', 'weak', 2), hit('bolt', 'Bolt', 1.2)] } },
+    table: { kind: 'sequence', moves: [debuff('hex', 'Hex', 'exposed', 2), spell('bolt', 'Bolt', 1.2), debuff('curse', 'Curse', 'weak', 2), spell('bolt', 'Bolt', 1.2)] } },
   { id: 'harpies', name: 'Harpies', tier: 2, archetype: 'swarm', stats: { maxHp: 26, atk: 3, def: 1 },
     table: { kind: 'weighted', moves: [{ move: hit('swarm', 'Dive', 0.7, 'aggressive', 3), weight: 2 }, { move: debuff('screech', 'Screech', 'weak', 2), weight: 1 }, { move: scatter('scatter', 'Wheel'), weight: 1 }] } },
 

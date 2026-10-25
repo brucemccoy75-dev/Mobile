@@ -1,4 +1,4 @@
-import type { Effect, Enemy, EnemyId, EnemyMove, Intent, Posture, SkillId, Stats, Status, StatusId } from '@data/types';
+import type { DamageKind, Effect, Enemy, EnemyId, EnemyMove, Intent, Posture, SkillId, Stats, Status, StatusId } from '@data/types';
 
 export type Side = 'player' | 'enemy';
 
@@ -62,7 +62,7 @@ export type CombatEvent =
   | { t: 'exhaust'; skill: SkillId }
   | { t: 'consumed'; skill: SkillId }
   | { t: 'counter'; amount: number; blocked: boolean }
-  | { t: 'damage'; source: Side; target: Side; amount: number; blocked: boolean; hit: number; hits: number }
+  | { t: 'damage'; source: Side; target: Side; amount: number; blocked: boolean; hit: number; hits: number; kind: DamageKind }
   | { t: 'heal'; side: Side; amount: number }
   | { t: 'statusApplied'; side: Side; status: StatusId; turns: number; magnitude: number }
   | { t: 'statusResisted'; side: Side; status: StatusId }

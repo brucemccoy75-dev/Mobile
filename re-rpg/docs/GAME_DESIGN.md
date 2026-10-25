@@ -18,7 +18,7 @@ POC "win" = kill Boss 2. Expected first-run outcome = die before Boss 1.
 
 | Class | HP | Identity | POC sets (one rolled per run) |
 |---|---|---|---|
-| Warrior (open) | 25 | Melee, armor, attrition | **Tank**: Shield Bash (dmg + Guard), Bind Wound (heal, Exposed 2) · **DPS**: Broadsword Strike (160%, overextends: Exposed this round), Exposing Strike |
+| Warrior (open) | 25 | Melee, armor, attrition | **Tank**: Shield Bash (dmg + Guard, tiring: Weak next turn), Bind Wound (heal, Exposed 2) · **DPS**: Broadsword Strike (160%, overextends: Exposed this round), Exposing Strike |
 | Wizard (unlock: win as Warrior) | 20 | Burst, self-risk | **Fire**: Fireball, Inferno (ultimate, leaves caster Exposed) · **Frost**: Frost Bolt (chance to Chill = enemy skips a turn), Ice Armor (temporary def) |
 | Shaman (unlock: win as Warrior) | 20 | Sustain + nature damage over time | **Spirit**: Mend (heal), Spirit Lash (damage + heal small %) · **Storm**: Lightning (damage, ignores part of def), Static Field (Burn-like damage over time) |
 
@@ -32,10 +32,10 @@ Known skills form a **deck** (cap **6**). Every encounter:
 2. Round 1 deals a full hand of 3 (or the whole deck if smaller), then one card per round. **Hand cap 3.**
 3. Once the hand is full, each new round still deals one and the **oldest card in hand is discarded**. Holding skills is punished.
 4. A played skill goes to the **discard pile**. When the deck is empty the discard is reshuffled.
-5. **Attack** (×2) and **Defend** (×1) are shuffled into every fight's deck on top of the run deck and do not count against the cap. There is no always-available button: a hand of three Attacks when you needed a block is the game.
+5. **Attack** (×2), **Defend** (×1) and **Ward** (×1) are shuffled into every fight's deck on top of the run deck and do not count against the cap. Defend blocks the next physical hit, Ward the next magic hit. There is no always-available button: a hand of three Attacks when you needed a block is the game.
 6. **Hold**: discard one card to pass the turn. The out for a trap turn (a braced enemy and a hand of strikes); it costs the card and the tempo, so it is never the default.
 7. **Copies**: a deck holds at most 2 of any tome.
-8. **Special tomes**: once-per-fight rares (Mighty Blow, Stand Firm) are exhausted when played and return next fight; fleeting tomes (Last Strike, Final Stand) are destroyed when played. **Warded** blocks every hit for N rounds. Two Broadswords make the strike frequent; the brace makes that a risk, not a free lunch.
+8. **Special tomes**: once-per-fight rares (Mighty Blow, Stand Firm) are exhausted when played and return next fight; fleeting tomes (Last Strike, Final Stand) are destroyed when played. **Aegis** blocks every hit for N rounds. Two Broadswords make the strike frequent; the brace makes that a risk, not a free lunch.
 
 Tomes add a skill to the deck. At the cap, a tome forces a binding swap or a skip, the same rule as equipment. Big-hit skills scale with a **flat bonus** (Broadsword 100% + 4, Inferno 100% + 10) so gear does not multiply them. Later knobs: a stamina meter for multi-play turns, deal 2 per round in long fights, "+1 deck size" and "+1 hand size" as item stats.
 
@@ -43,7 +43,7 @@ Healing skills honour the HP-drain rule: they are rare in the pool and carry a r
 
 Skills are data: `effects[]` of damage(mult), heal(flat/%), applyStatus(target, id, turns), guard, and `selfStatus`.
 
-POC statuses: **Exposed** (takes 2x damage), **Guard** (blocks the next hit; stacks to 3), **Burn** (N dmg at end of round), **Chill** (skip next action), **Weak** (deal half damage), **Recovering** (player skips their turns while it lasts), **Braced** (enemy: the next hit that lands is countered), **Scattered** (enemy: the next single hit does half), **Cursed** (DoT at end of round and healing halved), **Hardened** (takes half damage; hits still land). Durations count end-of-round ticks: a status applied on the player's turn with 1 turn covers the enemy's action that round; a self-status the enemy applies on its own turn needs 2 turns to be exploitable next round.
+POC statuses: **Exposed** (takes 2x damage), **Guard** (blocks the next physical hit; stacks to 3), **Ward** (blocks the next magic hit; stacks to 3), **Aegis** (blocks every hit for N rounds), **Burn** (N dmg at end of round), **Chill** (skip next action), **Weak** (deal half damage), **Recovering** (player skips their turns while it lasts), **Braced** (enemy: the next hit that lands is countered), **Scattered** (enemy: the next single hit does half), **Cursed** (DoT at end of round and healing halved), **Hardened** (takes half damage; hits still land). Damage is physical or magic; the intent panel marks spells "· magic". Durations count end-of-round ticks: a status applied on the player's turn with 1 turn covers the enemy's action that round; a self-status the enemy applies on its own turn needs 2 turns to be exploitable next round.
 
 ## 4. Equipment
 

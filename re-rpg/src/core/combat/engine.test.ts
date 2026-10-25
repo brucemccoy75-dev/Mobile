@@ -52,7 +52,7 @@ describe('rounds and dealing', () => {
   it('basics are shuffled into every fight on top of the run deck', () => {
     const s = createCombat({ player: { ...WARRIOR, deck: ['broadsword'] }, enemy: PASSIVE, rng: new Rng(1) });
     const all = [...s.player.deck, ...s.player.hand].sort();
-    expect(all).toEqual(['attack', 'attack', 'broadsword', 'defend']);
+    expect(all).toEqual(['attack', 'attack', 'broadsword', 'defend', 'ward']);
   });
 
   it('with no cards at all, skip passes the turn and nothing is dealt', () => {
@@ -301,6 +301,53 @@ describe('brace, scatter and hold', () => {
   });
 });
 
+describe('physical vs magic', () => {
+  const CASTER: Enemy = {
+    ...DUMMY, id: 'caster', name: 'Caster',
+    table: { kind: 'sequence', moves: [{ id: 'bolt', name: 'Bolt', posture: 'sinister', intent: { kind: 'attack', mult: 1, hits: 1, dmgType: 'magic' }, effects: [{ type: 'damage', mult: 1, kind: 'magic' }] }] },
+  };
+
+  it('Guard does not stop a spell; Ward does, and is consumed', () => {
+    const s = fight(['defend'], CASTER);
+    play(s, 'defend');
+    expect(s.player.hp).toBe(23);            // bolt 3-1=2 went through the guard
+    expect(hasStatus(s.player, 'guard')).toBe(true);
+    const s2 = fight(['ward'], CASTER);
+    play(s2, 'ward');
+    expect(s2.player.hp).toBe(25);
+    expect(hasStatus(s2.player, 'ward')).toBe(false);
+  });
+
+  it('Ward does not stop a physical hit', () => {
+    const s = fight(['ward'], DUMMY);
+    play(s, 'ward');
+    expect(s.player.hp).toBe(23);
+    expect(hasStatus(s.player, 'ward')).toBe(true);
+  });
+
+  it('enemy Guard blocks the player\'s physical hit but not magic', () => {
+    const s = fight(['fireball', 'attack'], PASSIVE);
+    s.enemy.statuses.push({ id: 'guard', turns: 99, magnitude: 1 });
+    play(s, 'fireball'); // round(4*1.5)=6 magic: through the guard; then burn ticks 2
+    expect(s.enemy.hp).toBe(22);
+    expect(hasStatus(s.enemy, 'guard')).toBe(true);
+    play(s, 'attack');   // physical: blocked, guard consumed; burn ticks again
+    expect(s.log.filter((e) => e.t === 'damage' && e.source === 'player').at(-1)).toMatchObject({ blocked: true, kind: 'physical' });
+    expect(hasStatus(s.enemy, 'guard')).toBe(false);
+    expect(s.enemy.hp).toBe(20);
+  });
+
+  it('Shield Bash leaves you Weak for your next turn', () => {
+    const s = fight(['shield_bash', 'attack'], PASSIVE);
+    play(s, 'shield_bash'); // 2 dmg
+    expect(hasStatus(s.player, 'weak')).toBe(true);
+    play(s, 'attack');      // halved: 2
+    const hits = s.log.filter((e) => e.t === 'damage' && e.source === 'player').map((e) => (e as { amount: number }).amount);
+    expect(hits).toEqual([2, 2]);
+    expect(hasStatus(s.player, 'weak')).toBe(false);
+  });
+});
+
 describe('curse and lifetap', () => {
   it('curse ticks like burn and halves healing while it lasts', () => {
     const s = fight(['bind_wound'], PASSIVE, 1, 10);
@@ -362,14 +409,14 @@ describe('special tomes', () => {
     expect(s.log.some((e) => e.t === 'consumed')).toBe(true);
   });
 
-  it('Ward blocks every hit, multi-hit included, for its rounds and then expires', () => {
+  it('Aegis blocks every hit, multi-hit included, for its rounds and then expires', () => {
     const swarm: Enemy = { ...DUMMY, id: 'swarm', table: { kind: 'sequence', moves: [{ id: 'sw', name: 'Swarm', posture: 'aggressive', intent: { kind: 'attack', mult: 1, hits: 3 }, effects: [{ type: 'damage', mult: 1, hits: 3 }] }] } };
     const s = fight(['stand_firm', 'attack', 'attack'], swarm);
-    play(s, 'stand_firm'); // ward 2: this round's 3 hits blocked
+    play(s, 'stand_firm'); // aegis 2: this round's 3 hits blocked
     expect(s.player.hp).toBe(25);
-    play(s, 'attack');     // still warded
+    play(s, 'attack');     // still under aegis
     expect(s.player.hp).toBe(25);
-    expect(hasStatus(s.player, 'ward')).toBe(false);
+    expect(hasStatus(s.player, 'aegis')).toBe(false);
     play(s, 'attack');     // now it lands: 3 x 2
     expect(s.player.hp).toBe(19);
   });

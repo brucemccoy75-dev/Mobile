@@ -6,7 +6,7 @@ import { Rng } from '@core/rng';
 import { advanceMoves, pickMove } from './ai';
 import { computeHit, predictDamage } from './damage';
 import { HAND_CAP, dealOne, playCard } from './deck';
-import { applyStatus, consumeBrace, consumeChill, consumeGuard, getStatus, hasStatus, removeStatus, tickStatuses } from './status';
+import { applyStatus, consumeBlock, consumeBrace, consumeChill, getStatus, hasStatus, removeStatus, tickStatuses } from './status';
 import type { Combatant, CombatEvent, CombatState, EnemyCombatant, PlayerAction, PlayerCombatant } from './types';
 
 export interface PlayerSetup {
@@ -162,17 +162,19 @@ export function applyEffects(effects: Effect[], self: Combatant, other: Combatan
         for (let i = 0; i < hits; i++) {
           if (other.hp <= 0) break;
           const amount = computeHit(self, other, e.mult, e.ignoreDef, e.flat ?? 0, hits);
-          if (hasStatus(other, 'ward') || consumeGuard(other, events)) {
-            events.push({ t: 'damage', source: self.side, target: other.side, amount: 0, blocked: true, hit: i + 1, hits });
+          // Aegis stops everything; Guard stops physical; Ward stops magic.
+          if (hasStatus(other, 'aegis') || consumeBlock(other, e.kind === 'magic' ? 'ward' : 'guard', events)) {
+            events.push({ t: 'damage', source: self.side, target: other.side, amount: 0, blocked: true, hit: i + 1, hits, kind: e.kind ?? 'physical' });
             continue;
           }
           const applied = Math.min(other.hp, amount);
           other.hp -= applied;
           dealt += applied;
-          events.push({ t: 'damage', source: self.side, target: other.side, amount: applied, blocked: false, hit: i + 1, hits });
+          events.push({ t: 'damage', source: self.side, target: other.side, amount: applied, blocked: false, hit: i + 1, hits, kind: e.kind ?? 'physical' });
           // Brace: the first hit that lands is thrown back at the attacker (blockable by Guard, ignores def).
           if (i === 0 && applied > 0 && consumeBrace(other, events)) {
-            if (hasStatus(self, 'ward') || consumeGuard(self, events)) events.push({ t: 'counter', amount: 0, blocked: true });
+            // The counter is a physical blow: Guard or Aegis stop it.
+            if (hasStatus(self, 'aegis') || consumeBlock(self, 'guard', events)) events.push({ t: 'counter', amount: 0, blocked: true });
             else { const back = Math.min(self.hp, applied); self.hp -= back; events.push({ t: 'counter', amount: back, blocked: false }); }
           }
         }

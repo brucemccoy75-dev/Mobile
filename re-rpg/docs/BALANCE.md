@@ -11,6 +11,10 @@ Loadouts: **fresh** = Attack/Defend only, empty deck. **Set** = the two set tome
 - Set + screen-1 kit should beat Boss 1 most of the time. ✅ for guard-bearing sets; ❌ Berserker and Stormcaller (pure damage, no block) still lose the rhythm fight.
 - Screen 2 should need screen-2 gear and a bigger deck. ✅ for Bulwark, Cryomancy, Spiritcaller; ❌ pure damage sets vs the Warden.
 
+## Changes after phone test 7
+
+- **Physical vs magic**: Guard stops only physical hits, the new **Ward** basic stops only magic, Aegis stops both. Basics are now Attack ×2, Defend, Ward (one more dead card against physical enemies on screen 1). **Shield Bash** and the new **Warding Blast** are tiring: Weak on your next turn. Witch and Necromancer cast; everything else is physical. Enemy Guard is physical-only, so spells pass a guarding boss.
+
 ## Changes after phone test 6
 
 - **Armoured enemies harden instead of guarding**: Shell Beetle's Shell and Iron Knight's Brace Plate halve incoming damage for a turn rather than blocking a hit outright. No more wasted swings into a shell, so the beetle stops being a 20-round fight; fresh-run death causes shift away from it.
@@ -66,26 +70,26 @@ Resulting shape (with the opening hand of 3): fresh reaches boss 13–32% / beat
 loadout, greedy policy
 
 loadout                        reach boss  beat boss  hp@boss fights rounds  deaths
-warrior fresh                       49.4%       0.0%      4.6   3.26   28.9  gatekeeper 49%, adept_necromancer 30%, rat_pack 21%
-warrior Bulwark                     91.5%      77.6%     12.3   4.64   63.3  gatekeeper 14%, adept_necromancer 7%, rat_pack 2%
-warrior Berserker                   79.3%       0.0%      6.8   3.78   17.1  gatekeeper 79%, boar 7%, adept_necromancer 6%
-warrior Bulwark+gear1              100.0%      99.8%     16.3   5.00   35.8  gatekeeper 0%
-warrior Berserker+gear1            100.0%      11.6%     21.4   4.12   17.8  gatekeeper 88%
-warrior both sets+gear1            100.0%      71.4%     19.8   4.71   23.0  gatekeeper 29%
+warrior fresh                        8.8%       0.0%      3.3   2.37   19.3  boar 36%, adept_necromancer 23%, rat_pack 19%
+warrior Bulwark                     52.2%       2.3%     13.0   3.04   46.8  gatekeeper 50%, adept_necromancer 31%, boar 13%
+warrior Berserker                   54.8%       0.0%      5.9   3.37   16.1  gatekeeper 55%, boar 18%, adept_necromancer 11%
+warrior Bulwark+gear1               99.3%      93.5%     17.4   4.92   49.5  gatekeeper 6%, adept_necromancer 0%, boar 0%
+warrior Berserker+gear1             99.8%       8.5%     18.8   4.08   17.2  gatekeeper 91%, boar 0%
+warrior both sets+gear1            100.0%      51.1%     18.2   4.51   26.0  gatekeeper 49%
 
-wizard fresh                        42.6%       0.0%      5.0   2.98   23.8  gatekeeper 43%, adept_necromancer 39%, rat_pack 19%
-wizard Pyromancy                    80.8%       0.0%      6.9   3.77   13.2  gatekeeper 81%, boar 10%, rat_pack 4%
-wizard Cryomancy                    89.6%      20.7%      5.7   4.08   27.5  gatekeeper 69%, rat_pack 8%, adept_necromancer 2%
-wizard Pyromancy+gear1             100.0%      27.2%     17.9   4.27   11.9  gatekeeper 73%
-wizard Cryomancy+gear1             100.0%      92.8%     15.9   4.93   23.6  gatekeeper 7%
-wizard both sets+gear1             100.0%      83.8%     18.2   4.84   15.6  gatekeeper 16%
+wizard fresh                         7.8%       0.0%      3.4   2.06   14.4  boar 34%, adept_necromancer 32%, rat_pack 15%
+wizard Pyromancy                    62.8%       0.3%      6.5   3.46   12.1  gatekeeper 63%, boar 20%, rat_pack 6%
+wizard Cryomancy                    54.4%       0.8%      5.1   3.31   23.6  gatekeeper 54%, boar 17%, adept_necromancer 15%
+wizard Pyromancy+gear1              99.8%      41.6%     17.1   4.41   11.8  gatekeeper 58%, boar 0%
+wizard Cryomancy+gear1              99.4%      45.6%     13.7   4.45   25.1  gatekeeper 54%, boar 0%, adept_necromancer 0%
+wizard both sets+gear1             100.0%      71.5%     17.7   4.71   15.4  gatekeeper 29%
 
-shaman fresh                        35.6%       0.0%      4.2   2.80   27.6  adept_necromancer 38%, gatekeeper 36%, rat_pack 27%
-shaman Spiritcaller                 85.3%       0.2%     11.0   3.73   32.6  gatekeeper 85%, adept_necromancer 10%, boar 4%
-shaman Stormcaller                  41.3%       0.0%      3.2   3.25   15.2  gatekeeper 41%, boar 21%, adept_necromancer 17%
-shaman Spiritcaller+gear1          100.0%      94.6%     15.4   4.95   32.1  gatekeeper 5%
-shaman Stormcaller+gear1           100.0%       4.6%     12.2   4.05   17.0  gatekeeper 95%
-shaman both sets+gear1              99.7%      55.0%     14.5   4.55   21.7  gatekeeper 45%, boar 0%
+shaman fresh                         3.7%       0.0%      2.9   1.88   16.6  boar 36%, adept_necromancer 28%, rat_pack 21%
+shaman Spiritcaller                 56.8%       0.0%     10.9   3.13   30.2  gatekeeper 57%, boar 29%, adept_necromancer 13%
+shaman Stormcaller                  21.9%       0.0%      3.0   2.70   13.8  boar 34%, gatekeeper 22%, adept_necromancer 16%
+shaman Spiritcaller+gear1          100.0%      61.0%     17.6   4.61   35.6  gatekeeper 39%
+shaman Stormcaller+gear1            96.2%       2.9%     10.4   3.99   16.4  gatekeeper 93%, boar 2%, adept_necromancer 1%
+shaman both sets+gear1              99.3%      43.6%     14.2   4.43   21.9  gatekeeper 56%, boar 1%, adept_necromancer 0%
 ```
 
 ## Screen 2 (500 runs, screen-2 kit)
@@ -94,24 +98,24 @@ shaman both sets+gear1              99.7%      55.0%     14.5   4.55   21.7  gat
 loadout, greedy policy
 
 loadout                        reach boss  beat boss  hp@boss fights rounds  deaths
-warrior fresh                       41.2%       0.0%      8.8   2.74  104.8  harpies 59%, warden 41%
-warrior Bulwark                     44.8%       8.8%     13.0   2.58   70.6  ogre 53%, warden 36%, harpies 2%
-warrior Berserker                    0.2%       0.0%      7.0   1.00   14.4  iron_knight 39%, ogre 36%, harpies 13%
-warrior Bulwark+gear2               99.6%      99.6%     19.0   4.99   46.5  ogre 0%
-warrior Berserker+gear2             93.2%      12.6%     13.0   4.06   23.7  warden 81%, iron_knight 4%, ogre 2%
-warrior both sets+gear2             89.8%      71.6%     16.6   4.51   31.4  warden 18%, ogre 9%, harpies 1%
+warrior fresh                        0.6%       0.0%      6.0   0.64   15.5  ogre 46%, iron_knight 39%, harpies 14%
+warrior Bulwark                     12.6%       0.0%     12.0   1.46   45.5  ogre 63%, iron_knight 13%, warden 13%
+warrior Berserker                    0.0%       0.0%      0.0   0.68   11.6  ogre 46%, iron_knight 38%, harpies 9%
+warrior Bulwark+gear2               79.2%      66.6%     18.8   4.23   54.4  ogre 20%, warden 13%, harpies 1%
+warrior Berserker+gear2             60.0%       4.2%     10.8   3.44   19.9  warden 56%, ogre 22%, iron_knight 9%
+warrior both sets+gear2             71.4%      30.8%     15.7   3.73   31.1  warden 41%, ogre 27%, harpies 1%
 
-wizard fresh                        34.0%       0.0%     10.0   2.24   64.4  harpies 66%, warden 34%
-wizard Pyromancy                     1.2%       0.0%      2.8   1.18    9.3  ogre 36%, iron_knight 31%, harpies 23%
-wizard Cryomancy                    48.8%       3.4%      8.1   2.91   41.6  harpies 50%, warden 45%, iron_knight 1%
-wizard Pyromancy+gear2              97.0%      32.8%     14.8   4.30   18.0  warden 64%, ogre 3%, iron_knight 0%
-wizard Cryomancy+gear2             100.0%      89.8%     14.4   4.90   28.4  warden 10%
-wizard both sets+gear2              98.2%      80.4%     16.5   4.77   20.1  warden 18%, ogre 1%, harpies 0%
+wizard fresh                         0.2%       0.0%      2.0   0.36    9.6  ogre 38%, iron_knight 34%, harpies 28%
+wizard Pyromancy                     0.2%       0.0%      2.0   0.78    7.2  ogre 47%, iron_knight 27%, harpies 19%
+wizard Cryomancy                     0.8%       0.0%      6.5   1.13   19.2  ogre 42%, harpies 41%, witch 13%
+wizard Pyromancy+gear2              67.4%      17.6%     13.3   3.57   14.9  warden 50%, ogre 25%, iron_knight 4%
+wizard Cryomancy+gear2              89.4%      54.4%     12.6   4.38   32.1  warden 35%, ogre 9%, witch 1%
+wizard both sets+gear2              89.6%      55.0%     15.2   4.35   19.0  warden 35%, ogre 8%, harpies 1%
 
-shaman fresh                        38.8%       0.0%      8.0   2.59  102.2  harpies 61%, warden 39%
-shaman Spiritcaller                  9.4%       0.0%     11.0   1.22   27.8  iron_knight 46%, ogre 41%, warden 9%
-shaman Stormcaller                   0.6%       0.0%      4.3   1.31   12.8  ogre 42%, iron_knight 24%, harpies 19%
-shaman Spiritcaller+gear2           91.6%      90.2%     18.9   4.66   37.4  ogre 8%, warden 1%
-shaman Stormcaller+gear2            94.6%       1.4%      7.3   3.96   22.5  warden 93%, ogre 3%, harpies 1%
-shaman both sets+gear2              75.2%      50.6%     15.3   3.99   25.2  warden 25%, ogre 23%, iron_knight 2%
+shaman fresh                         0.4%       0.0%      5.0   0.56   12.8  ogre 43%, iron_knight 37%, harpies 19%
+shaman Spiritcaller                  2.8%       0.0%      9.6   0.78   18.4  ogre 48%, iron_knight 41%, harpies 6%
+shaman Stormcaller                   0.0%       0.0%      0.0   0.90   10.7  ogre 50%, iron_knight 21%, witch 15%
+shaman Spiritcaller+gear2           73.4%      56.2%     18.9   3.98   37.0  ogre 27%, warden 17%
+shaman Stormcaller+gear2            45.2%       0.6%      7.2   3.09   17.7  warden 45%, ogre 36%, harpies 7%
+shaman both sets+gear2              71.2%      29.2%     15.4   3.70   24.8  warden 42%, ogre 28%, iron_knight 1%
 ```

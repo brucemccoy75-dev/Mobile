@@ -9,20 +9,26 @@ export const DEFEND: Skill = {
   id: 'defend', name: 'Defend', text: 'Block the next hit.', classId: 'any', rarity: 'basic',
   effects: [{ type: 'status', target: 'self', status: 'guard', turns: 99, magnitude: 1 }],
 };
+export const WARD: Skill = {
+  id: 'ward', name: 'Ward', text: 'Block the next magic hit.', classId: 'any', rarity: 'basic',
+  effects: [{ type: 'status', target: 'self', status: 'ward', turns: 99, magnitude: 1 }],
+};
+
 /** Most copies of one tome a deck may hold. */
 export const TOME_COPY_CAP = 2;
 
 /** Cards every fight starts with, in addition to the run deck. Not counted against DECK_CAP. */
-export const BASIC_DECK: string[] = ['attack', 'attack', 'defend'];
+export const BASIC_DECK: string[] = ['attack', 'attack', 'defend', 'ward'];
 
 // Healing is rare and taxed on purpose (DECISIONS #1, #11): every heal leaves you Exposed, so it is a bet on blocking the next hits.
 export const SKILLS: Skill[] = [
   ATTACK,
   DEFEND,
+  WARD,
 
   // Warrior / Tank
-  { id: 'shield_bash', name: 'Shield Bash', text: 'Deal 60% damage and block the next hit.', classId: 'warrior', setId: 'warrior_tank', rarity: 'common',
-    effects: [{ type: 'damage', mult: 0.6 }, { type: 'status', target: 'self', status: 'guard', turns: 99, magnitude: 1 }] },
+  { id: 'shield_bash', name: 'Shield Bash', text: 'Deal 60% damage and block the next hit. Tiring: Weak next turn.', classId: 'warrior', setId: 'warrior_tank', rarity: 'common',
+    effects: [{ type: 'damage', mult: 0.6 }, { type: 'status', target: 'self', status: 'guard', turns: 99, magnitude: 1 }, { type: 'status', target: 'self', status: 'weak', turns: 2 }] },
   { id: 'bind_wound', name: 'Bind Wound', text: 'Heal 35% HP. You are Exposed for 2 rounds.', classId: 'warrior', setId: 'warrior_tank', rarity: 'uncommon',
     effects: [{ type: 'heal', pct: 0.35 }, { type: 'status', target: 'self', status: 'exposed', turns: 2 }] },
 
@@ -33,14 +39,14 @@ export const SKILLS: Skill[] = [
     effects: [{ type: 'damage', mult: 1.0 }, { type: 'status', target: 'enemy', status: 'exposed', turns: 2 }] },
 
   // Wizard / Fire
-  { id: 'fireball', name: 'Fireball', text: 'Deal 150% damage and Burn 2 for 2 rounds.', classId: 'wizard', setId: 'wizard_fire', rarity: 'common',
-    effects: [{ type: 'damage', mult: 1.5 }, { type: 'status', target: 'enemy', status: 'burn', turns: 2, magnitude: 2 }] },
-  { id: 'inferno', name: 'Inferno', text: 'Deal 100% + 10 damage. You are Exposed for 2 rounds.', classId: 'wizard', setId: 'wizard_fire', rarity: 'uncommon',
-    effects: [{ type: 'damage', mult: 1.0, flat: 10 }, { type: 'status', target: 'self', status: 'exposed', turns: 2 }] },
+  { id: 'fireball', name: 'Fireball', text: 'Deal 150% magic damage and Burn 2 for 2 rounds.', classId: 'wizard', setId: 'wizard_fire', rarity: 'common',
+    effects: [{ type: 'damage', mult: 1.5, kind: 'magic' }, { type: 'status', target: 'enemy', status: 'burn', turns: 2, magnitude: 2 }] },
+  { id: 'inferno', name: 'Inferno', text: 'Deal 100% + 10 magic damage. You are Exposed for 2 rounds.', classId: 'wizard', setId: 'wizard_fire', rarity: 'uncommon',
+    effects: [{ type: 'damage', mult: 1.0, flat: 10, kind: 'magic' }, { type: 'status', target: 'self', status: 'exposed', turns: 2 }] },
 
   // Wizard / Frost
   { id: 'frost_bolt', name: 'Frost Bolt', text: 'Deal 120% damage. 65% chance to Chill (enemy skips its next action).', classId: 'wizard', setId: 'wizard_frost', rarity: 'common',
-    effects: [{ type: 'damage', mult: 1.2 }, { type: 'status', target: 'enemy', status: 'chill', turns: 1, chance: 0.65 }] },
+    effects: [{ type: 'damage', mult: 1.2, kind: 'magic' }, { type: 'status', target: 'enemy', status: 'chill', turns: 1, chance: 0.65 }] },
   { id: 'ice_armor', name: 'Ice Armor', text: 'Block the next 2 hits.', classId: 'wizard', setId: 'wizard_frost', rarity: 'uncommon',
     effects: [{ type: 'status', target: 'self', status: 'guard', turns: 99, magnitude: 2 }] },
 
@@ -52,7 +58,7 @@ export const SKILLS: Skill[] = [
 
   // Shaman / Storm
   { id: 'lightning', name: 'Lightning', text: 'Deal 160% damage, ignoring defense.', classId: 'shaman', setId: 'shaman_storm', rarity: 'common',
-    effects: [{ type: 'damage', mult: 1.6, ignoreDef: true }] },
+    effects: [{ type: 'damage', mult: 1.6, ignoreDef: true, kind: 'magic' }] },
   { id: 'static_field', name: 'Static Field', text: 'Burn 3 for 3 rounds.', classId: 'shaman', setId: 'shaman_storm', rarity: 'uncommon',
     effects: [{ type: 'status', target: 'enemy', status: 'burn', turns: 3, magnitude: 3 }] },
 ];
@@ -63,11 +69,13 @@ export const SPECIAL_TOMES: Skill[] = [
   { id: 'mighty_blow', name: 'Mighty Blow', text: 'Deal 200% damage. Once per fight.', classId: 'any', rarity: 'rare', uses: 'once_per_fight',
     effects: [{ type: 'damage', mult: 2.0 }] },
   { id: 'stand_firm', name: 'Stand Firm', text: 'Block every hit for 2 rounds. Once per fight.', classId: 'any', rarity: 'rare', uses: 'once_per_fight',
-    effects: [{ type: 'status', target: 'self', status: 'ward', turns: 2 }] },
+    effects: [{ type: 'status', target: 'self', status: 'aegis', turns: 2 }] },
+  { id: 'warding_blast', name: 'Warding Blast', text: 'Deal 60% magic damage and block the next magic hit. Tiring: Weak next turn.', classId: 'any', rarity: 'common',
+    effects: [{ type: 'damage', mult: 0.6, kind: 'magic' }, { type: 'status', target: 'self', status: 'ward', turns: 99, magnitude: 1 }, { type: 'status', target: 'self', status: 'weak', turns: 2 }] },
   { id: 'last_strike', name: 'Last Strike', text: 'Deal 300% damage. Fleeting: the tome is spent.', classId: 'any', rarity: 'uncommon', uses: 'fleeting',
     effects: [{ type: 'damage', mult: 3.0 }] },
   { id: 'final_stand', name: 'Final Stand', text: 'Block every hit for 3 rounds. Fleeting: the tome is spent.', classId: 'any', rarity: 'uncommon', uses: 'fleeting',
-    effects: [{ type: 'status', target: 'self', status: 'ward', turns: 3 }] },
+    effects: [{ type: 'status', target: 'self', status: 'aegis', turns: 3 }] },
 ];
 SKILLS.push(...SPECIAL_TOMES);
 

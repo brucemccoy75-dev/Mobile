@@ -6,7 +6,8 @@ export type Policy = (s: CombatState) => PlayerAction;
 
 const has = (effects: Effect[], pred: (e: Effect) => boolean) => effects.some(pred);
 const isHeal = (e: Effect) => e.type === 'heal' || (e.type === 'damage' && !!e.lifesteal);
-const isGuard = (e: Effect) => e.type === 'status' && e.target === 'self' && (e.status === 'guard' || e.status === 'ward');
+const isGuard = (e: Effect) => e.type === 'status' && e.target === 'self' && (e.status === 'guard' || e.status === 'ward' || e.status === 'aegis');
+const blocks = (e: Effect, magic: boolean) => e.type === 'status' && e.target === 'self' && (e.status === 'aegis' || e.status === (magic ? 'ward' : 'guard'));
 const isDamage = (e: Effect) => e.type === 'damage';
 const selfExposes = (e: Effect) => e.type === 'status' && e.target === 'self' && e.status === 'exposed';
 const dmgValue = (effects: Effect[], enemyAttacking: boolean) =>
@@ -30,7 +31,7 @@ export const greedy: Policy = (s) => {
   const { intent, predictedDamage } = currentIntent(s);
   const hp = s.player.hp;
   const maxHp = s.player.stats.maxHp;
-  const guarded = hasStatus(s.player, 'guard') || hasStatus(s.player, 'ward');
+  const guarded = hasStatus(s.player, 'aegis') || (intent.kind === 'attack' && intent.dmgType === 'magic' ? hasStatus(s.player, 'ward') : hasStatus(s.player, 'guard'));
   const hand = s.player.hand.map((id, index) => ({ index, skill: getSkill(id) }));
   const incomingAttack = intent.kind === 'attack';
   const enemyGuarded = hasStatus(s.enemy, 'guard');
@@ -64,16 +65,17 @@ export const greedy: Policy = (s) => {
   //    intent itself (a wind-up or multi-hit) or from what it would cost right now.
   //    Prefer a guard card that covers every incoming hit, then one that also hits back, then Defend.
   const bigMove = intent.kind === 'attack' && intent.mult * intent.hits >= 1.5;
+  const magicIn = intent.kind === 'attack' && intent.dmgType === 'magic';
   const heavy = incomingAttack && !guarded && (predictedDamage >= hp || bigMove || predictedDamage >= hp * 0.4);
   if (heavy) {
     const hits = intent.kind === 'attack' ? intent.hits : 1;
-    const guardOf = (h: { skill: { effects: Effect[] } }) => h.skill.effects.reduce((m, e) => (isGuard(e) && e.type === 'status' ? Math.max(m, e.status === 'ward' ? 99 : (e.magnitude ?? 1)) : m), 0);
+    const guardOf = (h: { skill: { effects: Effect[] } }) => h.skill.effects.reduce((m, e) => (blocks(e, magicIn) && e.type === 'status' ? Math.max(m, e.status === 'aegis' ? 99 : (e.magnitude ?? 1)) : m), 0);
     const full = hand.filter((h) => guardOf(h) >= hits).sort((a, b) => guardOf(b) - guardOf(a))[0];
     if (full && hits > 1) return { type: 'card', index: full.index };
-    const guardCard = hand.find((h) => has(h.skill.effects, isGuard) && has(h.skill.effects, isDamage));
+    const guardCard = hand.find((h) => has(h.skill.effects, (e) => blocks(e, magicIn)) && has(h.skill.effects, isDamage));
     if (guardCard) return { type: 'card', index: guardCard.index };
     if (full) return { type: 'card', index: full.index };
-    // no block in hand: fall through and hit back
+    // no matching block in hand: fall through and hit back
   }
 
   // 2. Low HP and a heal in hand. Recovering heals cost two turns: only when the heal outweighs
@@ -104,7 +106,7 @@ export const greedy: Policy = (s) => {
   //    attack if a Defend is in hand, else throw the cheapest damage, else anything.
   const anyDmg = hand.filter((h) => has(h.skill.effects, isDamage)).sort((a, b) => dmgValue(a.skill.effects, incomingAttack) - dmgValue(b.skill.effects, incomingAttack))[0];
   if (enemyGuarded && anyDmg) return { type: 'card', index: anyDmg.index };
-  const defend = hand.find((h) => h.skill.id === 'defend');
+  const defend = hand.find((h) => h.skill.id === (magicIn ? 'ward' : 'defend'));
   if (defend && incomingAttack && !guarded) return { type: 'card', index: defend.index };
   if (anyDmg) return { type: 'card', index: anyDmg.index };
   return { type: 'card', index: 0 };

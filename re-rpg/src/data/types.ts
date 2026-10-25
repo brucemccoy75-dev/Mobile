@@ -13,7 +13,10 @@ export interface Stats {
   def: number;
 }
 
-export type StatusId = 'exposed' | 'guard' | 'burn' | 'chill' | 'weak' | 'stun' | 'brace' | 'scatter' | 'curse' | 'harden' | 'ward';
+/** guard blocks the next physical hit; ward the next magic hit; aegis every hit for N rounds. */
+export type StatusId = 'exposed' | 'guard' | 'ward' | 'aegis' | 'burn' | 'chill' | 'weak' | 'stun' | 'brace' | 'scatter' | 'curse' | 'harden';
+
+export type DamageKind = 'physical' | 'magic';
 
 /** A status instance on a combatant. `turns` ticks down at end of round; Guard and Chill are consumed instead. Stun: the player skips their turn while it lasts (turns N = N-1 skipped turns when self-applied). */
 export interface Status {
@@ -26,7 +29,7 @@ export interface Status {
 export type Target = 'self' | 'enemy';
 
 export type Effect =
-  | { type: 'damage'; mult: number; flat?: number; hits?: number; ignoreDef?: boolean; lifesteal?: number }
+  | { type: 'damage'; mult: number; flat?: number; hits?: number; ignoreDef?: boolean; lifesteal?: number; kind?: DamageKind }
   | { type: 'heal'; pct?: number; flat?: number }
   | { type: 'status'; target: Target; status: StatusId; turns: number; magnitude?: number; chance?: number };
 
@@ -61,7 +64,7 @@ export interface PlayerClass {
 
 /** What the player sees above the enemy: the move for this round. */
 export type Intent =
-  | { kind: 'attack'; mult: number; hits: number; ignoreDef?: boolean; drain?: boolean }
+  | { kind: 'attack'; mult: number; hits: number; ignoreDef?: boolean; drain?: boolean; dmgType?: DamageKind }
   | { kind: 'guard'; hits: number }
   | { kind: 'debuff'; status: StatusId }
   | { kind: 'buff'; status: StatusId }

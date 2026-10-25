@@ -16,7 +16,7 @@ export function upgradeSkill(skill: Skill, level: number): Skill {
     effects: skill.effects.map((e) => {
       if (e.type === 'damage') return { ...e, flat: (e.flat ?? 0) + level };
       if (e.type === 'heal') return { ...e, flat: (e.flat ?? 0) + 2 * level };
-      if (e.type === 'status' && e.target === 'self' && e.status === 'guard') return { ...e, magnitude: (e.magnitude ?? 1) + level };
+      if (e.type === 'status' && e.target === 'self' && (e.status === 'guard' || e.status === 'ward')) return { ...e, magnitude: (e.magnitude ?? 1) + level };
       if (e.type === 'status' && e.target === 'enemy' && (e.status === 'burn' || e.status === 'curse')) return { ...e, magnitude: (e.magnitude ?? 1) + level };
       return e;
     }),
