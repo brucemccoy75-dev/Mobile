@@ -155,7 +155,10 @@ export class CombatScene extends Phaser.Scene {
     this.pileText = this.add.text(W / 2, 60, '', text.mono).setOrigin(0.5);
 
     // enemy intent panel
-    const ix = this.ex, iy = Math.max(126, this.ey - this.enemySprite.displayHeight / 2 - 58); // tall bosses: never into the HUD
+    // Above the enemy; a tall boss would push it into the HUD or hide under it, so then it sits beside him instead.
+    const tall = this.enemySprite.displayHeight > 170;
+    const ix = tall ? Math.max(W / 2 - 40, this.ex - this.enemySprite.displayWidth / 2 - 125) : this.ex;
+    const iy = tall ? 190 : Math.max(126, this.ey - this.enemySprite.displayHeight / 2 - 58);
     const intentBg = this.add.rectangle(ix, iy, 230, 64, COLORS.panel, 0.9).setStrokeStyle(2, COLORS.panelEdge).setInteractive({ useHandCursor: true });
     intentBg.on('pointerup', () => this.explainIntent());
     this.intentBg = intentBg;
