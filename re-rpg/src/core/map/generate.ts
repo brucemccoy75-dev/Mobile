@@ -96,7 +96,7 @@ function tryGenerate(rng: Rng, opts: GenOptions): ScreenMap | null {
 
   const map: ScreenMap = {
     seed: opts.seed, screenIndex: opts.screenIndex, width: W, height: H, tiles, entry, boss,
-    bossId: opts.screenIndex === 0 ? 'gatekeeper' : 'warden', pois: [], guards: [],
+    bossId: opts.screenIndex === 0 ? 'gatekeeper' : 'warden', pois: [], guards: [], questGiver: entry, npcSpot: boss,
   };
 
   // 4. POIs: danger-weighted cost from the road. Candidates are passable, off-road, outside the arena.
@@ -124,6 +124,26 @@ function tryGenerate(rng: Rng, opts: GenOptions): ScreenMap | null {
     const id = `${kinds[i]}_${i}`;
     map.pois.push({ id, kind: kinds[i]!, pos: pick.t, cost: pick.c, guardId: `guard_${i}` });
   }
+
+  // 4b. Quest giver: a passable off-road tile 2–4 steps from the entry. NPC spot: a far off-road tile not near a POI.
+  const giverCands: Tile[] = [];
+  for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+    const d = Math.abs(x - entry.x) + Math.abs(y - entry.y);
+    const t = get(x, y);
+    if (d >= 2 && d <= 4 && t !== 'road' && TILE_COST[t] !== Infinity && isFinite(cost[y * W + x]!)) giverCands.push({ x, y });
+  }
+  if (giverCands.length === 0) return null;
+  map.questGiver = rng.pick(giverCands);
+  const npcCands: Tile[] = [];
+  for (let y = 2; y < H - 2; y++) for (let x = 6; x < W - 8; x++) {
+    const t = get(x, y);
+    const c = cost[y * W + x]!;
+    if (t === 'road' || t === 'arena' || TILE_COST[t] === Infinity || !isFinite(c) || c < 8) continue;
+    if (used.some((u) => Math.abs(u.x - x) + Math.abs(u.y - y) < 4)) continue;
+    npcCands.push({ x, y });
+  }
+  if (npcCands.length === 0) return null;
+  map.npcSpot = rng.pick(npcCands);
 
   // 5. Guards: on the POI's cheapest approach neighbour (the one closest to the road).
   const tier = opts.screenIndex === 0 ? 1 : 2;

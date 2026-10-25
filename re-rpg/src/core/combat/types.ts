@@ -29,6 +29,8 @@ export interface EnemyCombatant extends Combatant {
 export type Outcome = 'ongoing' | 'won' | 'lost';
 
 export interface CombatState {
+  /** Run-local tome upgrades (quest rewards): level per skill id. */
+  skillUpgrades: Record<SkillId, number>;
   round: number;
   outcome: Outcome;
   player: PlayerCombatant;

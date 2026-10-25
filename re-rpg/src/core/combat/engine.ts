@@ -1,5 +1,6 @@
 import { BASIC_DECK } from '@data/skills';
 import { getEnemy, getSkill } from '@data/index';
+import { skillWith, type SkillUpgrades } from '@core/run/upgrade';
 import type { Effect, Enemy, EnemyId, Intent, SkillId, Stats } from '@data/types';
 import { Rng } from '@core/rng';
 import { advanceMoves, pickMove } from './ai';
@@ -21,7 +22,11 @@ export interface CombatOptions {
   player: PlayerSetup;
   enemy: EnemyId | Enemy;
   rng: Rng;             // the run's 'combat' stream
+  skillUpgrades?: SkillUpgrades;
 }
+
+/** The skill as it plays in this fight, with any run-local upgrade applied. */
+export const skillInCombat = (state: CombatState, id: SkillId) => skillWith(getSkill(id), state.skillUpgrades);
 
 /** Build the state and run the first round start (deal + intent). */
 export function createCombat(opts: CombatOptions): CombatState {
@@ -38,7 +43,7 @@ export function createCombat(opts: CombatOptions): CombatState {
   enemy.current = pickMove(enemy, def, roll);
   enemy.next = pickMove(enemy, def, roll);
 
-  const state: CombatState = { round: 0, outcome: 'ongoing', player, enemy, enemyDef: def, rngState: opts.rng.getState(), log: [] };
+  const state: CombatState = { skillUpgrades: { ...(opts.skillUpgrades ?? {}) }, round: 0, outcome: 'ongoing', player, enemy, enemyDef: def, rngState: opts.rng.getState(), log: [] };
   const events: CombatEvent[] = [];
   startRound(state, def, opts.rng, events);
   state.rngState = opts.rng.getState();
@@ -84,7 +89,7 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
     const id = playCard(state.player, action.index);
     events.push({ t: 'hold', skill: id });
   } else {
-    const skill = getSkill(playCard(state.player, action.index));
+    const skill = skillInCombat(state, playCard(state.player, action.index));
     events.push({ t: 'play', side: 'player', skill: skill.id, name: skill.name });
     applyEffects(skill.effects, state.player, state.enemy, roll, events);
     if (checkDeaths(state, events)) return finish(state, rng, events);

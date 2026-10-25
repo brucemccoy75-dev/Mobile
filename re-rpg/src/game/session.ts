@@ -10,6 +10,8 @@ import { TOME_COPY_CAP } from '@data/skills';
 import { computeStats, emptyEquipment, equip as equipItem, equipmentFromIds, equipmentToIds, type Equipment, RUN_VERSION, type RunState } from '@core/run';
 import { createMeta, discoverItem, discoverSkill, rollHeirloomChoices, type Heirloom, type MetaState } from '@core/meta';
 import { rollShopStock, type RewardChoice, type RewardSource, type ShopStock } from '@core/loot';
+import { generateQuest, questReady, type Quest } from '@core/quest';
+import { upgradeItem, upgradeSkill, type SkillUpgrades } from '@core/run/upgrade';
 import type { SaveStore } from '@save/SaveStore';
 
 export const SCREEN_COUNT = 2;
@@ -43,6 +45,9 @@ export interface RunSession {
   newDiscoveries: string[];
   heirloomName: string | null;
   shop: ShopStock;
+  quests: Quest[];
+  skillUpgrades: SkillUpgrades;
+  customItems: Item[];
 
   pendingEncounter: PendingEncounter | null;
   lastResult: CombatResult | null;
@@ -95,7 +100,7 @@ export function createSession(classId: ClassId, meta: MetaState, seed = newSeed(
     deck: [], equipment: emptyEquipment(),
     screenIndex: 0, map: undefined as unknown as ScreenMap, playerPos: { x: 0, y: 0 }, threat: 0,
     openedPois: new Set(), usedShrines: new Set(), defeatedGuards: new Set(), bossDefeated: false, encountersWon: 0,
-    newDiscoveries: [], heirloomName: null, shop: { lines: [], healPrice: 0, healPct: 0.5, healUsed: true },
+    newDiscoveries: [], heirloomName: null, shop: { lines: [], healPrice: 0, healPct: 0.5, healUsed: true }, quests: [], skillUpgrades: {}, customItems: [],
     pendingEncounter: null, lastResult: null, pendingOffer: null, heirloomChoices: [],
   };
   s.heirloomChoices = rollHeirloomChoices(meta, classId, setId, rng.stream('meta'));
@@ -127,6 +132,33 @@ export function startScreen(s: RunSession, index: number, meta?: MetaState): voi
   s.defeatedGuards = new Set();
   s.bossDefeated = false;
   s.shop = rollShopStock(index, { classId: s.classId, setId: s.setId, meta: meta ?? createMeta(), deck: s.deck, equipment: s.equipment }, s.rng.stream('loot'));
+  // One randomised quest per screen (DECISIONS #19). Earlier screens' quests are kept for the run summary.
+  s.quests = [...s.quests.filter((q) => !q.id.startsWith(`quest_${index}_`)), generateQuest(s.map, { classId: s.classId, setId: s.setId, meta: meta ?? createMeta(), deck: s.deck, equipment: s.equipment, screenIndex: index }, s.rng.stream('quest'), s.map.questGiver, s.map.npcSpot)];
+}
+
+export const currentQuest = (s: RunSession): Quest | undefined => s.quests.find((q) => q.id.startsWith(`quest_${s.screenIndex}_`));
+export const isEscorting = (s: RunSession): boolean => s.quests.some((q) => q.status === 'active' && q.escort?.following);
+
+/**
+ * Hand a quest in. Fetch: the carried copy is lost and a +1 version takes its
+ * place (this run only). Hunt / escort: gold now and an offer the caller opens.
+ */
+export function turnInQuest(s: RunSession, q: Quest): { gold: number; offer?: RewardSource; upgraded?: string } {
+  if (!questReady(q, s.deck, s.equipment)) throw new Error('Quest not ready');
+  q.status = 'done';
+  s.gold += q.reward.gold;
+  if (q.fetch) {
+    if (q.fetch.type === 'tome') {
+      s.skillUpgrades[q.fetch.id] = (s.skillUpgrades[q.fetch.id] ?? 0) + 1;
+      return { gold: q.reward.gold, upgraded: upgradeSkill(getSkill(q.fetch.id), s.skillUpgrades[q.fetch.id]!).name };
+    }
+    const slot = (Object.keys(s.equipment) as (keyof Equipment)[]).find((k) => s.equipment[k]?.id === q.fetch!.id)!;
+    const better = upgradeItem(s.equipment[slot]!);
+    s.customItems.push(better);
+    applyEquip(s, better);
+    return { gold: q.reward.gold, upgraded: better.name };
+  }
+  return { gold: q.reward.gold, offer: q.reward.offer };
 }
 
 export const screenTier = (s: RunSession): 1 | 2 => (s.screenIndex === 0 ? 1 : 2);
@@ -180,6 +212,7 @@ export function serialize(s: RunSession): RunState {
     openedPois: [...s.openedPois], usedShrines: [...s.usedShrines], defeatedGuards: [...s.defeatedGuards],
     bossDefeated: s.bossDefeated, encountersWon: s.encountersWon, newDiscoveries: [...s.newDiscoveries], heirloomName: s.heirloomName,
     shop: JSON.parse(JSON.stringify(s.shop)) as ShopStock,
+    quests: JSON.parse(JSON.stringify(s.quests)) as Quest[], skillUpgrades: { ...s.skillUpgrades }, customItems: JSON.parse(JSON.stringify(s.customItems)) as Item[],
   };
 }
 
@@ -187,14 +220,14 @@ export function deserialize(st: RunState, meta: MetaState): RunSession {
   const rng = new RunRng(st.seed);
   rng.restore(st.rngStates);
   const base = st.base ?? baseStatsFor(st.classId, meta);
-  const equipment = equipmentFromIds(st.equipment);
+  const equipment = equipmentFromIds(st.equipment, st.customItems ?? []);
   return {
     seed: st.seed, rng, classId: st.classId, setId: st.setId, base, stats: computeStats(base, equipment),
     hp: st.hp, gold: st.gold, deck: [...st.deck], equipment,
     screenIndex: st.screenIndex, map: st.map, playerPos: { ...st.playerPos }, threat: st.threat,
     openedPois: new Set(st.openedPois), usedShrines: new Set(st.usedShrines), defeatedGuards: new Set(st.defeatedGuards),
     bossDefeated: st.bossDefeated, encountersWon: st.encountersWon, newDiscoveries: [...st.newDiscoveries], heirloomName: st.heirloomName,
-    shop: st.shop,
+    shop: st.shop, quests: st.quests ?? [], skillUpgrades: st.skillUpgrades ?? {}, customItems: st.customItems ?? [],
     pendingEncounter: null, lastResult: null, pendingOffer: null, heirloomChoices: [],
   };
 }

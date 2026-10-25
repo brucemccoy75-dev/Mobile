@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { getEnemy } from '@data/index';
 import { findPath, stepThreat, key, tileAt, type Tile, type TileType } from '@core/map';
-import { SCREEN_COUNT, getMeta, getSession, getStore, persistMeta, persistRun, randomEnemy, setSession, startScreen, type PendingEncounter, type RunSession } from '@game/session';
+import { SCREEN_COUNT, currentQuest, getMeta, getSession, getStore, isEscorting, persistMeta, persistRun, randomEnemy, setSession, startScreen, type PendingEncounter, type RunSession } from '@game/session';
+import { ESCORT_THREAT_MULT, noteKill, questProgress, questReady } from '@core/quest';
 import { recordWin } from '@core/meta';
 import { Button } from '@game/ui/Button';
 import { CLASS_COLORS, COLORS, FONT, text } from '@game/ui/theme';
@@ -26,6 +27,11 @@ export class OverworldScene extends Phaser.Scene {
   private guardSprites = new Map<string, Phaser.GameObjects.Container>();
   private poiSprites = new Map<string, Phaser.GameObjects.Container>();
   private bossSprite!: Phaser.GameObjects.Container;
+  private giverSprite!: Phaser.GameObjects.Container;
+  private giverMark!: Phaser.GameObjects.Text;
+  private npcSprite: Phaser.GameObjects.Container | null = null;
+  private follower: Phaser.GameObjects.Rectangle | null = null;
+  private questText!: Phaser.GameObjects.Text;
   private hpText!: Phaser.GameObjects.Text;
   private hpFill!: Phaser.GameObjects.Rectangle;
   private threatFill!: Phaser.GameObjects.Rectangle;
@@ -44,6 +50,8 @@ export class OverworldScene extends Phaser.Scene {
     this.retarget = null;
     this.guardSprites.clear();
     this.poiSprites.clear();
+    this.npcSprite = null;
+    this.follower = null;
 
     this.session = getSession(this);
     const m = this.session.map;
@@ -127,6 +135,18 @@ export class OverworldScene extends Phaser.Scene {
     this.bossSprite.add([this.add.circle(0, 0, 26, COLORS.boss), this.add.text(0, 0, '☠', { fontFamily: FONT, fontSize: '26px', color: '#ffffff' }).setOrigin(0.5),
       this.add.text(0, 32, getEnemy(m.bossId).name, { fontFamily: FONT, fontSize: '12px', color: '#e0b4ff', fontStyle: 'bold' }).setOrigin(0.5, 0)]);
     if (s.bossDefeated) this.bossSprite.setAlpha(0.3);
+    // quest giver, and the escort NPC while they are still out there
+    const q = currentQuest(s);
+    const gc = this.centre(m.questGiver);
+    this.giverSprite = this.add.container(gc.x, gc.y).setDepth(5);
+    this.giverSprite.add([this.add.rectangle(0, 2, 24, 34, 0x7a5c3a).setStrokeStyle(2, 0xc9a227), this.add.text(0, 24, q?.giver.name ?? 'stranger', { fontFamily: FONT, fontSize: '11px', color: '#e0c060' }).setOrigin(0.5, 0)]);
+    this.giverMark = this.add.text(0, -30, '', { fontFamily: FONT, fontSize: '22px', color: '#c9a227', fontStyle: 'bold' }).setOrigin(0.5);
+    this.giverSprite.add(this.giverMark);
+    if (q?.escort && q.status === 'active' && !q.escort.following) {
+      const nc = this.centre(q.escort.pos);
+      this.npcSprite = this.add.container(nc.x, nc.y).setDepth(5);
+      this.npcSprite.add([this.add.rectangle(0, 2, 22, 32, 0x9fb3c8).setStrokeStyle(2, 0xffffff, 0.6), this.add.text(0, 22, q.escort.name.split(' ')[0]!, { fontFamily: FONT, fontSize: '11px', color: '#dfe7f0' }).setOrigin(0.5, 0)]);
+    }
     // entry marker
     const ec = this.centre(m.entry);
     this.add.text(ec.x, ec.y - 30, 'entry', { fontFamily: FONT, fontSize: '11px', color: '#8b93a7' }).setOrigin(0.5).setDepth(4);
@@ -135,6 +155,15 @@ export class OverworldScene extends Phaser.Scene {
   private drawPlayer() {
     const c = this.centre(this.session.playerPos);
     this.player = this.add.rectangle(c.x, c.y, 26, 38, CLASS_COLORS[this.session.classId] ?? COLORS.player).setStrokeStyle(2, 0xffffff, 0.6).setDepth(6);
+    if (isEscorting(this.session)) this.follower = this.add.rectangle(c.x - 22, c.y + 6, 18, 26, 0x9fb3c8).setStrokeStyle(2, 0xffffff, 0.6).setDepth(6);
+  }
+
+  private syncQuestHud() {
+    const q = currentQuest(this.session);
+    if (!q) { this.questText.setText(''); this.giverMark.setText('?'); return; }
+    const ready = questReady(q, this.session.deck, this.session.equipment);
+    this.giverMark.setText(q.status === 'offered' ? '!' : q.status === 'active' ? (ready ? '✓' : '…') : q.status === 'declined' ? '?' : '');
+    this.questText.setText(q.status === 'active' ? `Quest: ${questProgress(q, this.session.deck, this.session.equipment)}` : q.status === 'offered' ? `${q.giver.name} has work for you (near the entry).` : '');
   }
 
   private buildHud() {
@@ -162,9 +191,12 @@ export class OverworldScene extends Phaser.Scene {
     const quitBg = this.add.rectangle(W - 24, 26, 32, 32, COLORS.panel).setStrokeStyle(2, COLORS.panelEdge).setScrollFactor(0).setDepth(101).setInteractive({ useHandCursor: true });
     this.add.text(W - 24, 26, '✕', { fontFamily: FONT, fontSize: '14px', color: COLORS.text, fontStyle: 'bold' }).setOrigin(0.5).setScrollFactor(0).setDepth(102);
     quitBg.on('pointerup', () => this.quit());
+    // quest line (bottom)
+    this.questText = this.add.text(W / 2, this.scale.gameSize.height - 10, '', { fontFamily: FONT, fontSize: '13px', color: COLORS.gold, backgroundColor: '#000000aa', padding: { x: 8, y: 4 } }).setOrigin(0.5, 1).setScrollFactor(0).setDepth(101);
     // toast
     this.toastText = this.add.text(W / 2, 74, '', { fontFamily: FONT, fontSize: '15px', color: COLORS.text, backgroundColor: '#000000aa', padding: { x: 10, y: 6 } }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(101).setAlpha(0);
     this.syncHud();
+    this.syncQuestHud();
   }
 
   private syncHud() {
@@ -234,7 +266,9 @@ export class OverworldScene extends Phaser.Scene {
       }
       const next = path.shift()!;
       const c = this.centre(next);
+      const prev = { x: this.player.x, y: this.player.y };
       await tween(this, { targets: this.player, x: c.x, y: c.y, duration: 110, ease: 'Linear' });
+      if (this.follower) void tween(this, { targets: this.follower, x: prev.x, y: prev.y + 6, duration: 110, ease: 'Linear' });
       s.playerPos = next;
       this.drawPath(path);
       const stop = await this.onArrive(next);
@@ -248,6 +282,20 @@ export class OverworldScene extends Phaser.Scene {
   private async onArrive(t: Tile): Promise<boolean> {
     const s = this.session, m = s.map;
     const k = key(t);
+
+    // Quest giver and escort NPC are walked onto like POIs.
+    const q = currentQuest(s);
+    if (key(m.questGiver) === k && q) { this.locked = true; await persistRun(this); this.scene.start('Quest', { questId: q.id }); return true; }
+    if (q?.escort && q.status === 'active' && !q.escort.following && key(q.escort.pos) === k) {
+      q.escort.following = true;
+      this.npcSprite?.destroy(); this.npcSprite = null;
+      const c = this.centre(t);
+      this.follower = this.add.rectangle(c.x - 22, c.y + 6, 18, 26, 0x9fb3c8).setStrokeStyle(2, 0xffffff, 0.6).setDepth(6);
+      this.syncQuestHud();
+      void persistRun(this);
+      void this.toast(`${q.escort.name} follows you. Get back to ${q.giver.name}. The wilds will notice.`, 2600);
+      return true;
+    }
 
     const guard = m.guards.find((g) => key(g.pos) === k && !s.defeatedGuards.has(g.id));
     if (guard) { await this.startEncounter({ kind: 'guard', enemyId: guard.enemyId, guardId: guard.id }); return true; }
@@ -279,7 +327,7 @@ export class OverworldScene extends Phaser.Scene {
 
     // Plain tile: feed the threat meter.
     const tile = tileAt(m, t.x, t.y)!;
-    const r = stepThreat(s.threat, tile, s.screenIndex, s.rng.stream('encounter'));
+    const r = stepThreat(s.threat, tile, s.screenIndex, s.rng.stream('encounter'), isEscorting(s) ? ESCORT_THREAT_MULT : 1);
     s.threat = r.meter;
     this.syncHud();
     if (r.encounter) { await this.startEncounter({ kind: 'random', enemyId: randomEnemy(s) }); return true; }
@@ -304,6 +352,11 @@ export class OverworldScene extends Phaser.Scene {
     if (!r) return;
     s.lastResult = null;
     if (!r.won) return; // death is handled in the combat scene
+    if (noteKill(s.quests, r.encounter.enemyId)) {
+      const q = currentQuest(s);
+      if (q?.hunt) void this.toast(`Hunt: ${q.hunt.name} ${Math.min(q.hunt.have, q.hunt.need)} / ${q.hunt.need}${q.hunt.have >= q.hunt.need ? ' — return to ' + q.giver.name : ''}`, 2200);
+      this.syncQuestHud();
+    }
     if (r.encounter.kind === 'guard' && r.encounter.guardId) {
       s.defeatedGuards.add(r.encounter.guardId);
       this.guardSprites.get(r.encounter.guardId)?.destroy();

@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import { describeSkill, getSkill } from '@data/index';
 import type { Item, Skill, SkillId } from '@data/types';
-import { compareItems } from '@core/run';
+import { compareItems, skillWith } from '@core/run';
 import type { RunSession } from '@game/session';
 import { Button } from './Button';
 import { COLORS, RARITY_COLORS, text } from './theme';
@@ -56,7 +56,7 @@ export function openSwapPanel(scene: Phaser.Scene, session: RunSession, skill: S
   const cw = 108, gap = 8;
   const startX = W / 2 - ((ids.length * cw + (ids.length - 1) * gap) / 2) + cw / 2;
   ids.forEach((id, i) => {
-    const sk = getSkill(id);
+    const sk = skillWith(getSkill(id), session.skillUpgrades);
     const b = new Button(scene, startX + i * (cw + gap), H / 2 - 30, sk.name, () => { close(); onSwap(id); }, { width: cw, height: 70, fontSize: '13px', fill: RARITY_COLORS[sk.rarity] });
     b.label.setWordWrapWidth(cw - 10).setAlign('center');
     made.push(b.setDepth(52));

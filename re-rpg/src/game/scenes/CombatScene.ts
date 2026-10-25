@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { describeSkill, getEnemy, getSkill } from '@data/index';
 import type { Enemy, Intent, Posture } from '@data/types';
-import { createCombat, currentIntent, isPlayerStunned, step, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
+import { createCombat, currentIntent, isPlayerStunned, skillInCombat, step, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
 import { getMeta, getSession, getStore, persistMeta, setName, setSession, type PendingEncounter, type RunSession } from '@game/session';
 import { recordDeath } from '@core/meta';
 import { Button } from '@game/ui/Button';
@@ -63,6 +63,7 @@ export class CombatScene extends Phaser.Scene {
       player: { name: this.session.classId, stats: this.session.stats, hp: this.session.hp, deck: this.session.deck },
       enemy: this.enemyDef,
       rng: this.session.rng.stream('combat'),
+      skillUpgrades: this.session.skillUpgrades,
     });
 
     this.buildLayout();
@@ -187,7 +188,8 @@ export class CombatScene extends Phaser.Scene {
     const total = ids.length * CARD_W + (ids.length - 1) * gap;
     const startX = this.scale.gameSize.width / 2 - total / 2 + CARD_W / 2;
     ids.forEach((id, i) => {
-      const card = new Card(this, startX + i * (CARD_W + gap), this.handY, getSkill(id), () => this.act(this.holdMode ? { type: 'hold', index: i } : { type: 'card', index: i }), describeSkill(getSkill(id), this.state.player.stats));
+      const sk = skillInCombat(this.state, id);
+      const card = new Card(this, startX + i * (CARD_W + gap), this.handY, sk, () => this.act(this.holdMode ? { type: 'hold', index: i } : { type: 'card', index: i }), describeSkill(sk, this.state.player.stats));
       this.hand.push(card);
     });
   }
@@ -294,7 +296,7 @@ export class CombatScene extends Phaser.Scene {
         if (card) await tween(this, { targets: card, y: card.y + 60, alpha: 0, duration: 200, ease: 'Quad.In' });
         this.dropFromDisplay(e.discarded);
         this.rebuildHand();
-        await this.toast(`${getSkill(e.discarded).name} slipped from your hand`);
+        await this.toast(`${skillInCombat(this.state, e.discarded).name} slipped from your hand`);
         return;
       }
       case 'reshuffle':

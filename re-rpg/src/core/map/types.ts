@@ -34,6 +34,10 @@ export interface ScreenMap {
   bossId: EnemyId;
   pois: Poi[];
   guards: Guard[];
+  /** Quest giver: a few steps from the entry (testing placement; later per-quest). */
+  questGiver: Tile;
+  /** A far off-road tile for an escort NPC or other quest target. */
+  npcSpot: Tile;
 }
 
 /** Movement cost for pathfinding; Infinity = impassable. */

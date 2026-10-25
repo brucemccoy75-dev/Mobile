@@ -89,6 +89,16 @@ One enemy per encounter for POC (multi-target adds UI and AI scope). **Intent**:
 - No fleeing in POC. Route choice is the escape mechanism.
 - Gold: dropped by enemies (4–8 per kill, 8–14 per guard, 30 per boss, chests by path cost), reset on death. Shop stock per screen: 2 items, 1 tome when the pool has one, and a 50% heal once per shop. Prices: common 20, uncommon 35, rare 60, boss 90 (tomes +10), heal 30, all × screen number.
 
+## 7b. Quests (first cut)
+
+One quest giver per screen, standing a few steps from the entry for now. The quest is rolled from the run seed:
+
+- **Fetch**: "bring me a {item or tome}". The target is drawn from the live loot pool so it can actually drop. Items must be equipped and tomes carried; on hand-in the copy is lost and a **+1 version** comes back (items: +1 ATK/DEF or +3 HP on the first positive stat; tomes: +1 flat damage, +2 heal, +1 Guard stack). The upgrade lasts this run only.
+- **Hunt**: "kill 2 {enemy}", where the enemy is one that exists on this map. Gold plus a spoils pick.
+- **Escort**: "find {name} and bring them to me". The NPC stands on a far off-road tile; once found they follow, and the threat meter fills 25% faster until you hand them in. Gold plus a spoils pick.
+
+Design intent: the giver voices and lines live in `data/quests.ts` and are the hook for story and lore. Later: givers tied to screens and discoveries, multi-step chains, lore entries unlocked by completions, and quest targets that place themselves on the map.
+
 ## 8. Death & meta
 
 Death screen shows: cause, how far you got, **newly discovered** entries (highlighted), total pool size, and the run seed. Death count gates early unlocks:

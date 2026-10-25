@@ -321,6 +321,14 @@ describe('curse and lifetap', () => {
   });
 });
 
+describe('skill upgrades', () => {
+  it('a +1 Broadsword hits for one more in combat', () => {
+    const s = createCombat({ player: { ...WARRIOR, deck: ['broadsword'], basics: [] }, enemy: PASSIVE, rng: new Rng(1), skillUpgrades: { broadsword: 1 } });
+    play(s, 'broadsword'); // 4 + 4 + 1 = 9
+    expect(s.enemy.hp).toBe(21);
+  });
+});
+
 describe('stagger', () => {
   it('leaves the boss Exposed for the player\'s following turn', () => {
     const s = fight(['attack', 'defend'], 'gatekeeper');

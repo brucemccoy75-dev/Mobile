@@ -29,6 +29,7 @@ src/
     combat/        turn resolver, deck/hand dealing, status effects, damage formula, enemy AI + intent lookahead
     map/           screen generator, A* + cost field, threat meter, POI/guard placement, validation
     loot/          drop tables, rarity, pool composition from meta state
+    quest/         quest templates, generation, readiness and progress (story/lore hook)
     run/           RunState machine: class select -> overworld -> combat -> reward -> ... -> death/victory
     meta/          MetaState: discovered skills/items, death count, unlock gates
     sim/           headless runner: play N runs with scripted policies, print win rates
