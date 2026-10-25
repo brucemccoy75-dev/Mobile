@@ -9,7 +9,7 @@ Decisions made in planning session 1. Each entry: decision, rationale, implicati
 | 3 | Enemy intent | Exact intent shown for the current round (icon + number) plus a posture tell for the following round. Two-step lookahead. |
 | 4 | Rewards | Kill: pick 1 of 2 (item or tome), skip allowed, gold on top. Chest and boss: pick 1 of 3. |
 | 5 | Set roll | Rolled set defines this run's set-tome pool only. Start with Attack, Defend, empty deck, no gear. Anything currently held is removed from the run's drop pool (no duplicate drops). |
-| 6 | Heirloom | From death 2 onward, each run starts with one random discovered item or tome for the class, weighted toward the rolled set. Slot growth is a later knob. |
+| 6 | Heirloom | From the **first** death onward (amended after phone test 2; was death 2), each run starts with one random discovered item or tome for the class, weighted toward the rolled set. Slot growth is a later knob. |
 | 7 | POC scope out | Multi-enemy fights, fleeing, fog of war, inventory. All out. |
 | 8 | Persistence | Firebase. Anonymous auth on first launch, link Google account later. Firestore: one document per player (MetaState + current RunState). Local-first with a sync adapter; game code only sees a `SaveStore` interface. |
 | 9 | Deck cap | 6 known skills. Tomes beyond the cap force a binding swap or skip. Cap becomes an item/set stat later. If long fights stale, first lever is dealing 2 cards per round after round 5. |

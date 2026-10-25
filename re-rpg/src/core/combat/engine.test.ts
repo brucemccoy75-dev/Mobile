@@ -106,8 +106,8 @@ describe('damage and basics', () => {
     expect(s.enemy.hp).toBe(28);
     const heavy: Enemy = { ...DUMMY, stats: { maxHp: 30, atk: 3, def: 10 } };
     const s2 = fight(['broadsword'], heavy);
-    play(s2, 'broadsword'); // 8 - 10 → floor 4
-    expect(s2.enemy.hp).toBe(26);
+    play(s2, 'broadsword'); // round(4*1.6)=6 - 10 → floor 3
+    expect(s2.enemy.hp).toBe(27);
   });
 
   it('Defend blocks the next hit and is consumed', () => {

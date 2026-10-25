@@ -11,11 +11,11 @@ describe('meta', () => {
     expect(m.discoveredSkills).toEqual(['fireball']);
   });
 
-  it('heirloom is locked until the second death and needs a discovery', () => {
+  it('heirloom is locked until the first death and needs a discovery', () => {
     const m = createMeta();
     discoverSkill(m, 'fireball');
     expect(rollHeirloom(m, 'wizard', 'wizard_fire', new Rng(1))).toBeNull();
-    recordDeath(m, 0); recordDeath(m, 0);
+    recordDeath(m, 0);
     const h = rollHeirloom(m, 'wizard', 'wizard_fire', new Rng(1));
     expect(h).toMatchObject({ kind: 'tome', skill: { id: 'fireball' } });
     expect(rollHeirloom(m, 'warrior', 'warrior_tank', new Rng(1))).toBeNull(); // fireball is not usable by a warrior

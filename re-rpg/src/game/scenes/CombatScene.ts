@@ -35,6 +35,8 @@ export class CombatScene extends Phaser.Scene {
   private pileText!: Phaser.GameObjects.Text;
   private banner!: Phaser.GameObjects.Text;
   private hand: Card[] = [];
+  /** What the hand looks like at this point of the playback. The engine state is already end-of-round. */
+  private displayHand: string[] = [];
   private handHint!: Phaser.GameObjects.Text;
   private handY = 0;
   private px = 0; private py = 0; private ex = 0; private ey = 0;
@@ -44,6 +46,7 @@ export class CombatScene extends Phaser.Scene {
   create() {
     this.busy = false;
     this.hand = [];
+    this.displayHand = [];
     this.session = getSession(this);
     if (!this.session.pendingEncounter) throw new Error('Combat started without an encounter');
     this.encounter = this.session.pendingEncounter;
@@ -116,13 +119,14 @@ export class CombatScene extends Phaser.Scene {
     this.enemyChips.set(this.state.enemy.statuses);
     this.roundText.setText(`Round ${this.state.round}  ·  screen ${this.session.screenIndex + 1}`);
     this.pileText.setText(`deck ${this.state.player.deck.length}  ·  hand ${this.state.player.hand.length}  ·  discard ${this.state.player.discard.length}`);
+    this.displayHand = this.state.player.hand.slice();
     this.rebuildHand();
   }
 
   private rebuildHand() {
     for (const c of this.hand) c.destroy();
     this.hand = [];
-    const ids = this.state.player.hand;
+    const ids = this.displayHand;
     const gap = 12;
     const total = ids.length * CARD_W + (ids.length - 1) * gap;
     const startX = this.scale.gameSize.width / 2 - total / 2 + CARD_W / 2;
@@ -130,9 +134,11 @@ export class CombatScene extends Phaser.Scene {
       const card = new Card(this, startX + i * (CARD_W + gap), this.handY, getSkill(id), () => this.act({ type: 'card', index: i }));
       this.hand.push(card);
     });
-    if (ids.length === 0 && this.state.outcome === 'ongoing') {
-      // nothing in hand: say so once per round, quietly
-    }
+  }
+
+  private dropFromDisplay(skill: string) {
+    const i = this.displayHand.indexOf(skill);
+    if (i >= 0) this.displayHand.splice(i, 1);
   }
 
   private setInputEnabled(on: boolean) {
@@ -194,15 +200,21 @@ export class CombatScene extends Phaser.Scene {
         this.roundText.setText(`Round ${e.round}  ·  screen ${this.session.screenIndex + 1}`);
         return;
       case 'deal': {
+        this.displayHand = e.hand.slice();
         this.rebuildHand();
         const card = this.hand[this.hand.length - 1];
         if (card) { card.setScale(0.2); await tween(this, { targets: card, scale: 1, duration: 180, ease: 'Back.Out' }); }
         this.pileText.setText(`deck ${this.state.player.deck.length}  ·  hand ${this.state.player.hand.length}  ·  discard ${this.state.player.discard.length}`);
         return;
       }
-      case 'handOverflow':
+      case 'handOverflow': {
+        const card = this.hand.find((c) => c.skillId === e.discarded);
+        if (card) await tween(this, { targets: card, y: card.y + 60, alpha: 0, duration: 200, ease: 'Quad.In' });
+        this.dropFromDisplay(e.discarded);
+        this.rebuildHand();
         await this.toast(`${getSkill(e.discarded).name} slipped from your hand`);
         return;
+      }
       case 'reshuffle':
         await this.toast('deck reshuffled');
         return;
@@ -214,7 +226,16 @@ export class CombatScene extends Phaser.Scene {
         const dir = e.side === 'player' ? 1 : -1;
         this.playerChips.set(this.state.player.statuses);
         this.enemyChips.set(this.state.enemy.statuses);
-        this.rebuildHand();
+        if (e.side === 'player') {
+          // The played card leaves the hand first, visibly, so "used" is never in doubt.
+          const card = this.hand.find((c) => c.skillId === e.skill);
+          if (card) {
+            for (const c of this.hand) c.setEnabled(false);
+            await tween(this, { targets: card, y: card.y - 70, alpha: 0, scale: 0.85, duration: 160, ease: 'Quad.In' });
+          }
+          this.dropFromDisplay(e.skill);
+          this.rebuildHand();
+        }
         await floatText(this, p.x, p.y - 70, e.name, e.side === 'player' ? COLORS.gold : '#ffb4b4', 20);
         await tween(this, { targets: s, x: p.x + 28 * dir, duration: 90, yoyo: true, ease: 'Quad.Out' });
         return;

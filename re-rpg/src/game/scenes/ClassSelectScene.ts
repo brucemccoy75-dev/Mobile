@@ -4,7 +4,7 @@ import type { ClassId } from '@data/types';
 import { Button } from '@game/ui/Button';
 import { CLASS_COLORS, COLORS, text } from '@game/ui/theme';
 import { createSession, getMeta, persistRun, setSession } from '@game/session';
-import { HEIRLOOM_DEATHS, heirloomUnlocked } from '@core/meta';
+import { HEIRLOOM_DEATHS, heirloomPool, heirloomUnlocked } from '@core/meta';
 
 export class ClassSelectScene extends Phaser.Scene {
   private selected: ClassId | null = null;
@@ -36,7 +36,9 @@ export class ClassSelectScene extends Phaser.Scene {
       const sets = cls.sets.map((id) => getSet(id).name).join('  ·  ');
       this.add.text(x, y + 36, 'sets', text.small).setOrigin(0.5);
       this.add.text(x, y + 58, sets, { ...text.body, fontSize: '14px', color: COLORS.gold }).setOrigin(0.5);
-      this.add.text(x, y + 96, 'starts with Attack + Defend', text.small).setOrigin(0.5);
+      const pool = heirloomPool(getMeta(this), cls.id);
+      const n = pool.tomes.length + pool.items.length;
+      this.add.text(x, y + 96, n > 0 && heirloomUnlocked(getMeta(this)) ? `heirloom pool: ${n} (${pool.tomes.length} tomes, ${pool.items.length} items)` : 'starts with Attack + Defend', { ...text.small, color: n > 0 ? COLORS.gold : COLORS.muted }).setOrigin(0.5);
 
       bg.setInteractive({ useHandCursor: true });
       bg.on('pointerup', () => this.select(cls.id));

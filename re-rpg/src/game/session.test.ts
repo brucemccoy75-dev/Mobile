@@ -21,8 +21,8 @@ describe('session', () => {
     expect(r.rng.stream('encounter').next()).toBe(s.rng.stream('encounter').next());
   });
 
-  it('heirloom lands after two deaths', () => {
-    const meta = createMeta(); meta.deaths = 2; meta.discoveredItems.push('heart_amulet');
+  it('heirloom lands after the first death', () => {
+    const meta = createMeta(); meta.deaths = 1; meta.discoveredItems.push('heart_amulet');
     const s = createSession('warrior', meta, 'HEIR-1');
     expect(s.heirloomName).toBe('Heart Amulet');
     expect(s.stats.maxHp).toBe(31); expect(s.hp).toBe(31);

@@ -106,6 +106,12 @@ export interface ShopStock {
 const PRICE: Record<Rarity, number> = { basic: 10, common: 20, uncommon: 35, rare: 60, boss: 90 };
 
 export const itemPrice = (rarity: Rarity, screenIndex: number) => PRICE[rarity] * (screenIndex + 1);
+
+/** A shelf line the player already holds (found elsewhere since the stock was rolled). */
+export function isLineOwned(line: ShopLine, deck: SkillId[], equipment: Equipment): boolean {
+  if (line.kind === 'tome') return deck.includes(line.id);
+  return Object.values(equipment).some((i) => i?.id === line.id);
+}
 export const tomePrice = (rarity: Rarity, screenIndex: number) => (PRICE[rarity] + 10) * (screenIndex + 1);
 
 /**

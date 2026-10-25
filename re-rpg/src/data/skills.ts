@@ -24,8 +24,8 @@ export const SKILLS: Skill[] = [
     effects: [{ type: 'heal', pct: 0.4 }, { type: 'status', target: 'self', status: 'stun', turns: 3 }] },
 
   // Warrior / DPS
-  { id: 'broadsword', name: 'Broadsword Strike', text: 'Deal 200% damage.', classId: 'warrior', setId: 'warrior_dps', rarity: 'common',
-    effects: [{ type: 'damage', mult: 2.0 }] },
+  { id: 'broadsword', name: 'Broadsword Strike', text: 'Deal 160% damage. You overextend: Exposed this round.', classId: 'warrior', setId: 'warrior_dps', rarity: 'common',
+    effects: [{ type: 'damage', mult: 1.6 }, { type: 'status', target: 'self', status: 'exposed', turns: 1 }] },
   { id: 'exposing_strike', name: 'Exposing Strike', text: 'Deal 100% damage. Enemy is Exposed for 2 rounds.', classId: 'warrior', setId: 'warrior_dps', rarity: 'uncommon',
     effects: [{ type: 'damage', mult: 1.0 }, { type: 'status', target: 'enemy', status: 'exposed', turns: 2 }] },
 

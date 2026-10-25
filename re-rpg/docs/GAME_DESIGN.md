@@ -18,7 +18,7 @@ POC "win" = kill Boss 2. Expected first-run outcome = die before Boss 1.
 
 | Class | HP | Identity | POC sets (one rolled per run) |
 |---|---|---|---|
-| Warrior | 25 | Melee, armor, attrition | **Tank**: Shield Bash (dmg + Guard), Bind Wound (heal, Recovering) · **DPS**: Broadsword Strike, Exposing Strike |
+| Warrior | 25 | Melee, armor, attrition | **Tank**: Shield Bash (dmg + Guard), Bind Wound (heal, Recovering) · **DPS**: Broadsword Strike (160%, overextends: Exposed this round), Exposing Strike |
 | Wizard | 20 | Burst, self-risk | **Fire**: Fireball, Inferno (ultimate, leaves caster Exposed) · **Frost**: Frost Bolt (chance to Chill = enemy skips a turn), Ice Armor (temporary def) |
 | Shaman | 20 | Sustain + nature damage over time | **Spirit**: Mend (heal), Spirit Lash (damage + heal small %) · **Storm**: Lightning (damage, ignores part of def), Static Field (Burn-like damage over time) |
 

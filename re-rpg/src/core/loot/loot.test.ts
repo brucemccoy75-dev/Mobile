@@ -87,6 +87,17 @@ describe('rollOffer', () => {
   });
 });
 
+describe('isLineOwned', () => {
+  it('flags tomes in the deck and equipped items', async () => {
+    const { isLineOwned } = await import('./index');
+    const eq = { ...emptyEquipment(), weapon: getItem('iron_mace') };
+    expect(isLineOwned({ kind: 'tome', id: 'broadsword', price: 1, sold: false }, ['broadsword'], eq)).toBe(true);
+    expect(isLineOwned({ kind: 'tome', id: 'broadsword', price: 1, sold: false }, [], eq)).toBe(false);
+    expect(isLineOwned({ kind: 'item', id: 'iron_mace', price: 1, sold: false }, [], eq)).toBe(true);
+    expect(isLineOwned({ kind: 'item', id: 'broad_axe', price: 1, sold: false }, [], eq)).toBe(false);
+  });
+});
+
 describe('rollShopStock', () => {
   it('stocks two distinct items, a tome when available, and a heal', async () => {
     const { rollShopStock } = await import('./index');

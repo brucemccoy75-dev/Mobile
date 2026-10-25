@@ -29,13 +29,13 @@ const charge = (id: string, name: string, mult: number, hits = 1): EnemyMove => 
 
 export const ENEMIES: Enemy[] = [
   // ---- Screen 1 ----
-  { id: 'boar', name: 'Boar', tier: 1, archetype: 'brute', stats: { maxHp: 14, atk: 4, def: 0 },
+  { id: 'boar', name: 'Boar', tier: 1, archetype: 'brute', stats: { maxHp: 16, atk: 4, def: 0 },
     table: { kind: 'sequence', moves: [hit('tusk', 'Tusk', 1.0), hit('tusk', 'Tusk', 1.0), charge('gore', 'Gore', 2.0)] } },
-  { id: 'shell_beetle', name: 'Shell Beetle', tier: 1, archetype: 'armored', stats: { maxHp: 10, atk: 3, def: 2 },
+  { id: 'shell_beetle', name: 'Shell Beetle', tier: 1, archetype: 'armored', stats: { maxHp: 12, atk: 3, def: 2 },
     table: { kind: 'sequence', moves: [hit('bite', 'Bite', 1.0), guard('shell', 'Shell'), hit('bite', 'Bite', 1.0)] } },
-  { id: 'hex_imp', name: 'Hex Imp', tier: 1, archetype: 'caster', stats: { maxHp: 10, atk: 3, def: 0 },
+  { id: 'hex_imp', name: 'Hex Imp', tier: 1, archetype: 'caster', stats: { maxHp: 12, atk: 3, def: 0 },
     table: { kind: 'sequence', moves: [debuff('hex', 'Hex', 'exposed', 2), hit('jab', 'Jab', 1.0), debuff('curse', 'Curse', 'weak', 2), hit('jab', 'Jab', 1.0)] } },
-  { id: 'rat_pack', name: 'Rat Pack', tier: 1, archetype: 'swarm', stats: { maxHp: 12, atk: 2, def: 0 },
+  { id: 'rat_pack', name: 'Rat Pack', tier: 1, archetype: 'swarm', stats: { maxHp: 14, atk: 2, def: 0 },
     table: { kind: 'weighted', moves: [{ move: hit('swarm', 'Swarm', 0.6, 'aggressive', 3), weight: 2 }, { move: hit('nibble', 'Nibble', 1.0), weight: 1 }] } },
 
   // ---- Screen 2 ----
