@@ -60,7 +60,8 @@ Rules:
 2. **Offer, don't grant**: rewards show **pick 1 of 2** (3 for chests/bosses). A growing pool with blind single drops would dilute; choice makes a bigger pool feel like power. Enemies still drop gold on top. Any offered reward can be **sold** instead (≈40% of its shop price) and still counts as discovered, so a reward screen never feels wasted.
 3. **Set affinity weighting**: items tagged with the active set get 2x weight. This is how synergy emerges without hand-scripting.
 4. **Depth scales rarity**: encounter distance from the entry and screen index shift the rarity curve. Guards > randoms, chests > guards, bosses > chests. Boss drops always include a rare.
-5. **Heirlooms**: from the first death onward, each new run opens with a **spread of up to 4 random unlocks** for the class (weighted toward the rolled set) and the player **keeps 2**. This is the direct "previous unlocks make you stronger faster" mechanic and the main pacing knob for "a few deaths then you reach the boss". Spread size and pick count are the later knobs.
+5. **Legacy**: every win banks a point; the next run starts by spending it on +1 ATK, +1 DEF or +5 max HP, permanently and for every class. The slow, certain half of the power build-up; heirlooms are the fast, random half.
+6. **Heirlooms**: from the first death onward, each new run opens with a **spread of up to 4 random unlocks** for the class (weighted toward the rolled set) and the player **keeps 2**. This is the direct "previous unlocks make you stronger faster" mechanic and the main pacing knob for "a few deaths then you reach the boss". Spread size and pick count are the later knobs.
 6. Later: discovered sets become rollable at class select; set tiers (Tank I → Tank II) widen the pool.
 
 ## 6. Enemies (POC roster)

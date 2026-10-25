@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Rng } from '@core/rng';
-import { classUnlocked, createMeta, discoverItem, discoverSkill, mergeMeta, migrateMeta, recordDeath, recordWin, rollHeirloomChoices } from './index';
+import { allocateLegacy, classUnlocked, createMeta, discoverItem, discoverSkill, mergeMeta, migrateMeta, recordDeath, recordWin, rollHeirloomChoices } from './index';
 
 describe('meta', () => {
   it('discovery is idempotent', () => {
@@ -50,10 +50,25 @@ describe('meta', () => {
     recordWin(m, 2, 'warrior');
     expect(classUnlocked(m, 'wizard')).toBe(true);
     const old = migrateMeta({ version: 1, updatedAt: 1, deaths: 3, wins: 1, bestScreen: 2, discoveredSkills: ['x'], discoveredItems: [] })!;
-    expect(old.version).toBe(2);
+    expect(old.version).toBe(3);
     expect(old.winsByClass).toEqual({ warrior: 1 });
+    expect(old.legacyUnspent).toBe(1); // the earlier win becomes a point to spend
     expect(migrateMeta({ version: 99 })).toBeNull();
     expect(migrateMeta(null)).toBeNull();
+  });
+
+  it('legacy: a win banks one point, allocation is permanent, nothing to spend means nothing happens', () => {
+    const m = createMeta();
+    expect(allocateLegacy(m, 'atk')).toBe(false);
+    recordWin(m, 2, 'warrior');
+    expect(m.legacyUnspent).toBe(1);
+    expect(allocateLegacy(m, 'maxHp')).toBe(true);
+    expect(m.legacy).toEqual({ atk: 0, def: 0, maxHp: 5 });
+    expect(m.legacyUnspent).toBe(0);
+    expect(allocateLegacy(m, 'def')).toBe(false);
+    recordWin(m, 2, 'warrior'); recordWin(m, 2, 'warrior');
+    allocateLegacy(m, 'atk'); allocateLegacy(m, 'def');
+    expect(m.legacy).toEqual({ atk: 1, def: 1, maxHp: 5 });
   });
 
   it('merge unions discoveries and maxes counters', () => {
@@ -65,5 +80,7 @@ describe('meta', () => {
     expect(m.discoveredItems).toEqual(['i']);
     a.winsByClass = { warrior: 2 }; b.winsByClass = { warrior: 1, shaman: 1 };
     expect(mergeMeta(a, b).winsByClass).toEqual({ warrior: 2, shaman: 1 });
+    a.legacy = { atk: 2, def: 0, maxHp: 0 }; b.legacy = { atk: 1, def: 1, maxHp: 5 };
+    expect(mergeMeta(a, b).legacy).toEqual({ atk: 2, def: 1, maxHp: 5 });
   });
 });

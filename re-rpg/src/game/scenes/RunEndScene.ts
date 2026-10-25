@@ -26,8 +26,10 @@ export class RunEndScene extends Phaser.Scene {
     this.add.text(W / 2, 160, names.length ? 'New discoveries this run' : 'Nothing new discovered this run', { ...text.h2, fontSize: '18px', color: names.length ? COLORS.gold : COLORS.muted }).setOrigin(0.5);
     this.add.text(W / 2, 188, names.join('   ·   ') || 'Find tomes and gear to grow the loot pool for next time.', { ...text.body, wordWrap: { width: W - 120 }, align: 'center' }).setOrigin(0.5, 0);
 
-    if (data.won && s?.classId === 'warrior' && (meta.winsByClass.warrior ?? 0) === 1 && classUnlocked(meta, 'wizard')) {
-      this.add.text(W / 2, H * 0.5 + 10, 'Wizard and Shaman unlocked', { ...text.h2, fontSize: '22px', color: COLORS.gold }).setOrigin(0.5);
+    if (data.won) {
+      const lines = ['Legacy point earned: +1 Attack, +1 Defence or +5 Max HP, chosen at the start of your next run. Permanent.'];
+      if (s?.classId === 'warrior' && (meta.winsByClass.warrior ?? 0) === 1 && classUnlocked(meta, 'wizard')) lines.unshift('Wizard and Shaman unlocked');
+      this.add.text(W / 2, H * 0.5 + 4, lines.join('\n'), { ...text.h2, fontSize: '18px', color: COLORS.gold, align: 'center', lineSpacing: 6, wordWrap: { width: W - 160 } }).setOrigin(0.5);
     }
     const poolSkills = meta.discoveredSkills.length, poolItems = meta.discoveredItems.length;
     const maxSkills = SKILLS.filter((k) => k.rarity !== 'basic').length, maxItems = ITEMS.length;

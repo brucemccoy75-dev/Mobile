@@ -80,12 +80,18 @@ export function rollSet(classId: ClassId, rng: RunRng): SetId {
   return rng.stream('meta').pick(getClass(classId).sets);
 }
 
+/** Class base plus permanent Legacy bonuses (DECISIONS #18). */
+export function baseStatsFor(classId: ClassId, meta: MetaState): Stats {
+  const c = getClass(classId).stats;
+  return { maxHp: c.maxHp + meta.legacy.maxHp, atk: c.atk + meta.legacy.atk, def: c.def + meta.legacy.def };
+}
+
 export function createSession(classId: ClassId, meta: MetaState, seed = newSeed()): RunSession {
   const rng = new RunRng(seed);
   const setId = rollSet(classId, rng);
-  const cls = getClass(classId);
+  const base = baseStatsFor(classId, meta);
   const s: RunSession = {
-    seed, rng, classId, setId, base: { ...cls.stats }, stats: { ...cls.stats }, hp: cls.stats.maxHp, gold: 0,
+    seed, rng, classId, setId, base: { ...base }, stats: { ...base }, hp: base.maxHp, gold: 0,
     deck: [], equipment: emptyEquipment(),
     screenIndex: 0, map: undefined as unknown as ScreenMap, playerPos: { x: 0, y: 0 }, threat: 0,
     openedPois: new Set(), usedShrines: new Set(), defeatedGuards: new Set(), bossDefeated: false, encountersWon: 0,
@@ -168,7 +174,7 @@ export const setName = (s: RunSession) => getSet(s.setId).name;
 export function serialize(s: RunSession): RunState {
   return {
     version: RUN_VERSION, updatedAt: Date.now(),
-    seed: s.seed, rngStates: s.rng.snapshot(), classId: s.classId, setId: s.setId,
+    seed: s.seed, rngStates: s.rng.snapshot(), classId: s.classId, setId: s.setId, base: { ...s.base },
     hp: s.hp, gold: s.gold, deck: [...s.deck], equipment: equipmentToIds(s.equipment),
     screenIndex: s.screenIndex, map: s.map, playerPos: { ...s.playerPos }, threat: s.threat,
     openedPois: [...s.openedPois], usedShrines: [...s.usedShrines], defeatedGuards: [...s.defeatedGuards],
@@ -177,10 +183,10 @@ export function serialize(s: RunSession): RunState {
   };
 }
 
-export function deserialize(st: RunState): RunSession {
+export function deserialize(st: RunState, meta: MetaState): RunSession {
   const rng = new RunRng(st.seed);
   rng.restore(st.rngStates);
-  const base = { ...getClass(st.classId).stats };
+  const base = st.base ?? baseStatsFor(st.classId, meta);
   const equipment = equipmentFromIds(st.equipment);
   return {
     seed: st.seed, rng, classId: st.classId, setId: st.setId, base, stats: computeStats(base, equipment),

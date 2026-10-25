@@ -3,6 +3,7 @@ import { RUN_VERSION } from '@core/run';
 import { createMeta } from '@core/meta';
 import { APP_VERSION } from '@game/version';
 import { deserialize, getMeta, getStore, setMeta, setSession } from '@game/session';
+import { legacySummary } from '@core/meta';
 import { Button } from '@game/ui/Button';
 import type { FirebaseCloud } from '@save/firebase';
 import type { SyncedSaveStore } from '@save/SyncedSaveStore';
@@ -41,7 +42,7 @@ export class TitleScene extends Phaser.Scene {
 
     this.add.text(cx, height * 0.3, 'Re-RPG', { ...text.title, fontSize: '64px' }).setOrigin(0.5);
     this.add.text(cx, height * 0.3 + 52, 'a roguelike for your pocket', { ...text.body, fontSize: '20px', color: COLORS.muted }).setOrigin(0.5);
-    this.add.text(cx, height * 0.3 + 84, `deaths ${meta.deaths}  ·  wins ${meta.wins}  ·  discovered ${meta.discoveredSkills.length + meta.discoveredItems.length}`, text.small).setOrigin(0.5);
+    this.add.text(cx, height * 0.3 + 84, `deaths ${meta.deaths}  ·  wins ${meta.wins}  ·  discovered ${meta.discoveredSkills.length + meta.discoveredItems.length}${legacySummary(meta) ? `  ·  legacy ${legacySummary(meta)}` : ''}`, text.small).setOrigin(0.5);
 
     const newRun = new Button(this, cx, height * 0.66, 'New run', () => this.scene.start('ClassSelect'), { width: 220, fill: 0x1f2a44, edge: COLORS.goldHex });
     void newRun;
@@ -50,7 +51,7 @@ export class TitleScene extends Phaser.Scene {
       if (!run || run.version !== RUN_VERSION) return;
       newRun.y = height * 0.66 + 62;
       new Button(this, cx, height * 0.66, `Continue  (${run.classId}, screen ${run.screenIndex + 1})`, () => {
-        setSession(this, deserialize(run));
+        setSession(this, deserialize(run, getMeta(this)));
         this.scene.start('Overworld');
       }, { width: 320, fill: 0x1f2a44, edge: COLORS.goldHex });
     });

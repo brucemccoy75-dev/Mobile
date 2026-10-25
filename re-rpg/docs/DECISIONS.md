@@ -20,6 +20,7 @@ Decisions made in planning session 1. Each entry: decision, rationale, implicati
 | 15 | Enemy answers + Hold | Enemies get telegraphed answers to pound-strike play: **Brace** (Boar, Ogre: the next hit that lands is thrown back, blockable by Guard), **Scatter** (Rats, Harpies: the next single hit does half; multi-hit unaffected). Enemy HP raised (screen 1: 14–20, Gatekeeper 48; screen 2: 24–34, Warden 58). **Hold** lets the player discard a card to pass the turn, the universal out for a trap turn at the cost of tempo and a card. Tomes cap at **2 copies** per deck. |
 | 16 | Class gating | Warrior is the only class open at first. Wizard and Shaman unlock after a run is **won as Warrior** (per-class win counts in MetaState, v2 with migration). |
 | 17 | Card text | Skill cards state real numbers from the hero's current stats ("Deal 8 damage"), never percentages. They ignore the enemy's defence and intent on purpose: what the card does, not what will land. |
+| 18 | Legacy | Every win of the final boss banks one **Legacy point**. The next run opens with a one-time choice: +1 ATK, +1 DEF or +5 max HP. Permanent, shared by all classes, never refunded; five wins means five allocations. The run's base stats are frozen into its save so a later allocation never changes a run in progress. |
 | 12 | Damage floor | Defence never removes more than half a hit: `max(1, ceil(base/2), base − def)`. Flat subtraction made a 4-attack hero deal 1 to a 3-defence beetle (20-round fights). Armour now lengthens fights, it does not stall them. |
 
 ## Knock-on changes

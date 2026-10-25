@@ -3,7 +3,8 @@ import { CLASSES, getSet } from '@data/index';
 import type { ClassId } from '@data/types';
 import { Button } from '@game/ui/Button';
 import { CLASS_COLORS, COLORS, text } from '@game/ui/theme';
-import { createSession, getMeta, persistRun, setSession } from '@game/session';
+import { baseStatsFor, createSession, getMeta, persistRun, setSession } from '@game/session';
+import { legacySummary } from '@core/meta';
 import { CLASS_UNLOCK_HINT, HEIRLOOM_DEATHS, HEIRLOOM_OFFER, HEIRLOOM_PICKS, classUnlocked, heirloomPool, heirloomUnlocked } from '@core/meta';
 
 export class ClassSelectScene extends Phaser.Scene {
@@ -33,7 +34,8 @@ export class ClassSelectScene extends Phaser.Scene {
       this.panels.set(cls.id, bg);
       this.add.rectangle(x, y - 80, 56, 72, CLASS_COLORS[cls.id] ?? COLORS.player);
       this.add.text(x, y - 30, cls.name, text.h2).setOrigin(0.5);
-      this.add.text(x, y + 4, `HP ${cls.stats.maxHp}   ATK ${cls.stats.atk}   DEF ${cls.stats.def}`, text.body).setOrigin(0.5);
+      const st = baseStatsFor(cls.id, getMeta(this));
+      this.add.text(x, y + 4, `HP ${st.maxHp}   ATK ${st.atk}   DEF ${st.def}`, { ...text.body, color: legacySummary(getMeta(this)) ? COLORS.gold : COLORS.text }).setOrigin(0.5);
       const sets = cls.sets.map((id) => getSet(id).name).join('  ·  ');
       this.add.text(x, y + 36, 'sets', text.small).setOrigin(0.5);
       this.add.text(x, y + 58, sets, { ...text.body, fontSize: '14px', color: COLORS.gold }).setOrigin(0.5);
@@ -75,10 +77,16 @@ export class ClassSelectScene extends Phaser.Scene {
 
   private start() {
     if (!this.selected) return;
-    const session = createSession(this.selected, getMeta(this));
+    const classId = this.selected;
+    this.cameras.main.fadeOut(200, 11, 15, 26);
+    // A banked Legacy point is spent first; the Legacy scene then creates the run itself.
+    if (getMeta(this).legacyUnspent > 0) {
+      this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('Legacy', { classId }));
+      return;
+    }
+    const session = createSession(classId, getMeta(this));
     setSession(this, session);
     void persistRun(this);
-    this.cameras.main.fadeOut(200, 11, 15, 26);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(session.heirloomChoices.length > 0 ? 'Heirloom' : 'Overworld'));
   }
 }

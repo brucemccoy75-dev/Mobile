@@ -12,7 +12,7 @@ describe('session', () => {
     takeChoice(s, meta, { kind: 'tome', skill: getSkill('fireball') });
     s.rng.stream('encounter').next();
     const json = JSON.parse(JSON.stringify(serialize(s)));
-    const r = deserialize(json);
+    const r = deserialize(json, meta);
     expect(r.gold).toBe(17); expect(r.hp).toBe(9); expect(r.threat).toBe(0.4);
     expect(r.openedPois.has('chest_1')).toBe(true); expect(r.defeatedGuards.has('guard_0')).toBe(true);
     expect(r.deck).toEqual(['fireball']); expect(r.equipment.weapon?.id).toBe('oak_wand');
@@ -31,6 +31,15 @@ describe('session', () => {
     expect(s.stats.maxHp).toBe(31); expect(s.hp).toBe(31);
     expect(s.deck).toEqual(['broadsword']);
     expect(s.heirloomChoices).toEqual([]);
+  });
+
+  it('legacy bonuses raise the run base and are frozen into the save', () => {
+    const meta = createMeta(); meta.legacy = { atk: 1, def: 0, maxHp: 5 };
+    const s = createSession('warrior', meta, 'LEGACY-1');
+    expect(s.base).toEqual({ maxHp: 30, atk: 5, def: 1 });
+    expect(s.hp).toBe(30);
+    const later = createMeta(); later.legacy = { atk: 3, def: 3, maxHp: 15 };
+    expect(deserialize(JSON.parse(JSON.stringify(serialize(s))), later).base).toEqual({ maxHp: 30, atk: 5, def: 1 });
   });
 
   it('no heirloom spread before the first death', () => {

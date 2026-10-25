@@ -2,7 +2,7 @@
 // closed: seed + RNG stream states, class/set, HP, gold, deck, equipment,
 // the current screen map and the player's progress on it.
 import { getItem } from '@data/index';
-import type { ClassId, SetId, SkillId, Slot } from '@data/types';
+import type { ClassId, SetId, SkillId, Slot, Stats } from '@data/types';
 import type { ScreenMap, Tile } from '@core/map';
 import type { Equipment } from './equipment';
 import type { ShopStock } from '@core/loot';
@@ -15,6 +15,8 @@ export interface RunState extends Versioned {
   rngStates: Record<string, number>;
   classId: ClassId;
   setId: SetId;
+  /** Class base plus Legacy at run start, so a later allocation never changes a run in progress. */
+  base?: Stats;
   hp: number;
   gold: number;
   deck: SkillId[];
