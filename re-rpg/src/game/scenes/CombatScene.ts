@@ -25,7 +25,7 @@ export class CombatScene extends Phaser.Scene {
   private busy = false;
 
   private playerSprite!: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image;
-  private enemySprite!: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image;
+  private enemySprite!: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite;
   private playerHp!: HpBar;
   private enemyHp!: HpBar;
   private playerChips!: StatusChips;
@@ -90,7 +90,10 @@ export class CombatScene extends Phaser.Scene {
 
     // combatants: real art when a texture was loaded (see BootScene.ART_FILES), placeholder shapes otherwise
     const heroKey = artKey(this, `hero_${this.session.classId}`);
-    if (heroKey) {
+    const heroIdle = `anim_hero_${this.session.classId}_idle`;
+    if (this.anims.exists(heroIdle)) {
+      this.playerSprite = this.add.sprite(this.px, this.py + 46, `hero_${this.session.classId}_idle_c`).setOrigin(0.5, 1).setScale(0.5).play(heroIdle);
+    } else if (heroKey) {
       // @2x source shown at half size; feet on the ground line the placeholder's bottom edge sat on.
       this.playerSprite = this.add.image(this.px, this.py + 46, heroKey).setOrigin(0.5, 1).setScale(0.5);
     } else {
@@ -99,7 +102,12 @@ export class CombatScene extends Phaser.Scene {
     const esize = isBoss ? 120 : this.enemyDef.tier === 2 ? 92 : 76;
     const groundY = this.py + 46;
     const enemyKey = artKey(this, `enemy_${this.enemyDef.id}`);
-    if (enemyKey) {
+    const enemyIdle = `anim_${this.enemyDef.id}_idle`;
+    if (this.anims.exists(enemyIdle)) {
+      // video-cut idle loop (docs/ART.md); frames are feet-anchored so the ground line holds
+      this.enemySprite = this.add.sprite(this.ex, groundY, `${this.enemyDef.id}_idle_c`).setOrigin(0.5, 1).setScale(0.5).play(enemyIdle);
+      this.ey = groundY - this.enemySprite.displayHeight / 2;
+    } else if (enemyKey) {
       this.enemySprite = this.add.image(this.ex, groundY, enemyKey).setOrigin(0.5, 1).setScale(0.5);
       this.ey = groundY - this.enemySprite.displayHeight / 2;
     } else {
@@ -456,6 +464,7 @@ export class CombatScene extends Phaser.Scene {
         return;
       case 'death': {
         const s = sprite(e.side);
+        if (s instanceof Phaser.GameObjects.Sprite) s.anims.stop();
         await tween(this, { targets: s, alpha: 0.15, y: s.y + 10, duration: 350 });
         return;
       }

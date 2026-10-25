@@ -18,6 +18,10 @@ Fixed clauses, appended verbatim to every character/enemy prompt:
 
 Next assets in order: Boar (screen 1 enemy, facing left) and the forest backdrop, then the other four screen-1 enemies.
 
+### Animation from generated video
+
+Idle loops (and later deaths) come from short Grok videos of the cut-out still: `python3 scripts/video-to-sheet.py art-src/<name>_<anim>_styleC.mp4 <name> <anim> <height@2x> [--once]`. The script extracts frames at 10 fps, keys the plain background, anchors every frame on the feet of its largest blob (so camera drift vanishes), scales the median body height to the target, and picks the 1.5–2.5 s window whose end frame best matches its start (`--once` keeps the whole clip for one-shots). It writes `public/art/c/<name>_<anim>@2x.png` and records frame size, count and fps in `src/data/anims.json`; BootScene loads every entry and CombatScene plays `anim_<id>_idle` when it exists, falling back to the still. Prompt the video with: *camera locked, no zoom, character stays centred, plain white background, subtle motion only, ends in the same pose it starts*. Keep idles ≤ 20 frames; a 17-frame boar idle is ~1.8 MB.
+
 ### Tileset in use: CraftPix vector freebies
 
 The overworld draws from two free CraftPix packs (itch mirrors: [Summer Fantasy](https://free-game-assets.itch.io/free-summer-fantasy-top-down-vector-tileset), [Dark Swamp](https://free-game-assets.itch.io/free-dark-swamp-top-down-vector-tileset)). Their license allows commercial use without credit but forbids redistributing the source files, so the raw packs live in `art-src/packs/` (gitignored) and only the packed, half-size game sheets are committed: `public/art/c/ground.png` (96 px cells: summer 1-56, swamp 1-56 recoloured so its outer green matches summer grass, flat water) and `props.png/.json` (trees, bushes, rocks, boulders, reeds, chest, tent, tower, campfire). Regenerate with `python3 scripts/pack-tiles.py` after unzipping the packs to `art-src/packs/summer` and `art-src/packs/swamp`.

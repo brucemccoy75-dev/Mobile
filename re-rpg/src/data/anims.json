@@ -1,0 +1,10 @@
+{
+  "boar_idle": {
+    "file": "art/c/boar_idle@2x.png",
+    "frameWidth": 480,
+    "frameHeight": 337,
+    "frames": 17,
+    "fps": 10,
+    "loop": true
+  }
+}
