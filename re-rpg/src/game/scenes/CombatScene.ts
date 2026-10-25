@@ -302,6 +302,21 @@ export class CombatScene extends Phaser.Scene {
     this.showInfo(`${this.state.enemyDefs[who]!.name}, after your move`, `${describeIntent(intent.kind, moveName, predictedDamage, hits, status, drain, magic)}\n\nThe round after: ${tell.replace('then: ', '')}.`, '#ffb4b4');
   }
 
+  /** A level is a moment: flash, a big banner, and the point can be spent right now (DECISIONS #32). */
+  private levelUpFanfare(level: number, points: number) {
+    const { width: W, height: H } = this.scale.gameSize;
+    this.cameras.main.flash(260, 255, 220, 120);
+    const big = this.add.text(W / 2, H * 0.16, `LEVEL ${level}!`, { ...text.title, fontSize: '46px', color: COLORS.gold, stroke: '#000000', strokeThickness: 8 }).setOrigin(0.5).setDepth(73).setScale(0.2).setAlpha(0);
+    this.tweens.add({ targets: big, scale: 1, alpha: 1, duration: 420, ease: 'Back.Out' });
+    this.tweens.add({ targets: big, scale: 1.06, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut', delay: 420 });
+    for (let i = 0; i < 14; i++) {
+      const spark = this.add.text(W / 2 + (Math.random() - 0.5) * 60, H * 0.16, '✦', { fontFamily: FONT, fontSize: `${14 + Math.random() * 14}px`, color: i % 2 ? COLORS.gold : '#ffffff' }).setOrigin(0.5).setDepth(72);
+      this.tweens.add({ targets: spark, x: spark.x + (Math.random() - 0.5) * 420, y: spark.y + (Math.random() - 0.7) * 220, alpha: 0, angle: 180, duration: 900 + Math.random() * 500, ease: 'Quad.Out', delay: 120, onComplete: () => spark.destroy() });
+    }
+    const total = getMeta(this).progress[this.session.classId]?.points ?? points;
+    new Button(this, W / 2, H * 0.62 + 56, `Spend skill point${total === 1 ? '' : 's'} (${total})`, () => this.scene.start('SkillTree', { classId: this.session.classId, returnTo: 'Reward' }), { width: 260, height: 40, fontSize: '14px', fill: 0x173526, edge: 0x3fbf7a }).setDepth(72);
+  }
+
   private hideIntent(who: number) {
     const v = this.views[who];
     if (!v) return;
@@ -639,8 +654,8 @@ export class CombatScene extends Phaser.Scene {
       const exp = this.state.enemyDefs.reduce((a, d) => a + expForEnemy(d, this.encounter.kind, this.state.enemyDefs.length), 0);
       const gained = gainExp(getMeta(this), this.session.classId, exp);
       void persistMeta(this);
-      const lvl = gained.to > gained.from ? `   ·   LEVEL ${gained.to}!  +${gained.points} skill point${gained.points === 1 ? '' : 's'}` : '';
-      this.add.text(W / 2, H * 0.34 + 74, `+${exp} EXP${lvl}`, { ...text.body, fontSize: '15px', color: COLORS.gold, fontStyle: 'bold' }).setOrigin(0.5).setDepth(71);
+      this.add.text(W / 2, H * 0.34 + 74, `+${exp} EXP`, { ...text.body, fontSize: '15px', color: COLORS.gold, fontStyle: 'bold' }).setOrigin(0.5).setDepth(71);
+      if (gained.to > gained.from) this.levelUpFanfare(gained.to, gained.points);
       this.session.hp = this.state.player.hp;
       this.session.encountersWon += 1;
       this.session.lastResult = { encounter: this.encounter, won: true };

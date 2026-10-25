@@ -14,8 +14,9 @@ import { COLORS, text } from '@game/ui/theme';
 export class SkillTreeScene extends Phaser.Scene {
   constructor() { super('SkillTree'); }
 
-  create(data: { classId: ClassId }) {
+  create(data: { classId: ClassId; returnTo?: string }) {
     const classId = data.classId;
+    const returnTo = data.returnTo ?? 'ClassSelect';
     const meta = getMeta(this);
     const prog = classProgress(meta, classId);
     const { width: W, height: H } = this.scale.gameSize;
@@ -38,13 +39,13 @@ export class SkillTreeScene extends Phaser.Scene {
       this.add.text(x, y - ch / 2 + 46, set.name, { ...text.h2, fontSize: '19px', wordWrap: { width: cw - 20 }, align: 'center' }).setOrigin(0.5);
       this.add.text(x, y - ch / 2 + 78, set.skills.map((id) => getSkill(id).name).join('\n'), { ...text.body, fontSize: '13px', align: 'center', lineSpacing: 4, color: st.state === 'locked' ? COLORS.muted : COLORS.text }).setOrigin(0.5, 0);
       if (st.state === 'available') {
-        new Button(this, x, y + ch / 2 - 28, 'Unlock', () => { if (unlockNode(meta, classId, n.setId)) void persistMeta(this).then(() => this.scene.restart({ classId })); }, { width: cw - 40, height: 36, fontSize: '14px', fill: 0x173526, edge: 0x3fbf7a });
+        new Button(this, x, y + ch / 2 - 28, 'Unlock', () => { if (unlockNode(meta, classId, n.setId)) void persistMeta(this).then(() => this.scene.restart({ classId, returnTo })); }, { width: cw - 40, height: 36, fontSize: '14px', fill: 0x173526, edge: 0x3fbf7a });
       } else if (st.state === 'locked' && st.reason) {
         this.add.text(x, y + ch / 2 - 22, st.reason, { ...text.small, fontSize: '11px', color: COLORS.muted, wordWrap: { width: cw - 20 }, align: 'center' }).setOrigin(0.5);
       }
     });
 
     this.add.text(W / 2, H - 88, 'Points come from levelling this class. Nothing here is shared with the other classes, and nothing is refunded. New families appear here as they are added to the game.', { ...text.small, fontSize: '12px', color: COLORS.muted, wordWrap: { width: W - 160 }, align: 'center' }).setOrigin(0.5);
-    new Button(this, W / 2, H - 46, 'Back', () => this.scene.start('ClassSelect'), { width: 160, height: 40, fontSize: '14px' });
+    new Button(this, W / 2, H - 46, returnTo === 'ClassSelect' ? 'Back' : 'Back to the run', () => this.scene.start(returnTo), { width: 200, height: 40, fontSize: '14px' });
   }
 }

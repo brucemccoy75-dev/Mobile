@@ -214,6 +214,12 @@ export class OverworldScene extends Phaser.Scene {
     hud.add(this.threatFill);
     this.goldText = this.add.text(W - 240, 24, '', { fontFamily: FONT, fontSize: '13px', color: COLORS.gold, fontStyle: 'bold' }).setOrigin(1, 0.5);
     hud.add(this.goldText);
+    // Unspent skill points: a bare interactive text (container children with scrollFactor 0 do not hit-test).
+    const pts = getMeta(this).progress[this.session.classId]?.points ?? 0;
+    if (pts > 0 && !this.session.testMode) {
+      const t = this.add.text(W - 240, 44, `★ ${pts} skill point${pts === 1 ? '' : 's'} · tap to spend`, { fontFamily: FONT, fontSize: '12px', color: '#8ff0b8', fontStyle: 'bold', backgroundColor: '#0b0f1acc', padding: { x: 6, y: 3 } }).setOrigin(1, 0.5).setScrollFactor(0).setDepth(101).setInteractive({ useHandCursor: true });
+      t.on('pointerup', () => { void persistRun(this); this.scene.start('SkillTree', { classId: this.session.classId, returnTo: 'Overworld' }); });
+    }
     // quit: a bare interactive rectangle, not a Button container (container children with scrollFactor 0 do not hit-test)
     const quitBg = this.add.rectangle(W - 24, 26, 32, 32, COLORS.panel).setStrokeStyle(2, COLORS.panelEdge).setScrollFactor(0).setDepth(101).setInteractive({ useHandCursor: true });
     this.add.text(W - 24, 26, '✕', { fontFamily: FONT, fontSize: '14px', color: COLORS.text, fontStyle: 'bold' }).setOrigin(0.5).setScrollFactor(0).setDepth(102);
