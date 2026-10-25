@@ -20,6 +20,8 @@ export const ART_FILES: Record<string, string> = {
   enemy_boar_c: 'art/c/boar@2x.png',
   enemy_hex_imp_c: 'art/c/hex_imp@2x.png',
   enemy_adept_necromancer_c: 'art/c/adept_necromancer@2x.png',
+  enemy_shell_beetle_c: 'art/c/shell_beetle@2x.png',
+  enemy_rat_pack_c: 'art/c/rat_pack@2x.png',
   bg_forest: 'art/c/bg_forest.jpg',
 };
 
