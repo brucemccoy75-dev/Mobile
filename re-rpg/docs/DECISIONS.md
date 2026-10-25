@@ -33,3 +33,12 @@ Decisions made in planning session 1. Each entry: decision, rationale, implicati
 - Healing skills carry a tax to honour decision 1: Bind Wound heals small and ends the turn; Mend heals more but applies Weak to the caster for 1 turn.
 - Early runs drain the tome pool after two tomes (decision 5), so offers fall back to equipment and gold. That is intentional pressure toward discovery.
 - Simulator primary metric: HP remaining on arrival at Boss 1, and % of runs that arrive at all, bucketed by number of discovered entries.
+
+## 23. Map layout rules (tidy screens)
+
+Phone test with real tiles: per-tile random biomes read as noise, rocks among trees were confusing, and POIs landed inside thickets. Rules now live in `LAYOUT` in `src/core/map/generate.ts`:
+- Biomes are broad regions from low-frequency value noise, majority-smoothed, and patches under 5 tiles become grass. Forest grows likelier with distance from the road; swamp only 5+ steps out. One grass tile each side of the road stays clear.
+- Obstacles are rock ridges (short lines with bumps) and elliptical lakes, never within 2 steps of the road; bodies under 3 tiles are dropped; forest touching rock or water becomes grass so rocks sit in open ground.
+- Every POI, the quest giver and the NPC spot sit in a 3×3 grass clearing.
+- Each POI gets a detour wall across the midpoint of its cheapest approach, kept only if entry still reaches the boss, every POI, the giver and the NPC. Validation also checks those last two now.
+

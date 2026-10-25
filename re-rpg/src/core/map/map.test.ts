@@ -52,6 +52,36 @@ describe('generateScreen', () => {
     expect(m.guards.every((g) => ['ogre', 'iron_knight', 'witch', 'harpies'].includes(g.enemyId))).toBe(true);
   });
 
+  it('keeps POIs, the quest giver and the NPC spot in grass clearings', () => {
+    for (const s of seeds.slice(0, 20)) {
+      const m = gen(s);
+      const at = (x: number, y: number) => m.tiles[y * m.width + x]!;
+      for (const t of [...m.pois.map((p) => p.pos), m.questGiver, m.npcSpot]) {
+        expect(at(t.x, t.y)).toBe('grass');
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const x = t.x + dx, y = t.y + dy;
+          if (x === 0 || y === 0 || x === m.width - 1 || y === m.height - 1) continue; // the rock frame
+          expect(['grass', 'road', 'arena']).toContain(at(x, y));
+        }
+      }
+    }
+  });
+
+  it('never puts rock next to forest and never leaves tiny biome specks', () => {
+    for (const s of seeds.slice(0, 20)) {
+      const m = gen(s);
+      const at = (x: number, y: number) => m.tiles[y * m.width + x]!;
+      let specks = 0;
+      for (let y = 1; y < m.height - 1; y++) for (let x = 1; x < m.width - 1; x++) {
+        const t = at(x, y);
+        const n = [at(x + 1, y), at(x - 1, y), at(x, y + 1), at(x, y - 1)];
+        if (t === 'forest') expect(n.includes('rock') || n.includes('water')).toBe(false);
+        if ((t === 'forest' || t === 'swamp') && !n.includes(t)) specks++;
+      }
+      expect(specks).toBe(0);
+    }
+  });
+
   it('mixes biomes: has road, grass, forest and some obstacles', () => {
     const m = gen('biome');
     const count = (t: TileType) => m.tiles.filter((x) => x === t).length;
