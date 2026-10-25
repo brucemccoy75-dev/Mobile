@@ -16,7 +16,7 @@ describe('session', () => {
     expect(r.gold).toBe(17); expect(r.hp).toBe(9); expect(r.threat).toBe(0.4);
     expect(r.openedPois.has('chest_1')).toBe(true); expect(r.defeatedGuards.has('guard_0')).toBe(true);
     expect(r.deck).toEqual(['fireball']); expect(r.equipment.weapon?.id).toBe('oak_wand');
-    expect(r.stats.atk).toBe(7);
+    expect(r.stats.atk).toBe(6);
     expect(r.map).toEqual(s.map);
     expect(r.rng.stream('encounter').next()).toBe(s.rng.stream('encounter').next());
   });

@@ -106,8 +106,8 @@ describe('damage and basics', () => {
     expect(s.enemy.hp).toBe(28);
     const heavy: Enemy = { ...DUMMY, stats: { maxHp: 30, atk: 3, def: 10 } };
     const s2 = fight(['broadsword'], heavy);
-    play(s2, 'broadsword'); // round(4*1.6)=6 - 10 → floor 3
-    expect(s2.enemy.hp).toBe(27);
+    play(s2, 'broadsword'); // 4 + 4 flat = 8 - 10 → floor 4
+    expect(s2.enemy.hp).toBe(26);
   });
 
   it('Defend blocks the next hit and is consumed', () => {
@@ -208,7 +208,7 @@ describe('intent and tells', () => {
   it('shows the current move and the posture of the next one, and advances', () => {
     const s = fight(['defend'], 'boar');
     const first = s.log.find((e) => e.t === 'intent')!;
-    expect(first).toMatchObject({ moveName: 'Tusk', posture: 'aggressive' });
+    expect(first).toMatchObject({ moveName: 'Tusk', posture: 'countering' }); // the Boar braces next
     play(s, 'defend');
     play(s, 'defend');
     const third = s.log.filter((e) => e.t === 'intent')[2]!;
@@ -245,6 +245,49 @@ describe('outcomes', () => {
     play(s, 'attack');
     expect(s.outcome).toBe('lost');
     expect(s.log.at(-1)).toEqual({ t: 'end', outcome: 'lost' });
+  });
+});
+
+describe('brace, scatter and hold', () => {
+  const BRACER: Enemy = {
+    ...DUMMY, id: 'bracer', name: 'Bracer',
+    table: { kind: 'sequence', moves: [
+      { id: 'brace', name: 'Brace', posture: 'countering', intent: { kind: 'buff', status: 'brace' }, effects: [{ type: 'status', target: 'self', status: 'brace', turns: 2 }] },
+      { id: 'poke', name: 'Poke', posture: 'aggressive', intent: { kind: 'attack', mult: 1, hits: 1 }, effects: [{ type: 'damage', mult: 1 }] },
+    ] },
+  };
+
+  it('a braced enemy throws the first landing hit back; Guard blocks the counter', () => {
+    const s = fight(['defend', 'broadsword', 'attack'], BRACER);
+    play(s, 'defend');            // enemy braces; player guard x1 remains
+    expect(hasStatus(s.enemy, 'brace')).toBe(true);
+    play(s, 'broadsword');        // 8 lands, counter 8 blocked by the standing guard
+    const counter = s.log.find((e) => e.t === 'counter');
+    expect(counter).toMatchObject({ blocked: true });
+    expect(hasStatus(s.enemy, 'brace')).toBe(false);
+    const s2 = fight(['attack', 'broadsword'], BRACER);
+    play(s2, 'attack');           // enemy braces (attack did 4 first: no brace yet when it landed)
+    play(s2, 'broadsword');       // 8 lands, 8 comes back (ignores def)
+    expect(s2.log.find((e) => e.t === 'counter')).toMatchObject({ amount: 8, blocked: false });
+  });
+
+  it('scatter halves a single hit, not a multi-hit, and is consumed', () => {
+    const s = fight(['broadsword'], PASSIVE);
+    s.enemy.statuses.push({ id: 'scatter', turns: 2, magnitude: 1 });
+    play(s, 'broadsword');        // 8 → 4
+    expect(s.enemy.hp).toBe(26);
+    expect(hasStatus(s.enemy, 'scatter')).toBe(false);
+  });
+
+  it('hold discards the card, passes the turn, and the enemy still acts', () => {
+    const s = fight(['attack', 'attack', 'attack', 'attack'], DUMMY);
+    s.player.hand[0] = 'broadsword'; // ensure the held card is not simply reshuffled back into the hand
+    const ev = step(s, { type: 'hold', index: 0 });
+    expect(ev.some((e) => e.t === 'hold')).toBe(true);
+    expect(ev.some((e) => e.t === 'play' && e.side === 'player')).toBe(false);
+    expect(s.player.discard).toContain('broadsword');
+    expect(s.player.hp).toBe(23);
+    expect(s.enemy.hp).toBe(30);
   });
 });
 

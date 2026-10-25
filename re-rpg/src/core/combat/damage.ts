@@ -14,8 +14,10 @@ export const DEF_FLOOR = 0.5;
  * Defence can never remove more than half a hit, so armour makes fights
  * longer, not endless (a 4-attack hero vs 3 defence used to deal 1).
  */
-export function computeHit(attacker: Combatant, target: Combatant, mult: number, ignoreDef = false): number {
-  let base = Math.round(attacker.stats.atk * mult);
+export function computeHit(attacker: Combatant, target: Combatant, mult: number, ignoreDef = false, flat = 0, hits = 1): number {
+  let base = Math.round(attacker.stats.atk * mult) + flat;
+  // Scatter: a single big hit finds nothing; multi-hit attacks are unaffected.
+  if (hits === 1 && hasStatus(target, 'scatter')) base = Math.ceil(base * 0.5);
   if (hasStatus(attacker, 'weak')) base = Math.floor(base * WEAK_MULT);
   const def = ignoreDef ? 0 : target.stats.def;
   let dmg = Math.max(1, Math.ceil(base * DEF_FLOOR), base - def);
@@ -24,6 +26,6 @@ export function computeHit(attacker: Combatant, target: Combatant, mult: number,
 }
 
 /** What the intent display shows: total damage if every hit lands unblocked, given current statuses. */
-export function predictDamage(attacker: Combatant, target: Combatant, mult: number, hits: number, ignoreDef = false): number {
-  return computeHit(attacker, target, mult, ignoreDef) * hits;
+export function predictDamage(attacker: Combatant, target: Combatant, mult: number, hits: number, ignoreDef = false, flat = 0): number {
+  return computeHit(attacker, target, mult, ignoreDef, flat, hits) * hits;
 }

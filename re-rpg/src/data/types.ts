@@ -13,7 +13,7 @@ export interface Stats {
   def: number;
 }
 
-export type StatusId = 'exposed' | 'guard' | 'burn' | 'chill' | 'weak' | 'stun';
+export type StatusId = 'exposed' | 'guard' | 'burn' | 'chill' | 'weak' | 'stun' | 'brace' | 'scatter';
 
 /** A status instance on a combatant. `turns` ticks down at end of round; Guard and Chill are consumed instead. Stun: the player skips their turn while it lasts (turns N = N-1 skipped turns when self-applied). */
 export interface Status {
@@ -26,7 +26,7 @@ export interface Status {
 export type Target = 'self' | 'enemy';
 
 export type Effect =
-  | { type: 'damage'; mult: number; hits?: number; ignoreDef?: boolean; lifesteal?: number }
+  | { type: 'damage'; mult: number; flat?: number; hits?: number; ignoreDef?: boolean; lifesteal?: number }
   | { type: 'heal'; pct?: number; flat?: number }
   | { type: 'status'; target: Target; status: StatusId; turns: number; magnitude?: number; chance?: number };
 
@@ -63,7 +63,7 @@ export type Intent =
   | { kind: 'stagger' };
 
 /** The tell for the round after: a posture, not a number. */
-export type Posture = 'aggressive' | 'defensive' | 'sinister' | 'charging' | 'reeling';
+export type Posture = 'aggressive' | 'defensive' | 'sinister' | 'charging' | 'reeling' | 'countering' | 'evasive';
 
 export interface EnemyMove {
   id: string;

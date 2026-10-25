@@ -5,7 +5,7 @@ import { Rng } from '@core/rng';
 import { advanceMoves, pickMove } from './ai';
 import { computeHit, predictDamage } from './damage';
 import { HAND_CAP, dealOne, playCard } from './deck';
-import { applyStatus, consumeChill, consumeGuard, getStatus, hasStatus, tickStatuses } from './status';
+import { applyStatus, consumeBrace, consumeChill, consumeGuard, getStatus, hasStatus, removeStatus, tickStatuses } from './status';
 import type { Combatant, CombatEvent, CombatState, EnemyCombatant, PlayerAction, PlayerCombatant } from './types';
 
 export interface PlayerSetup {
@@ -80,6 +80,9 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
     events.push({ t: 'stunned', side: 'player', turnsLeft: getStatus(state.player, 'stun')!.turns - 1 });
   } else if (action.type === 'skip') {
     if (state.player.hand.length > 0) throw new Error('Cannot skip with cards in hand');
+  } else if (action.type === 'hold') {
+    const id = playCard(state.player, action.index);
+    events.push({ t: 'hold', skill: id });
   } else {
     const skill = getSkill(playCard(state.player, action.index));
     events.push({ t: 'play', side: 'player', skill: skill.id, name: skill.name });
@@ -145,7 +148,7 @@ export function applyEffects(effects: Effect[], self: Combatant, other: Combatan
         let dealt = 0;
         for (let i = 0; i < hits; i++) {
           if (other.hp <= 0) break;
-          const amount = computeHit(self, other, e.mult, e.ignoreDef);
+          const amount = computeHit(self, other, e.mult, e.ignoreDef, e.flat ?? 0, hits);
           if (consumeGuard(other, events)) {
             events.push({ t: 'damage', source: self.side, target: other.side, amount: 0, blocked: true, hit: i + 1, hits });
             continue;
@@ -154,7 +157,13 @@ export function applyEffects(effects: Effect[], self: Combatant, other: Combatan
           other.hp -= applied;
           dealt += applied;
           events.push({ t: 'damage', source: self.side, target: other.side, amount: applied, blocked: false, hit: i + 1, hits });
+          // Brace: the first hit that lands is thrown back at the attacker (blockable by Guard, ignores def).
+          if (i === 0 && applied > 0 && consumeBrace(other, events)) {
+            if (consumeGuard(self, events)) events.push({ t: 'counter', amount: 0, blocked: true });
+            else { const back = Math.min(self.hp, applied); self.hp -= back; events.push({ t: 'counter', amount: back, blocked: false }); }
+          }
         }
+        if (hits === 1 && hasStatus(other, 'scatter')) removeStatus(other, 'scatter', events);
         if (e.lifesteal && dealt > 0) heal(self, Math.round(dealt * e.lifesteal), events);
         break;
       }

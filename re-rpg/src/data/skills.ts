@@ -9,6 +9,9 @@ export const DEFEND: Skill = {
   id: 'defend', name: 'Defend', text: 'Block the next hit.', classId: 'any', rarity: 'basic',
   effects: [{ type: 'status', target: 'self', status: 'guard', turns: 99, magnitude: 1 }],
 };
+/** Most copies of one tome a deck may hold. */
+export const TOME_COPY_CAP = 2;
+
 /** Cards every fight starts with, in addition to the run deck. Not counted against DECK_CAP. */
 export const BASIC_DECK: string[] = ['attack', 'attack', 'defend'];
 
@@ -24,16 +27,16 @@ export const SKILLS: Skill[] = [
     effects: [{ type: 'heal', pct: 0.4 }, { type: 'status', target: 'self', status: 'stun', turns: 3 }] },
 
   // Warrior / DPS
-  { id: 'broadsword', name: 'Broadsword Strike', text: 'Deal 160% damage. You overextend: Exposed this round.', classId: 'warrior', setId: 'warrior_dps', rarity: 'common',
-    effects: [{ type: 'damage', mult: 1.6 }, { type: 'status', target: 'self', status: 'exposed', turns: 1 }] },
+  { id: 'broadsword', name: 'Broadsword Strike', text: 'Deal 100% + 4 damage. You overextend: Exposed this round.', classId: 'warrior', setId: 'warrior_dps', rarity: 'common',
+    effects: [{ type: 'damage', mult: 1.0, flat: 4 }, { type: 'status', target: 'self', status: 'exposed', turns: 1 }] },
   { id: 'exposing_strike', name: 'Exposing Strike', text: 'Deal 100% damage. Enemy is Exposed for 2 rounds.', classId: 'warrior', setId: 'warrior_dps', rarity: 'uncommon',
     effects: [{ type: 'damage', mult: 1.0 }, { type: 'status', target: 'enemy', status: 'exposed', turns: 2 }] },
 
   // Wizard / Fire
   { id: 'fireball', name: 'Fireball', text: 'Deal 150% damage and Burn 2 for 2 rounds.', classId: 'wizard', setId: 'wizard_fire', rarity: 'common',
     effects: [{ type: 'damage', mult: 1.5 }, { type: 'status', target: 'enemy', status: 'burn', turns: 2, magnitude: 2 }] },
-  { id: 'inferno', name: 'Inferno', text: 'Deal 300% damage. You are Exposed for 2 rounds.', classId: 'wizard', setId: 'wizard_fire', rarity: 'uncommon',
-    effects: [{ type: 'damage', mult: 3.0 }, { type: 'status', target: 'self', status: 'exposed', turns: 2 }] },
+  { id: 'inferno', name: 'Inferno', text: 'Deal 100% + 10 damage. You are Exposed for 2 rounds.', classId: 'wizard', setId: 'wizard_fire', rarity: 'uncommon',
+    effects: [{ type: 'damage', mult: 1.0, flat: 10 }, { type: 'status', target: 'self', status: 'exposed', turns: 2 }] },
 
   // Wizard / Frost
   { id: 'frost_bolt', name: 'Frost Bolt', text: 'Deal 120% damage. 65% chance to Chill (enemy skips its next action).', classId: 'wizard', setId: 'wizard_frost', rarity: 'common',

@@ -42,6 +42,13 @@ export function consumeGuard(c: Combatant, events: CombatEvent[]): boolean {
   return true;
 }
 
+/** Consume Brace if present. Returns true if the hit should be countered. */
+export function consumeBrace(c: Combatant, events: CombatEvent[]): boolean {
+  if (!hasStatus(c, 'brace')) return false;
+  removeStatus(c, 'brace', events);
+  return true;
+}
+
 /** Consume Chill if present. Returns true if the action should be skipped. */
 export function consumeChill(c: Combatant, events: CombatEvent[]): boolean {
   if (!hasStatus(c, 'chill')) return false;

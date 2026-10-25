@@ -1,4 +1,5 @@
 import { ITEMS, SKILLS, getSet } from '@data/index';
+import { TOME_COPY_CAP } from '@data/skills';
 import type { ClassId, Item, Rarity, SetId, Skill, SkillId } from '@data/types';
 import type { Rng } from '@core/rng';
 import type { MetaState } from '@core/meta';
@@ -32,7 +33,8 @@ export function buildPool(ctx: PoolContext): { tomes: Skill[]; items: Item[] } {
   const set = getSet(ctx.setId);
   const held = new Set<string>(Object.values(ctx.equipment).filter(Boolean).map((i) => i!.id));
   const tomeIds = new Set<string>([...set.skills, ...ctx.meta.discoveredSkills]);
-  const tomes = SKILLS.filter((s) => tomeIds.has(s.id) && s.rarity !== 'basic' && (s.classId === ctx.classId || s.classId === 'any'));
+  const copies = (id: string) => ctx.deck.filter((d) => d === id).length;
+  const tomes = SKILLS.filter((s) => tomeIds.has(s.id) && s.rarity !== 'basic' && (s.classId === ctx.classId || s.classId === 'any') && copies(s.id) < TOME_COPY_CAP);
   // Rarity gating lives in the source weights (a kill almost never rolls rare), so the
   // item pool is simply everything this class can use and does not already hold.
   const items = ITEMS.filter((i) => (!i.classes || i.classes.includes(ctx.classId)) && !held.has(i.id));
@@ -108,9 +110,9 @@ const PRICE: Record<Rarity, number> = { basic: 10, common: 20, uncommon: 35, rar
 
 export const itemPrice = (rarity: Rarity, screenIndex: number) => PRICE[rarity] * (screenIndex + 1);
 
-/** A shelf line the player already holds. Tomes may be bought again (copies stack in the deck); items may not. */
-export function isLineOwned(line: ShopLine, _deck: SkillId[], equipment: Equipment): boolean {
-  if (line.kind === 'tome') return false;
+/** A shelf line the player cannot take again: an equipped item, or a tome already at its copy cap. */
+export function isLineOwned(line: ShopLine, deck: SkillId[], equipment: Equipment): boolean {
+  if (line.kind === 'tome') return deck.filter((d) => d === line.id).length >= TOME_COPY_CAP;
   return Object.values(equipment).some((i) => i?.id === line.id);
 }
 

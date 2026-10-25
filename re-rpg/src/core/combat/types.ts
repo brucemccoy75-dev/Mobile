@@ -40,6 +40,8 @@ export interface CombatState {
 
 export type PlayerAction =
   | { type: 'card'; index: number }
+  /** Hold back: discard this card and pass the turn. The universal out for a trap turn. */
+  | { type: 'hold'; index: number }
   /** Only valid while Recovering (stunned) or with an empty hand: the turn passes. */
   | { type: 'skip' };
 
@@ -50,6 +52,8 @@ export type CombatEvent =
   | { t: 'reshuffle'; count: number }
   | { t: 'intent'; intent: Intent; posture: Posture; predictedDamage: number; moveName: string }
   | { t: 'play'; side: Side; skill: SkillId; name: string }
+  | { t: 'hold'; skill: SkillId }
+  | { t: 'counter'; amount: number; blocked: boolean }
   | { t: 'damage'; source: Side; target: Side; amount: number; blocked: boolean; hit: number; hits: number }
   | { t: 'heal'; side: Side; amount: number }
   | { t: 'statusApplied'; side: Side; status: StatusId; turns: number; magnitude: number }

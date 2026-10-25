@@ -44,6 +44,8 @@ export const STATUS_LABELS: Record<StatusId, { label: string; color: string }> =
   chill: { label: 'CHILL', color: '#9ad7ff' },
   weak: { label: 'WEAK', color: '#c7b3ff' },
   stun: { label: 'RECOVERING', color: '#ffd166' },
+  brace: { label: 'BRACED', color: '#ff9f68' },
+  scatter: { label: 'SCATTERED', color: '#b8f0c8' },
 };
 
 export const POSTURE_TEXT: Record<string, string> = {
@@ -52,6 +54,8 @@ export const POSTURE_TEXT: Record<string, string> = {
   sinister: 'next: casts',
   charging: 'next: winds up!',
   reeling: 'next: staggers',
+  countering: 'next: braces to counter!',
+  evasive: 'next: scatters',
 };
 
 export const text = {

@@ -38,6 +38,8 @@ export class CombatScene extends Phaser.Scene {
   /** What the hand looks like at this point of the playback. The engine state is already end-of-round. */
   private displayHand: string[] = [];
   private handHint!: Phaser.GameObjects.Text;
+  private holdBtn!: Button;
+  private holdMode = false;
   private handY = 0;
   private px = 0; private py = 0; private ex = 0; private ey = 0;
 
@@ -47,6 +49,7 @@ export class CombatScene extends Phaser.Scene {
     this.busy = false;
     this.hand = [];
     this.displayHand = [];
+    this.holdMode = false;
     this.session = getSession(this);
     if (!this.session.pendingEncounter) throw new Error('Combat started without an encounter');
     this.encounter = this.session.pendingEncounter;
@@ -96,13 +99,15 @@ export class CombatScene extends Phaser.Scene {
 
     // enemy intent panel
     const ix = this.ex, iy = this.ey - esize / 2 - 58;
-    this.add.rectangle(ix, iy, 190, 64, COLORS.panel, 0.9).setStrokeStyle(2, COLORS.panelEdge);
-    this.intentText = this.add.text(ix - 84, iy - 10, '', { ...text.body, fontSize: '15px', fontStyle: 'bold' }).setOrigin(0, 0.5);
-    this.intentNum = this.add.text(ix + 84, iy - 10, '', { ...text.h2, fontSize: '26px' }).setOrigin(1, 0.5);
+    this.add.rectangle(ix, iy, 230, 64, COLORS.panel, 0.9).setStrokeStyle(2, COLORS.panelEdge);
+    this.intentText = this.add.text(ix - 104, iy - 10, '', { ...text.body, fontSize: '14px', fontStyle: 'bold' }).setOrigin(0, 0.5);
+    this.intentNum = this.add.text(ix + 104, iy - 10, '', { ...text.h2, fontSize: '26px' }).setOrigin(1, 0.5);
     this.postureText = this.add.text(ix, iy + 16, '', text.small).setOrigin(0.5);
 
     // hand hint (shown while recovering or when the hand is empty)
     this.handHint = this.add.text(W / 2, this.handY, '', { ...text.body, color: '#ffd166', fontStyle: 'bold' }).setOrigin(0.5).setDepth(4);
+    // Hold back: discard a card to pass the turn (the out for a trap turn).
+    this.holdBtn = new Button(this, W - 70, this.handY, 'Hold', () => this.toggleHold(), { width: 100, height: 48, fontSize: '15px', fill: 0x2a2416, edge: 0x8a6a2b });
 
     // banner for big moments
     this.banner = this.add.text(W / 2, H * 0.3, '', { ...text.title, fontSize: '34px' }).setOrigin(0.5).setAlpha(0).setDepth(60);
@@ -131,7 +136,7 @@ export class CombatScene extends Phaser.Scene {
     const total = ids.length * CARD_W + (ids.length - 1) * gap;
     const startX = this.scale.gameSize.width / 2 - total / 2 + CARD_W / 2;
     ids.forEach((id, i) => {
-      const card = new Card(this, startX + i * (CARD_W + gap), this.handY, getSkill(id), () => this.act({ type: 'card', index: i }));
+      const card = new Card(this, startX + i * (CARD_W + gap), this.handY, getSkill(id), () => this.act(this.holdMode ? { type: 'hold', index: i } : { type: 'card', index: i }));
       this.hand.push(card);
     });
   }
@@ -143,6 +148,15 @@ export class CombatScene extends Phaser.Scene {
 
   private setInputEnabled(on: boolean) {
     for (const c of this.hand) c.setEnabled(on);
+    this.holdBtn.setEnabled(on);
+    if (!on) this.toggleHold(false);
+  }
+
+  private toggleHold(force?: boolean) {
+    this.holdMode = force ?? !this.holdMode;
+    this.holdBtn.label.setText(this.holdMode ? 'Cancel' : 'Hold');
+    this.handHint.setText(this.holdMode ? 'tap a card to hold it back and pass the turn' : '');
+    for (const c of this.hand) c.setAlpha(this.holdMode ? 0.8 : 1);
   }
 
   /** Recovering (or an empty hand): the turn passes on its own after a beat. */
@@ -160,7 +174,7 @@ export class CombatScene extends Phaser.Scene {
     const label = intent.kind === 'attack' ? `${moveName}${intent.hits > 1 ? ` x${intent.hits}` : ''}`
       : intent.kind === 'guard' ? `${moveName} (guard)`
       : intent.kind === 'debuff' ? `${moveName} → ${intent.status}`
-      : intent.kind === 'buff' ? `${moveName} (+${intent.status})`
+      : intent.kind === 'buff' ? (intent.status === 'brace' ? `${moveName}: counters next hit` : intent.status === 'scatter' ? `${moveName}: halves single hits` : `${moveName} (+${intent.status})`)
       : `${moveName} (stagger)`;
     this.intentText.setText(label);
     this.intentNum.setText(intent.kind === 'attack' ? String(predicted) : intent.kind === 'guard' ? '🛡' : '');
@@ -205,6 +219,20 @@ export class CombatScene extends Phaser.Scene {
         const card = this.hand[this.hand.length - 1];
         if (card) { card.setScale(0.2); await tween(this, { targets: card, scale: 1, duration: 180, ease: 'Back.Out' }); }
         this.pileText.setText(`deck ${this.state.player.deck.length}  ·  hand ${this.state.player.hand.length}  ·  discard ${this.state.player.discard.length}`);
+        return;
+      }
+      case 'hold': {
+        const card = this.hand.find((c) => c.skillId === e.skill);
+        if (card) { for (const c of this.hand) c.setEnabled(false); await tween(this, { targets: card, y: card.y + 70, alpha: 0, duration: 180, ease: 'Quad.In' }); }
+        this.dropFromDisplay(e.skill);
+        this.rebuildHand();
+        await floatText(this, this.px, this.py - 70, 'held back', COLORS.muted, 20);
+        return;
+      }
+      case 'counter': {
+        this.cameras.main.shake(100, 0.006);
+        void this.playerHp.set(this.state.player.hp, this.state.player.stats.maxHp);
+        await floatText(this, this.px, this.py - 30, e.blocked ? 'COUNTER BLOCKED' : `COUNTER -${e.amount}`, '#ff9f68', 26);
         return;
       }
       case 'handOverflow': {

@@ -35,6 +35,31 @@ export const greedy: Policy = (s) => {
   const incomingAttack = intent.kind === 'attack';
   const enemyGuarded = hasStatus(s.enemy, 'guard');
 
+  // 0. The enemy is braced (counters the next hit) or scattered (halves a single hit):
+  //    play something that is not a single big hit; failing that, hold back the weakest card.
+  const braced = hasStatus(s.enemy, 'brace');
+  const scattered = hasStatus(s.enemy, 'scatter');
+  if (braced || scattered) {
+    const safe = hand.filter((h) => {
+      const dmg = h.skill.effects.find((e) => e.type === 'damage');
+      if (!dmg) return true;                                   // guard / heal / pure status
+      if (dmg.type === 'damage' && (dmg.hits ?? 1) > 1) return true; // multi-hit slips through both
+      return false;
+    });
+    const guardish = safe.find((h) => has(h.skill.effects, isGuard));
+    if (braced && guardish) return { type: 'card', index: guardish.index };
+    const multi = safe.find((h) => has(h.skill.effects, isDamage));
+    if (multi) return { type: 'card', index: multi.index };
+    if (safe[0] && braced) return { type: 'card', index: safe[0].index };
+    if (braced) {
+      // Nothing safe: a small hit is a small counter. Hold only if even the smallest hit would be ruinous.
+      const weakest = hand.map((h) => ({ ...h, v: dmgValue(h.skill.effects, incomingAttack) })).sort((a, b) => a.v - b.v)[0]!;
+      const smallHit = Math.round(s.player.stats.atk * 1.0);
+      if (smallHit >= hp * 0.5) return { type: 'hold', index: weakest.index };
+      return { type: 'card', index: weakest.index };
+    }
+  }
+
   // 1. Lethal or heavy incoming hit and no guard: block. "Heavy" is read from the
   //    intent itself (a wind-up or multi-hit) or from what it would cost right now.
   //    Prefer a guard card that covers every incoming hit, then one that also hits back, then Defend.

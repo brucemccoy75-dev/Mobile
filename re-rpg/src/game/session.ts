@@ -6,6 +6,7 @@ import type { ClassId, EnemyId, Item, SetId, Skill, SkillId, Stats } from '@data
 import { RunRng, newSeed } from '@core/rng';
 import { generateScreen, type ScreenMap, type Tile } from '@core/map';
 import { DECK_CAP } from '@core/combat';
+import { TOME_COPY_CAP } from '@data/skills';
 import { computeStats, emptyEquipment, equip as equipItem, equipmentFromIds, equipmentToIds, type Equipment, RUN_VERSION, type RunState } from '@core/run';
 import { createMeta, discoverItem, discoverSkill, rollHeirloomChoices, type Heirloom, type MetaState } from '@core/meta';
 import { rollShopStock, type RewardChoice, type RewardSource, type ShopStock } from '@core/loot';
@@ -100,7 +101,7 @@ export function createSession(classId: ClassId, meta: MetaState, seed = newSeed(
 export function applyHeirlooms(s: RunSession, picks: Heirloom[]): void {
   const names: string[] = [];
   for (const h of picks) {
-    if (h.kind === 'tome') { if (s.deck.length < DECK_CAP) s.deck.push(h.skill.id); names.push(h.skill.name); }
+    if (h.kind === 'tome') { if (s.deck.length < DECK_CAP && s.deck.filter((d) => d === h.skill.id).length < TOME_COPY_CAP) s.deck.push(h.skill.id); names.push(h.skill.name); }
     else { applyEquip(s, h.item); names.push(h.item.name); }
   }
   s.heirloomName = names.length ? names.join(' + ') : null;

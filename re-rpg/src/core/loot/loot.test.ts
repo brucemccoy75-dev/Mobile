@@ -15,10 +15,12 @@ describe('buildPool', () => {
     expect(p.items.some((i) => i.id === 'oak_wand')).toBe(false);
   });
 
-  it('equipped items leave the pool; tomes in the deck may drop again', () => {
+  it('equipped items leave the pool; tomes may drop again up to two copies', () => {
     const p = buildPool(ctx({ deck: ['shield_bash'], equipment: { ...emptyEquipment(), relic: getItem('bloodstone') } }));
     expect(p.tomes.map((t) => t.id).sort()).toEqual(['bind_wound', 'shield_bash']);
     expect(p.items.some((i) => i.id === 'bloodstone')).toBe(false);
+    const capped = buildPool(ctx({ deck: ['shield_bash', 'shield_bash'] }));
+    expect(capped.tomes.map((t) => t.id)).toEqual(['bind_wound']);
   });
 
   it('discovered skills of the other set join the pool', () => {
@@ -93,7 +95,8 @@ describe('isLineOwned', () => {
   it('flags tomes in the deck and equipped items', async () => {
     const { isLineOwned } = await import('./index');
     const eq = { ...emptyEquipment(), weapon: getItem('iron_mace') };
-    expect(isLineOwned({ kind: 'tome', id: 'broadsword', price: 1, sold: false }, ['broadsword'], eq)).toBe(false); // copies allowed
+    expect(isLineOwned({ kind: 'tome', id: 'broadsword', price: 1, sold: false }, ['broadsword'], eq)).toBe(false); // a second copy is allowed
+    expect(isLineOwned({ kind: 'tome', id: 'broadsword', price: 1, sold: false }, ['broadsword', 'broadsword'], eq)).toBe(true); // at the cap
     expect(isLineOwned({ kind: 'tome', id: 'broadsword', price: 1, sold: false }, [], eq)).toBe(false);
     expect(isLineOwned({ kind: 'item', id: 'iron_mace', price: 1, sold: false }, [], eq)).toBe(true);
     expect(isLineOwned({ kind: 'item', id: 'broad_axe', price: 1, sold: false }, [], eq)).toBe(false);
