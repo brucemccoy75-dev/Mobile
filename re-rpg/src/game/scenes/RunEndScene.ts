@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { getItem, getSkill, ITEMS, SKILLS } from '@data/index';
-import { HEIRLOOM_DEATHS, HEIRLOOM_OFFER, HEIRLOOM_PICKS } from '@core/meta';
+import { HEIRLOOM_DEATHS, HEIRLOOM_OFFER, HEIRLOOM_PICKS, classUnlocked } from '@core/meta';
 import { getMeta, peekSession, setSession } from '@game/session';
 import { Button } from '@game/ui/Button';
 import { COLORS, text } from '@game/ui/theme';
@@ -26,6 +26,9 @@ export class RunEndScene extends Phaser.Scene {
     this.add.text(W / 2, 160, names.length ? 'New discoveries this run' : 'Nothing new discovered this run', { ...text.h2, fontSize: '18px', color: names.length ? COLORS.gold : COLORS.muted }).setOrigin(0.5);
     this.add.text(W / 2, 188, names.join('   ·   ') || 'Find tomes and gear to grow the loot pool for next time.', { ...text.body, wordWrap: { width: W - 120 }, align: 'center' }).setOrigin(0.5, 0);
 
+    if (data.won && s?.classId === 'warrior' && (meta.winsByClass.warrior ?? 0) === 1 && classUnlocked(meta, 'wizard')) {
+      this.add.text(W / 2, H * 0.5 + 10, 'Wizard and Shaman unlocked', { ...text.h2, fontSize: '22px', color: COLORS.gold }).setOrigin(0.5);
+    }
     const poolSkills = meta.discoveredSkills.length, poolItems = meta.discoveredItems.length;
     const maxSkills = SKILLS.filter((k) => k.rarity !== 'basic').length, maxItems = ITEMS.length;
     const lines = [

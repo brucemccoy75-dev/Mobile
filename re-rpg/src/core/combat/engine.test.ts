@@ -291,6 +291,26 @@ describe('brace, scatter and hold', () => {
   });
 });
 
+describe('curse and lifetap', () => {
+  it('curse ticks like burn and halves healing while it lasts', () => {
+    const s = fight(['bind_wound'], PASSIVE, 1, 10);
+    s.player.statuses.push({ id: 'curse', turns: 3, magnitude: 2 });
+    play(s, 'bind_wound'); // heal 10 → halved to 5 → 15; then curse ticks 2 → 13
+    expect(s.player.hp).toBe(13);
+    expect(s.log.find((e) => e.t === 'burn')).toMatchObject({ status: 'curse', amount: 2 });
+  });
+
+  it('the necromancer\'s Lifetap heals it for what it drains', () => {
+    const s = fight(['defend'], 'adept_necromancer');
+    s.enemy.hp = 10;
+    play(s, 'attack'); // round 1: necromancer curses
+    play(s, 'attack'); // round 2: lifetap 3-1 = 2 dmg, heals 2
+    const heals = s.log.filter((e) => e.t === 'heal' && e.side === 'enemy');
+    expect(heals.length).toBeGreaterThan(0);
+    expect(hasStatus(s.player, 'curse')).toBe(true);
+  });
+});
+
 describe('stagger', () => {
   it('leaves the boss Exposed for the player\'s following turn', () => {
     const s = fight(['attack', 'defend'], 'gatekeeper');

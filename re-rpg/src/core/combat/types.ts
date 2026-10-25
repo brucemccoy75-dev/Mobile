@@ -59,7 +59,7 @@ export type CombatEvent =
   | { t: 'statusApplied'; side: Side; status: StatusId; turns: number; magnitude: number }
   | { t: 'statusResisted'; side: Side; status: StatusId }
   | { t: 'statusExpired'; side: Side; status: StatusId }
-  | { t: 'burn'; side: Side; amount: number }
+  | { t: 'burn'; side: Side; amount: number; status: 'burn' | 'curse' }
   | { t: 'chilled'; side: Side }
   | { t: 'stunned'; side: Side; turnsLeft: number }
   | { t: 'phase'; phase: number }

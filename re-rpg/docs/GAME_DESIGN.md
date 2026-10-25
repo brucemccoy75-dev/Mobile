@@ -18,9 +18,9 @@ POC "win" = kill Boss 2. Expected first-run outcome = die before Boss 1.
 
 | Class | HP | Identity | POC sets (one rolled per run) |
 |---|---|---|---|
-| Warrior | 25 | Melee, armor, attrition | **Tank**: Shield Bash (dmg + Guard), Bind Wound (heal, Recovering) · **DPS**: Broadsword Strike (160%, overextends: Exposed this round), Exposing Strike |
-| Wizard | 20 | Burst, self-risk | **Fire**: Fireball, Inferno (ultimate, leaves caster Exposed) · **Frost**: Frost Bolt (chance to Chill = enemy skips a turn), Ice Armor (temporary def) |
-| Shaman | 20 | Sustain + nature damage over time | **Spirit**: Mend (heal), Spirit Lash (damage + heal small %) · **Storm**: Lightning (damage, ignores part of def), Static Field (Burn-like damage over time) |
+| Warrior (open) | 25 | Melee, armor, attrition | **Tank**: Shield Bash (dmg + Guard), Bind Wound (heal, Recovering) · **DPS**: Broadsword Strike (160%, overextends: Exposed this round), Exposing Strike |
+| Wizard (unlock: win as Warrior) | 20 | Burst, self-risk | **Fire**: Fireball, Inferno (ultimate, leaves caster Exposed) · **Frost**: Frost Bolt (chance to Chill = enemy skips a turn), Ice Armor (temporary def) |
+| Shaman (unlock: win as Warrior) | 20 | Sustain + nature damage over time | **Spirit**: Mend (heal), Spirit Lash (damage + heal small %) · **Storm**: Lightning (damage, ignores part of def), Static Field (Burn-like damage over time) |
 
 Shaman is deliberately the "healer with teeth" so the three classes read as tank / burst / sustain. Base stats: everyone starts with the basics Attack and Defend, an empty skill deck, no equipment, atk 4 / def 0, so an unequipped run is meant to be fragile.
 
@@ -42,7 +42,7 @@ Healing skills honour the HP-drain rule: they are rare in the pool and cost temp
 
 Skills are data: `effects[]` of damage(mult), heal(flat/%), applyStatus(target, id, turns), guard, and `selfStatus`.
 
-POC statuses: **Exposed** (takes 2x damage), **Guard** (blocks the next hit; stacks to 3), **Burn** (N dmg at end of round), **Chill** (skip next action), **Weak** (deal half damage), **Recovering** (player skips their turns while it lasts), **Braced** (enemy: the next hit that lands is countered), **Scattered** (enemy: the next single hit does half). Durations count end-of-round ticks: a status applied on the player's turn with 1 turn covers the enemy's action that round; a self-status the enemy applies on its own turn needs 2 turns to be exploitable next round.
+POC statuses: **Exposed** (takes 2x damage), **Guard** (blocks the next hit; stacks to 3), **Burn** (N dmg at end of round), **Chill** (skip next action), **Weak** (deal half damage), **Recovering** (player skips their turns while it lasts), **Braced** (enemy: the next hit that lands is countered), **Scattered** (enemy: the next single hit does half), **Cursed** (DoT at end of round and healing halved). Durations count end-of-round ticks: a status applied on the player's turn with 1 turn covers the enemy's action that round; a self-status the enemy applies on its own turn needs 2 turns to be exploitable next round.
 
 ## 4. Equipment
 
@@ -71,7 +71,7 @@ Enemies are designed as *answers* to kits so set identity matters:
 |---|---|---|---|
 | Brute | Boar | Ogre | Telegraphed big hit → Defend / Chill timing; **Brace** throws the next landing hit back |
 | Armored | Shell Beetle | Iron Knight | High def → Exposing Strike / Lightning shine |
-| Caster | Hex Imp | Witch | Applies Exposed/Weak to player → sustain and tempo |
+| Caster | Hex Imp, **Adept Necromancer** | Witch | Applies Exposed/Weak to player → sustain and tempo. The Necromancer **Curses** (DoT, healing halved) and **Lifetaps** (drains HP to heal itself): the first enemy magic |
 | Swarm (single sprite, multi-hit) | Rat Pack | Harpies | Many small hits → Guard efficiency, Burn value; **Scatter** halves the next single hit |
 | **Boss 1 Gatekeeper** | 3-turn cycle: Guard → Crush (2 hits, so one Defend only halves it) → Stagger (Exposed). Reads as a rhythm puzzle. | | |
 | **Boss 2 Warden** | Two phases: Slash/Guard/Smash, then at half HP Rend (3 hits)/Curse (Weak)/Smash. | | |

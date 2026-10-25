@@ -4,7 +4,7 @@ import type { ClassId } from '@data/types';
 import { Button } from '@game/ui/Button';
 import { CLASS_COLORS, COLORS, text } from '@game/ui/theme';
 import { createSession, getMeta, persistRun, setSession } from '@game/session';
-import { HEIRLOOM_DEATHS, HEIRLOOM_OFFER, HEIRLOOM_PICKS, heirloomPool, heirloomUnlocked } from '@core/meta';
+import { CLASS_UNLOCK_HINT, HEIRLOOM_DEATHS, HEIRLOOM_OFFER, HEIRLOOM_PICKS, classUnlocked, heirloomPool, heirloomUnlocked } from '@core/meta';
 
 export class ClassSelectScene extends Phaser.Scene {
   private selected: ClassId | null = null;
@@ -28,6 +28,7 @@ export class ClassSelectScene extends Phaser.Scene {
     CLASSES.forEach((cls, i) => {
       const x = startX + i * (panelW + gap);
       const y = height / 2 - 20;
+      const unlocked = classUnlocked(getMeta(this), cls.id);
       const bg = this.add.rectangle(x, y, panelW, 250, COLORS.panel).setStrokeStyle(3, COLORS.panelEdge);
       this.panels.set(cls.id, bg);
       this.add.rectangle(x, y - 80, 56, 72, CLASS_COLORS[cls.id] ?? COLORS.player);
@@ -38,10 +39,17 @@ export class ClassSelectScene extends Phaser.Scene {
       this.add.text(x, y + 58, sets, { ...text.body, fontSize: '14px', color: COLORS.gold }).setOrigin(0.5);
       const pool = heirloomPool(getMeta(this), cls.id);
       const n = pool.tomes.length + pool.items.length;
-      this.add.text(x, y + 96, n > 0 && heirloomUnlocked(getMeta(this)) ? `${n} unlocked (${pool.tomes.length} tomes, ${pool.items.length} items)` : 'starts with Attack + Defend', { ...text.small, color: n > 0 ? COLORS.gold : COLORS.muted }).setOrigin(0.5);
+      if (unlocked) this.add.text(x, y + 96, n > 0 && heirloomUnlocked(getMeta(this)) ? `${n} unlocked (${pool.tomes.length} tomes, ${pool.items.length} items)` : 'starts with Attack + Defend', { ...text.small, color: n > 0 ? COLORS.gold : COLORS.muted }).setOrigin(0.5);
 
-      bg.setInteractive({ useHandCursor: true });
-      bg.on('pointerup', () => this.select(cls.id));
+      if (unlocked) {
+        bg.setInteractive({ useHandCursor: true });
+        bg.on('pointerup', () => this.select(cls.id));
+      } else {
+        // Locked: dim the whole panel and say how to open it.
+        this.add.rectangle(x, y, panelW, 250, 0x0b0f1a, 0.72).setDepth(2);
+        this.add.text(x, y - 80, 'LOCKED', { ...text.h2, fontSize: '24px', color: '#e6e9f2' }).setOrigin(0.5).setDepth(3);
+        this.add.text(x, y + 96, CLASS_UNLOCK_HINT, { ...text.small, fontSize: '13px', color: COLORS.gold, wordWrap: { width: panelW - 30 }, align: 'center' }).setOrigin(0.5).setDepth(3);
+      }
     });
 
     this.setLabel = this.add.text(width / 2, height - 96, 'tap a class', text.small).setOrigin(0.5);

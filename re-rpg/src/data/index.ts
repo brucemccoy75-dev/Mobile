@@ -5,6 +5,7 @@ import { ITEMS } from './items';
 import type { ClassId, Enemy, EnemyId, Item, PlayerClass, SetId, Skill, SkillId, SkillSet } from './types';
 
 export * from './types';
+export { describeSkill, baseHit } from './describe';
 export { CLASSES, ENEMIES, SETS, SKILLS, ITEMS };
 
 const skillById = new Map<SkillId, Skill>(SKILLS.map((s) => [s.id, s]));

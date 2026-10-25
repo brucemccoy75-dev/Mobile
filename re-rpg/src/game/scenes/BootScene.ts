@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { createMeta, META_VERSION, type MetaState } from '@core/meta';
+import { createMeta, migrateMeta, type MetaState } from '@core/meta';
 import type { RunState } from '@core/run';
 import { LocalSaveStore, browserKeyValue } from '@save/LocalSaveStore';
 import { SyncedSaveStore } from '@save/SyncedSaveStore';
@@ -31,8 +31,9 @@ export class BootScene extends Phaser.Scene {
         }
       }
       const store = this.registry.get('store') as LocalSaveStore<MetaState, RunState>;
-      const meta = await store.loadMeta();
-      setMeta(this, meta && meta.version === META_VERSION ? meta : createMeta());
+      const meta = migrateMeta(await store.loadMeta());
+      setMeta(this, meta ?? createMeta());
+      if (meta) await store.saveMeta(meta);
       this.scene.start('Title');
     })();
   }

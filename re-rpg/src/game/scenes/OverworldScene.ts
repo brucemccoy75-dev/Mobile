@@ -334,7 +334,7 @@ export class OverworldScene extends Phaser.Scene {
     const sub = this.add.text(cx, top + H * 0.36 + 48, last ? `Both screens cleared with ${s.encountersWon} fights won. Seed ${s.seed}.` : 'Fully healed. The next screen is harder.', text.body).setOrigin(0.5).setDepth(121);
     const btn = new Button(this, cx, top + H * 0.64, last ? 'Continue' : 'Onward', () => {
       if (last) {
-        recordWin(getMeta(this), SCREEN_COUNT);
+        recordWin(getMeta(this), SCREEN_COUNT, s.classId);
         void Promise.all([persistMeta(this), getStore(this).clearRun()]).then(() => this.scene.start('RunEnd', { won: true }));
         return;
       }

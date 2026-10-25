@@ -46,12 +46,13 @@ export const STATUS_LABELS: Record<StatusId, { label: string; color: string; des
   stun: { label: 'RECOVERING', color: '#ffd166', desc: 'Skips turns while it lasts. The enemy keeps acting.' },
   brace: { label: 'BRACED', color: '#ff9f68', desc: 'The next hit that lands is thrown straight back at the attacker. A Guard blocks the counter; a small hit means a small counter.' },
   scatter: { label: 'SCATTERED', color: '#b8f0c8', desc: 'The next single hit does half damage. Attacks with several hits are unaffected.' },
+  curse: { label: 'CURSED', color: '#c084fc', desc: 'Loses HP at the end of every round and healing is halved while it lasts. Ignores Guard.' },
 };
 
 /** Plain-language reading of an enemy intent for the tap-to-explain panel. */
-export function describeIntent(kind: string, moveName: string, predicted: number, hits: number, status?: StatusId): string {
+export function describeIntent(kind: string, moveName: string, predicted: number, hits: number, status?: StatusId, drain = false): string {
   switch (kind) {
-    case 'attack': return hits > 1 ? `${moveName}: ${hits} hits for about ${predicted} total. Each Guard stack blocks one hit.` : `${moveName}: one hit for about ${predicted}. Defend blocks it.`;
+    case 'attack': return hits > 1 ? `${moveName}: ${hits} hits for about ${predicted} total. Each Guard stack blocks one hit.` : `${moveName}: one hit for about ${predicted}. Defend blocks it.${drain ? ' It heals the caster for what it drains.' : ''}`;
     case 'guard': return `${moveName}: raises a guard, so your next hit is blocked. Strip it with a cheap hit, or wait it out.`;
     case 'debuff': return `${moveName}: inflicts ${STATUS_LABELS[status!].label} on you. ${STATUS_LABELS[status!].desc}`;
     case 'buff': return `${moveName}: ${STATUS_LABELS[status!].desc}`;

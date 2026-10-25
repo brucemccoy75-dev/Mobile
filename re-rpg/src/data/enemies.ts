@@ -37,6 +37,16 @@ const scatter = (id = 'scatter', name = 'Scatter'): EnemyMove => ({
   effects: [{ type: 'status', target: 'self', status: 'scatter', turns: 2 }],
 });
 
+// The first spellcaster: a slow curse that also halves healing, and a drain that heals it.
+const curse = (id = 'curse_dot', name = 'Curse', magnitude = 2, turns = 3): EnemyMove => ({
+  id, name, posture: 'sinister', intent: { kind: 'debuff', status: 'curse' },
+  effects: [{ type: 'status', target: 'enemy', status: 'curse', turns, magnitude }],
+});
+const drain = (id: string, name: string, mult: number): EnemyMove => ({
+  id, name, posture: 'sinister', intent: { kind: 'attack', mult, hits: 1, drain: true },
+  effects: [{ type: 'damage', mult, lifesteal: 1 }],
+});
+
 export const ENEMIES: Enemy[] = [
   // ---- Screen 1 ----
   { id: 'boar', name: 'Boar', tier: 1, archetype: 'brute', stats: { maxHp: 20, atk: 4, def: 0 },
@@ -45,6 +55,8 @@ export const ENEMIES: Enemy[] = [
     table: { kind: 'sequence', moves: [hit('bite', 'Bite', 1.0), guard('shell', 'Shell'), hit('bite', 'Bite', 1.0)] } },
   { id: 'hex_imp', name: 'Hex Imp', tier: 1, archetype: 'caster', stats: { maxHp: 16, atk: 3, def: 0 },
     table: { kind: 'sequence', moves: [debuff('hex', 'Hex', 'exposed', 2), hit('jab', 'Jab', 1.0), debuff('curse', 'Curse', 'weak', 2), hit('jab', 'Jab', 1.0)] } },
+  { id: 'adept_necromancer', name: 'Adept Necromancer', tier: 1, archetype: 'caster', stats: { maxHp: 18, atk: 3, def: 0 },
+    table: { kind: 'sequence', moves: [curse(), drain('lifetap', 'Lifetap', 1.0), hit('bone_bolt', 'Bone Bolt', 1.0), drain('lifetap', 'Lifetap', 1.0)] } },
   { id: 'rat_pack', name: 'Rat Pack', tier: 1, archetype: 'swarm', stats: { maxHp: 18, atk: 2, def: 0 },
     table: { kind: 'weighted', moves: [{ move: hit('swarm', 'Swarm', 0.6, 'aggressive', 3), weight: 2 }, { move: hit('nibble', 'Nibble', 1.0), weight: 1 }, { move: scatter(), weight: 1 }] } },
 

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { getItem, getSkill } from '@data/index';
+import { describeSkill, getItem, getSkill } from '@data/index';
 import { isLineOwned, type ShopLine } from '@core/loot';
 import { DECK_CAP } from '@core/combat';
 import { getMeta, getSession, persistMeta, persistRun, takeChoice, type RunSession } from '@game/session';
@@ -43,7 +43,7 @@ export class ShopScene extends Phaser.Scene {
       const owned = !line.sold && isLineOwned(line, s.deck, s.equipment);
       return line.kind === 'item'
         ? { line, label: `${getItem(line.id).slot.toUpperCase()} · ${getItem(line.id).rarity}`, title: getItem(line.id).name, body: getItem(line.id).text, price: line.price, sold: line.sold || owned, owned, rarity: getItem(line.id).rarity }
-        : { line, label: 'TOME', title: getSkill(line.id).name, body: getSkill(line.id).text, price: line.price, sold: line.sold || owned, owned, rarity: getSkill(line.id).rarity };
+        : { line, label: 'TOME', title: getSkill(line.id).name, body: describeSkill(getSkill(line.id), s.stats), price: line.price, sold: line.sold || owned, owned, rarity: getSkill(line.id).rarity };
     });
     entries.push({ line: null, label: 'SERVICE', title: 'Mend wounds', body: `Heal ${Math.round(st.healPct * 100)}% of max HP. Once per shop.`, price: st.healPrice, sold: st.healUsed, rarity: 'uncommon' });
 

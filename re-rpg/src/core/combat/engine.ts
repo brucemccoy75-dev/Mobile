@@ -186,6 +186,7 @@ export function applyEffects(effects: Effect[], self: Combatant, other: Combatan
 }
 
 function heal(c: Combatant, amount: number, events: CombatEvent[]): void {
+  if (hasStatus(c, 'curse')) amount = Math.floor(amount / 2); // Cursed: healing halved
   const applied = Math.max(0, Math.min(c.stats.maxHp - c.hp, amount));
   if (applied === 0) return;
   c.hp += applied;

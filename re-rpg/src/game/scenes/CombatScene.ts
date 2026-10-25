@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { getEnemy, getSkill } from '@data/index';
+import { describeSkill, getEnemy, getSkill } from '@data/index';
 import type { Enemy, Intent, Posture } from '@data/types';
 import { createCombat, currentIntent, isPlayerStunned, step, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
 import { getMeta, getSession, getStore, persistMeta, setName, setSession, type PendingEncounter, type RunSession } from '@game/session';
@@ -165,7 +165,8 @@ export class CombatScene extends Phaser.Scene {
     const status = 'status' in intent ? intent.status : undefined;
     const hits = intent.kind === 'attack' ? intent.hits : 1;
     const tell = POSTURE_TEXT[this.state.enemy.next.posture] ?? '';
-    this.showInfo(`${this.enemyDef.name} this round`, `${describeIntent(intent.kind, moveName, predictedDamage, hits, status)}\n\nAfter that: ${tell.replace('next: ', '')}.`, '#ffb4b4');
+    const drain = intent.kind === 'attack' && !!intent.drain;
+    this.showInfo(`${this.enemyDef.name} this round`, `${describeIntent(intent.kind, moveName, predictedDamage, hits, status, drain)}\n\nAfter that: ${tell.replace('next: ', '')}.`, '#ffb4b4');
   }
 
   private syncAll() {
@@ -186,7 +187,7 @@ export class CombatScene extends Phaser.Scene {
     const total = ids.length * CARD_W + (ids.length - 1) * gap;
     const startX = this.scale.gameSize.width / 2 - total / 2 + CARD_W / 2;
     ids.forEach((id, i) => {
-      const card = new Card(this, startX + i * (CARD_W + gap), this.handY, getSkill(id), () => this.act(this.holdMode ? { type: 'hold', index: i } : { type: 'card', index: i }));
+      const card = new Card(this, startX + i * (CARD_W + gap), this.handY, getSkill(id), () => this.act(this.holdMode ? { type: 'hold', index: i } : { type: 'card', index: i }), describeSkill(getSkill(id), this.state.player.stats));
       this.hand.push(card);
     });
   }
@@ -221,9 +222,9 @@ export class CombatScene extends Phaser.Scene {
   }
 
   private showIntent(intent: Intent, posture: Posture, predicted: number, moveName: string) {
-    const label = intent.kind === 'attack' ? `${moveName}${intent.hits > 1 ? ` x${intent.hits}` : ''}`
+    const label = intent.kind === 'attack' ? `${moveName}${intent.hits > 1 ? ` x${intent.hits}` : ''}${intent.drain ? ' · drains' : ''}`
       : intent.kind === 'guard' ? `${moveName} (guard)`
-      : intent.kind === 'debuff' ? `${moveName} → ${intent.status}`
+      : intent.kind === 'debuff' ? `${moveName} → ${STATUS_LABELS[intent.status].label}`
       : intent.kind === 'buff' ? (intent.status === 'brace' ? `${moveName}: counters next hit` : intent.status === 'scatter' ? `${moveName}: halves single hits` : `${moveName} (+${intent.status})`)
       : `${moveName} (stagger)`;
     this.intentText.setText(label);
@@ -356,7 +357,7 @@ export class CombatScene extends Phaser.Scene {
         const c = e.side === 'player' ? this.state.player : this.state.enemy;
         this.phaseText.setText('END OF ROUND').setColor(COLORS.muted);
         void (e.side === 'player' ? this.playerHp : this.enemyHp).set(c.hp, c.stats.maxHp);
-        await floatText(this, p.x, p.y - 30, `burn -${e.amount}`, COLORS.burn, 28);
+        await floatText(this, p.x, p.y - 30, `${e.status === 'curse' ? 'curse' : 'burn'} -${e.amount}`, e.status === 'curse' ? '#c084fc' : COLORS.burn, 28);
         return;
       }
       case 'statusApplied': {

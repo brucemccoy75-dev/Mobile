@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import { getSkill } from '@data/index';
+import { describeSkill, getSkill } from '@data/index';
 import type { Item, Skill, SkillId } from '@data/types';
 import { compareItems } from '@core/run';
 import type { RunSession } from '@game/session';
@@ -51,6 +51,7 @@ export function openSwapPanel(scene: Phaser.Scene, session: RunSession, skill: S
   const close = () => { for (const o of made) o.destroy(); made.length = 0; };
   const { W, H, t } = base(scene, 720, 330, made);
   t(W / 2, H / 2 - 135, `Deck full. Replace which card with ${skill.name}?`, text.h2);
+  t(W / 2, H / 2 - 105, describeSkill(skill, session.stats), text.small);
   const ids = session.deck;
   const cw = 108, gap = 8;
   const startX = W / 2 - ((ids.length * cw + (ids.length - 1) * gap) / 2) + cw / 2;

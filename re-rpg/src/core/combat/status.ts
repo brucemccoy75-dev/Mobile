@@ -62,11 +62,13 @@ export function consumeChill(c: Combatant, events: CombatEvent[]): boolean {
  * expire at zero. Guard and Chill are consumed by events, not time.
  */
 export function tickStatuses(c: Combatant, events: CombatEvent[]): void {
-  const burn = getStatus(c, 'burn');
-  if (burn && c.hp > 0) {
-    const amount = Math.min(c.hp, burn.magnitude);
-    c.hp -= amount;
-    events.push({ t: 'burn', side: c.side, amount });
+  for (const dot of ['burn', 'curse'] as const) {
+    const st = getStatus(c, dot);
+    if (st && c.hp > 0) {
+      const amount = Math.min(c.hp, st.magnitude);
+      c.hp -= amount;
+      events.push({ t: 'burn', side: c.side, amount, status: dot });
+    }
   }
   for (const s of c.statuses.slice()) {
     if (s.id === 'guard' || s.id === 'chill') continue;
