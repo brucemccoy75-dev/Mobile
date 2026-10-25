@@ -167,3 +167,8 @@ Players must be able to log in on any device and keep past-loop gains.
 - Vitest on `core/*` (combat math, map connectivity, loot pool composition, save migrations).
 - `npm run sim -- --runs 5000 --class warrior --unlocks 0` prints reach-boss %, avg turns per fight, death cause histogram. Tune numbers until fresh runs die before boss 1 most of the time and 2–3 unlocks flip that.
 - Playwright smoke test at phone-landscape viewport: boot → class select → first fight.
+
+## Addendum: multiple enemies (DECISIONS #29)
+
+`CombatState.enemies[]` with `enemyDefs[]`; `enemy`/`enemyDef` alias slot 0 for single-enemy call sites. `PlayerAction.card.target` picks a slot; `resolveTarget` falls back to the front living enemy. Events carry `who` (enemy slot) and the scene keeps one `EnemyView` per slot (sprite, bar, chips, intent panel). Encounters carry `extra: EnemyId[]` behind the primary `enemyId`.
+

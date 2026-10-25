@@ -52,40 +52,40 @@ const curse = (id = 'curse_dot', name = 'Curse', magnitude = 1, turns = 4): Enem
   id, name, posture: 'sinister', intent: { kind: 'debuff', status: 'curse' },
   effects: [{ type: 'status', target: 'enemy', status: 'curse', turns, magnitude, kind: 'magic' }],
 });
-const drain = (id: string, name: string, mult: number): EnemyMove => ({
+const drain = (id: string, name: string, mult: number, lifesteal = 1): EnemyMove => ({
   id, name, posture: 'sinister', intent: { kind: 'attack', mult, hits: 1, drain: true, dmgType: 'magic' },
-  effects: [{ type: 'damage', mult, lifesteal: 1, kind: 'magic' }],
+  effects: [{ type: 'damage', mult, lifesteal, kind: 'magic' }],
 });
 
 export const ENEMIES: Enemy[] = [
   // ---- Screen 1 ----
-  { id: 'boar', name: 'Boar', tier: 1, archetype: 'brute', stats: { maxHp: 20, atk: 4, def: 0 },
+  { id: 'boar', name: 'Boar', tier: 1, archetype: 'brute', stats: { maxHp: 12, atk: 5, def: 0 },
     table: { kind: 'sequence', moves: [hit('tusk', 'Tusk', 1.0), brace(), charge('gore', 'Gore', 2.0)] } },
-  { id: 'shell_beetle', name: 'Shell Beetle', tier: 1, archetype: 'armored', stats: { maxHp: 14, atk: 3, def: 2 },
+  { id: 'shell_beetle', name: 'Shell Beetle', tier: 1, archetype: 'armored', stats: { maxHp: 10, atk: 4, def: 1 },
     table: { kind: 'sequence', moves: [hit('bite', 'Bite', 1.0), harden(), hit('bite', 'Bite', 1.0)] } },
-  { id: 'hex_imp', name: 'Hex Imp', tier: 1, archetype: 'caster', stats: { maxHp: 16, atk: 3, def: 0 },
+  { id: 'hex_imp', name: 'Hex Imp', tier: 1, archetype: 'caster', stats: { maxHp: 11, atk: 4, def: 0 },
     table: { kind: 'sequence', moves: [debuff('hex', 'Hex', 'exposed', 2), hit('jab', 'Jab', 1.0), debuff('curse', 'Curse', 'weak', 2), hit('jab', 'Jab', 1.0)] } },
-  { id: 'adept_necromancer', name: 'Adept Necromancer', tier: 1, archetype: 'caster', stats: { maxHp: 16, atk: 3, def: 0 },
-    table: { kind: 'sequence', moves: [curse(), drain('lifetap', 'Lifetap', 1.0), spell('bone_bolt', 'Bone Bolt', 1.0), drain('lifetap', 'Lifetap', 1.0)] } },
-  { id: 'rat_pack', name: 'Rat Pack', tier: 1, archetype: 'swarm', stats: { maxHp: 18, atk: 2, def: 0 },
+  { id: 'adept_necromancer', name: 'Adept Necromancer', tier: 1, archetype: 'caster', stats: { maxHp: 11, atk: 4, def: 0 },
+    table: { kind: 'sequence', moves: [curse(), drain('lifetap', 'Lifetap', 1.0, 0.5), spell('bone_bolt', 'Bone Bolt', 1.5), drain('lifetap', 'Lifetap', 1.0, 0.5)] } },
+  { id: 'rat_pack', name: 'Rat Pack', tier: 1, archetype: 'swarm', stats: { maxHp: 12, atk: 3, def: 0 },
     table: { kind: 'weighted', moves: [{ move: hit('swarm', 'Swarm', 0.6, 'aggressive', 3), weight: 2 }, { move: hit('nibble', 'Nibble', 1.0), weight: 1 }, { move: scatter(), weight: 1 }] } },
 
   // ---- Screen 2 ----
-  { id: 'ogre', name: 'Ogre', tier: 2, archetype: 'brute', stats: { maxHp: 34, atk: 6, def: 1 },
-    table: { kind: 'sequence', moves: [hit('club', 'Club', 1.0), brace(), charge('smash', 'Smash', 2.5)] } },
-  { id: 'iron_knight', name: 'Iron Knight', tier: 2, archetype: 'armored', stats: { maxHp: 26, atk: 5, def: 4 },
+  { id: 'ogre', name: 'Ogre', tier: 2, archetype: 'brute', stats: { maxHp: 24, atk: 7, def: 1 },
+    table: { kind: 'sequence', moves: [hit('club', 'Club', 1.0), brace(), charge('smash', 'Smash', 2.2)] } },
+  { id: 'iron_knight', name: 'Iron Knight', tier: 2, archetype: 'armored', stats: { maxHp: 18, atk: 6, def: 3 },
     table: { kind: 'sequence', moves: [hit('slash', 'Slash', 1.0), harden('brace_plate', 'Brace Plate'), hit('slash', 'Slash', 1.0), charge('bash', 'Bash', 1.5)] } },
-  { id: 'witch', name: 'Witch', tier: 2, archetype: 'caster', stats: { maxHp: 24, atk: 5, def: 0 },
+  { id: 'witch', name: 'Witch', tier: 2, archetype: 'caster', stats: { maxHp: 17, atk: 6, def: 0 },
     table: { kind: 'sequence', moves: [debuff('hex', 'Hex', 'exposed', 2), spell('bolt', 'Bolt', 1.2), debuff('curse', 'Curse', 'weak', 2), spell('bolt', 'Bolt', 1.2)] } },
-  { id: 'harpies', name: 'Harpies', tier: 2, archetype: 'swarm', stats: { maxHp: 26, atk: 3, def: 1 },
+  { id: 'harpies', name: 'Harpies', tier: 2, archetype: 'swarm', stats: { maxHp: 18, atk: 4, def: 1 },
     table: { kind: 'weighted', moves: [{ move: hit('swarm', 'Dive', 0.7, 'aggressive', 3), weight: 2 }, { move: debuff('screech', 'Screech', 'weak', 2), weight: 1 }, { move: scatter('scatter', 'Wheel'), weight: 1 }] } },
 
   // ---- Bosses ----
   // Knight Andre (id gatekeeper, the screen-1 boss) is a rhythm puzzle: guard, big hit, then exposed. Reading the tell is the fight.
-  { id: 'gatekeeper', name: 'Knight Andre', tier: 'boss1', archetype: 'boss', stats: { maxHp: 48, atk: 6, def: 2 },
+  { id: 'gatekeeper', name: 'Knight Andre', tier: 'boss1', archetype: 'boss', stats: { maxHp: 52, atk: 7, def: 2 },
     table: { kind: 'sequence', moves: [guard(), charge('crush', 'Crush', 1.0, 2), stagger()] } },
   // Warden: phase two at half HP trades guard for a multi-hit rend and Weak.
-  { id: 'warden', name: 'The Warden', tier: 'boss2', archetype: 'boss', stats: { maxHp: 58, atk: 7, def: 2 },
+  { id: 'warden', name: 'The Warden', tier: 'boss2', archetype: 'boss', stats: { maxHp: 62, atk: 8, def: 2 },
     table: { kind: 'sequence', moves: [hit('slash', 'Slash', 1.0), guard(), charge('smash', 'Smash', 1.6), stagger()] },
     phases: [{ hpBelow: 0.5, table: { kind: 'sequence', moves: [hit('rend', 'Rend', 0.6, 'aggressive', 3), debuff('curse', 'Curse', 'weak', 2), charge('smash', 'Smash', 2.0)] } }] },
 ];

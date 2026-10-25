@@ -119,3 +119,18 @@ shaman Spiritcaller+gear2           73.4%      56.2%     18.9   3.98   37.0  ogr
 shaman Stormcaller+gear2            45.2%       0.6%      7.2   3.09   17.7  warden 45%, ogre 36%, harpies 7%
 shaman both sets+gear2              71.2%      29.2%     15.4   3.70   24.8  warden 42%, ogre 28%, iron_knight 1%
 ```
+
+## Pacing pass (DECISIONS #30) and duos (DECISIONS #29)
+
+Greedy-sim duels, fresh warrior (basics only), 200 fights each, after the pass:
+
+| Enemy | Rounds | HP left |
+|---|---|---|
+| Boar | 4.0 | 68% |
+| Shell Beetle | 4.0 | 76% |
+| Hex Imp | 3.0 | 76% |
+| Adept Necromancer | 6.3 | 59% |
+| Rat Pack | 3.5 | 81% |
+
+Gauntlet (4 wild fights then Knight Andre): fresh warrior reaches the boss 41% (was 8%), beats it 0%; Bulwark+gear1 beats it 92% in ~30 rounds (the greedy tank defends every third round; humans with Broadsword do it in far fewer). Tier 2: Bulwark+gear2 beats the Warden 18%, dies to him 60%. Duos are not in the sim yet; their first numbers come from the run log.
+

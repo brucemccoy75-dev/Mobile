@@ -62,3 +62,11 @@ Phone test: Bind Wound's self-Exposed and an enemy Hex looked like one status. A
 
 Cards are coloured by what they do, not by rarity: attack red, defence blue, heal green, magic orange (rarity moved into the name colour). Under the text one headline number sits large in the corner with its unit (4 damage, 1 hit, 2 rounds, 9 heal, 3×3 burn), chosen by `cardFace()` in `src/data/describe.ts` from the first damage, heal, self-block or hostile status effect. Fleeting and once-per-fight cards carry a corner tag (purple FLEETING, gold ONCE). Cards grew to 150×112 to fit.
 
+## 29. Duos: two enemies, one target arrow
+
+Enemy scripts are deterministic on purpose (reading the Boar is the fun), so variety comes from combinations, not dice. The engine now holds `enemies[]` (front first); each has its own script, intent, statuses and HP, acts in slot order, and ticks before the player. Cards take a `target` slot: a gold arrow bobs over the targeted enemy and tapping an enemy retargets. Multi-hit cards hit the target only for now; sweeps and taunts are future cards. A dead target falls back to the front living enemy. Wild encounters roll an authored pair from `src/data/packs.ts` 20% of the time on screen 1 and 40% on screen 2; guards and bosses stay single until pairs prove out. A duo pays like a guard fight. Telemetry lists every enemy; hunts count all of them. Test Mode has a "2nd" picker.
+
+## 30. Pacing: faster, not easier
+
+Target rounds per fight: trash 3–4, guards and duos 5–7, bosses 10+. Enemy HP came down about a third and attack went up one so damage per fight stays while rounds fall: Boar 12/5, Shell Beetle 10/4 def 1, Hex Imp 11/4, Necromancer 11/4 with Bone Bolt 1.5× and Lifetap healing half, Rat Pack 12/3; Ogre 24/7 (Smash 2.2×), Iron Knight 18/6 def 3, Witch 17/6, Harpies 18/4. Bosses got longer instead: Knight Andre 52/7, Warden 62/8. Greedy-sim duels for a fresh warrior now run 3–6 rounds (necromancer longest); the boss stays a long fight for the tank build. The player buff is deferred until telemetry from duos lands.
+

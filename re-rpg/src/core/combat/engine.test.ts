@@ -223,7 +223,7 @@ describe('intent and tells', () => {
     play(s, 'defend');
     play(s, 'defend');
     const third = s.log.filter((e) => e.t === 'intent')[2]!;
-    expect(third).toMatchObject({ moveName: 'Gore', predictedDamage: 7 }); // round(4*2)=8 - def 1
+    expect(third).toMatchObject({ moveName: 'Gore', predictedDamage: 9 }); // round(5*2)=10 - def 1
   });
 
   it('predicted damage reflects Exposed on the player', () => {
