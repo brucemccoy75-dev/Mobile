@@ -23,8 +23,8 @@ export class CombatScene extends Phaser.Scene {
   private state!: CombatState;
   private busy = false;
 
-  private playerSprite!: Phaser.GameObjects.Rectangle;
-  private enemySprite!: Phaser.GameObjects.Rectangle;
+  private playerSprite!: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image;
+  private enemySprite!: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image;
   private playerHp!: HpBar;
   private enemyHp!: HpBar;
   private playerChips!: StatusChips;
@@ -87,8 +87,14 @@ export class CombatScene extends Phaser.Scene {
     // ground line
     this.add.rectangle(W / 2, H * 0.66, W, 2, COLORS.panelEdge);
 
-    // combatants (placeholder shapes until the art pass)
-    this.playerSprite = this.add.rectangle(this.px, this.py, 64, 92, CLASS_COLORS[this.session.classId] ?? COLORS.player);
+    // combatants: real art when a texture was loaded (see BootScene.ART_FILES), placeholder shapes otherwise
+    const heroKey = `hero_${this.session.classId}`;
+    if (this.textures.exists(heroKey)) {
+      // @2x source shown at half size; feet on the ground line the placeholder's bottom edge sat on.
+      this.playerSprite = this.add.image(this.px, this.py + 46, heroKey).setOrigin(0.5, 1).setScale(0.5);
+    } else {
+      this.playerSprite = this.add.rectangle(this.px, this.py, 64, 92, CLASS_COLORS[this.session.classId] ?? COLORS.player);
+    }
     const esize = isBoss ? 120 : this.enemyDef.tier === 2 ? 92 : 76;
     this.enemySprite = this.add.rectangle(this.ex, this.ey, esize, esize, isBoss ? COLORS.boss : COLORS.enemy);
     this.add.text(this.ex, this.ey + esize / 2 + 12, this.enemyDef.name, text.small).setOrigin(0.5, 0);

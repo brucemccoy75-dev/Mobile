@@ -8,9 +8,19 @@ import { firebaseConfig } from '@save/config';
 import { mergeMeta } from '@core/meta';
 import { setMeta } from '@game/session';
 
-/** Wires persistence and loads meta before the title shows. Assets load here later. */
+/** Optional art, keyed by the texture name the scenes look for (docs/ART.md). Missing files keep the placeholder shapes. */
+export const ART_FILES: Record<string, string> = {
+  hero_warrior: 'art/test/hero_warrior@2x.png',
+};
+
+/** Wires persistence and loads meta before the title shows. Optional art loads here too. */
 export class BootScene extends Phaser.Scene {
   constructor() { super('Boot'); }
+
+  preload() {
+    this.load.on('loaderror', (file: { key: string }) => console.info(`art: no ${file.key}, using placeholder`));
+    for (const [key, path] of Object.entries(ART_FILES)) this.load.image(key, path);
+  }
 
   create() {
     const local = new LocalSaveStore<MetaState, RunState>(browserKeyValue());
