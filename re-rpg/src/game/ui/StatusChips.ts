@@ -17,7 +17,7 @@ export class StatusChips extends Phaser.GameObjects.Container {
     let cx = 0;
     for (const s of statuses) {
       const meta = STATUS_LABELS[s.id];
-      const suffix = s.id === 'guard' ? ` x${s.magnitude}` : s.id === 'burn' || s.id === 'curse' ? ` ${s.magnitude}/${s.turns}` : s.id === 'chill' || s.id === 'brace' || s.id === 'scatter' ? '' : s.id === 'stun' ? ` ${Math.max(0, s.turns - 1)}` : ` ${s.turns}`;
+      const suffix = s.id === 'guard' ? ` x${s.magnitude}` : s.id === 'burn' || s.id === 'curse' ? ` ${s.magnitude}/${s.turns}` : s.id === 'chill' || s.id === 'brace' || s.id === 'scatter' ? '' : s.id === 'harden' ? ` ${s.turns}` : s.id === 'stun' ? ` ${Math.max(0, s.turns - 1)}` : ` ${s.turns}`;
       const t = this.scene.add.text(0, 0, meta.label + suffix, { fontFamily: FONT, fontSize: '12px', color: meta.color, fontStyle: 'bold' }).setOrigin(this.alignRight ? 1 : 0, 0.5);
       const w = t.width + 12;
       const bg = this.scene.add.rectangle(0, 0, w + 8, 26, 0x000000, 0.55).setOrigin(this.alignRight ? 1 : 0, 0.5).setStrokeStyle(1, 0xffffff, 0.25);

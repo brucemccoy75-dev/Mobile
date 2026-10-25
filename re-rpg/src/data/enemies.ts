@@ -19,6 +19,11 @@ const debuff = (id: string, name: string, status: StatusId, turns: number): Enem
 // Status durations count end-of-round ticks. A self-status the enemy applies on
 // its own turn ticks once that same round, so turns: 2 = "exposed during the
 // player's next turn".
+// Armoured enemies harden instead of guarding: half damage through the player's next turn, never a wasted hit.
+const harden = (id = 'shell', name = 'Shell'): EnemyMove => ({
+  id, name, posture: 'defensive', intent: { kind: 'buff', status: 'harden' },
+  effects: [{ type: 'status', target: 'self', status: 'harden', turns: 2 }],
+});
 const stagger = (id = 'stagger', name = 'Stagger'): EnemyMove => ({
   id, name, posture: 'reeling', intent: { kind: 'stagger' },
   effects: [{ type: 'status', target: 'self', status: 'exposed', turns: 2 }],
@@ -52,7 +57,7 @@ export const ENEMIES: Enemy[] = [
   { id: 'boar', name: 'Boar', tier: 1, archetype: 'brute', stats: { maxHp: 20, atk: 4, def: 0 },
     table: { kind: 'sequence', moves: [hit('tusk', 'Tusk', 1.0), brace(), charge('gore', 'Gore', 2.0)] } },
   { id: 'shell_beetle', name: 'Shell Beetle', tier: 1, archetype: 'armored', stats: { maxHp: 14, atk: 3, def: 2 },
-    table: { kind: 'sequence', moves: [hit('bite', 'Bite', 1.0), guard('shell', 'Shell'), hit('bite', 'Bite', 1.0)] } },
+    table: { kind: 'sequence', moves: [hit('bite', 'Bite', 1.0), harden(), hit('bite', 'Bite', 1.0)] } },
   { id: 'hex_imp', name: 'Hex Imp', tier: 1, archetype: 'caster', stats: { maxHp: 16, atk: 3, def: 0 },
     table: { kind: 'sequence', moves: [debuff('hex', 'Hex', 'exposed', 2), hit('jab', 'Jab', 1.0), debuff('curse', 'Curse', 'weak', 2), hit('jab', 'Jab', 1.0)] } },
   { id: 'adept_necromancer', name: 'Adept Necromancer', tier: 1, archetype: 'caster', stats: { maxHp: 16, atk: 3, def: 0 },
@@ -64,7 +69,7 @@ export const ENEMIES: Enemy[] = [
   { id: 'ogre', name: 'Ogre', tier: 2, archetype: 'brute', stats: { maxHp: 34, atk: 6, def: 1 },
     table: { kind: 'sequence', moves: [hit('club', 'Club', 1.0), brace(), charge('smash', 'Smash', 2.5)] } },
   { id: 'iron_knight', name: 'Iron Knight', tier: 2, archetype: 'armored', stats: { maxHp: 26, atk: 5, def: 4 },
-    table: { kind: 'sequence', moves: [hit('slash', 'Slash', 1.0), guard(), hit('slash', 'Slash', 1.0), charge('bash', 'Bash', 1.5)] } },
+    table: { kind: 'sequence', moves: [hit('slash', 'Slash', 1.0), harden('brace_plate', 'Brace Plate'), hit('slash', 'Slash', 1.0), charge('bash', 'Bash', 1.5)] } },
   { id: 'witch', name: 'Witch', tier: 2, archetype: 'caster', stats: { maxHp: 24, atk: 5, def: 0 },
     table: { kind: 'sequence', moves: [debuff('hex', 'Hex', 'exposed', 2), hit('bolt', 'Bolt', 1.2), debuff('curse', 'Curse', 'weak', 2), hit('bolt', 'Bolt', 1.2)] } },
   { id: 'harpies', name: 'Harpies', tier: 2, archetype: 'swarm', stats: { maxHp: 26, atk: 3, def: 1 },

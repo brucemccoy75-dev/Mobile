@@ -321,6 +321,27 @@ describe('curse and lifetap', () => {
   });
 });
 
+describe('harden', () => {
+  it('halves damage taken while it lasts and never blocks', () => {
+    const s = fight(['broadsword', 'attack'], PASSIVE);
+    s.enemy.statuses.push({ id: 'harden', turns: 2, magnitude: 1 });
+    play(s, 'broadsword'); // 8 → 4; ticks to 1
+    expect(s.enemy.hp).toBe(26);
+    expect(s.log.some((e) => e.t === 'damage' && e.blocked)).toBe(false);
+    play(s, 'attack'); // 4 → 2; ticks to 0
+    expect(s.enemy.hp).toBe(24);
+    expect(hasStatus(s.enemy, 'harden')).toBe(false);
+  });
+
+  it('the Shell Beetle hardens instead of guarding', () => {
+    const s = fight(['attack'], 'shell_beetle');
+    play(s, 'attack'); // beetle bites; next it shells
+    play(s, 'attack'); // 4-2=2 lands, then beetle hardens
+    expect(hasStatus(s.enemy, 'harden')).toBe(true);
+    expect(hasStatus(s.enemy, 'guard')).toBe(false);
+  });
+});
+
 describe('skill upgrades', () => {
   it('a +1 Broadsword hits for one more in combat', () => {
     const s = createCombat({ player: { ...WARRIOR, deck: ['broadsword'], basics: [] }, enemy: PASSIVE, rng: new Rng(1), skillUpgrades: { broadsword: 1 } });

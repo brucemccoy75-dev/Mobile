@@ -47,6 +47,7 @@ export const STATUS_LABELS: Record<StatusId, { label: string; color: string; des
   brace: { label: 'BRACED', color: '#ff9f68', desc: 'The next hit that lands is thrown straight back at the attacker. A Guard blocks the counter; a small hit means a small counter.' },
   scatter: { label: 'SCATTERED', color: '#b8f0c8', desc: 'The next single hit does half damage. Attacks with several hits are unaffected.' },
   curse: { label: 'CURSED', color: '#c084fc', desc: 'Loses HP at the end of every round and healing is halved while it lasts. Ignores Guard.' },
+  harden: { label: 'HARDENED', color: '#a8b3c7', desc: 'Takes half damage from every hit while it lasts. Hits still land, so Exposed and Burn still work.' },
 };
 
 /** Plain-language reading of an enemy intent for the tap-to-explain panel. */

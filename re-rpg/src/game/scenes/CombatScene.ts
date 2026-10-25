@@ -42,6 +42,8 @@ export class CombatScene extends Phaser.Scene {
   private hand: Card[] = [];
   /** What the hand looks like at this point of the playback. The engine state is already end-of-round. */
   private displayHand: string[] = [];
+  /** Likewise for status chips: a Guard played this turn must show before the enemy's hit consumes it. */
+  private dispStatus: { player: Status[]; enemy: Status[] } = { player: [], enemy: [] };
   private handHint!: Phaser.GameObjects.Text;
   private holdBtn!: Button;
   private holdMode = false;
@@ -127,8 +129,26 @@ export class CombatScene extends Phaser.Scene {
   // ---------------------------------------------------------------- sync
 
   private syncChips() {
-    this.playerChips.set(this.state.player.statuses, (s) => this.explainStatus(s, 'you'));
-    this.enemyChips.set(this.state.enemy.statuses, (s) => this.explainStatus(s, this.enemyDef.name));
+    this.playerChips.set(this.dispStatus.player, (s) => this.explainStatus(s, 'you'));
+    this.enemyChips.set(this.dispStatus.enemy, (s) => this.explainStatus(s, this.enemyDef.name));
+  }
+
+  /** Reset the displayed statuses from the engine (end of playback). */
+  private snapStatuses() {
+    this.dispStatus = { player: this.state.player.statuses.map((s) => ({ ...s })), enemy: this.state.enemy.statuses.map((s) => ({ ...s })) };
+  }
+
+  private dispUpsert(side: 'player' | 'enemy', status: Status) {
+    const list = this.dispStatus[side];
+    const i = list.findIndex((s) => s.id === status.id);
+    if (i >= 0) list[i] = status; else list.push(status);
+  }
+  private dispRemove(side: 'player' | 'enemy', id: Status['id']) {
+    this.dispStatus[side] = this.dispStatus[side].filter((s) => s.id !== id);
+  }
+  private dispGuardHit(side: 'player' | 'enemy') {
+    const g = this.dispStatus[side].find((s) => s.id === 'guard');
+    if (g) { g.magnitude -= 1; if (g.magnitude <= 0) this.dispRemove(side, 'guard'); }
   }
 
   /** Tap-to-explain panel for a status or the enemy's intent. Any tap dismisses it. */
@@ -173,6 +193,7 @@ export class CombatScene extends Phaser.Scene {
   private syncAll() {
     void this.playerHp.set(this.state.player.hp, this.state.player.stats.maxHp);
     void this.enemyHp.set(this.state.enemy.hp, this.state.enemy.stats.maxHp);
+    this.snapStatuses();
     this.syncChips();
     this.roundText.setText(`Round ${this.state.round}  ·  screen ${this.session.screenIndex + 1}`);
     this.pileText.setText(`deck ${this.state.player.deck.length}  ·  hand ${this.state.player.hand.length}  ·  discard ${this.state.player.discard.length}`);
@@ -227,7 +248,7 @@ export class CombatScene extends Phaser.Scene {
     const label = intent.kind === 'attack' ? `${moveName}${intent.hits > 1 ? ` x${intent.hits}` : ''}${intent.drain ? ' · drains' : ''}`
       : intent.kind === 'guard' ? `${moveName} (guard)`
       : intent.kind === 'debuff' ? `${moveName} → ${STATUS_LABELS[intent.status].label}`
-      : intent.kind === 'buff' ? (intent.status === 'brace' ? `${moveName}: counters next hit` : intent.status === 'scatter' ? `${moveName}: halves single hits` : `${moveName} (+${intent.status})`)
+      : intent.kind === 'buff' ? (intent.status === 'brace' ? `${moveName}: counters next hit` : intent.status === 'scatter' ? `${moveName}: halves single hits` : intent.status === 'harden' ? `${moveName}: takes half damage` : `${moveName} (+${intent.status})`)
       : `${moveName} (stagger)`;
     this.intentText.setText(label);
     this.intentNum.setText(intent.kind === 'attack' ? String(predicted) : intent.kind === 'guard' ? '🛡' : '');
@@ -287,6 +308,7 @@ export class CombatScene extends Phaser.Scene {
       }
       case 'counter': {
         this.cameras.main.shake(120, 0.007);
+        if (e.blocked) { this.dispGuardHit('player'); this.syncChips(); }
         void this.playerHp.set(this.state.player.hp, this.state.player.stats.maxHp);
         await floatText(this, this.px, this.py - 30, e.blocked ? 'COUNTER BLOCKED' : `COUNTERED  -${e.amount}`, '#ff9f68', 34);
         return;
@@ -308,7 +330,6 @@ export class CombatScene extends Phaser.Scene {
       case 'play': {
         const s = sprite(e.side), p = pos(e.side);
         const dir = e.side === 'player' ? 1 : -1;
-        this.syncChips();
         if (e.side === 'enemy') {
           // A clear beat between your action and the enemy's.
           this.phaseText.setText('ENEMY TURN').setColor('#ffb4b4');
@@ -333,6 +354,8 @@ export class CombatScene extends Phaser.Scene {
       case 'damage': {
         const s = sprite(e.target), p = pos(e.target);
         if (e.blocked) {
+          this.dispGuardHit(e.target);
+          this.syncChips();
           await floatText(this, p.x, p.y - 30, 'BLOCKED', COLORS.block, 30, 900);
         } else {
           this.cameras.main.shake(90, 0.005);
@@ -363,13 +386,17 @@ export class CombatScene extends Phaser.Scene {
         return;
       }
       case 'statusApplied': {
+        this.dispUpsert(e.side, { id: e.status, turns: e.turns, magnitude: e.magnitude });
         this.syncChips();
+        // Guard is self-evident from the chip and the card name; everything else gets a callout.
+        if (e.status === 'guard') { await wait(this, 350); return; }
         const p = pos(e.side);
         const m = STATUS_LABELS[e.status];
         await floatText(this, p.x, p.y - 110, m.label, m.color, 22, 900);
         return;
       }
       case 'statusExpired':
+        this.dispRemove(e.side, e.status);
         this.syncChips();
         return;
       case 'statusResisted': {
@@ -385,7 +412,6 @@ export class CombatScene extends Phaser.Scene {
       }
       case 'stunned': {
         const p = pos(e.side);
-        this.syncChips();
         await floatText(this, p.x, p.y - 30, 'recovering · turn skipped', '#ffd166', 26);
         return;
       }

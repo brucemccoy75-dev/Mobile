@@ -21,6 +21,8 @@ export function computeHit(attacker: Combatant, target: Combatant, mult: number,
   if (hasStatus(attacker, 'weak')) base = Math.floor(base * WEAK_MULT);
   const def = ignoreDef ? 0 : target.stats.def;
   let dmg = Math.max(1, Math.ceil(base * DEF_FLOOR), base - def);
+  // Hardened (armoured enemies' shell): half damage while it lasts, instead of a full block.
+  if (hasStatus(target, 'harden')) dmg = Math.max(1, Math.ceil(dmg * 0.5));
   if (hasStatus(target, 'exposed')) dmg *= EXPOSED_MULT;
   return dmg;
 }

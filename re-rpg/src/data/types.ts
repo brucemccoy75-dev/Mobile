@@ -13,7 +13,7 @@ export interface Stats {
   def: number;
 }
 
-export type StatusId = 'exposed' | 'guard' | 'burn' | 'chill' | 'weak' | 'stun' | 'brace' | 'scatter' | 'curse';
+export type StatusId = 'exposed' | 'guard' | 'burn' | 'chill' | 'weak' | 'stun' | 'brace' | 'scatter' | 'curse' | 'harden';
 
 /** A status instance on a combatant. `turns` ticks down at end of round; Guard and Chill are consumed instead. Stun: the player skips their turn while it lasts (turns N = N-1 skipped turns when self-applied). */
 export interface Status {
