@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { Rng } from '@core/rng';
+import { Rng, RunRng } from '@core/rng';
 import { createCombat, step, currentIntent, isPlayerStunned } from './engine';
 import { hasStatus, getStatus } from './status';
 import type { CombatState } from './types';
 import type { Enemy } from '@data/types';
+import { getEnemy } from '@data/index';
 
 const WARRIOR = { stats: { maxHp: 25, atk: 4, def: 1 } };
 
@@ -442,3 +443,26 @@ describe('stagger', () => {
     expect(before - s.enemy.hp).toBe(4);
   });
 });
+
+describe('Ward against spell-statuses', () => {
+  it('one Ward stack stops a hostile magic status and is consumed; the next one lands', () => {
+    const player = { name: 'w', stats: { maxHp: 25, atk: 4, def: 1 }, hp: 25, deck: [] as string[] };
+    const rng = new RunRng('ward-curse').stream('combat');
+    const necro = getEnemy('adept_necromancer'); // opens with Curse
+    const st = createCombat({ player, enemy: necro, rng });
+    const idx = st.player.hand.indexOf('ward');
+    expect(idx).toBeGreaterThanOrEqual(0);
+    const evs = step(st, { type: 'card', index: idx });
+    expect(evs.some((e) => e.t === 'statusResisted' && e.warded)).toBe(true);
+    expect(st.player.statuses.some((s) => s.id === 'curse')).toBe(false);
+    expect(st.player.statuses.some((s) => s.id === 'ward')).toBe(false);
+  });
+  it('without Ward the curse lands', () => {
+    const player = { name: 'w', stats: { maxHp: 25, atk: 4, def: 1 }, hp: 25, deck: [] as string[] };
+    const st = createCombat({ player, enemy: getEnemy('adept_necromancer'), rng: new RunRng('ward-curse').stream('combat') });
+    const idx = st.player.hand.indexOf('attack');
+    step(st, { type: 'card', index: idx });
+    expect(st.player.statuses.some((s) => s.id === 'curse')).toBe(true);
+  });
+});
+

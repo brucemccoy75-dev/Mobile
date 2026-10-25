@@ -65,7 +65,7 @@ export type CombatEvent =
   | { t: 'damage'; source: Side; target: Side; amount: number; blocked: boolean; hit: number; hits: number; kind: DamageKind }
   | { t: 'heal'; side: Side; amount: number }
   | { t: 'statusApplied'; side: Side; status: StatusId; turns: number; magnitude: number }
-  | { t: 'statusResisted'; side: Side; status: StatusId }
+  | { t: 'statusResisted'; side: Side; status: StatusId; warded?: boolean }
   | { t: 'statusExpired'; side: Side; status: StatusId }
   | { t: 'burn'; side: Side; amount: number; status: 'burn' | 'curse' }
   | { t: 'chilled'; side: Side }

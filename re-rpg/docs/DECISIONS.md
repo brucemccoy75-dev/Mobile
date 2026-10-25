@@ -42,3 +42,7 @@ Phone test with real tiles: per-tile random biomes read as noise, rocks among tr
 - Every POI, the quest giver and the NPC spot sit in a 3×3 grass clearing.
 - Each POI gets a detour wall across the midpoint of its cheapest approach, kept only if entry still reaches the boss, every POI, the giver and the NPC. Validation also checks those last two now.
 
+## 24. Ward covers spell-statuses; HP bars follow the playback
+
+Phone test: the necromancer's Curse walked through Ward, and the Boar's Gore looked free because the HP bar had already dropped to the end-of-round value when the preceding counter played. Now a hostile status flagged `kind: 'magic'` (every enemy hex and curse) is a magic hit for blocking: Aegis ignores it, one Ward stack is spent to stop it, and the scene shows WARDED. Ward's text reads "magic hit or curse". The scene keeps its own displayed HP per side and moves it per damage, counter, heal and tick event, snapping to the real value only when the step ends, the same rule the hand and status chips already follow.
+

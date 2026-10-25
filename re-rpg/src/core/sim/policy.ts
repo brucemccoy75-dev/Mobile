@@ -90,6 +90,11 @@ export const greedy: Policy = (s) => {
     });
     if (healCard) return { type: 'card', index: healCard.index };
   }
+  // 1b. A curse coming in: one Ward stack wards it off, and the DoT costs more than the card.
+  if (intent.kind === 'debuff' && intent.status === 'curse' && !hasStatus(s.player, 'ward') && !hasStatus(s.player, 'aegis')) {
+    const ward = hand.find((h) => h.skill.id === 'ward');
+    if (ward) return { type: 'card', index: ward.index };
+  }
 
   // 3. Enemy is guarding: a single big hit is wasted; prefer multi-hit, statuses, or a cheap poke.
   // 4. Otherwise play the highest-value damage card, avoiding self-Exposed when a big hit is coming.

@@ -38,7 +38,7 @@ export function describeSkill(skill: Skill, stats: Stats): string {
         const chance = e.chance !== undefined && e.chance < 1 ? `${Math.round(e.chance * 100)}% chance: ` : '';
         if (e.target === 'self') {
           if (e.status === 'guard') parts.push(`Block the next ${e.magnitude === 1 || !e.magnitude ? 'physical hit' : `${e.magnitude} physical hits`}.`);
-          else if (e.status === 'ward') parts.push(`Block the next ${e.magnitude === 1 || !e.magnitude ? 'magic hit' : `${e.magnitude} magic hits`}.`);
+          else if (e.status === 'ward') parts.push(`Block the next ${e.magnitude === 1 || !e.magnitude ? 'magic hit or curse' : `${e.magnitude} magic hits or curses`}.`);
           else if (e.status === 'aegis') parts.push(`Block every hit for ${rounds(e.turns)}.`);
           else if (e.status === 'weak') parts.push(e.turns <= 2 ? 'Tiring: Weak next turn.' : `You are Weak for ${rounds(e.turns)}.`);
           else if (e.status === 'stun') parts.push(`Recovering: skip your next ${e.turns - 1} turn${e.turns - 1 === 1 ? '' : 's'}.`);

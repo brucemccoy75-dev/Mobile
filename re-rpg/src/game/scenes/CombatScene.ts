@@ -28,6 +28,8 @@ export class CombatScene extends Phaser.Scene {
   private enemySprite!: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite;
   private playerHp!: HpBar;
   private enemyHp!: HpBar;
+  /** HP as the playback has shown it so far; bars never read live state mid-step. */
+  private dispHp = { player: 0, enemy: 0 };
   private playerChips!: StatusChips;
   private enemyChips!: StatusChips;
   private intentText!: Phaser.GameObjects.Text;
@@ -231,7 +233,14 @@ export class CombatScene extends Phaser.Scene {
     this.showInfo(`${this.enemyDef.name}, after your move`, `${describeIntent(intent.kind, moveName, predictedDamage, hits, status, drain, magic)}\n\nThe round after: ${tell.replace('then: ', '')}.`, '#ffb4b4');
   }
 
+  private showHp(side: 'player' | 'enemy', delta: number) {
+    const c = side === 'player' ? this.state.player : this.state.enemy;
+    this.dispHp[side] = Math.max(0, Math.min(c.stats.maxHp, this.dispHp[side] + delta));
+    void (side === 'player' ? this.playerHp : this.enemyHp).set(this.dispHp[side], c.stats.maxHp);
+  }
+
   private syncAll() {
+    this.dispHp = { player: this.state.player.hp, enemy: this.state.enemy.hp };
     void this.playerHp.set(this.state.player.hp, this.state.player.stats.maxHp);
     void this.enemyHp.set(this.state.enemy.hp, this.state.enemy.stats.maxHp);
     this.snapStatuses();
@@ -365,7 +374,7 @@ export class CombatScene extends Phaser.Scene {
       case 'counter': {
         this.cameras.main.shake(120, 0.007);
         if (e.blocked) { this.dispGuardHit('player'); this.syncChips(); }
-        void this.playerHp.set(this.state.player.hp, this.state.player.stats.maxHp);
+        else this.showHp('player', -e.amount);
         await floatText(this, this.px, this.py - 30, e.blocked ? 'COUNTER BLOCKED' : `COUNTERED  -${e.amount}`, '#ff9f68', 34);
         return;
       }
@@ -417,9 +426,7 @@ export class CombatScene extends Phaser.Scene {
         } else {
           this.cameras.main.shake(90, 0.005);
           void tween(this, { targets: s, x: p.x + (e.target === 'player' ? -10 : 10), duration: 50, yoyo: true, repeat: 1 });
-          const bar = e.target === 'player' ? this.playerHp : this.enemyHp;
-          const c = e.target === 'player' ? this.state.player : this.state.enemy;
-          void bar.set(c.hp, c.stats.maxHp);
+          this.showHp(e.target, -e.amount);
           // Multi-hit numbers stagger sideways so they do not stack on top of each other.
           const dx = e.hits > 1 ? (e.hit - (e.hits + 1) / 2) * 34 : 0;
           const p2 = floatText(this, p.x + dx, p.y - 30, `-${e.amount}`, COLORS.damage, 40, 1100);
@@ -429,16 +436,14 @@ export class CombatScene extends Phaser.Scene {
       }
       case 'heal': {
         const p = pos(e.side);
-        const c = e.side === 'player' ? this.state.player : this.state.enemy;
-        void (e.side === 'player' ? this.playerHp : this.enemyHp).set(c.hp, c.stats.maxHp);
+        this.showHp(e.side, e.amount);
         await floatText(this, p.x, p.y - 30, `+${e.amount}`, COLORS.heal, 36);
         return;
       }
       case 'burn': {
         const p = pos(e.side);
-        const c = e.side === 'player' ? this.state.player : this.state.enemy;
         this.phaseText.setText('END OF ROUND').setColor(COLORS.muted);
-        void (e.side === 'player' ? this.playerHp : this.enemyHp).set(c.hp, c.stats.maxHp);
+        this.showHp(e.side, -e.amount);
         await floatText(this, p.x, p.y - 30, `${e.status === 'curse' ? 'curse' : 'burn'} -${e.amount}`, e.status === 'curse' ? '#c084fc' : COLORS.burn, 28);
         return;
       }
@@ -458,6 +463,7 @@ export class CombatScene extends Phaser.Scene {
         return;
       case 'statusResisted': {
         const p = pos(e.side);
+        if (e.warded) { this.dispGuardHit(e.side, 'ward'); this.syncChips(); await floatText(this, p.x, p.y - 30, 'WARDED', COLORS.block, 30, 900); return; }
         await floatText(this, p.x, p.y - 30, 'resisted', '#c7b3ff', 26, 900);
         return;
       }

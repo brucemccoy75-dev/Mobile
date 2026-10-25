@@ -189,6 +189,11 @@ export function applyEffects(effects: Effect[], self: Combatant, other: Combatan
       }
       case 'status': {
         const target = e.target === 'self' ? self : other;
+        // A hostile spell-status (curse, hex) is a magic hit for blocking purposes: Aegis or one Ward stack stops it.
+        if (target !== self && e.kind === 'magic' && (hasStatus(target, 'aegis') || consumeBlock(target, 'ward', events))) {
+          events.push({ t: 'statusResisted', side: target.side, status: e.status, warded: true });
+          break;
+        }
         if (e.chance !== undefined && roll() >= e.chance) {
           events.push({ t: 'statusResisted', side: target.side, status: e.status });
           break;

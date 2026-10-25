@@ -31,7 +31,8 @@ export type Target = 'self' | 'enemy';
 export type Effect =
   | { type: 'damage'; mult: number; flat?: number; hits?: number; ignoreDef?: boolean; lifesteal?: number; kind?: DamageKind }
   | { type: 'heal'; pct?: number; flat?: number }
-  | { type: 'status'; target: Target; status: StatusId; turns: number; magnitude?: number; chance?: number };
+  /** `kind: 'magic'` on a hostile status means Ward (or Aegis) blocks it like a spell. */
+  | { type: 'status'; target: Target; status: StatusId; turns: number; magnitude?: number; chance?: number; kind?: DamageKind };
 
 /** How often a tome may be played. Default: every time it is drawn. */
 export type SkillUses = 'once_per_fight' | 'fleeting';

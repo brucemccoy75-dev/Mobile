@@ -12,7 +12,7 @@ describe('describeSkill', () => {
     expect(describeSkill(getSkill('broadsword'), warrior)).toBe('Deal 8 damage. You are Exposed this round.');
     expect(describeSkill(getSkill('broadsword'), geared)).toBe('Deal 11 damage. You are Exposed this round.');
     expect(describeSkill(getSkill('defend'), warrior)).toBe('Block the next physical hit.');
-    expect(describeSkill(getSkill('ward'), warrior)).toBe('Block the next magic hit.');
+    expect(describeSkill(getSkill('ward'), warrior)).toBe('Block the next magic hit or curse.');
     expect(describeSkill(getSkill('shield_bash'), warrior)).toBe('Deal 2 damage. Block the next physical hit. Tiring: Weak next turn.');
   });
 

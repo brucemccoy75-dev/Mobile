@@ -19,7 +19,7 @@ const guard = (id = 'guard', name = 'Guard', hits = 1): EnemyMove => ({
 });
 const debuff = (id: string, name: string, status: StatusId, turns: number): EnemyMove => ({
   id, name, posture: 'sinister', intent: { kind: 'debuff', status },
-  effects: [{ type: 'status', target: 'enemy', status, turns }],
+  effects: [{ type: 'status', target: 'enemy', status, turns, kind: 'magic' }],
 });
 // Status durations count end-of-round ticks. A self-status the enemy applies on
 // its own turn ticks once that same round, so turns: 2 = "exposed during the
@@ -50,7 +50,7 @@ const scatter = (id = 'scatter', name = 'Scatter'): EnemyMove => ({
 // The first spellcaster: a slow curse that also halves healing, and a drain that heals it.
 const curse = (id = 'curse_dot', name = 'Curse', magnitude = 1, turns = 4): EnemyMove => ({
   id, name, posture: 'sinister', intent: { kind: 'debuff', status: 'curse' },
-  effects: [{ type: 'status', target: 'enemy', status: 'curse', turns, magnitude }],
+  effects: [{ type: 'status', target: 'enemy', status: 'curse', turns, magnitude, kind: 'magic' }],
 });
 const drain = (id: string, name: string, mult: number): EnemyMove => ({
   id, name, posture: 'sinister', intent: { kind: 'attack', mult, hits: 1, drain: true, dmgType: 'magic' },

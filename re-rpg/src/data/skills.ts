@@ -10,7 +10,7 @@ export const DEFEND: Skill = {
   effects: [{ type: 'status', target: 'self', status: 'guard', turns: 99, magnitude: 1 }],
 };
 export const WARD: Skill = {
-  id: 'ward', name: 'Ward', text: 'Block the next magic hit.', classId: 'any', rarity: 'basic',
+  id: 'ward', name: 'Ward', text: 'Block the next magic hit or curse.', classId: 'any', rarity: 'basic',
   effects: [{ type: 'status', target: 'self', status: 'ward', turns: 99, magnitude: 1 }],
 };
 
@@ -70,7 +70,7 @@ export const SPECIAL_TOMES: Skill[] = [
     effects: [{ type: 'damage', mult: 2.0 }] },
   { id: 'stand_firm', name: 'Stand Firm', text: 'Block every hit for 2 rounds. Once per fight.', classId: 'any', rarity: 'rare', uses: 'once_per_fight',
     effects: [{ type: 'status', target: 'self', status: 'aegis', turns: 2 }] },
-  { id: 'warding_blast', name: 'Warding Blast', text: 'Deal 60% magic damage and block the next magic hit. Tiring: Weak next turn.', classId: 'any', rarity: 'common',
+  { id: 'warding_blast', name: 'Warding Blast', text: 'Deal 60% magic damage and block the next magic hit or curse. Tiring: Weak next turn.', classId: 'any', rarity: 'common',
     effects: [{ type: 'damage', mult: 0.6, kind: 'magic' }, { type: 'status', target: 'self', status: 'ward', turns: 99, magnitude: 1 }, { type: 'status', target: 'self', status: 'weak', turns: 2 }] },
   { id: 'last_strike', name: 'Last Strike', text: 'Deal 300% damage. Fleeting: the tome is spent.', classId: 'any', rarity: 'uncommon', uses: 'fleeting',
     effects: [{ type: 'damage', mult: 3.0 }] },
