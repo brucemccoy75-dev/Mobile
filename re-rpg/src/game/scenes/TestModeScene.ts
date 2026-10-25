@@ -8,7 +8,7 @@ import { createSession, getMeta, setSession } from '@game/session';
 import { Button } from '@game/ui/Button';
 import { COLORS, text } from '@game/ui/theme';
 
-export interface TestSetup { enemyId: EnemyId; classId: ClassId; deck: SkillId[]; equipment: Record<Slot, string | null>; }
+export interface TestSetup { enemyId: EnemyId; extraId?: EnemyId | null; classId: ClassId; deck: SkillId[]; equipment: Record<Slot, string | null>; }
 const SLOTS: Slot[] = ['weapon', 'body', 'relic'];
 const defaultSetup = (): TestSetup => ({ enemyId: 'boar', classId: 'warrior', deck: [], equipment: { weapon: null, body: null, relic: null } });
 
@@ -35,9 +35,10 @@ export class TestModeScene extends Phaser.Scene {
 
     // enemies
     const x0 = 16;
-    this.add.text(x0, 50, 'Enemy', text.small).setOrigin(0, 0);
+    this.add.text(x0, 50, 'Enemy  ·  "2nd" adds it behind the first', text.small).setOrigin(0, 0);
     ENEMIES.forEach((e, i) => {
-      new Button(this, x0 + 98, 80 + i * 30, `${e.name}  ·  ${e.archetype === 'boss' ? 'boss' : `tier ${e.tier}`}`, () => this.set({ enemyId: e.id }), { ...small, ...sel(this.setup.enemyId === e.id) });
+      new Button(this, x0 + 76, 80 + i * 30, `${e.name}  ·  ${e.archetype === 'boss' ? 'boss' : `t${e.tier}`}`, () => this.set({ enemyId: e.id, extraId: this.setup.extraId === e.id ? null : this.setup.extraId }), { ...small, width: 152, ...sel(this.setup.enemyId === e.id) });
+      new Button(this, x0 + 178, 80 + i * 30, '2nd', () => this.set({ extraId: this.setup.extraId === e.id ? null : e.id }), { width: 44, height: 26, fontSize: '11px', ...sel(this.setup.extraId === e.id) });
     });
 
     // class + tomes
@@ -70,7 +71,7 @@ export class TestModeScene extends Phaser.Scene {
     const eq = equipmentFromIds(this.setup.equipment, []);
     const st = computeStats(getClass(this.setup.classId).stats, eq);
     const deckNames = this.setup.deck.map((d) => getSkill(d).name).join(', ') || 'basics only';
-    this.add.text(16, H - 12, `vs ${getEnemy(this.setup.enemyId).name}   ·   HP ${st.maxHp}  ATK ${st.atk}  DEF ${st.def}   ·   ${deckNames}`, { ...text.small, fontSize: '12px', wordWrap: { width: W - 32 } }).setOrigin(0, 1);
+    this.add.text(16, H - 12, `vs ${getEnemy(this.setup.enemyId).name}${this.setup.extraId ? ` & ${getEnemy(this.setup.extraId).name}` : ''}   ·   HP ${st.maxHp}  ATK ${st.atk}  DEF ${st.def}   ·   ${deckNames}`, { ...text.small, fontSize: '12px', wordWrap: { width: W - 32 } }).setOrigin(0, 1);
   }
 
   private set(patch: Partial<TestSetup>) {
@@ -99,7 +100,7 @@ export class TestModeScene extends Phaser.Scene {
     s.stats = computeStats(s.base, s.equipment);
     s.hp = s.stats.maxHp;
     const enemy = getEnemy(this.setup.enemyId);
-    s.pendingEncounter = { kind: enemy.archetype === 'boss' ? 'boss' : 'random', enemyId: enemy.id, tile: 'forest' };
+    s.pendingEncounter = { kind: enemy.archetype === 'boss' ? 'boss' : 'random', enemyId: enemy.id, tile: 'forest', extra: this.setup.extraId && this.setup.extraId !== enemy.id ? [this.setup.extraId] : undefined };
     setSession(this, s);
     this.scene.start('Combat');
   }

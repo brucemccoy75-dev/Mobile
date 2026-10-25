@@ -6,6 +6,7 @@ import type { ClassId, EnemyId, Item, SetId, Skill, SkillId, Stats } from '@data
 import { RunRng, newSeed } from '@core/rng';
 import { generateScreen, type ScreenMap, type Tile, type TileType } from '@core/map';
 import { DECK_CAP } from '@core/combat';
+import { DUO_CHANCE, PAIRS } from '@data/packs';
 import { TOME_COPY_CAP } from '@data/skills';
 import { computeStats, emptyEquipment, equip as equipItem, equipmentFromIds, equipmentToIds, type Equipment, RUN_VERSION, type RunState } from '@core/run';
 import { createMeta, discoverItem, discoverSkill, rollHeirloomChoices, type Heirloom, type MetaState } from '@core/meta';
@@ -166,6 +167,17 @@ export function turnInQuest(s: RunSession, q: Quest): { gold: number; offer?: Re
 
 export const screenTier = (s: RunSession): 1 | 2 => (s.screenIndex === 0 ? 1 : 2);
 export const randomEnemy = (s: RunSession): EnemyId => s.rng.stream('encounter').pick(enemiesOfTier(screenTier(s))).id;
+
+/** A wild encounter: a single enemy, or one of the screen's authored pairs (DECISIONS #29). */
+export function rollEncounter(s: RunSession): PendingEncounter {
+  const rng = s.rng.stream('encounter');
+  const tier = screenTier(s);
+  if (rng.chance(DUO_CHANCE[s.screenIndex] ?? DUO_CHANCE[DUO_CHANCE.length - 1]!)) {
+    const [front, rear] = rng.pick(PAIRS[tier]);
+    return { kind: 'random', enemyId: front, extra: [rear] };
+  }
+  return { kind: 'random', enemyId: rng.pick(enemiesOfTier(tier)).id };
+}
 
 // ---------------------------------------------------------------- taking rewards
 

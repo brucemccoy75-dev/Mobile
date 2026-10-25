@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { getEnemy } from '@data/index';
 import { findPath, stepThreat, key, tileAt, type Tile, type TileType } from '@core/map';
-import { SCREEN_COUNT, currentQuest, getMeta, getSession, getStore, isEscorting, persistMeta, persistRun, randomEnemy, setSession, startScreen, type PendingEncounter, type RunSession } from '@game/session';
+import { SCREEN_COUNT, currentQuest, getMeta, getSession, getStore, isEscorting, persistMeta, persistRun, rollEncounter, setSession, startScreen, type PendingEncounter, type RunSession } from '@game/session';
 import { ESCORT_THREAT_MULT, noteKill, questProgress, questReady } from '@core/quest';
 import { recordWin } from '@core/meta';
 import { Button } from '@game/ui/Button';
@@ -356,7 +356,7 @@ export class OverworldScene extends Phaser.Scene {
     const r = stepThreat(s.threat, tile, s.screenIndex, s.rng.stream('encounter'), isEscorting(s) ? ESCORT_THREAT_MULT : 1);
     s.threat = r.meter;
     this.syncHud();
-    if (r.encounter) { await this.startEncounter({ kind: 'random', enemyId: randomEnemy(s) }); return true; }
+    if (r.encounter) { await this.startEncounter(rollEncounter(s)); return true; }
     return false;
   }
 
@@ -364,7 +364,7 @@ export class OverworldScene extends Phaser.Scene {
     this.locked = true;
     const pp = this.session.playerPos;
     this.session.pendingEncounter = { ...e, tile: tileAt(this.session.map, pp.x, pp.y) };
-    const name = getEnemy(e.enemyId).name;
+    const name = [e.enemyId, ...(e.extra ?? [])].map((id) => getEnemy(id).name).join(' & ');
     void this.toast(e.kind === 'random' ? `Ambush! ${name}` : e.kind === 'guard' ? `${name} blocks the way` : `${name} awaits`, 600);
     this.cameras.main.flash(180, 255, 255, 255);
     await wait(this, 450);
@@ -379,7 +379,8 @@ export class OverworldScene extends Phaser.Scene {
     if (!r) return;
     s.lastResult = null;
     if (!r.won) return; // death is handled in the combat scene
-    if (noteKill(s.quests, r.encounter.enemyId)) {
+    const killed = [r.encounter.enemyId, ...(r.encounter.extra ?? [])];
+    if (killed.map((id) => noteKill(s.quests, id)).some(Boolean)) {
       const q = currentQuest(s);
       if (q?.hunt) void this.toast(`Hunt: ${q.hunt.name} ${Math.min(q.hunt.have, q.hunt.need)} / ${q.hunt.need}${q.hunt.have >= q.hunt.need ? ' — return to ' + q.giver.name : ''}`, 2200);
       this.syncQuestHud();

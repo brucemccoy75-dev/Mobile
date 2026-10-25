@@ -42,7 +42,7 @@ export function recordFight(scene: Phaser.Scene, s: RunSession, e: PendingEncoun
   const t = getTelemetry(scene);
   const run = t.log.runs.find((r) => r.seed === s.seed);
   if (!run) return;
-  const f: FightRecord = { at: Date.now(), screen: s.screenIndex + 1, enemyId: e.enemyId, kind: e.kind, tile: e.tile, hpBefore, hpAfter, ...summarizeFight(log), outcome, ...snapshot(s), gold: s.gold };
+  const f: FightRecord = { at: Date.now(), screen: s.screenIndex + 1, enemyId: e.enemyId, enemies: [e.enemyId, ...(e.extra ?? [])], kind: e.kind, tile: e.tile, hpBefore, hpAfter, ...summarizeFight(log), outcome, ...snapshot(s), gold: s.gold };
   run.fights.push(f);
   if (e.kind === 'boss' && outcome === 'won') run.screensCleared = Math.max(run.screensCleared, s.screenIndex + 1);
   t.save();

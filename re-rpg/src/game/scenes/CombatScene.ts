@@ -641,7 +641,7 @@ export class CombatScene extends Phaser.Scene {
         ? 'The way forward opens. You are fully healed.'
         : `${this.session.hp}/${this.session.stats.maxHp} HP. No healing between fights.`) + (spent.length ? `  Spent: ${spent.join(', ')}.` : '');
       this.add.text(W / 2, H * 0.34 + 46, sub, text.body).setOrigin(0.5).setDepth(71);
-      const source = this.encounter.kind === 'random' ? 'kill' : this.encounter.kind;
+      const source = this.encounter.kind === 'random' ? (this.encounter.extra?.length ? 'guard' : 'kill') : this.encounter.kind; // a duo pays like a guard
       this.session.pendingOffer = { source };
       new Button(this, W / 2, H * 0.62, 'Take spoils', () => this.scene.start('Reward'), { width: 220, fill: 0x1f2a44, edge: COLORS.goldHex }).setDepth(72);
     } else {
