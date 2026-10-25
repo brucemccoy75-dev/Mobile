@@ -18,7 +18,7 @@ POC "win" = kill Boss 2. Expected first-run outcome = die before Boss 1.
 
 | Class | HP | Identity | POC sets (one rolled per run) |
 |---|---|---|---|
-| Warrior (open) | 25 | Melee, armor, attrition | **Tank**: Shield Bash (dmg + Guard), Bind Wound (heal, Recovering) · **DPS**: Broadsword Strike (160%, overextends: Exposed this round), Exposing Strike |
+| Warrior (open) | 25 | Melee, armor, attrition | **Tank**: Shield Bash (dmg + Guard), Bind Wound (heal, Exposed 2) · **DPS**: Broadsword Strike (160%, overextends: Exposed this round), Exposing Strike |
 | Wizard (unlock: win as Warrior) | 20 | Burst, self-risk | **Fire**: Fireball, Inferno (ultimate, leaves caster Exposed) · **Frost**: Frost Bolt (chance to Chill = enemy skips a turn), Ice Armor (temporary def) |
 | Shaman (unlock: win as Warrior) | 20 | Sustain + nature damage over time | **Spirit**: Mend (heal), Spirit Lash (damage + heal small %) · **Storm**: Lightning (damage, ignores part of def), Static Field (Burn-like damage over time) |
 
@@ -38,7 +38,7 @@ Known skills form a **deck** (cap **6**). Every encounter:
 
 Tomes add a skill to the deck. At the cap, a tome forces a binding swap or a skip, the same rule as equipment. Big-hit skills scale with a **flat bonus** (Broadsword 100% + 4, Inferno 100% + 10) so gear does not multiply them. Later knobs: a stamina meter for multi-play turns, deal 2 per round in long fights, "+1 deck size" and "+1 hand size" as item stats.
 
-Healing skills honour the HP-drain rule: they are rare in the pool and cost tempo. Bind Wound and Mend heal 40% and apply **Recovering**: you skip your next two turns while the enemy keeps acting, so a heal is a bet on surviving two free hits.
+Healing skills honour the HP-drain rule: they are rare in the pool and carry a real cost. Bind Wound and Mend heal 35% and leave you **Exposed for 2 rounds**, so a heal is a bet on blocking or outpacing the next two doubled hits.
 
 Skills are data: `effects[]` of damage(mult), heal(flat/%), applyStatus(target, id, turns), guard, and `selfStatus`.
 

@@ -146,18 +146,28 @@ describe('statuses', () => {
     expect(hasStatus(s.enemy, 'exposed')).toBe(false);
   });
 
-  it('Bind Wound heals 40% and then costs two full turns', () => {
-    const s = fight(['bind_wound'], DUMMY, 1, 10);
-    play(s, 'bind_wound'); // +10 → 20, enemy hits 2 → 18
-    expect(s.player.hp).toBe(18);
+  it('Bind Wound heals 35% and leaves you Exposed for two rounds, never blocking anything', () => {
+    const s = fight(['bind_wound', 'attack'], DUMMY, 1, 10);
+    play(s, 'bind_wound'); // +round(0.35*25)=9 → 19, enemy hits 2 doubled → 15
+    expect(s.player.hp).toBe(15);
+    expect(hasStatus(s.player, 'exposed')).toBe(true);
+    expect(hasStatus(s.player, 'guard')).toBe(false);
+    expect(s.log.some((e) => e.t === 'damage' && e.target === 'player' && e.blocked)).toBe(false);
+    play(s, 'attack'); // still exposed: 2 doubled → 11, then it expires
+    expect(s.player.hp).toBe(11);
+    expect(hasStatus(s.player, 'exposed')).toBe(false);
+  });
+
+  it('Recovering (stun) still works as a status: turns are skipped and hits land', () => {
+    const s = fight(['attack'], DUMMY, 1, 20);
+    s.player.statuses.push({ id: 'stun', turns: 2, magnitude: 1 }); // injected before the round: ticks once per round, so 2 = two skipped turns
     expect(isPlayerStunned(s)).toBe(true);
     const ev1 = step(s, { type: 'card', index: 0 }); // ignored: recovering
     expect(ev1.some((e) => e.t === 'stunned')).toBe(true);
-    expect(ev1.some((e) => e.t === 'play' && e.side === 'player')).toBe(false);
-    expect(s.player.hp).toBe(16);
+    expect(s.player.hp).toBe(18);
     step(s, { type: 'skip' });
-    expect(s.player.hp).toBe(14);
-    expect(isPlayerStunned(s)).toBe(false); // two turns skipped, acting again
+    expect(s.player.hp).toBe(16);
+    expect(isPlayerStunned(s)).toBe(false);
   });
 
   it('Weak halves damage dealt', () => {
@@ -295,8 +305,8 @@ describe('curse and lifetap', () => {
   it('curse ticks like burn and halves healing while it lasts', () => {
     const s = fight(['bind_wound'], PASSIVE, 1, 10);
     s.player.statuses.push({ id: 'curse', turns: 3, magnitude: 2 });
-    play(s, 'bind_wound'); // heal 10 → halved to 5 → 15; then curse ticks 2 → 13
-    expect(s.player.hp).toBe(13);
+    play(s, 'bind_wound'); // heal 9 → halved to 4 → 14; then curse ticks 2 → 12 (passive enemy: Exposed never bites)
+    expect(s.player.hp).toBe(12);
     expect(s.log.find((e) => e.t === 'burn')).toMatchObject({ status: 'curse', amount: 2 });
   });
 

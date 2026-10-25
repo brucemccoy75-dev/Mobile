@@ -15,7 +15,7 @@ export const TOME_COPY_CAP = 2;
 /** Cards every fight starts with, in addition to the run deck. Not counted against DECK_CAP. */
 export const BASIC_DECK: string[] = ['attack', 'attack', 'defend'];
 
-// Healing is rare and taxed on purpose (DECISIONS #1): every heal carries a self-debuff.
+// Healing is rare and taxed on purpose (DECISIONS #1, #11): every heal leaves you Exposed, so it is a bet on blocking the next hits.
 export const SKILLS: Skill[] = [
   ATTACK,
   DEFEND,
@@ -23,8 +23,8 @@ export const SKILLS: Skill[] = [
   // Warrior / Tank
   { id: 'shield_bash', name: 'Shield Bash', text: 'Deal 60% damage and block the next hit.', classId: 'warrior', setId: 'warrior_tank', rarity: 'common',
     effects: [{ type: 'damage', mult: 0.6 }, { type: 'status', target: 'self', status: 'guard', turns: 99, magnitude: 1 }] },
-  { id: 'bind_wound', name: 'Bind Wound', text: 'Heal 40% HP. Recovering: you skip your next 2 turns.', classId: 'warrior', setId: 'warrior_tank', rarity: 'uncommon',
-    effects: [{ type: 'heal', pct: 0.4 }, { type: 'status', target: 'self', status: 'stun', turns: 3 }] },
+  { id: 'bind_wound', name: 'Bind Wound', text: 'Heal 35% HP. You are Exposed for 2 rounds.', classId: 'warrior', setId: 'warrior_tank', rarity: 'uncommon',
+    effects: [{ type: 'heal', pct: 0.35 }, { type: 'status', target: 'self', status: 'exposed', turns: 2 }] },
 
   // Warrior / DPS
   { id: 'broadsword', name: 'Broadsword Strike', text: 'Deal 100% + 4 damage. You overextend: Exposed this round.', classId: 'warrior', setId: 'warrior_dps', rarity: 'common',
@@ -47,8 +47,8 @@ export const SKILLS: Skill[] = [
   // Shaman / Spirit
   { id: 'spirit_lash', name: 'Spirit Lash', text: 'Deal 120% damage and heal 50% of damage dealt.', classId: 'shaman', setId: 'shaman_spirit', rarity: 'common',
     effects: [{ type: 'damage', mult: 1.2, lifesteal: 0.5 }] },
-  { id: 'mend', name: 'Mend', text: 'Heal 40% HP. Recovering: you skip your next 2 turns.', classId: 'shaman', setId: 'shaman_spirit', rarity: 'uncommon',
-    effects: [{ type: 'heal', pct: 0.4 }, { type: 'status', target: 'self', status: 'stun', turns: 3 }] },
+  { id: 'mend', name: 'Mend', text: 'Heal 35% HP. You are Exposed for 2 rounds.', classId: 'shaman', setId: 'shaman_spirit', rarity: 'uncommon',
+    effects: [{ type: 'heal', pct: 0.35 }, { type: 'status', target: 'self', status: 'exposed', turns: 2 }] },
 
   // Shaman / Storm
   { id: 'lightning', name: 'Lightning', text: 'Deal 160% damage, ignoring defense.', classId: 'shaman', setId: 'shaman_storm', rarity: 'common',
