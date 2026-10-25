@@ -81,8 +81,8 @@ export const ENEMIES: Enemy[] = [
     table: { kind: 'weighted', moves: [{ move: hit('swarm', 'Dive', 0.7, 'aggressive', 3), weight: 2 }, { move: debuff('screech', 'Screech', 'weak', 2), weight: 1 }, { move: scatter('scatter', 'Wheel'), weight: 1 }] } },
 
   // ---- Bosses ----
-  // Gatekeeper is a rhythm puzzle: guard, big hit, then exposed. Reading the tell is the fight.
-  { id: 'gatekeeper', name: 'The Gatekeeper', tier: 'boss1', archetype: 'boss', stats: { maxHp: 48, atk: 6, def: 2 },
+  // Knight Andre (id gatekeeper, the screen-1 boss) is a rhythm puzzle: guard, big hit, then exposed. Reading the tell is the fight.
+  { id: 'gatekeeper', name: 'Knight Andre', tier: 'boss1', archetype: 'boss', stats: { maxHp: 48, atk: 6, def: 2 },
     table: { kind: 'sequence', moves: [guard(), charge('crush', 'Crush', 1.0, 2), stagger()] } },
   // Warden: phase two at half HP trades guard for a multi-hit rend and Weak.
   { id: 'warden', name: 'The Warden', tier: 'boss2', archetype: 'boss', stats: { maxHp: 58, atk: 7, def: 2 },
