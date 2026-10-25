@@ -97,8 +97,8 @@ export function summarize(label: string, results: GauntletResult[]): Summary {
 
 /** A plausible full equipment kit for a screen: what body + weapon + relic add up to by then. */
 export const GEAR_KIT: Record<1 | 2, Partial<Stats>> = {
-  1: { maxHp: 5, atk: 2, def: 1 },
-  2: { maxHp: 10, atk: 4, def: 2 },
+  1: { maxHp: 5, atk: 1, def: 0 },   // a common weapon and a Heart Amulet (DECISIONS #33)
+  2: { maxHp: 9, atk: 2, def: 1 },   // best case short of a boss relic
 };
 
 /** Standard loadouts: fresh (basics only), set (two set tomes), set + the screen's gear kit, double set. */

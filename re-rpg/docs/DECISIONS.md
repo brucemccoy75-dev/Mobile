@@ -82,3 +82,7 @@ The run log showed power coming from volume of rewards and stacked gear, and vet
 - **Heirlooms every run**: a random spread of 4 tomes drawn across the class's unlocked families (not one per family, so the dice decide the direction). Keep 2; they start in the deck and *only their families* fill the run's tome pool, plus the always-on general tomes. Items left the spread; equipment stays its own discovery-gated pool. Discovery no longer gates tomes.
 - Legacy stat points stay as they are for now; folding them into the tree is a later call. Meta v4 (`progress` per class), run state carries `families`, telemetry records families and level.
 
+## 33. Equipment is small: ATK +1, DEF +1, HP carries rarity
+
+Run log after the flat-gear change: +8 gear attack still made the basic Attack a 12-damage one-shot against 10–12 HP enemies, so fights ended before the enemy acted and HP never mattered. Supersedes the attack budget in #13. Caps: body DEF +1 at most, weapons ATK +1 at most, relics ATK +1 at most; rarity shows up as max HP (+3 common, +5/6 uncommon, +6/8 rare) and costs are paid in HP. The most attack ordinary gear can add is +2 (weapon plus relic), so a geared warrior's Attack is 6, not 12. Boss relics are the one place the caps break (Gatekeeper's Eye +2/+2, Warden's Seal +3 DEF/+8 HP) and they only drop from boss loot; more of them is the plan for making bosses worth it. Quest upgrades still add +1 to an item's main stat, run-local.
+

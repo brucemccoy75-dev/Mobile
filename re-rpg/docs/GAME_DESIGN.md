@@ -49,7 +49,7 @@ POC statuses: **Exposed** (takes 2x damage), **Guard** (blocks the next physical
 
 Three slots: body, weapon, relic. No inventory. Finding a better item means replacing a worn one on the spot via a compare panel (old vs new, stat deltas coloured). Skip is allowed. Relics are the wild cards (big upside with a downside, e.g. +5 atk / −8 max HP) and the primary synergy hook later (triggers like "on heal: deal damage equal to amount healed").
 
-Rarity: common / uncommon / rare / boss. Rarity gates the modifier budget, not just numbers. **Attack budget** (DECISIONS #13): common +1 free, uncommon +2 with a cost, rare +3 with a cost, relics pay in HP for anything more. POC content: 22 items in `src/data/items.ts`, several class-limited and set-tagged so the affinity weighting has something to bite on. Equipping a max-HP gain adds that much real HP; a max-HP loss only lowers the ceiling (current HP is clamped, never drained), so swapping a relic is never a self-inflicted wound.
+Rarity: common / uncommon / rare / boss. Rarity gates the modifier budget, not just numbers. **Caps** (DECISIONS #33, superseding #13): body DEF +1, weapon ATK +1, relic ATK +1; rarity is paid in max HP, and boss relics are the only items beyond the caps. 22 items in `src/data/items.ts`, several class-limited and set-tagged. Equipping a max-HP gain adds that much real HP; a max-HP loss only lowers the ceiling (current HP is clamped, never drained), so swapping a relic is never a self-inflicted wound.
 
 ## 5. Loot & pools (the replay engine)
 
