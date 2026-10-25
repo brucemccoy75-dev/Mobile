@@ -4,7 +4,7 @@ import type Phaser from 'phaser';
 import { enemiesOfTier, getClass, getSet, getSkill } from '@data/index';
 import type { ClassId, EnemyId, Item, SetId, Skill, SkillId, Stats } from '@data/types';
 import { RunRng, newSeed } from '@core/rng';
-import { generateScreen, type ScreenMap, type Tile } from '@core/map';
+import { generateScreen, type ScreenMap, type Tile, type TileType } from '@core/map';
 import { DECK_CAP } from '@core/combat';
 import { TOME_COPY_CAP } from '@data/skills';
 import { computeStats, emptyEquipment, equip as equipItem, equipmentFromIds, equipmentToIds, type Equipment, RUN_VERSION, type RunState } from '@core/run';
@@ -17,7 +17,8 @@ import type { SaveStore } from '@save/SaveStore';
 export const SCREEN_COUNT = 2;
 
 export type EncounterKind = 'random' | 'guard' | 'boss';
-export interface PendingEncounter { kind: EncounterKind; enemyId: EnemyId; guardId?: string; }
+/** `tile` is where the fight started; the combat backdrop is chosen from it (docs/ART.md). */
+export interface PendingEncounter { kind: EncounterKind; enemyId: EnemyId; guardId?: string; tile?: TileType; }
 export interface CombatResult { encounter: PendingEncounter; won: boolean; }
 export interface PendingOffer { source: RewardSource; gold?: number; }
 

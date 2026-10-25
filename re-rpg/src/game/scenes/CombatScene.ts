@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { artKey } from '@game/art';
+import { BACKDROP_GROUND, BACKDROP_HORIZON, artKey, backdropKey } from '@game/art';
 import { describeSkill, getEnemy, getSkill } from '@data/index';
 import type { Enemy, Intent, Posture } from '@data/types';
 import { createCombat, currentIntent, isPlayerStunned, skillInCombat, step, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
@@ -85,8 +85,22 @@ export class CombatScene extends Phaser.Scene {
     this.ex = W * 0.73; this.ey = H * 0.54;
     this.handY = H - 66;
 
-    // ground line
-    this.add.rectangle(W / 2, H * 0.66, W, 2, COLORS.panelEdge);
+    const groundY = this.py + 46;
+    const bgKey = backdropKey(this.encounter.tile);
+    if (this.textures.exists(bgKey)) {
+      // backdrop: its ground band starts on the combatants' feet line, sides crop on narrow screens
+      const src = this.textures.get(bgKey).getSourceImage() as { width: number; height: number };
+      const scale = Math.max(W / src.width, groundY / (src.height * BACKDROP_HORIZON));
+      this.add.image(W / 2, groundY, bgKey).setOrigin(0.5, BACKDROP_HORIZON).setScale(scale).setDepth(-3);
+      this.add.rectangle(W / 2, groundY + (1 - BACKDROP_HORIZON) * src.height * scale - 1, W, H, BACKDROP_GROUND).setOrigin(0.5, 0).setDepth(-3);
+      // dark fades keep the HUD and the hand legible over the art
+      const g = this.add.graphics().setDepth(-2);
+      g.fillStyle(0x000000, 0.1); g.fillRect(0, 0, W, H);
+      g.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, 0.8, 0.8, 0, 0); g.fillRect(0, 0, W, 140);
+      g.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, 0, 0, 0.75, 0.75); g.fillRect(0, H - 170, W, 170);
+    } else {
+      this.add.rectangle(W / 2, H * 0.66, W, 2, COLORS.panelEdge); // placeholder ground line
+    }
 
     // combatants: real art when a texture was loaded (see BootScene.ART_FILES), placeholder shapes otherwise
     const heroKey = artKey(this, `hero_${this.session.classId}`);
@@ -100,7 +114,6 @@ export class CombatScene extends Phaser.Scene {
       this.playerSprite = this.add.rectangle(this.px, this.py, 64, 92, CLASS_COLORS[this.session.classId] ?? COLORS.player);
     }
     const esize = isBoss ? 120 : this.enemyDef.tier === 2 ? 92 : 76;
-    const groundY = this.py + 46;
     const enemyKey = artKey(this, `enemy_${this.enemyDef.id}`);
     const enemyIdle = `anim_${this.enemyDef.id}_idle`;
     if (this.anims.exists(enemyIdle)) {

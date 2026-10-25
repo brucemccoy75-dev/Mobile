@@ -18,6 +18,10 @@ Fixed clauses, appended verbatim to every character/enemy prompt:
 
 Next assets in order: Boar (screen 1 enemy, facing left) and the forest backdrop, then the other four screen-1 enemies.
 
+### Combat backdrops
+
+One per overworld tile type, 1280×540-ish landscape, stored as `public/art/c/bg_<tile>.jpg` (source JPG under `art-src/`). The flat ground must start at a fixed fraction of the height (`BACKDROP_HORIZON`, 0.84 after cropping the dark bottom strip); CombatScene puts the combatants' feet on that line, extends the ground colour under the hand, and lays dark fades under the HUD and the cards. The fight picks `bg_<tile>` from the tile the encounter started on (`PendingEncounter.tile`); only `bg_forest` exists, so every tile falls back to it. Next: grass/road clearing, swamp, and the two boss arenas, same prompt with the biome swapped.
+
 ### Animation from generated video
 
 Idle loops (and later deaths) come from short Grok videos of the cut-out still: `python3 scripts/video-to-sheet.py art-src/<name>_<anim>_styleC.mp4 <name> <anim> <height@2x> [--once]`. The script extracts frames at 10 fps, keys the plain background, anchors every frame on the feet of its largest blob (so camera drift vanishes), scales the median body height to the target, and picks the 1.5–2.5 s window whose end frame best matches its start (`--once` keeps the whole clip for one-shots). It writes `public/art/c/<name>_<anim>@2x.png` and records frame size, count and fps in `src/data/anims.json`; BootScene loads every entry and CombatScene plays `anim_<id>_idle` when it exists, falling back to the still. Prompt the video with: *camera locked, no zoom, character stays centred, plain white background, subtle motion only, ends in the same pose it starts*. Keep idles ≤ 20 frames; a 17-frame boar idle is ~1.8 MB.

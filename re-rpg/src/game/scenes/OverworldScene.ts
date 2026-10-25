@@ -360,7 +360,8 @@ export class OverworldScene extends Phaser.Scene {
 
   private async startEncounter(e: PendingEncounter) {
     this.locked = true;
-    this.session.pendingEncounter = e;
+    const pp = this.session.playerPos;
+    this.session.pendingEncounter = { ...e, tile: tileAt(this.session.map, pp.x, pp.y) };
     const name = getEnemy(e.enemyId).name;
     void this.toast(e.kind === 'random' ? `Ambush! ${name}` : e.kind === 'guard' ? `${name} blocks the way` : `${name} awaits`, 600);
     this.cameras.main.flash(180, 255, 255, 255);
