@@ -23,6 +23,7 @@ ap.add_argument('video'); ap.add_argument('name'); ap.add_argument('anim'); ap.a
 ap.add_argument('--fps', type=int, default=10); ap.add_argument('--once', action='store_true')
 ap.add_argument('--min', type=float, default=0.8); ap.add_argument('--max', type=float, default=2.5)
 ap.add_argument('--cols', type=int, default=4)
+ap.add_argument('--pause', type=float, default=0, help='seconds to hold on the rest frame between loops')
 args = ap.parse_args()
 
 tmp = tempfile.mkdtemp(prefix='v2s-')
@@ -113,6 +114,11 @@ else:
     _, i, j = best
     chosen = cells[i:j]
     print(f'loop frames {i}..{j - 1} ({len(chosen)} frames, {len(chosen) / args.fps:.1f}s)')
+    # rotate so the loop ends (and any pause holds) on the rest frame: the one most like all the others
+    n = len(chosen)
+    typical = min(range(n), key=lambda k: sum(diff(chosen[k], chosen[m]) for m in range(n) if m != k))
+    chosen = chosen[typical + 1:] + chosen[:typical + 1]
+    print(f'rest frame was {typical}; rotated to end on it')
 
 cols = min(args.cols, len(chosen)); rows = (len(chosen) + cols - 1) // cols
 sheet = Image.new('RGBA', (cols * FW, rows * FH), (0, 0, 0, 0))
@@ -120,6 +126,6 @@ for k, c in enumerate(chosen): sheet.paste(c, ((k % cols) * FW, (k // cols) * FH
 out = os.path.join(OUT, f'{args.name}_{args.anim}@2x.png')
 sheet.save(out, optimize=True)
 manifest = json.load(open(MANIFEST)) if os.path.exists(MANIFEST) else {}
-manifest[f'{args.name}_{args.anim}'] = {'file': f'art/c/{args.name}_{args.anim}@2x.png', 'frameWidth': FW, 'frameHeight': FH, 'frames': len(chosen), 'fps': args.fps, 'loop': not args.once}
+manifest[f'{args.name}_{args.anim}'] = {'file': f'art/c/{args.name}_{args.anim}@2x.png', 'frameWidth': FW, 'frameHeight': FH, 'frames': len(chosen), 'fps': args.fps, 'loop': not args.once, 'pause': int(args.pause * 1000)}
 json.dump(manifest, open(MANIFEST, 'w'), indent=2)
 print(f'{out} {sheet.size} frame {FW}x{FH} x{len(chosen)}; manifest {MANIFEST}')

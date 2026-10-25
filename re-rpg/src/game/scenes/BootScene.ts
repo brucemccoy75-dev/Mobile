@@ -10,7 +10,7 @@ import { setMeta } from '@game/session';
 import ANIMS from '@data/anims.json';
 
 /** Spritesheets cut from generated video by scripts/video-to-sheet.py; keyed `<name>_<anim>` (e.g. boar_idle). */
-export const ART_ANIMS: Record<string, { file: string; frameWidth: number; frameHeight: number; frames: number; fps: number; loop: boolean }> = ANIMS;
+export const ART_ANIMS: Record<string, { file: string; frameWidth: number; frameHeight: number; frames: number; fps: number; loop: boolean; pause?: number }> = ANIMS;
 
 /** Optional art, keyed by the texture name the scenes look for (docs/ART.md). Missing files keep the placeholder shapes. */
 export const ART_FILES: Record<string, string> = {
@@ -37,7 +37,7 @@ export class BootScene extends Phaser.Scene {
   private createAnims() {
     for (const [key, a] of Object.entries(ART_ANIMS)) {
       if (!this.textures.exists(`${key}_c`)) continue;
-      this.anims.create({ key: `anim_${key}`, frames: this.anims.generateFrameNumbers(`${key}_c`, { start: 0, end: a.frames - 1 }), frameRate: a.fps, repeat: a.loop ? -1 : 0 });
+      this.anims.create({ key: `anim_${key}`, frames: this.anims.generateFrameNumbers(`${key}_c`, { start: 0, end: a.frames - 1 }), frameRate: a.fps, repeat: a.loop ? -1 : 0, repeatDelay: a.pause ?? 0 });
     }
   }
 
