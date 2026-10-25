@@ -18,6 +18,16 @@ Fixed clauses, appended verbatim to every character/enemy prompt:
 
 Next assets in order: Boar (screen 1 enemy, facing left) and the forest backdrop, then the other four screen-1 enemies.
 
+### Tileset candidates (prototype, flat/vector top-down)
+
+| Pack | Cost | License | Notes |
+|---|---|---|---|
+| CraftPix / "Free Game Assets" vector top-down freebies: Summer Fantasy, Dark Swamp, Simple Summer, Crystal Plains | free | CraftPix freebie: commercial OK, no credit, no resale of source | 256 px vector tiles (PNG + AI/EPS), downscale to 64. Summer = grass/road/forest, Swamp = swamp. Closest match to Style C; paid siblings ≈ $5.50 each. |
+| andreholtz "2D Cartoon Forest Tileset" | $2.99 | commercial OK, no credit | 48 px flat tiles + .AI source, 100+ tiles, forest only. |
+| RhosGFX "Vector RPG Overworld" (demo) | free demo (CC0), full $4.99 | CC0 demo | 64 px cute/cartoony; demo is bare-bones. |
+| Kenney Map Pack / RPG Base | free | CC0 | Very simple flat tiles, vector sources; fine as a placeholder grid, too plain for shipping. |
+| Pixel Frog "Tiny Swords" | free | custom: commercial OK, no redistribution | 64 px chunky pixel-cartoon; reads flat at phone scale but is pixel art, so a style mismatch risk. |
+
 ## 1. The three pipelines
 
 | Asset | Tolerance for AI | Recommended source |
