@@ -14,8 +14,9 @@ export class Card extends Phaser.GameObjects.Container {
     super(scene, x, y);
     this.skillId = skill.id;
     this.bg = scene.add.rectangle(0, 0, CARD_W, CARD_H, RARITY_COLORS[skill.rarity]).setStrokeStyle(2, COLORS.panelEdge);
-    const name = scene.add.text(0, -CARD_H / 2 + 14, skill.name, { fontFamily: FONT, fontSize: '15px', color: COLORS.text, fontStyle: 'bold', wordWrap: { width: CARD_W - 12 }, align: 'center' }).setOrigin(0.5, 0);
-    const body = scene.add.text(0, 10, skill.text, { fontFamily: FONT, fontSize: '12px', color: '#d7dbe6', wordWrap: { width: CARD_W - 16 }, align: 'center' }).setOrigin(0.5);
+    // Long names wrap; the body text starts under whatever height the name took.
+    const name = scene.add.text(0, -CARD_H / 2 + 8, skill.name, { fontFamily: FONT, fontSize: '14px', color: COLORS.text, fontStyle: 'bold', wordWrap: { width: CARD_W - 12 }, align: 'center' }).setOrigin(0.5, 0);
+    const body = scene.add.text(0, -CARD_H / 2 + 8 + name.height + 4, skill.text, { fontFamily: FONT, fontSize: '11px', color: '#d7dbe6', wordWrap: { width: CARD_W - 14 }, align: 'center' }).setOrigin(0.5, 0);
     this.add([this.bg, name, body]);
     this.setSize(CARD_W, CARD_H);
     scene.add.existing(this);

@@ -37,16 +37,28 @@ export const RARITY_COLORS: Record<Rarity, number> = {
   boss: 0xb0731c,
 };
 
-export const STATUS_LABELS: Record<StatusId, { label: string; color: string }> = {
-  exposed: { label: 'EXPOSED', color: '#ff6b6b' },
-  guard: { label: 'GUARD', color: '#7dd3fc' },
-  burn: { label: 'BURN', color: '#ff8c42' },
-  chill: { label: 'CHILL', color: '#9ad7ff' },
-  weak: { label: 'WEAK', color: '#c7b3ff' },
-  stun: { label: 'RECOVERING', color: '#ffd166' },
-  brace: { label: 'BRACED', color: '#ff9f68' },
-  scatter: { label: 'SCATTERED', color: '#b8f0c8' },
+export const STATUS_LABELS: Record<StatusId, { label: string; color: string; desc: string }> = {
+  exposed: { label: 'EXPOSED', color: '#ff6b6b', desc: 'Takes double damage from every hit while it lasts.' },
+  guard: { label: 'GUARD', color: '#7dd3fc', desc: 'Blocks the next hit completely. Each stack blocks one hit, then it is gone.' },
+  burn: { label: 'BURN', color: '#ff8c42', desc: 'Loses HP at the end of every round. Burn ignores Guard.' },
+  chill: { label: 'CHILL', color: '#9ad7ff', desc: 'Skips its next action.' },
+  weak: { label: 'WEAK', color: '#c7b3ff', desc: 'Deals half damage while it lasts.' },
+  stun: { label: 'RECOVERING', color: '#ffd166', desc: 'Skips turns while it lasts. The enemy keeps acting.' },
+  brace: { label: 'BRACED', color: '#ff9f68', desc: 'The next hit that lands is thrown straight back at the attacker. A Guard blocks the counter; a small hit means a small counter.' },
+  scatter: { label: 'SCATTERED', color: '#b8f0c8', desc: 'The next single hit does half damage. Attacks with several hits are unaffected.' },
 };
+
+/** Plain-language reading of an enemy intent for the tap-to-explain panel. */
+export function describeIntent(kind: string, moveName: string, predicted: number, hits: number, status?: StatusId): string {
+  switch (kind) {
+    case 'attack': return hits > 1 ? `${moveName}: ${hits} hits for about ${predicted} total. Each Guard stack blocks one hit.` : `${moveName}: one hit for about ${predicted}. Defend blocks it.`;
+    case 'guard': return `${moveName}: raises a guard, so your next hit is blocked. Strip it with a cheap hit, or wait it out.`;
+    case 'debuff': return `${moveName}: inflicts ${STATUS_LABELS[status!].label} on you. ${STATUS_LABELS[status!].desc}`;
+    case 'buff': return `${moveName}: ${STATUS_LABELS[status!].desc}`;
+    case 'stagger': return `${moveName}: it loses its footing and is Exposed for your next turn. Hit it hard.`;
+    default: return moveName;
+  }
+}
 
 export const POSTURE_TEXT: Record<string, string> = {
   aggressive: 'next: attacks',
