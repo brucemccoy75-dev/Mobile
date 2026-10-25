@@ -22,6 +22,7 @@ export const ART_FILES: Record<string, string> = {
   enemy_adept_necromancer_c: 'art/c/adept_necromancer@2x.png',
   enemy_shell_beetle_c: 'art/c/shell_beetle@2x.png',
   enemy_rat_pack_c: 'art/c/rat_pack@2x.png',
+  enemy_gatekeeper_c: 'art/c/gatekeeper@2x.png', // Knight Andre
   bg_forest: 'art/c/bg_forest.jpg',
 };
 

@@ -155,7 +155,7 @@ export class CombatScene extends Phaser.Scene {
     this.pileText = this.add.text(W / 2, 60, '', text.mono).setOrigin(0.5);
 
     // enemy intent panel
-    const ix = this.ex, iy = this.ey - this.enemySprite.displayHeight / 2 - 58;
+    const ix = this.ex, iy = Math.max(126, this.ey - this.enemySprite.displayHeight / 2 - 58); // tall bosses: never into the HUD
     const intentBg = this.add.rectangle(ix, iy, 230, 64, COLORS.panel, 0.9).setStrokeStyle(2, COLORS.panelEdge).setInteractive({ useHandCursor: true });
     intentBg.on('pointerup', () => this.explainIntent());
     this.intentBg = intentBg;
