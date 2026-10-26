@@ -66,7 +66,7 @@ export function ghostDef(g: GhostRecord): Enemy {
   if (moves.length === 1) moves.push(MOVES.hit('strike', 'Strike', 1.0));
   const hp = Math.max(14, g.stats.maxHp) + g.strength * 2;
   return {
-    id: GHOST_ID, name: `Ghost of a ${g.classId}`, tier: g.screenIndex === 0 ? 1 : 2, archetype: 'brute', art: `hero_${g.classId}`, tint: 0x8fb4ff,
+    id: GHOST_ID, name: 'Your ghost', tier: g.screenIndex === 0 ? 1 : 2, archetype: 'brute', art: `hero_${g.classId}`, tint: 0x8fb4ff,
     stats: { maxHp: hp, atk: Math.max(3, g.stats.atk - 1) + Math.floor(g.strength / 2), def: g.stats.def },
     table: { kind: 'sequence', moves },
   };
