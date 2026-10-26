@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { getItem, getSkill } from '@data/index';
 import { DECK_CAP } from '@core/combat';
-import { createMeta } from '@core/meta';
-import { applyHeirlooms, createSession, currentQuest, deserialize, serialize, spendConsumedTomes, takeChoice, turnInQuest } from './session';
+import { createMeta, gainExp, unlockNode } from '@core/meta';
+import { applyHeirlooms, createSession, currentQuest, deserialize, serialize, spendConsumedTomes, setName, takeChoice, turnInQuest } from './session';
 
 describe('session', () => {
   it('serialises and resumes identically, including RNG streams', () => {
@@ -22,8 +22,19 @@ describe('session', () => {
     expect(r.rng.stream('encounter').next()).toBe(s.rng.stream('encounter').next());
   });
 
+  it('a fresh warrior has no families: no heirloom spread, basics only, and the shop sells only general tomes', () => {
+    const meta = createMeta();
+    const s = createSession('warrior', meta, 'HEIR-0');
+    expect(s.heirloomChoices).toEqual([]);
+    expect(s.families).toEqual([]);
+    expect(setName(s)).toBe('basics only');
+    expect(s.shop.lines.every((l) => l.kind !== 'tome' || getSkill(l.id).classId === 'any')).toBe(true);
+  });
+
   it('every run opens with a heirloom spread; the picks set the run families and the tome pool', () => {
     const meta = createMeta();
+    gainExp(meta, 'warrior', 100); // level 3: two points, one per family
+    unlockNode(meta, 'warrior', 'warrior_tank'); unlockNode(meta, 'warrior', 'warrior_dps');
     const s = createSession('warrior', meta, 'HEIR-1');
     expect(s.heirloomChoices).toHaveLength(4);
     expect(s.families).toEqual(['warrior_tank', 'warrior_dps']);

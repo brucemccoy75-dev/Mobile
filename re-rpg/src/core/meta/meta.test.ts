@@ -18,21 +18,32 @@ describe('meta', () => {
     const ids = h.map((x) => (x.kind === 'tome' ? x.skill.id : x.item.id));
     expect(new Set(ids).size).toBe(4);
     expect(h.every((x) => x.kind === 'tome' && ['wizard_fire', 'wizard_frost'].includes(x.skill.setId!))).toBe(true);
-    // a warrior's spread never contains wizard cards
-    expect(rollHeirloomChoices(m, 'warrior', new Rng(2)).every((x) => x.kind === 'tome' && x.skill.classId === 'warrior')).toBe(true);
+    // a fresh warrior owns no family yet (DECISIONS #41), so there is no spread; one bought family gives a spread of its two tomes
+    expect(rollHeirloomChoices(m, 'warrior', new Rng(2))).toEqual([]);
+    gainExp(m, 'warrior', 30);
+    expect(unlockNode(m, 'warrior', 'warrior_dps')).toBe(true);
+    const w = rollHeirloomChoices(m, 'warrior', new Rng(2));
+    expect(w.map((x) => (x.kind === 'tome' ? x.skill.id : '')).sort()).toEqual(['broadsword', 'exposing_strike']);
   });
 
   it('EXP levels the class, grants points, and nodes are bought per class', () => {
     const m = createMeta();
-    expect(classProgress(m, 'warrior')).toMatchObject({ level: 1, exp: 0, points: 0, unlocked: ['warrior_tank', 'warrior_dps'] });
+    expect(classProgress(m, 'warrior')).toMatchObject({ level: 1, exp: 0, points: 0, unlocked: [] });
+    expect(classProgress(m, 'wizard')).toMatchObject({ unlocked: ['wizard_fire', 'wizard_frost'] });
+    expect(nodeState(m, 'warrior', 'warrior_tank')).toEqual({ state: 'locked', reason: '1 point (you have 0)' });
+    expect(unlockNode(m, 'warrior', 'warrior_tank')).toBe(false);
     expect(gainExp(m, 'warrior', 29)).toMatchObject({ from: 1, to: 1, points: 0 });
     expect(gainExp(m, 'warrior', 1)).toMatchObject({ from: 1, to: 2, points: 1 });
     expect(classProgress(m, 'warrior').points).toBe(1);
     expect(classProgress(m, 'wizard').level).toBe(1); // nothing shared
-    expect(gainExp(m, 'warrior', 10000).to).toBe(10);
-    expect(classProgress(m, 'warrior').points).toBe(9);
+    expect(nodeState(m, 'warrior', 'warrior_tank').state).toBe('available');
+    expect(unlockNode(m, 'warrior', 'warrior_tank')).toBe(true);
+    expect(classProgress(m, 'warrior')).toMatchObject({ points: 0, unlocked: ['warrior_tank'] });
     expect(nodeState(m, 'warrior', 'warrior_tank').state).toBe('owned');
-    expect(unlockNode(m, 'warrior', 'warrior_tank')).toBe(false);
+    expect(nodeState(m, 'warrior', 'warrior_dps').state).toBe('locked');
+    expect(gainExp(m, 'warrior', 10000).to).toBe(10);
+    expect(classProgress(m, 'warrior').points).toBe(8);
+    expect(unlockNode(m, 'warrior', 'warrior_dps')).toBe(true);
     expect(nodeState(m, 'warrior', 'wizard_fire').state).toBe('locked');
   });
 
@@ -45,6 +56,16 @@ describe('meta', () => {
     expect(migrateMeta({ version: 3, deaths: 2 })?.progress).toEqual({});
   });
 
+  it('v5 saves lose the warrior families they were given for free, and keep their points', () => {
+    const old = migrateMeta({ version: 5, deaths: 4, progress: { warrior: { level: 3, exp: 90, points: 2, unlocked: ['warrior_tank', 'warrior_dps'] }, wizard: { level: 1, exp: 0, points: 0, unlocked: ['wizard_fire', 'wizard_frost'] } } })!;
+    expect(old.version).toBe(6);
+    expect(old.progress.warrior).toEqual({ level: 3, exp: 90, points: 2, unlocked: [] });
+    expect(old.progress.wizard?.unlocked).toEqual(['wizard_fire', 'wizard_frost']);
+    expect(unlockNode(old, 'warrior', 'warrior_tank')).toBe(true);
+    expect(unlockNode(old, 'warrior', 'warrior_dps')).toBe(true);
+    expect(classProgress(old, 'warrior').points).toBe(0);
+  });
+
   it('wizard and shaman unlock after a warrior win; v1 saves migrate', () => {
     const m = createMeta();
     expect(classUnlocked(m, 'warrior')).toBe(true);
@@ -54,7 +75,7 @@ describe('meta', () => {
     recordWin(m, 2, 'warrior');
     expect(classUnlocked(m, 'wizard')).toBe(true);
     const old = migrateMeta({ version: 1, updatedAt: 1, deaths: 3, wins: 1, bestScreen: 2, discoveredSkills: ['x'], discoveredItems: [] })!;
-    expect(old.version).toBe(5);
+    expect(old.version).toBe(6);
     expect(old.relations).toEqual({});
     expect(old.winsByClass).toEqual({ warrior: 1 });
     expect(old.legacyUnspent).toBe(1); // the earlier win becomes a point to spend

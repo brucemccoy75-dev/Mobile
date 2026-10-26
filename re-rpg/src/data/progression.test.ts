@@ -20,7 +20,8 @@ describe('progression curve', () => {
     expect(wild + guards + boss).toBeLessThan(260);
     expect(expForEnemy(getEnemy('boar'), 'random', 2)).toBe(15);
   });
-  it('every class starts with its two sets owned', () => {
-    for (const nodes of Object.values(TREES)) expect(nodes.filter((n) => n.cost === 0)).toHaveLength(2);
+  it('the warrior pays a point per family; wizard and shaman still start with both', () => {
+    expect(TREES.warrior.map((n) => n.cost)).toEqual([1, 1]);
+    for (const c of ['wizard', 'shaman'] as const) expect(TREES[c].filter((n) => n.cost === 0)).toHaveLength(2);
   });
 });

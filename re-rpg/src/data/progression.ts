@@ -14,9 +14,11 @@ export interface TreeNode {
 }
 
 export const TREES: Record<ClassId, TreeNode[]> = {
+  // Warrior: both families cost a point (DECISIONS #41), so a fresh warrior runs on basics and
+  // general tomes until level 2 and the level-up and heirloom systems get exercised from the start.
   warrior: [
-    { setId: 'warrior_tank', cost: 0 },
-    { setId: 'warrior_dps', cost: 0 },
+    { setId: 'warrior_tank', cost: 1 },
+    { setId: 'warrior_dps', cost: 1 },
   ],
   wizard: [
     { setId: 'wizard_fire', cost: 0 },

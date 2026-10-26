@@ -302,7 +302,8 @@ export function takeChoice(s: RunSession, meta: MetaState, choice: RewardChoice,
   return { isNew, replaced };
 }
 
-export const setName = (s: RunSession) => s.families.map((id) => getSet(id).name).join(' + ');
+/** The run's families for display; a run with none (a level-1 warrior, DECISIONS #41) is on basics and general tomes. */
+export const setName = (s: RunSession) => (s.families.length ? s.families.map((id) => getSet(id).name).join(' + ') : 'basics only');
 
 /** After a fight: fleeting tomes that were played leave the deck for good. Returns their names. */
 export function spendConsumedTomes(s: RunSession, consumed: SkillId[]): string[] {

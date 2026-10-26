@@ -205,3 +205,15 @@ The rules, pinned by `src/core/combat/status.test.ts`:
   Ward in order. The unit names why it differs: "2 damage · armour, hardened", "0 blocked ·
   guarded". Tapping another enemy redraws the hand. Enemy intent numbers stay "if every hit
   lands": whether you Guard is your own call, so your Guard is not subtracted from them.
+
+## 41. The warrior's families cost a point each
+
+To put the level-up and heirloom systems under test, Bulwark and Berserker are no longer free:
+each costs one skill point, so a fresh warrior runs on the basics and the general tomes
+(Warding Blast, Mighty Blow, Stand Firm, Last Strike, Final Stand) until level 2 (30 EXP, about
+three kills), buys a family between runs, and only then sees a heirloom spread. A run with no
+family has no spread and goes straight to the overworld; its label reads "basics only". Wizard
+and Shaman keep both families free for now. Meta v6 takes back the warrior nodes that v5 handed
+out for free (nothing was ever bought before, so nothing is lost) and keeps the points already
+earned, so an existing level-3 warrior arrives with two points to spend on exactly these two
+nodes.

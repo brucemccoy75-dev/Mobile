@@ -4,7 +4,7 @@ import type { Rng } from '@core/rng';
 import { LEVEL_CAP, POINTS_PER_LEVEL, TREES, levelForExp } from '@data/progression';
 import type { GhostRecord } from '@core/variants';
 
-export const META_VERSION = 5;
+export const META_VERSION = 6;
 
 /** Cross-run progress. Persisted; merged across devices by union/max (ARCHITECTURE §8). */
 export interface MetaState {
@@ -59,7 +59,10 @@ export function migrateMeta(raw: unknown): MetaState | null {
     legacy: m.legacy ?? { atk: 0, def: 0, maxHp: 0 },
     legacyUnspent: m.legacyUnspent ?? (m.legacy ? 0 : (m.wins ?? 0)),
     // v3 had no progression: everyone starts at level 1 with the free nodes.
-    progress: m.progress ?? {},
+    // v5 granted every tree node for free; v6 charges for some (DECISIONS #41), so nodes that now
+    // cost points are taken back. Nothing was ever bought before v6, so nothing is lost; the
+    // points earned so far stay to be spent.
+    progress: m.version < 6 ? forgetPaidNodes(m.progress ?? {}) : (m.progress ?? {}),
     // v4 had no relations or per-screen deaths: the world starts neutral and forgets earlier deaths.
     relations: m.relations ?? {},
     deathsByScreen: m.deathsByScreen ?? [],
@@ -89,6 +92,15 @@ export const legacySummary = (meta: MetaState): string => {
 // ---------------------------------------------------------------- per-class progression (DECISIONS #32)
 
 const freeNodes = (classId: ClassId): SetId[] => TREES[classId].filter((n) => n.cost === 0).map((n) => n.setId);
+
+/** Strip every node that now costs points from each class's unlocked list (the v5 → v6 migration). */
+function forgetPaidNodes(progress: MetaState['progress']): MetaState['progress'] {
+  const out: MetaState['progress'] = {};
+  for (const [c, p] of Object.entries(progress) as [ClassId, ClassProgress][]) {
+    if (p) out[c] = { ...p, unlocked: p.unlocked.filter((id) => freeNodes(c).includes(id)) };
+  }
+  return out;
+}
 
 /** This class's progress, created on first touch with the free nodes owned. */
 export function classProgress(meta: MetaState, classId: ClassId): ClassProgress {
