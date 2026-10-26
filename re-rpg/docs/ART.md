@@ -133,3 +133,17 @@ Either way the combat scene already drives everything from events (play, damage,
 ## 6. Licensing notes
 
 Check each tool's terms for commercial use and whether outputs can be trademarked. Keep prompts and source files in the repo under `art-src/` (ignored from the build) so the set can be regenerated or handed to an artist.
+
+## Wren, the rat-keeper (boss variant, needs a still)
+
+Same flat vector cel-shaded style sheet as the others. Prompt:
+
+> Full-body character still, flat vector cel-shaded style, thick clean outlines, limited palette, no
+> background, transparent PNG. A small wiry woman in her fifties, weathered, hair tied back under a
+> patched headscarf, a long waxed coat with many pockets, rats peeking from the pockets and one
+> sitting on her shoulder wearing a tiny collar with a bell. She stands squarely, chin up, holding a
+> heavy iron mace in both hands as if she has just taken it from someone. Expression: calm, hurt,
+> decided. Side view facing left, feet on the ground line, about 320px tall at 1x.
+
+Cut with `scripts/cut-sprite.py <src> public/art/c wren 230` and add `enemy_wren_c` to
+`BootScene.ART_FILES`. Until then she is the purple placeholder.

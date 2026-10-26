@@ -222,3 +222,27 @@ Design that keeps it buildable:
 Build order: speech box scene + dialogue data format → first encounter scripts
 (imp's book, giver's rats) → relations in meta v5 → `bossFor` with the giver variant
 and her still → skip rules → ghost lines from telemetry.
+
+## 12. Status after the build session (2026-10-26)
+
+Shipped on the branch, live on Pages (DECISIONS #34–#36):
+- Authored three-lane maps for both screens, nodes (single/elite), guards, signposts, 72 px
+  tiles, hero and enemy stills on the map, fog of war, daylight budget with dusk rules. The
+  generator is behind the title's map toggle and on branch `overworld-procedural`.
+- Dialogue with options at every encounter (speech box, data-driven, conditions and effects),
+  relations and deaths-per-screen in meta v5, skippable once the screen is beaten. Wren the
+  rat-keeper is screen 1's giver. Writing for all 11 enemies, both gates, 8 signposts, Wren,
+  the ghost.
+- Wren replaces Andre at the gate at relation ≤ −2 and swings your weapon. Your ghost waits
+  where you died and joins that fight; beating it returns gold and a card.
+
+Still open, in suggested order:
+1. Wren still (prompt in docs/ART.md). Screen-2 stills (Ogre, Iron Knight, Witch, Harpies,
+   Warden) now matter more because they stand on the map.
+2. Fixed rotations already exist for most enemies; the "studied" reveal (next two moves after
+   3 kills) and a fast-forward toggle are not built.
+3. Fill the skill trees (nothing to spend points on).
+4. Tune daylight (75 steps on screen 1 for a ~30-step direct walk) and dusk duo rate from run logs.
+5. Enemy affinities, overflow-exhausts, shrine 50%: not built; decide after a few logs.
+6. More dialogue consequences: the escort NPC, the shop keeper, Andre's running gag past 5 deaths,
+   Gerald as a possible ally. A per-character "memory" line on the title screen.

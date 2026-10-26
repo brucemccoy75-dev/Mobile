@@ -2,6 +2,7 @@ import { getItem, getSet, getSkill } from '@data/index';
 import type { ClassId, Item, SetId, Skill } from '@data/types';
 import type { Rng } from '@core/rng';
 import { LEVEL_CAP, POINTS_PER_LEVEL, TREES, levelForExp } from '@data/progression';
+import type { GhostRecord } from '@core/variants';
 
 export const META_VERSION = 5;
 
@@ -28,6 +29,8 @@ export interface MetaState {
   deathsByScreen: number[];
   /** Species that landed the last killing blow. */
   lastKiller?: string;
+  /** Your last death on each screen, waiting there as a ghost (DECISIONS #36). Keyed by screen index. */
+  ghosts: Record<string, GhostRecord>;
 }
 
 export interface ClassProgress {
@@ -40,7 +43,7 @@ export interface ClassProgress {
 export type LegacyChoice = 'atk' | 'def' | 'maxHp';
 export const LEGACY_GRANT: Record<LegacyChoice, number> = { atk: 1, def: 1, maxHp: 5 };
 
-export const createMeta = (): MetaState => ({ version: META_VERSION, updatedAt: Date.now(), deaths: 0, wins: 0, bestScreen: 0, discoveredSkills: [], discoveredItems: [], winsByClass: {}, legacy: { atk: 0, def: 0, maxHp: 0 }, legacyUnspent: 0, progress: {}, relations: {}, deathsByScreen: [] });
+export const createMeta = (): MetaState => ({ version: META_VERSION, updatedAt: Date.now(), deaths: 0, wins: 0, bestScreen: 0, discoveredSkills: [], discoveredItems: [], winsByClass: {}, legacy: { atk: 0, def: 0, maxHp: 0 }, legacyUnspent: 0, progress: {}, relations: {}, deathsByScreen: [], ghosts: {} });
 
 /** Bring an older saved meta up to date; returns null if it cannot be read. */
 export function migrateMeta(raw: unknown): MetaState | null {
@@ -61,6 +64,7 @@ export function migrateMeta(raw: unknown): MetaState | null {
     relations: m.relations ?? {},
     deathsByScreen: m.deathsByScreen ?? [],
     lastKiller: m.lastKiller,
+    ghosts: m.ghosts ?? {},
   };
   return out;
 }
@@ -207,8 +211,19 @@ export function mergeMeta(a: MetaState, b: MetaState): MetaState {
     relations: { ...((a.updatedAt >= b.updatedAt ? b : a).relations ?? {}), ...((a.updatedAt >= b.updatedAt ? a : b).relations ?? {}) },
     deathsByScreen: Array.from({ length: Math.max(a.deathsByScreen?.length ?? 0, b.deathsByScreen?.length ?? 0) }, (_, i) => Math.max(a.deathsByScreen?.[i] ?? 0, b.deathsByScreen?.[i] ?? 0)),
     lastKiller: (a.updatedAt >= b.updatedAt ? a : b).lastKiller,
+    ghosts: { ...((a.updatedAt >= b.updatedAt ? b : a).ghosts ?? {}), ...((a.updatedAt >= b.updatedAt ? a : b).ghosts ?? {}) },
   };
 }
+
+/** A death leaves a ghost on its screen; dying to (or beside) the old ghost makes the new one stronger. */
+export function leaveGhost(meta: MetaState, g: Omit<GhostRecord, 'strength' | 'at'>): GhostRecord {
+  const prev = meta.ghosts[String(g.screenIndex)];
+  const rec: GhostRecord = { ...g, strength: prev ? Math.min(6, prev.strength + 1) : 0, at: Date.now() };
+  meta.ghosts[String(g.screenIndex)] = rec; meta.updatedAt = Date.now();
+  return rec;
+}
+export const ghostOn = (meta: MetaState, screenIndex: number): GhostRecord | undefined => meta.ghosts?.[String(screenIndex)];
+export function layGhost(meta: MetaState, screenIndex: number): void { delete meta.ghosts[String(screenIndex)]; meta.updatedAt = Date.now(); }
 
 function mergeProgress(a: MetaState['progress'], b: MetaState['progress']): MetaState['progress'] {
   const out: MetaState['progress'] = {};

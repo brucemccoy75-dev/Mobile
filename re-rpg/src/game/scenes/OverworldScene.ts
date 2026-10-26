@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
-import { getEnemy } from '@data/index';
+import { getEnemy, getSkill } from '@data/index';
 import { findPath, stepThreat, key, tileAt, type MapNode, type Tile, type TileType } from '@core/map';
 import { SCREEN_COUNT, SIGHT, currentQuest, getMeta, getSession, getStore, isDusk, isEscorting, nodeAt, nodeEncounter, persistMeta, persistRun, revealAround, rollEncounter, setSession, spendDaylight, startScreen, type PendingEncounter, type RunSession } from '@game/session';
 import { ESCORT_THREAT_MULT, noteKill, questProgress, questReady } from '@core/quest';
-import { gainExp, nudgeRelation, recordWin } from '@core/meta';
+import { gainExp, ghostOn, nudgeRelation, recordWin } from '@core/meta';
+import { WREN_GRUDGE, ghostDef, wrenBoss } from '@core/variants';
 import { openDialogue } from '@game/dialogue';
 import { WIN_EXP } from '@data/progression';
 import { artKey } from '@game/art';
@@ -205,6 +206,17 @@ export class OverworldScene extends Phaser.Scene {
     this.creatureMarker(this.bossSprite, m.bossId, TILE * 1.6, { color: COLORS.boss, glyph: '☠', radius: 26 * K });
     this.bossSprite.add(label(32 * K, getEnemy(m.bossId).name, '#e0b4ff'));
     if (s.bossDefeated) this.bossSprite.setAlpha(0.3);
+    // Your ghost (DECISIONS #36): a pale copy of the hero where the last run died on this screen.
+    const ghost = ghostOn(getMeta(this), s.screenIndex);
+    if (ghost && !s.testMode && !(ghost.nodeId && s.clearedNodes.has(ghost.nodeId)) && !(ghost.guardId && s.defeatedGuards.has(ghost.guardId))) {
+      const gc = this.centre(ghost.tile);
+      const cont = this.add.container(gc.x + TILE * 0.5, gc.y - TILE * 0.2).setDepth(5);
+      const hk = artKey(this, `hero_${ghost.classId}`);
+      if (hk) { const src = this.textures.get(hk).getSourceImage() as { height: number }; cont.add(this.add.image(0, TILE * 0.42, hk).setOrigin(0.5, 1).setScale((TILE * 1.15) / src.height).setTint(0x8fb4ff).setAlpha(0.55)); }
+      else cont.add(this.add.rectangle(0, 0, 26 * K, 38 * K, 0x8fb4ff, 0.5));
+      cont.add(label(22 * K, 'your ghost', '#b8ccff'));
+      this.tweens.add({ targets: cont, y: cont.y - 6, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+    }
     // quest giver, and the escort NPC while they are still out there
     const q = currentQuest(s);
     const gc = this.centre(m.questGiver);
@@ -491,8 +503,20 @@ export class OverworldScene extends Phaser.Scene {
   private async encounterWithWords(e: PendingEncounter, node?: MapNode) {
     const s = this.session, meta = getMeta(this);
     this.locked = true;
-    const trigger = e.kind === 'boss' ? `gate:${s.flags.has('wren_boss') ? 'wren' : e.enemyId}` : `pre_fight:${e.enemyId}`;
-    const r = await openDialogue(this, s, meta, trigger, { weapon: s.equipment.weapon?.name ?? 'fists' });
+    let trigger = e.kind === 'boss' ? `gate:${e.enemyId}` : `pre_fight:${e.enemyId}`;
+    // Wren takes Andre's place at the gate when the rats have been avenged enough (DECISIONS #36).
+    if (e.kind === 'boss' && s.screenIndex === 0 && (meta.relations.wren ?? 0) <= WREN_GRUDGE && !s.testMode) {
+      const w = s.equipment.weapon;
+      e = { ...e, enemyId: 'wren', custom: [wrenBoss(w?.name ?? null, w ? (w.mods.reduce((a, m) => a + (m.stat?.atk ?? 0), 0)) : 0)] };
+      trigger = 'gate:wren';
+    }
+    // Your ghost joins the fight it fell in, in the rear partner's place.
+    const ghost = ghostOn(meta, s.screenIndex);
+    if (ghost && !s.testMode && e.kind !== 'boss' && ((e.nodeId && ghost.nodeId === e.nodeId) || (e.guardId && ghost.guardId === e.guardId))) {
+      e = { ...e, extra: undefined, custom: [getEnemy(e.enemyId), ghostDef(ghost)], ghost: true };
+      trigger = 'pre_fight:ghost';
+    }
+    const r = await openDialogue(this, s, meta, trigger, { weapon: s.equipment.weapon?.name ?? 'fists', killer: ghost?.killerName ?? '', ghostClass: ghost?.classId ?? '', ghostCard: ghost?.deck.find((id) => getSkill(id).rarity !== 'basic') ? getSkill(ghost.deck.find((id) => getSkill(id).rarity !== 'basic')!).name : 'nothing' });
     if (r?.notes.length) { void persistMeta(this); void this.toast(r.notes.join('  ·  '), 1800); this.syncHud(); }
     if (r && r.skip && !r.fight) {
       if (e.kind === 'guard' && e.guardId) { s.defeatedGuards.add(e.guardId); this.guardSprites.get(e.guardId)?.destroy(); }
@@ -508,7 +532,7 @@ export class OverworldScene extends Phaser.Scene {
     this.locked = true;
     const pp = this.session.playerPos;
     this.session.pendingEncounter = { ...e, tile: tileAt(this.session.map, pp.x, pp.y) };
-    const name = [e.enemyId, ...(e.extra ?? [])].map((id) => getEnemy(id).name).join(' & ');
+    const name = e.custom ? e.custom.map((d) => d.name).join(' & ') : [e.enemyId, ...(e.extra ?? [])].map((id) => getEnemy(id).name).join(' & ');
     const line = e.kind === 'random' ? `Ambush! ${name}` : e.kind === 'guard' ? `${name} blocks the way` : e.kind === 'node' ? (node?.kind === 'elite' ? `${name} hold the clearing` : e.extra?.length ? `${name}, bold in the dark` : `${name} waits here`) : `${name} awaits`;
     void this.toast(line, 600);
     this.cameras.main.flash(180, 255, 255, 255);
@@ -524,7 +548,7 @@ export class OverworldScene extends Phaser.Scene {
     if (!r) return;
     s.lastResult = null;
     if (!r.won) return; // death is handled in the combat scene
-    const killed = [r.encounter.enemyId, ...(r.encounter.extra ?? [])];
+    const killed = r.encounter.custom ? r.encounter.custom.map((d) => d.id) : [r.encounter.enemyId, ...(r.encounter.extra ?? [])];
     // Wren's rats (DECISIONS #35): every pack killed on her screen costs standing, double if you promised.
     const rats = killed.filter((id) => id === 'rat_pack').length;
     if (rats && s.map.authored && s.screenIndex === 0) {

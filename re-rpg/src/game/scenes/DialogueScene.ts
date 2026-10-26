@@ -46,7 +46,7 @@ export class DialogueScene extends Phaser.Scene {
     add(this.add.rectangle((left + right) / 2, top + boxH / 2, right - left, boxH, 0x0b0f1a, 0.96).setStrokeStyle(2, COLORS.goldHex));
     // portrait
     const px = left + 92, pBottom = top + boxH - 16;
-    const key = d.portrait ? artKey(this, d.portrait) : null;
+    const key = d.portrait ? artKey(this, fill(d.portrait, this.data_.vars)) : null;
     if (key) {
       const src = this.textures.get(key).getSourceImage() as { height: number };
       add(this.add.image(px, pBottom, key).setOrigin(0.5, 1).setScale(Math.min(0.5, (boxH - 60) / src.height)));

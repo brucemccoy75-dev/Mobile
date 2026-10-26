@@ -90,6 +90,14 @@ export const DIALOGUE: Dialogue[] = [
     lines: ['Three of them, arguing about who saw you first.', 'They settle it by all diving at once.'],
     options: [{ text: 'Fight.', effects: [{ fight: true }], default: true }] },
 
+  // ---------------------------------------------------------------- your ghost
+  { id: 'ghost', trigger: 'pre_fight:ghost', speaker: 'Your ghost', portrait: 'hero_{ghostClass}',
+    lines: ['It is wearing your face. It is doing your walk.', 'It died here, to {killer}, and it has not taken it well. It is still holding {ghostCard}.'],
+    options: [{ text: 'Lay it to rest.', effects: [{ fight: true }], default: true }, { text: 'Talk to it.', effects: [{ next: 'ghost_talk' }] }] },
+  { id: 'ghost_talk', trigger: 'ghost_talk', speaker: 'Your ghost', portrait: 'hero_{ghostClass}',
+    lines: ['It says what you said. It says it a lot.', '"I had it. I had it. One more turn."'],
+    options: [{ text: 'Fight.', effects: [{ fight: true }], default: true }] },
+
   // ---------------------------------------------------------------- gates
   { id: 'andre_5', trigger: 'gate:gatekeeper', speaker: 'Knight Andre', portrait: 'enemy_gatekeeper', when: [{ deaths: 'screen', min: 5 }],
     lines: ['"I have started naming the bruises after you."', '"This one is called Tuesday."'],

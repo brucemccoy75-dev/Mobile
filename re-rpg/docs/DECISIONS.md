@@ -115,3 +115,18 @@ the dance. Screen 1's giver is Wren the rat-keeper; every rat pack killed on her
 standing (double if you promised). Dialogue becomes skippable once the screen has been beaten;
 Skip applies the default option of the whole chain. Why: the comparison with other card games
 is unavoidable, so the uniqueness budget goes to characters who remember you dying.
+
+## 36. Enemies you made: Wren at the gate, and your ghost
+
+Two enemies exist only because of what the player did, both built at encounter time as ordinary
+`Enemy` definitions (`core/variants`) handed to the fight through `PendingEncounter.custom`, so
+the engine and the combat scene never special-case them. **Wren** takes Knight Andre's place at
+the screen-1 gate once her standing is −2 or lower (two rat packs, or one after a promise); she
+swings an attack named after your equipped weapon and gains its ATK, with a rat tide and a
+Whistle (Weak) between. Beating her squares the account. **Your ghost** is left where the last
+run died on this screen (nodes and guards; a gate death leaves none): your stats, your cards
+turned into a rotation, pale blue, holding the hero's still. It joins the fight it fell in, in the
+rear partner's place, and grows by one each time a run dies there again. Laying it to rest gives
+back its gold (capped at 60) and one of the cards it died holding. One ghost per screen, in meta.
+Why: deaths become content, the map gets a personal grudge on it, and the first "the world
+reacted to me" moment arrives on the first return trip.

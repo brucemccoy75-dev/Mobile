@@ -5,6 +5,7 @@ import { TOME_COPY_CAP } from '@data/skills';
 import { DECK_CAP } from '@core/combat';
 import { computeStats, equipmentFromIds } from '@core/run';
 import { createSession, getMeta, setSession } from '@game/session';
+import { wrenBoss } from '@core/variants';
 import { Button } from '@game/ui/Button';
 import { COLORS, text } from '@game/ui/theme';
 
@@ -40,6 +41,8 @@ export class TestModeScene extends Phaser.Scene {
       new Button(this, x0 + 76, 80 + i * 30, `${e.name}  ·  ${e.archetype === 'boss' ? 'boss' : `t${e.tier}`}`, () => this.set({ enemyId: e.id, extraId: this.setup.extraId === e.id ? null : this.setup.extraId }), { ...small, width: 152, ...sel(this.setup.enemyId === e.id) });
       new Button(this, x0 + 178, 80 + i * 30, '2nd', () => this.set({ extraId: this.setup.extraId === e.id ? null : e.id }), { width: 44, height: 26, fontSize: '11px', ...sel(this.setup.extraId === e.id) });
     });
+    // Boss variant (DECISIONS #36): Wren with whatever weapon is picked on the right.
+    new Button(this, x0 + 76, 80 + ENEMIES.length * 30, 'Wren  ·  boss variant', () => this.set({ enemyId: 'wren', extraId: null }), { ...small, width: 152, ...sel(this.setup.enemyId === 'wren') });
 
     // class + tomes
     const x1 = 236;
@@ -71,7 +74,7 @@ export class TestModeScene extends Phaser.Scene {
     const eq = equipmentFromIds(this.setup.equipment, []);
     const st = computeStats(getClass(this.setup.classId).stats, eq);
     const deckNames = this.setup.deck.map((d) => getSkill(d).name).join(', ') || 'basics only';
-    this.add.text(16, H - 12, `vs ${getEnemy(this.setup.enemyId).name}${this.setup.extraId ? ` & ${getEnemy(this.setup.extraId).name}` : ''}   ·   HP ${st.maxHp}  ATK ${st.atk}  DEF ${st.def}   ·   ${deckNames}`, { ...text.small, fontSize: '12px', wordWrap: { width: W - 32 } }).setOrigin(0, 1);
+    this.add.text(16, H - 12, `vs ${this.setup.enemyId === 'wren' ? 'Wren' : getEnemy(this.setup.enemyId).name}${this.setup.extraId ? ` & ${getEnemy(this.setup.extraId).name}` : ''}   ·   HP ${st.maxHp}  ATK ${st.atk}  DEF ${st.def}   ·   ${deckNames}`, { ...text.small, fontSize: '12px', wordWrap: { width: W - 32 } }).setOrigin(0, 1);
   }
 
   private set(patch: Partial<TestSetup>) {
@@ -99,6 +102,13 @@ export class TestModeScene extends Phaser.Scene {
     s.base = { ...getClass(this.setup.classId).stats };
     s.stats = computeStats(s.base, s.equipment);
     s.hp = s.stats.maxHp;
+    if (this.setup.enemyId === 'wren') {
+      const w = s.equipment.weapon;
+      s.pendingEncounter = { kind: 'boss', enemyId: 'wren', tile: 'arena', custom: [wrenBoss(w?.name ?? null, w ? w.mods.reduce((a, m) => a + (m.stat?.atk ?? 0), 0) : 0)] };
+      setSession(this, s);
+      this.scene.start('Combat');
+      return;
+    }
     const enemy = getEnemy(this.setup.enemyId);
     s.pendingEncounter = { kind: enemy.archetype === 'boss' ? 'boss' : 'random', enemyId: enemy.id, tile: 'forest', extra: this.setup.extraId && this.setup.extraId !== enemy.id ? [this.setup.extraId] : undefined };
     setSession(this, s);

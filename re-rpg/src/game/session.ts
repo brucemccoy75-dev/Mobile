@@ -2,7 +2,7 @@
 // RunState that SaveStore persists. Pure rules live in core/run, core/loot, core/meta.
 import type Phaser from 'phaser';
 import { enemiesOfTier, getClass, getSet, getSkill } from '@data/index';
-import type { ClassId, EnemyId, Item, SetId, Skill, SkillId, Stats } from '@data/types';
+import type { ClassId, Enemy, EnemyId, Item, SetId, Skill, SkillId, Stats } from '@data/types';
 import { RunRng, newSeed } from '@core/rng';
 import { entryToBossSteps, generateScreen, key, parseScreen, type MapNode, type ScreenMap, type Tile, type TileType } from '@core/map';
 import { SCREEN1 } from '@data/maps/screen1';
@@ -27,7 +27,7 @@ export const DAYLIGHT_MULT = 2.5;
 /** After dusk, a fight node has this chance to be a duo. */
 export const DUSK_DUO_CHANCE = 0.6;
 /** `tile` is where the fight started; the combat backdrop is chosen from it (docs/ART.md). */
-export interface PendingEncounter { kind: EncounterKind; enemyId: EnemyId; guardId?: string; /** Authored map node (kind 'node'). */ nodeId?: string; tile?: TileType; /** Further enemies behind the first (duos, DECISIONS #29). */ extra?: EnemyId[]; }
+export interface PendingEncounter { kind: EncounterKind; enemyId: EnemyId; guardId?: string; /** Authored map node (kind 'node'). */ nodeId?: string; tile?: TileType; /** Further enemies behind the first (duos, DECISIONS #29). */ extra?: EnemyId[]; /** Full definitions when the fight holds enemies that are not in the roster (a ghost, a boss variant; DECISIONS #36). Front first; overrides enemyId/extra for the engine. */ custom?: Enemy[]; /** Set when your ghost is in this fight. */ ghost?: boolean; }
 export interface CombatResult { encounter: PendingEncounter; won: boolean; }
 export interface PendingOffer { source: RewardSource; gold?: number; }
 

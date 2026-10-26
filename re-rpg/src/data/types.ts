@@ -102,6 +102,10 @@ export interface Enemy {
   stats: Stats;
   table: MoveTable;
   phases?: EnemyPhase[];
+  /** Texture base for the still (default `enemy_<id>`); run-time variants point at borrowed art. */
+  art?: string;
+  /** Tint over the still (a ghost is pale blue). */
+  tint?: number;
 }
 
 export type Slot = 'body' | 'weapon' | 'relic';

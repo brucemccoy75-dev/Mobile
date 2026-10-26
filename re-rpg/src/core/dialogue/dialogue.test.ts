@@ -15,6 +15,7 @@ describe('dialogue data', () => {
       expect(pickDialogue(DIALOGUE, trig, ctx()), trig).not.toBeNull();
     }
     expect(pickDialogue(DIALOGUE, 'gate:wren', ctx())).not.toBeNull();
+    expect(pickDialogue(DIALOGUE, 'pre_fight:ghost', ctx())).not.toBeNull();
   });
   it('every signpost on both screens has lines', () => {
     for (const [i, a] of [SCREEN1, SCREEN2].entries()) {

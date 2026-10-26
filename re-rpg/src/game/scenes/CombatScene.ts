@@ -4,7 +4,10 @@ import { describeSkill, getEnemy, getSkill } from '@data/index';
 import type { Enemy, Intent, Posture } from '@data/types';
 import { createCombat, currentIntent, isPlayerStunned, skillInCombat, step, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
 import { getMeta, getSession, getStore, persistMeta, persistRun, setName, setSession, spendConsumedTomes, type PendingEncounter, type RunSession } from '@game/session';
-import { gainExp, recordDeath } from '@core/meta';
+import { gainExp, ghostOn, layGhost, leaveGhost, nudgeRelation, recordDeath } from '@core/meta';
+import { ghostSpoils } from '@core/variants';
+import { equipmentToIds } from '@core/run';
+import { applyTome } from '@game/session';
 import { expForEnemy } from '@data/progression';
 import { recordFight } from '@game/telemetry';
 import { Button } from '@game/ui/Button';
@@ -81,13 +84,13 @@ export class CombatScene extends Phaser.Scene {
     this.session = getSession(this);
     if (!this.session.pendingEncounter) throw new Error('Combat started without an encounter');
     this.encounter = this.session.pendingEncounter;
-    this.enemyDef = getEnemy(this.encounter.enemyId);
+    this.enemyDef = this.encounter.custom?.[0] ?? getEnemy(this.encounter.enemyId);
     this.hpBefore = this.session.hp;
     this.target = 0;
     this.views = [];
     this.state = createCombat({
       player: { name: this.session.classId, stats: this.session.stats, hp: this.session.hp, deck: this.session.deck },
-      enemies: [this.encounter.enemyId, ...(this.encounter.extra ?? [])],
+      enemies: this.encounter.custom ?? [this.encounter.enemyId, ...(this.encounter.extra ?? [])],
       rng: this.session.rng.stream('combat'),
       skillUpgrades: this.session.skillUpgrades,
     });
@@ -144,9 +147,11 @@ export class CombatScene extends Phaser.Scene {
       const scale = n === 1 || slot === 0 ? 0.5 : 0.44;
       let sprite: EnemyView['sprite'];
       let ey = H * 0.54;
-      const enemyKey = artKey(this, `enemy_${def.id}`);
+      const enemyKey = artKey(this, def.art ?? `enemy_${def.id}`);
       if (enemyKey) {
         sprite = this.add.image(ex, groundY, enemyKey).setOrigin(0.5, 1).setScale(scale);
+        if (def.art?.startsWith('hero_')) (sprite as Phaser.GameObjects.Image).setFlipX(true); // a borrowed hero faces the player
+        if (def.tint !== undefined) (sprite as Phaser.GameObjects.Image).setTint(def.tint).setAlpha(0.8);
         ey = groundY - sprite.displayHeight / 2;
       } else {
         sprite = this.add.rectangle(ex, ey, esize * scale * 2, esize * scale * 2, isBoss ? COLORS.boss : COLORS.enemy);
@@ -661,9 +666,24 @@ export class CombatScene extends Phaser.Scene {
       this.session.encountersWon += 1;
       this.session.lastResult = { encounter: this.encounter, won: true };
       this.session.pendingEncounter = null;
+      let extra = spent.length ? `  Spent: ${spent.join(', ')}.` : '';
+      if (this.encounter.ghost) {
+        // Beating your ghost gives back what it died holding (DECISIONS #36).
+        const g = ghostOn(getMeta(this), this.session.screenIndex);
+        if (g) {
+          const sp = ghostSpoils(g);
+          this.session.gold += sp.gold;
+          let learned = '';
+          if (sp.tome && this.session.deck.length < 10) { applyTome(this.session, getSkill(sp.tome)); learned = ` and ${getSkill(sp.tome).name}`; }
+          extra += `  The ghost is laid. You recover ${sp.gold} gold${learned}.`;
+          layGhost(getMeta(this), this.session.screenIndex);
+          void persistMeta(this);
+        }
+      }
+      if (this.enemyDef.id === 'wren') { nudgeRelation(getMeta(this), 'wren', 9); this.session.flags.add('wren_beaten'); extra += '  Wren sits down by the giant. "Fine," she says. "Fine."'; void persistMeta(this); }
       const sub = (isBoss
         ? 'The way forward opens. You are fully healed.'
-        : `${this.session.hp}/${this.session.stats.maxHp} HP. No healing between fights.`) + (spent.length ? `  Spent: ${spent.join(', ')}.` : '');
+        : `${this.session.hp}/${this.session.stats.maxHp} HP. No healing between fights.`) + extra;
       this.add.text(W / 2, H * 0.34 + 46, sub, text.body).setOrigin(0.5).setDepth(71);
       const source = this.encounter.kind === 'random' || this.encounter.kind === 'node' ? (this.encounter.extra?.length ? 'guard' : 'kill') : this.encounter.kind; // a duo (or elite) pays like a guard
       this.session.pendingOffer = { source };
@@ -671,8 +691,12 @@ export class CombatScene extends Phaser.Scene {
     } else {
       this.session.lastResult = { encounter: this.encounter, won: false };
       recordDeath(getMeta(this), this.session.screenIndex, this.killerId());
-      void Promise.all([persistMeta(this), getStore(this).clearRun()]);
       const killer = this.killerName();
+      // Your death stays on the map as a ghost at the clearing you fell in (DECISIONS #36); a gate death leaves none.
+      if (this.session.map.authored && this.encounter.kind !== 'boss') {
+        leaveGhost(getMeta(this), { classId: this.session.classId, screenIndex: this.session.screenIndex, tile: { ...this.session.playerPos }, nodeId: this.encounter.nodeId, guardId: this.encounter.guardId, deck: [...this.session.deck], stats: { ...this.session.stats }, equipment: equipmentToIds(this.session.equipment), killer: this.killerId(), killerName: killer, gold: this.session.gold });
+      }
+      void Promise.all([persistMeta(this), getStore(this).clearRun()]);
       this.add.text(W / 2, H * 0.34 + 46, `Slain by ${killer} on screen ${this.session.screenIndex + 1}.`, text.body).setOrigin(0.5).setDepth(71);
       new Button(this, W / 2, H * 0.62, 'Continue', () => this.scene.start('RunEnd', { won: false, killedBy: killer }), { width: 220, fill: 0x1f2a44, edge: COLORS.goldHex }).setDepth(72);
     }

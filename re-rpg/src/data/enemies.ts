@@ -57,6 +57,9 @@ const drain = (id: string, name: string, mult: number, lifesteal = 1): EnemyMove
   effects: [{ type: 'damage', mult, lifesteal, kind: 'magic' }],
 });
 
+/** Move builders, shared with the run-time variants (core/variants). */
+export const MOVES = { hit, spell, guard, debuff, harden, stagger, charge, brace, scatter, curse, drain };
+
 export const ENEMIES: Enemy[] = [
   // ---- Screen 1 ----
   { id: 'boar', name: 'Boar', tier: 1, archetype: 'brute', stats: { maxHp: 12, atk: 5, def: 0 },
