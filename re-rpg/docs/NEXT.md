@@ -4,8 +4,8 @@
 
 **State.** Branch `claude/re-rpg-mobile-architecture-t26won`, folder `re-rpg/`, live on GitHub
 Pages at https://brucemccoy75-dev.github.io/Mobile/ (deploys ~70 s after a push; poll
-`origin/gh-pages` for "Deploy re-rpg <sha>"). 157 tests pass (`npm run check`). Last commit
-`4aa5075`. Everything below in sections 1–14 is history; the game today is:
+`origin/gh-pages` for "Deploy re-rpg <sha>"). 182 tests pass (`npm run check`). Last commit:
+see `git log`. Everything below in sections 1–14 is history; the game today is:
 
 - **Node overworld** (DECISIONS #37): a static node network per screen over an authored
   terrain, contents rolled per run, tap a reachable node to travel, swipe to pan. Screen 1 has a
@@ -24,31 +24,19 @@ Pages at https://brucemccoy75-dev.github.io/Mobile/ (deploys ~70 s after a push;
 4174 --strictPort &` (start it in its own command; `pkill` in a chained command kills the chain)
 → Playwright at 844×390 with `window.__rerpg` (scripts in the scratchpad were throwaway; write a
 new one per check) → commit with the attribution lines → `git push -u origin <branch>` → poll
-gh-pages. Record decisions in `docs/DECISIONS.md` (next number is 40).
+gh-pages. Record decisions in `docs/DECISIONS.md` (next number is 41).
 
-**First task for the next session: audit buff and debuff timing and display.**
-Report from play: the Shell Beetle often takes reduced damage before HARDENED shows as a
-status. Validate every status end to end (engine order, duration ticks, when the chip appears
-and disappears, what the card's predicted number says):
-- Engine: `src/core/combat/engine.ts` (`step`: player → each living enemy → enemy ticks → player
-  tick → advance → `startRound`), `status.ts` (`applyStatus`, `tickStatuses`, `consumeBlock`,
-  `consumeBrace`, `STACKING_TURNS`, cap 4), `damage.ts` (`computeHit`: def, Exposed ×2,
-  Harden ×0.5, Weak ×0.5, gear flat).
-- Display: `src/game/scenes/CombatScene.ts` keeps `dispStatus` and `dispHp` from the event log
-  during playback (`playEvents`), snaps from the engine at the end (`syncAll`/`snapStatuses`);
-  chips are `src/game/ui/StatusChips.ts`; the card headline number comes from
-  `src/data/describe.ts` (`cardFace`, `baseHit`) and may not include the target's Harden/Exposed
-  or DEF.
-- Hypotheses for the beetle: (a) its DEF 1 is read as a shell (4 ATK − 1 DEF = 3, and the card
-  says 4); (b) `harden` is applied on the enemy's turn with `turns: 2`, ticks to 1 the same
-  round, and the chip for it is only drawn after the next deal; (c) the status event for a
-  self-buff is tagged to the wrong `who` in a duo. Write engine tests that pin the intended
-  timing for each status (exposed, guard, ward, aegis, burn, chill, weak, stun, brace, scatter,
-  curse, harden), then fix the scene so the chip and the card's predicted number agree with the
-  engine at the moment the player chooses. Make the card face show the number the target will
-  actually take (DEF, Harden, Exposed, Weak) or say why not in DECISIONS.
-- Test Mode (`src/game/scenes/TestModeScene.ts`) can pick any enemy; the Shell Beetle, Hex Imp
-  (Hex = Exposed), Adept Necromancer (Curse) and Boar (Brace) cover most statuses.
+**Done this session: the buff/debuff audit (DECISIONS #40).** The engine and the chips were
+already in step; the card was the liar (it said 4 against the beetle's DEF 1, so 3 landed from
+round 1 and 2 while hardened). Now `src/core/combat/status.test.ts` pins apply/tick/end timing
+for every status, `previewDamage` (core/combat/damage.ts) feeds the card headline the number the
+chosen target will take with the reason in the unit ("2 damage · armour, hardened"), and
+retargeting redraws the hand. Screenshots: `docs/audit/status-2026-10-26/`. Scripts that drove
+Test Mode from Playwright were throwaway (registry `testSetup` + `TestMode.fight()`, then
+`Combat.act()` and poll `busy`; map taps through the canvas rect, the game is 1169 wide at
+844×390). Open question for play: the chip count flips from HARDENED 2 to 1 at the round
+boundary; if that still confuses, the fix is in the chip (show ticks left after this round),
+not the engine.
 
 **Then, in order:** screen-2 painting (prompt in docs/ART.md, layout in
 `art-src/layout-screen2.png`); life on the painting (lake shimmer, cloud shadows); painted

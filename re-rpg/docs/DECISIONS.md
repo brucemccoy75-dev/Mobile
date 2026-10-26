@@ -170,3 +170,38 @@ moved to match. Screen 1 is painted; the tileset still draws screen 2 until it i
 Sustain, after the first node-map playthrough healed back most of the duo damage: Bind Wound
 heals 25% (was 35%) and is once per fight (#38), the shop heal restores 35% (was 50%), the
 shrine heals half (was full).
+
+## 40. Status timing is pinned; the card headline is what will land
+
+Play report: the Shell Beetle "took reduced damage before HARDENED showed". The audit (engine
+event log, then Playwright at 844×390 on the beetle, Hex Imp, Adept Necromancer, Boar, a
+beetle–boar duo and a Shield Bash run; screenshots in `docs/audit/status-2026-10-26/`) found
+the engine and the chips in step all along. What was wrong was the card: it said 4 while the
+beetle's DEF 1 made every hit land 3 from round 1, and 2 during the hardened turn, so the
+"early" reduction was armour and the hardened turn read as a second, unannounced one. The only
+chip oddity is a count flip: a turns-2 self-buff shows HARDENED 2 during the enemy's turn and
+HARDENED 1 from the next round start, because every timed status ticks at the end of the round
+it was applied in. That stays: the chip shows the engine's number at that moment.
+
+The rules, pinned by `src/core/combat/status.test.ts`:
+- A round is: you act → each living enemy acts → enemy statuses tick → yours tick → next round.
+  `turns` counts those end-of-round ticks, and a status applied mid-round ticks at that round's
+  end whoever applied it. Counted in your turns: your self-status with turns 1 covers this
+  round's enemy attacks only (Broadsword's Exposed); turns 2 covers this round and your next
+  turn (Shield Bash's Weak, Bind Wound's Exposed); a status you put on an enemy with turns 2
+  covers your next turn (Exposing Strike, Stagger); an enemy's self-buff with turns 2 covers
+  your next turn (Shell, Brace, Scatter; Brace and Scatter are also spent by the hit); an
+  enemy's debuff on you with turns 2 covers the next round, your turn and its attack (Hex, the
+  imp's Weak).
+- Guard, Ward and Chill never tick: hits and actions spend them. Burn and Curse deal their
+  damage at every tick, the first at the end of the round they were cast in, so "Burn 2 for 2
+  rounds" is two ticks. Aegis ticks like the rest. Recovering with turns N skips N turns.
+- The log carries `statusApplied` and `statusExpired` where they happen and `roundStart` after
+  all ticks; the scene draws chips from those events, so the chips at a round start are exactly
+  the engine's statuses for that decision. A chip's number is ticks left.
+- The card headline is what the chosen target will take now (the body text keeps the card's own
+  number, #17 still holds there): `previewDamage` runs the card's hits through `computeHit`
+  against the target with the statuses the playback has shown so far, spending Aegis, Guard and
+  Ward in order. The unit names why it differs: "2 damage · armour, hardened", "0 blocked ·
+  guarded". Tapping another enemy redraws the hand. Enemy intent numbers stay "if every hit
+  lands": whether you Guard is your own call, so your Guard is not subtracted from them.
