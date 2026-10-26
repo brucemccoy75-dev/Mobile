@@ -20,7 +20,7 @@ see `git log`. Everything below in sections 1–14 is history; the game today is
 - **Progression**: EXP levels 1–10 per class; the warrior's two nodes cost a point each (#41),
   wizard and shaman nodes are still free; heirlooms every run that has a family. Nothing drops
   without a node, the general tomes included (#42); basics are per class (warrior has no Ward);
-  Mighty Blow and Stand Firm are once per screen; duos 30% on screen 1; selling pays 25%.
+  all four special tomes are fleeting; duos 30% on screen 1; selling pays 25%.
 
 **Working loop.** Edit → `npm run check` → `npm run build` → `nohup npx vite preview --port
 4174 --strictPort &` (start it in its own command; `pkill` in a chained command kills the chain)
@@ -41,7 +41,7 @@ boundary; if that still confuses, the fix is in the chip (show ticks left after 
 not the engine.
 
 **Watch in the next fresh run (#42):** does a no-node warrior die before the boss, does a one-node
-warrior reach it, and does holding Mighty Blow for the boss feel like a choice. If singles still
+warrior reach it, and does holding a fleeting Mighty Blow for the boss feel like a choice. If singles still
 cost nothing after a node, the next lever is gear max HP no longer healing (proposed, declined
 for now).
 

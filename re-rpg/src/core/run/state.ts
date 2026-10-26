@@ -47,8 +47,6 @@ export interface RunState extends Versioned {
   skillUpgrades: SkillUpgrades;
   /** Items that exist only in this run (quest upgrades), stored whole. */
   customItems: Item[];
-  /** Once-per-screen tomes spent on the current screen, one entry per copy (DECISIONS #42). */
-  screenExhausted?: SkillId[];
 }
 
 export const equipmentToIds = (eq: Equipment): Record<Slot, string | null> => ({ body: eq.body?.id ?? null, weapon: eq.weapon?.id ?? null, relic: eq.relic?.id ?? null });

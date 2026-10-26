@@ -78,9 +78,9 @@ export const SKILLS: Skill[] = [
 // Special tomes (DECISIONS #21), usable by every class. Rare ones are once per fight;
 // fleeting ones are spent for good when played. All enter the pool like any tome.
 export const SPECIAL_TOMES: Skill[] = [
-  { id: 'mighty_blow', name: 'Mighty Blow', text: 'Deal 200% damage. Once per screen.', classId: 'any', rarity: 'rare', uses: 'once_per_screen',
+  { id: 'mighty_blow', name: 'Mighty Blow', text: 'Deal 200% damage. Fleeting: spent when played.', classId: 'any', rarity: 'rare', uses: 'fleeting',
     effects: [{ type: 'damage', mult: 2.0 }] },
-  { id: 'stand_firm', name: 'Stand Firm', text: 'Block every hit for 2 rounds. Once per screen.', classId: 'any', rarity: 'rare', uses: 'once_per_screen',
+  { id: 'stand_firm', name: 'Stand Firm', text: 'Block every hit for 2 rounds. Fleeting: spent when played.', classId: 'any', rarity: 'rare', uses: 'fleeting',
     effects: [{ type: 'status', target: 'self', status: 'aegis', turns: 2 }] },
   { id: 'warding_blast', name: 'Warding Blast', text: 'Deal 60% magic damage and block the next magic hit or curse. Tiring: Weak next turn.', classId: 'any', rarity: 'common',
     effects: [{ type: 'damage', mult: 0.6, kind: 'magic' }, { type: 'status', target: 'self', status: 'ward', turns: 99, magnitude: 1 }, { type: 'status', target: 'self', status: 'weak', turns: 2 }] },

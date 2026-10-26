@@ -4,7 +4,7 @@ import { describeSkill, getEnemy, getSkill } from '@data/index';
 import { basicsFor } from '@data/skills';
 import type { Enemy, Intent, Posture } from '@data/types';
 import { createCombat, currentIntent, isPlayerStunned, previewDamage, resolveTarget, skillInCombat, step, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
-import { exhaustForScreen, getMeta, getSession, getStore, persistMeta, persistRun, setName, setSession, spendConsumedTomes, type PendingEncounter, type RunSession } from '@game/session';
+import { getMeta, getSession, getStore, persistMeta, persistRun, setName, setSession, spendConsumedTomes, type PendingEncounter, type RunSession } from '@game/session';
 import { gainExp, ghostOn, layGhost, leaveGhost, nudgeRelation, recordDeath } from '@core/meta';
 import { ghostSpoils } from '@core/variants';
 import { equipmentToIds } from '@core/run';
@@ -90,7 +90,7 @@ export class CombatScene extends Phaser.Scene {
     this.target = 0;
     this.views = [];
     this.state = createCombat({
-      player: { name: this.session.classId, stats: this.session.stats, hp: this.session.hp, deck: this.session.deck, basics: basicsFor(this.session.classId), exhausted: this.session.screenExhausted },
+      player: { name: this.session.classId, stats: this.session.stats, hp: this.session.hp, deck: this.session.deck, basics: basicsFor(this.session.classId) },
       enemies: this.encounter.custom ?? [this.encounter.enemyId, ...(this.encounter.extra ?? [])],
       rng: this.session.rng.stream('combat'),
       skillUpgrades: this.session.skillUpgrades,
@@ -522,7 +522,7 @@ export class CombatScene extends Phaser.Scene {
         return;
       }
       case 'exhaust': {
-        await floatText(this, this.px, this.py - 110, getSkill(e.skill).uses === 'once_per_screen' ? 'spent for this screen' : 'spent for this fight', COLORS.muted, 20, 900);
+        await floatText(this, this.px, this.py - 110, 'spent for this fight', COLORS.muted, 20, 900);
         return;
       }
       case 'consumed': {
@@ -697,8 +697,7 @@ export class CombatScene extends Phaser.Scene {
     }
 
     const spent = spendConsumedTomes(this.session, this.state.player.consumed);
-    const held = exhaustForScreen(this.session, this.state.player.exhausted);
-    if (spent.length || held.length) void persistRun(this);
+    if (spent.length) void persistRun(this);
     if (won) {
       // EXP for the kill(s) goes to this class's progression (DECISIONS #32) and survives the run.
       const exp = this.state.enemyDefs.reduce((a, d) => a + expForEnemy(d, this.encounter.kind, this.state.enemyDefs.length), 0);

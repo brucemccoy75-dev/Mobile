@@ -235,13 +235,13 @@ paid for the shop heal and a Last Strike.
 - **Basics are per class.** Warrior: Attack, Attack, Defend. Wizard: Attack, Attack, Ward.
   Shaman: all four. A warrior's answer to magic is Bulwark (Warding Blast, Stand Firm, Final
   Stand), not a free Ward every fight. The engine's default stays the full four for tests.
-- **Once per screen.** Mighty Blow and Stand Firm are spent until the screen's boss falls, one
-  copy per play (`screenExhausted` on the run, cleared by `startScreen`, left out of the next
-  fight's deck). The card reads "Once per screen." and carries an ONCE/SCREEN tag; the float says
-  "spent for this screen". The question the run already asked about Last Strike (the duo, or
-  the boss?) now applies to the rare tomes too.
+- **Every special tome is fleeting.** Mighty Blow and Stand Firm were briefly "once per screen";
+  that was a second rule for the same idea, so they are fleeting like Last Strike and Final
+  Stand: the tome is destroyed when played, one copy per play. Rare rarity stays. The question
+  the run already asked about Last Strike (the duo, or the boss?) now applies to all four. The
+  engine keeps once-per-fight, but no card uses it.
 - **Duos at 30% on screen 1** (was 20%), because duos are where the HP goes.
 - **Selling pays 25%** of shop price (was 40%). Selling stays so no reward is dead (#4), but it
   no longer converts a spare vest into a third of a heal.
-Not taken: gear max HP as a heal stays (the user chose to keep it). The sim gauntlet now honours
-once per screen across its fights and uses the class basics; see BALANCE.md.
+Not taken: gear max HP as a heal stays (the user chose to keep it). The sim gauntlet now drops
+fleeting tomes from its deck once played and uses the class basics; see BALANCE.md.

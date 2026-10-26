@@ -2,9 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { getItem, getSkill } from '@data/index';
 import { DECK_CAP } from '@core/combat';
 import { createMeta, gainExp, unlockNode } from '@core/meta';
-import { adoptFamily, applyHeirlooms, createSession, currentQuest, deserialize, exhaustForScreen, poolCtx, serialize, spendConsumedTomes, setName, startScreen, takeChoice, turnInQuest } from './session';
-import { createCombat } from '@core/combat';
-import { Rng } from '@core/rng';
+import { adoptFamily, applyHeirlooms, createSession, currentQuest, deserialize, poolCtx, serialize, spendConsumedTomes, setName, takeChoice, turnInQuest } from './session';
 import { basicsFor } from '@data/skills';
 import { getSet } from '@data/index';
 import { buildPool } from '@core/loot';
@@ -68,18 +66,12 @@ describe('session', () => {
     expect(s.shop.lines.every((l) => l.kind !== 'tome' || getSet('warrior_tank').skills.includes(l.id))).toBe(true);
   });
 
-  it('once-per-screen tomes stay spent until the next screen, survive a save, and leave the fight deck', () => {
-    const meta = createMeta();
-    const s = createSession('warrior', meta, 'SCREEN-1');
-    s.deck = ['mighty_blow', 'mighty_blow', 'stand_firm'];
-    expect(exhaustForScreen(s, ['mighty_blow', 'bind_wound'])).toEqual(['Mighty Blow']); // once-per-fight cards are not held
-    expect(s.screenExhausted).toEqual(['mighty_blow']);
-    const back = deserialize(JSON.parse(JSON.stringify(serialize(s))), meta);
-    expect(back.screenExhausted).toEqual(['mighty_blow']);
-    const fight = createCombat({ player: { stats: s.stats, deck: s.deck, basics: [], exhausted: s.screenExhausted }, enemy: 'boar', rng: new Rng(1) });
-    expect([...fight.player.deck, ...fight.player.hand].sort()).toEqual(['mighty_blow', 'stand_firm']); // one copy out, the other still plays
-    startScreen(s, 1, meta);
-    expect(s.screenExhausted).toEqual([]);
+  it('every special tome is fleeting: played once, gone from the run', () => {
+    for (const id of ['mighty_blow', 'stand_firm', 'last_strike', 'final_stand']) expect(getSkill(id).uses).toBe('fleeting');
+    const s = createSession('warrior', createMeta(), 'FLEET-1');
+    s.deck = ['mighty_blow', 'mighty_blow', 'broadsword'];
+    expect(spendConsumedTomes(s, ['mighty_blow'])).toEqual(['Mighty Blow']);
+    expect(s.deck).toEqual(['mighty_blow', 'broadsword']); // one copy per play
   });
 
   it('a warrior fights with Attack, Attack and Defend; Ward is a wizard basic', () => {

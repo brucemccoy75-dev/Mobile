@@ -27,22 +27,20 @@ export class Card extends Phaser.GameObjects.Container {
     const c = CARD_COLORS[face.kind];
     this.bg = scene.add.rectangle(0, 0, CARD_W, CARD_H, c.fill).setStrokeStyle(2, c.edge);
     // Name in the rarity colour, body text under it, the headline number big in the bottom-left corner.
-    const name = scene.add.text(0, -CARD_H / 2 + 7, skill.name, { fontFamily: FONT, fontSize: '14px', color: rarityText(skill), fontStyle: 'bold', wordWrap: { width: CARD_W - 16 }, align: 'center' }).setOrigin(0.5, 0);
+    // A use tag (FLEETING) sits in the top-right corner, where nothing else is drawn; the name centres in what is left.
+    const tag = skill.uses ? scene.add.text(CARD_W / 2 - 5, -CARD_H / 2 + 5, skill.uses === 'fleeting' ? 'FLEETING' : 'ONCE', { fontFamily: FONT, fontSize: '8px', color: '#0b0f1a', fontStyle: 'bold', backgroundColor: skill.uses === 'fleeting' ? '#c084fc' : '#e0c060', padding: { x: 4, y: 2 } }).setOrigin(1, 0) : null;
+    const tagW = tag ? tag.width + 6 : 0;
+    const name = scene.add.text(-tagW / 2, -CARD_H / 2 + 7, skill.name, { fontFamily: FONT, fontSize: '14px', color: rarityText(skill), fontStyle: 'bold', wordWrap: { width: CARD_W - 16 - tagW }, align: 'center' }).setOrigin(0.5, 0);
     const body = scene.add.text(0, -CARD_H / 2 + 7 + name.height + 3, text, { fontFamily: FONT, fontSize: '10px', color: '#d7dbe6', wordWrap: { width: CARD_W - 14 }, align: 'center' }).setOrigin(0.5, 0);
     const value = scene.add.text(-CARD_W / 2 + 10, CARD_H / 2 - 6, face.value, { fontFamily: FONT, fontSize: '30px', color: c.accent, fontStyle: 'bold' }).setOrigin(0, 1);
     // The unit may carry the reasons the number moved ("damage · armour, hardened"). The reasons go on
-    // their own line in white above the unit, and both stay clear of a use tag in the corner.
+    // their own line in white above the unit.
     const [unitWord, why] = face.unit.split(' · ');
-    const ux = -CARD_W / 2 + 12 + value.width + 4, wrap = CARD_W - 24 - value.width - (skill.uses === 'once_per_screen' ? 74 : skill.uses ? 58 : 0);
+    const ux = -CARD_W / 2 + 12 + value.width + 4, wrap = CARD_W - 24 - value.width;
     const unit = scene.add.text(ux, CARD_H / 2 - 10, unitWord ?? '', { fontFamily: FONT, fontSize: '10px', color: c.accent, wordWrap: { width: wrap } }).setOrigin(0, 1);
     this.add([this.bg, name, body, value, unit]);
+    if (tag) this.add(tag);
     if (why) this.add(scene.add.text(ux, CARD_H / 2 - 10 - unit.height + 1, why, { fontFamily: FONT, fontSize: '10px', color: '#ffffff', fontStyle: 'bold', wordWrap: { width: wrap }, lineSpacing: -2 }).setOrigin(0, 1));
-    // Use limits ride the bottom-right corner so they are never missed.
-    if (skill.uses) {
-      const fleeting = skill.uses === 'fleeting';
-      const tag = scene.add.text(CARD_W / 2 - 6, CARD_H / 2 - 6, fleeting ? 'FLEETING' : skill.uses === 'once_per_screen' ? 'ONCE/SCREEN' : 'ONCE', { fontFamily: FONT, fontSize: '9px', color: '#0b0f1a', fontStyle: 'bold', backgroundColor: fleeting ? '#c084fc' : '#e0c060', padding: { x: 5, y: 2 } }).setOrigin(1, 1);
-      this.add(tag);
-    }
     this.setSize(CARD_W, CARD_H);
     scene.add.existing(this);
 

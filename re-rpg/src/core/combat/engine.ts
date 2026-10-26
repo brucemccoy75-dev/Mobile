@@ -16,8 +16,6 @@ export interface PlayerSetup {
   deck: SkillId[];
   /** Cards added to every fight's deck; defaults to BASIC_DECK (scenes pass the class's basics). Tests pass [] for control. */
   basics?: SkillId[];
-  /** Once-per-screen cards already spent on this screen: one deck copy each is left out of the fight. */
-  exhausted?: SkillId[];
 }
 
 export interface CombatOptions {
@@ -27,13 +25,6 @@ export interface CombatOptions {
   enemies?: (EnemyId | Enemy)[];
   rng: Rng;             // the run's 'combat' stream
   skillUpgrades?: SkillUpgrades;
-}
-
-/** The deck minus one copy per spent once-per-screen card. */
-function withoutSpent(deck: SkillId[], spent: SkillId[]): SkillId[] {
-  const out = [...deck];
-  for (const id of spent) { const i = out.indexOf(id); if (i >= 0) out.splice(i, 1); }
-  return out;
 }
 
 /** The skill as it plays in this fight, with any run-local upgrade applied. */
@@ -58,7 +49,7 @@ export function createCombat(opts: CombatOptions): CombatState {
   const player: PlayerCombatant = {
     side: 'player', name: opts.player.name ?? 'Hero',
     stats: { ...opts.player.stats }, hp: opts.player.hp ?? opts.player.stats.maxHp,
-    statuses: [], deck: opts.rng.shuffle([...(opts.player.basics ?? BASIC_DECK), ...withoutSpent(opts.player.deck, opts.player.exhausted ?? [])]), hand: [], discard: [], exhausted: [], consumed: [],
+    statuses: [], deck: opts.rng.shuffle([...(opts.player.basics ?? BASIC_DECK), ...opts.player.deck]), hand: [], discard: [], exhausted: [], consumed: [],
   };
   const enemies = defs.map((def, slot) => {
     const base = { side: 'enemy' as const, name: def.name, enemyId: def.id, slot, dead: false, stats: { ...def.stats }, hp: def.stats.maxHp, statuses: [], phase: 0, seqIndex: 0 };
@@ -133,7 +124,7 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
     if (skill.uses) {
       // Not back into the discard: once-per-fight waits for the next fight, fleeting is gone for good.
       state.player.discard.pop();
-      if (skill.uses === 'once_per_fight' || skill.uses === 'once_per_screen') { state.player.exhausted.push(skill.id); events.push({ t: 'exhaust', skill: skill.id }); }
+      if (skill.uses === 'once_per_fight') { state.player.exhausted.push(skill.id); events.push({ t: 'exhaust', skill: skill.id }); }
       else { state.player.consumed.push(skill.id); events.push({ t: 'consumed', skill: skill.id }); }
     }
     applyEffects(skill.effects, state.player, target, roll, events);

@@ -391,15 +391,15 @@ describe('harden', () => {
 });
 
 describe('special tomes', () => {
-  it('once-per-fight cards are exhausted, never reshuffled back', () => {
+  it('Mighty Blow is fleeting: consumed when played, never reshuffled back', () => {
     const s = fight(['mighty_blow'], PASSIVE);
     play(s, 'mighty_blow'); // 8 dmg
     expect(s.enemy.hp).toBe(22);
-    expect(s.player.exhausted).toEqual(['mighty_blow']);
-    expect(s.log.some((e) => e.t === 'exhaust')).toBe(true);
+    expect(s.player.consumed).toEqual(['mighty_blow']);
+    expect(s.player.exhausted).toEqual([]);
+    expect(s.log.some((e) => e.t === 'consumed')).toBe(true);
     for (let i = 0; i < 4; i++) step(s, { type: 'skip' }); // empty deck: nothing comes back
     expect(s.player.hand).toEqual([]);
-    expect(s.player.consumed).toEqual([]);
   });
 
   it('fleeting cards are marked consumed for the run to delete', () => {

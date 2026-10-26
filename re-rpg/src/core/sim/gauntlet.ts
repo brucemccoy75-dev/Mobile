@@ -1,5 +1,5 @@
 import { basicsFor } from '@data/skills';
-import { getClass, getEnemy, getSet, getSkill, enemiesOfTier } from '@data/index';
+import { getClass, getEnemy, getSet, enemiesOfTier } from '@data/index';
 import type { ClassId, Enemy, SkillId, Stats } from '@data/types';
 import { RunRng } from '@core/rng';
 import { createCombat, step, type CombatState } from '@core/combat';
@@ -49,15 +49,15 @@ export function runGauntlet(o: GauntletOptions): GauntletResult {
   let hp = stats.maxHp;
   let rounds = 0;
   let fightsWon = 0;
-  // The gauntlet is one screen: once-per-screen tomes spent in an earlier fight stay out (DECISIONS #42).
-  const spent: string[] = [];
+  // Fleeting tomes are gone once played, in the gauntlet as in the run (DECISIONS #42).
+  const deck = [...o.loadout.deck];
 
   const fight = (enemy: Enemy) => {
-    const s = createCombat({ player: { stats, hp, deck: o.loadout.deck, basics: basicsFor(o.loadout.classId), exhausted: spent }, enemy, rng: rng.stream('combat') });
+    const s = createCombat({ player: { stats, hp, deck, basics: basicsFor(o.loadout.classId) }, enemy, rng: rng.stream('combat') });
     runFight(s, o.policy);
     rounds += s.round;
     hp = s.player.hp;
-    for (const id of s.player.exhausted) if (getSkill(id).uses === 'once_per_screen') spent.push(id);
+    for (const id of s.player.consumed) { const i = deck.indexOf(id); if (i >= 0) deck.splice(i, 1); }
     return s.outcome === 'won';
   };
 
