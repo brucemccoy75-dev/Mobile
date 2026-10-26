@@ -127,3 +127,34 @@ Implementation sketch (small):
 3. Ghost loot rule (gold + one tome?) and whether a Ghost can appear on screen 2.
 4. Fixed enemy rotations: fully scripted, or scripted with one random slot?
 5. Tree contents per class: which 3–4 new families, which passives.
+
+## 9. Blend: the Spire graph as the road network (added 2026-10-26)
+
+User's point: mobile roguelikes (Slay the Spire style, see screenshot in the session)
+use a branching node graph with legible risk/reward. Easy for us to switch to, but it
+loses the RPG explore factor. The user wants a blend.
+
+Proposed blend, "routes are roads":
+- Each screen is an authored tile map whose roads form a Spire-style DAG: ~3 lanes of
+  clearings converging on the boss gate. Each clearing holds one node: fight, elite
+  (guaranteed duo, better loot), ? event, shrine, shop, chest.
+- Signposts at forks show the next 1–2 node icons per branch, so lane risk is readable.
+- A parchment map button draws the discovered graph in the Spire style over fog of
+  war. Undiscovered side content never appears on it.
+- Exploration lives off the graph: dead-end side paths, chests behind detour walls,
+  quest giver and NPC in side clearings, ghosts, signpost lore.
+- Daylight budget per screen (sun dial in HUD). Each step spends it. After dusk,
+  remaining fight nodes roll duos at a higher rate and the shrine fades. Backtracking
+  stays allowed; wandering is paid for in a visible currency. This keeps objective 1
+  (runs can end early) while allowing exploration.
+- No random road encounters: fights only at nodes, so routes can be planned.
+- Tap a node to auto-walk the road with the camera zoomed in; short legs between
+  clearings fix the "too fast / too empty" feel.
+
+Build order if accepted: (1) ASCII map format with lanes + node letters, (2) node
+contents rolled per run from the roster, (3) daylight counter + HUD dial + dusk rules,
+(4) signposts, (5) parchment overlay scene (largest piece), (6) ghosts at nodes.
+
+Open questions: daylight budget size (steps), what dusk does to the boss (nothing,
+or +1 ATK), whether shops/shrines are fixed slots or shuffled per run, and whether an
+elite lane should be visible from the screen entry or only after the first fork.
