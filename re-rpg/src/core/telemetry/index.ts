@@ -15,7 +15,7 @@ export interface FightRecord {
   enemyId: string;
   /** Every enemy in the fight, front first (duos). */
   enemies?: string[];
-  kind: 'random' | 'guard' | 'boss';
+  kind: 'random' | 'guard' | 'boss' | 'node';
   tile?: string;
   rounds: number;
   hpBefore: number;

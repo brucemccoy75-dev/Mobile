@@ -50,7 +50,7 @@ export function levelForExp(exp: number): number {
 }
 
 /** EXP one enemy is worth: by tier, more as a guard, more for each member of a pack. */
-export function expForEnemy(def: Enemy, kind: 'random' | 'guard' | 'boss', packSize: number): number {
+export function expForEnemy(def: Enemy, kind: 'random' | 'guard' | 'boss' | 'node', packSize: number): number {
   const base = def.tier === 1 ? 10 : def.tier === 2 ? 18 : def.tier === 'boss1' ? 60 : 90;
   const guard = kind === 'guard' ? 1.33 : 1;
   const pack = packSize > 1 ? 1.5 : 1;

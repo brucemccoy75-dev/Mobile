@@ -33,6 +33,11 @@ export interface RunState extends Versioned {
   openedPois: string[];
   usedShrines: string[];
   defeatedGuards: string[];
+  /** Authored maps (DECISIONS #34). Absent on older saves. */
+  clearedNodes?: string[];
+  seen?: string[];
+  daylight?: number;
+  daylightMax?: number;
   bossDefeated: boolean;
   encountersWon: number;
   /** Ids discovered during this run, for the end-of-run summary. */

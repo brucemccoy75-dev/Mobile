@@ -1,43 +1,52 @@
 import Phaser from 'phaser';
 import { getEnemy } from '@data/index';
-import { findPath, stepThreat, key, tileAt, type Tile, type TileType } from '@core/map';
-import { SCREEN_COUNT, currentQuest, getMeta, getSession, getStore, isEscorting, persistMeta, persistRun, rollEncounter, setSession, startScreen, type PendingEncounter, type RunSession } from '@game/session';
+import { findPath, stepThreat, key, tileAt, type MapNode, type Tile, type TileType } from '@core/map';
+import { SCREEN_COUNT, SIGHT, currentQuest, getMeta, getSession, getStore, isDusk, isEscorting, nodeAt, nodeEncounter, persistMeta, persistRun, revealAround, rollEncounter, setSession, spendDaylight, startScreen, type PendingEncounter, type RunSession } from '@game/session';
 import { ESCORT_THREAT_MULT, noteKill, questProgress, questReady } from '@core/quest';
 import { gainExp, recordWin } from '@core/meta';
 import { WIN_EXP } from '@data/progression';
+import { artKey } from '@game/art';
 import { Button } from '@game/ui/Button';
 import { CLASS_COLORS, COLORS, FONT, text } from '@game/ui/theme';
 import { tween, wait } from '@game/ui/tween';
-import { GROUND_COLS, groundIndices, propsFor } from '@game/tiles';
+import { groundIndices, propsFor } from '@game/tiles';
 import { ensureRun } from '@game/telemetry';
 
-export const TILE = 48;
+/** World pixels per tile. 72 shows about 11×5 tiles on a phone: close enough to read the ground (DECISIONS #34). */
+export const TILE = 72;
+const K = TILE / 48; // prop and marker scale relative to the 48 px layout the art was packed for
+const STEP_MS = 190;
 
 const TILE_FILL: Record<TileType, number> = {
   grass: 0x3b6d3a, forest: 0x244d2a, swamp: 0x4a5b3a, water: 0x2b5d8a, rock: 0x4a4f5a, road: 0xb8a06a, arena: 0x5a2b3a,
 };
 
 /**
- * Top-down overworld (ARCHITECTURE §4–6). Tap a tile to walk there along the
- * cheapest path; every step feeds the threat meter; guards, chests, shop,
- * shrine and the boss are walked onto. Combat is a separate scene; results
- * come back through the session.
+ * Top-down overworld (ARCHITECTURE §4–6, DECISIONS #34). Tap a seen tile to walk there along the
+ * cheapest path. On authored maps fights live only at nodes, guards and the gate; steps spend
+ * daylight, and dusk makes the remaining fights bolder. Fog hides what you have not walked near.
+ * Procedural maps (the old threat meter) stay behind the map-mode toggle.
  */
 export class OverworldScene extends Phaser.Scene {
   private session!: RunSession;
-  private player!: Phaser.GameObjects.Rectangle;
+  private player!: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image;
   private pathGfx!: Phaser.GameObjects.Graphics;
   private guardSprites = new Map<string, Phaser.GameObjects.Container>();
   private poiSprites = new Map<string, Phaser.GameObjects.Container>();
+  private nodeSprites = new Map<string, Phaser.GameObjects.Container>();
   private bossSprite!: Phaser.GameObjects.Container;
   private giverSprite!: Phaser.GameObjects.Container;
   private giverMark!: Phaser.GameObjects.Text;
   private npcSprite: Phaser.GameObjects.Container | null = null;
   private follower: Phaser.GameObjects.Rectangle | null = null;
+  private fog: Phaser.GameObjects.Rectangle[] = [];
+  private duskTint!: Phaser.GameObjects.Rectangle;
   private questText!: Phaser.GameObjects.Text;
   private hpText!: Phaser.GameObjects.Text;
   private hpFill!: Phaser.GameObjects.Rectangle;
-  private threatFill!: Phaser.GameObjects.Rectangle;
+  private meterLabel!: Phaser.GameObjects.Text;
+  private meterFill!: Phaser.GameObjects.Rectangle;
+  private meterText!: Phaser.GameObjects.Text;
   private goldText!: Phaser.GameObjects.Text;
   private toastText!: Phaser.GameObjects.Text;
   private walking = false;
@@ -53,6 +62,8 @@ export class OverworldScene extends Phaser.Scene {
     this.retarget = null;
     this.guardSprites.clear();
     this.poiSprites.clear();
+    this.nodeSprites.clear();
+    this.fog = [];
     ensureRun(this, getSession(this), getMeta(this));
     this.npcSprite = null;
     this.follower = null;
@@ -65,8 +76,9 @@ export class OverworldScene extends Phaser.Scene {
     this.drawTiles();
     this.drawPois();
     this.drawPlayer();
+    this.drawFog();
     this.buildHud();
-    this.cameras.main.startFollow(this.player, true, 0.15, 0.15);
+    this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.cameras.main.fadeIn(250, 11, 15, 26);
 
     // Tap target: a zone under everything so UI on top wins the hit test.
@@ -74,10 +86,12 @@ export class OverworldScene extends Phaser.Scene {
     zone.on('pointerup', (p: Phaser.Input.Pointer) => this.onTap(p));
 
     void this.applyLastResult().then(() => persistRun(this));
-    const freshArrival = !this.session.lastResult && key(this.session.playerPos) === key(m.entry) && this.session.openedPois.size === 0 && this.session.defeatedGuards.size === 0;
+    const freshArrival = !this.session.lastResult && key(this.session.playerPos) === key(m.entry) && this.session.openedPois.size === 0 && this.session.defeatedGuards.size === 0 && this.session.clearedNodes.size === 0;
     if (freshArrival) {
       const heir = this.session.heirloomName && this.session.screenIndex === 0 ? `Heirloom: ${this.session.heirloomName}.  ` : '';
-      void this.toast(`${heir}Reach the boss in the east. Roads are safe; the wilds fill the threat meter. Guards hold the chests, shop and shrine.`, 4500);
+      void this.toast(m.authored
+        ? `${heir}The gate is east. Fights wait in the clearings; the roads between are safe. Daylight is short: wander, and dusk finds you.`
+        : `${heir}Reach the boss in the east. Roads are safe; the wilds fill the threat meter. Guards hold the chests, shop and shrine.`, 5000);
     }
   }
 
@@ -94,24 +108,20 @@ export class OverworldScene extends Phaser.Scene {
       const px = x * TILE, py = y * TILE;
       g.fillStyle(TILE_FILL[t], 1);
       g.fillRect(px, py, TILE, TILE);
-      // cheap texture so tile types read at a glance
       switch (t) {
-        case 'forest': g.fillStyle(0x1a3a20, 1); g.fillCircle(px + TILE / 2, py + TILE / 2 - 4, 14); g.fillStyle(0x3b2a1a, 1); g.fillRect(px + TILE / 2 - 3, py + TILE / 2 + 8, 6, 10); break;
-        case 'swamp': g.fillStyle(0x3a4a2e, 1); g.fillCircle(px + 14, py + 16, 5); g.fillCircle(px + 32, py + 30, 7); break;
-        case 'water': g.fillStyle(0x3f78a8, 1); g.fillRect(px + 6, py + 18, 20, 3); g.fillRect(px + 22, py + 32, 18, 3); break;
-        case 'rock': g.fillStyle(0x5f6675, 1); g.fillRect(px + 8, py + 8, TILE - 16, TILE - 16); g.fillStyle(0x3a3f4a, 1); g.fillRect(px + 14, py + 14, 12, 12); break;
-        case 'road': g.fillStyle(0xa58f5c, 1); g.fillRect(px + 10, py + 22, 8, 4); g.fillRect(px + 28, py + 12, 6, 4); break;
-        case 'grass': g.fillStyle(0x447d42, 1); g.fillRect(px + 12, py + 30, 3, 6); g.fillRect(px + 30, py + 12, 3, 6); break;
+        case 'forest': g.fillStyle(0x1a3a20, 1); g.fillCircle(px + TILE / 2, py + TILE / 2 - 4, 14 * K); g.fillStyle(0x3b2a1a, 1); g.fillRect(px + TILE / 2 - 3, py + TILE / 2 + 8, 6, 10); break;
+        case 'swamp': g.fillStyle(0x3a4a2e, 1); g.fillCircle(px + 14 * K, py + 16 * K, 5 * K); g.fillCircle(px + 32 * K, py + 30 * K, 7 * K); break;
+        case 'water': g.fillStyle(0x3f78a8, 1); g.fillRect(px + 6 * K, py + 18 * K, 20 * K, 3); g.fillRect(px + 22 * K, py + 32 * K, 18 * K, 3); break;
+        case 'rock': g.fillStyle(0x5f6675, 1); g.fillRect(px + 8 * K, py + 8 * K, TILE - 16 * K, TILE - 16 * K); g.fillStyle(0x3a3f4a, 1); g.fillRect(px + 14 * K, py + 14 * K, 12 * K, 12 * K); break;
+        case 'road': g.fillStyle(0xa58f5c, 1); g.fillRect(px + 10 * K, py + 22 * K, 8 * K, 4); g.fillRect(px + 28 * K, py + 12 * K, 6 * K, 4); break;
+        case 'grass': g.fillStyle(0x447d42, 1); g.fillRect(px + 12 * K, py + 30 * K, 3, 6 * K); g.fillRect(px + 30 * K, py + 12 * K, 3, 6 * K); break;
         case 'arena': g.fillStyle(0x6e3646, 1); g.fillRect(px + 4, py + 4, TILE - 8, TILE - 8); break;
       }
     }
-    g.lineStyle(1, 0x000000, 0.12);
-    for (let x = 0; x <= m.width; x++) g.lineBetween(x * TILE, 0, x * TILE, m.height * TILE);
-    for (let y = 0; y <= m.height; y++) g.lineBetween(0, y * TILE, m.width * TILE, y * TILE);
     this.pathGfx = this.add.graphics().setDepth(3);
   }
 
-  /** Vector tileset + props (docs/ART.md). Sheet cells are 96 px, shown at half size so TILE stays 48. */
+  /** Vector tileset + props (docs/ART.md). Sheet cells are 96 px, scaled to TILE. */
   private drawArtTiles() {
     const m = this.session.map;
     const idx = groundIndices(m);
@@ -122,29 +132,45 @@ export class OverworldScene extends Phaser.Scene {
     if (tileset) tilemap.createLayer(0, tileset, 0, 0)?.setScale(TILE / 96).setDepth(1);
     for (const p of propsFor(m)) {
       // feet-anchored so a tree's trunk stays in its tile; drawn under actors, sorted by row
-      this.add.image(p.x * TILE, p.y * TILE, 'props_c', p.frame).setOrigin(0.5, 1).setScale(p.scale).setDepth(2 + p.y / m.height);
+      this.add.image(p.x * TILE, p.y * TILE, 'props_c', p.frame).setOrigin(0.5, 1).setScale(p.scale * K).setDepth(2 + p.y / m.height);
+    }
+    for (const s of m.signposts ?? []) {
+      const c = this.centre(s.pos);
+      this.add.image(c.x + TILE * 0.3, c.y + TILE * 0.2, 'props_c', 'sign').setOrigin(0.5, 1).setScale(0.45 * K).setDepth(2 + s.pos.y / m.height);
     }
     this.pathGfx = this.add.graphics().setDepth(3);
   }
 
   private centre(t: Tile) { return { x: t.x * TILE + TILE / 2, y: t.y * TILE + TILE / 2 }; }
 
+  /** A creature marker: its still when one exists, else a coloured disc with a letter. */
+  private creatureMarker(cont: Phaser.GameObjects.Container, enemyId: string, height: number, fallback: { color: number; glyph: string; radius: number }) {
+    const k = artKey(this, `enemy_${enemyId}`);
+    if (k) {
+      const src = this.textures.get(k).getSourceImage() as { height: number };
+      cont.add(this.add.image(0, height * 0.45, k).setOrigin(0.5, 1).setScale(height / src.height));
+    } else {
+      cont.add([this.add.circle(0, 0, fallback.radius, fallback.color), this.add.text(0, 0, fallback.glyph, { fontFamily: FONT, fontSize: `${fallback.radius}px`, color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5)]);
+    }
+  }
+
   private drawPois() {
     const m = this.session.map, s = this.session;
+    const label = (y: number, str: string, color = '#e6e9f2') => this.add.text(0, y, str, { fontFamily: FONT, fontSize: '12px', color, stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5, 0);
     for (const p of m.pois) {
       const c = this.centre(p.pos);
       const cont = this.add.container(c.x, c.y).setDepth(4);
       if (this.hasArt) {
         const frame = p.kind === 'chest' ? 'chest' : p.kind === 'shop' ? 'tent' : 'tower';
-        cont.add(this.add.image(0, p.kind === 'shrine' ? 18 : 14, 'props_c', frame).setOrigin(0.5, 1).setScale(p.kind === 'chest' ? 0.4 : 0.5));
+        cont.add(this.add.image(0, (p.kind === 'shrine' ? 18 : 14) * K, 'props_c', frame).setOrigin(0.5, 1).setScale((p.kind === 'chest' ? 0.4 : 0.5) * K));
       } else if (p.kind === 'chest') {
-        cont.add([this.add.rectangle(0, 4, 30, 20, 0xc9a227), this.add.rectangle(0, -7, 30, 8, 0xe0c060), this.add.rectangle(0, 4, 6, 8, 0x5a3a10)]);
+        cont.add([this.add.rectangle(0, 4, 30 * K, 20 * K, 0xc9a227), this.add.rectangle(0, -7 * K, 30 * K, 8 * K, 0xe0c060), this.add.rectangle(0, 4, 6 * K, 8 * K, 0x5a3a10)]);
       } else if (p.kind === 'shop') {
-        cont.add([this.add.rectangle(0, 2, 34, 30, 0x7a3fb9), this.add.text(0, 2, '$', { fontFamily: FONT, fontSize: '20px', color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5)]);
+        cont.add([this.add.rectangle(0, 2, 34 * K, 30 * K, 0x7a3fb9), this.add.text(0, 2, '$', { fontFamily: FONT, fontSize: '26px', color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5)]);
       } else {
-        cont.add([this.add.rectangle(0, 0, 26, 26, 0x7dd3fc).setAngle(45), this.add.rectangle(0, 0, 10, 10, 0xffffff).setAngle(45)]);
+        cont.add([this.add.rectangle(0, 0, 26 * K, 26 * K, 0x7dd3fc).setAngle(45), this.add.rectangle(0, 0, 10 * K, 10 * K, 0xffffff).setAngle(45)]);
       }
-      cont.add(this.add.text(0, 22, p.kind, { fontFamily: FONT, fontSize: '11px', color: '#e6e9f2' }).setOrigin(0.5, 0));
+      cont.add(label(22 * K, p.kind));
       if (s.openedPois.has(p.id) || s.usedShrines.has(p.id)) cont.setAlpha(0.35);
       this.poiSprites.set(p.id, cont);
     }
@@ -152,37 +178,84 @@ export class OverworldScene extends Phaser.Scene {
       if (s.defeatedGuards.has(g.id)) continue;
       const c = this.centre(g.pos);
       const cont = this.add.container(c.x, c.y).setDepth(5);
-      cont.add([this.add.circle(0, 0, 14, 0xd64545), this.add.text(0, 0, '!', { fontFamily: FONT, fontSize: '18px', color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5),
-        this.add.text(0, 18, getEnemy(g.enemyId).name, { fontFamily: FONT, fontSize: '11px', color: '#ffb4b4' }).setOrigin(0.5, 0)]);
+      this.creatureMarker(cont, g.enemyId, TILE * 1.05, { color: 0xd64545, glyph: '!', radius: 14 * K });
+      cont.add(label(18 * K, getEnemy(g.enemyId).name, '#ffb4b4'));
       this.guardSprites.set(g.id, cont);
+    }
+    // Authored nodes: the fight that waits in each clearing, named so the lane's risk is readable.
+    for (const n of m.nodes ?? []) {
+      if (s.clearedNodes.has(n.id)) continue;
+      const c = this.centre(n.pos);
+      const cont = this.add.container(c.x, c.y).setDepth(5);
+      const names = [n.enemyId, ...(n.extra ?? [])].map((id) => getEnemy(id).name);
+      if (n.extra?.length) {
+        // the rear partner peeks out behind the front one
+        const before = cont.length;
+        this.creatureMarker(cont, n.extra[0]!, TILE * 0.9, { color: 0xd64545, glyph: '!', radius: 11 * K });
+        for (const o of cont.list.slice(before)) (o as Phaser.GameObjects.Image).x += TILE * 0.26;
+      }
+      this.creatureMarker(cont, n.enemyId, TILE * 1.05, { color: n.kind === 'elite' ? COLORS.boss : 0xd64545, glyph: n.kind === 'elite' ? '!!' : '!', radius: 14 * K });
+      cont.add(label(18 * K, n.kind === 'elite' ? `${names.join(' & ')}` : names[0]!, n.kind === 'elite' ? '#e0b4ff' : '#ffb4b4'));
+      if (n.kind === 'elite') cont.add(this.add.text(0, -TILE * 0.62, 'ELITE', { fontFamily: FONT, fontSize: '11px', color: '#e0b4ff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5));
+      this.nodeSprites.set(n.id, cont);
     }
     const bc = this.centre(m.boss);
     this.bossSprite = this.add.container(bc.x, bc.y).setDepth(5);
-    this.bossSprite.add([this.add.circle(0, 0, 26, COLORS.boss), this.add.text(0, 0, '☠', { fontFamily: FONT, fontSize: '26px', color: '#ffffff' }).setOrigin(0.5),
-      this.add.text(0, 32, getEnemy(m.bossId).name, { fontFamily: FONT, fontSize: '12px', color: '#e0b4ff', fontStyle: 'bold' }).setOrigin(0.5, 0)]);
+    this.creatureMarker(this.bossSprite, m.bossId, TILE * 1.6, { color: COLORS.boss, glyph: '☠', radius: 26 * K });
+    this.bossSprite.add(label(32 * K, getEnemy(m.bossId).name, '#e0b4ff'));
     if (s.bossDefeated) this.bossSprite.setAlpha(0.3);
     // quest giver, and the escort NPC while they are still out there
     const q = currentQuest(s);
     const gc = this.centre(m.questGiver);
     this.giverSprite = this.add.container(gc.x, gc.y).setDepth(5);
-    if (this.hasArt) this.giverSprite.add(this.add.image(-22, 14, 'props_c', 'campfire').setOrigin(0.5, 1).setScale(0.4));
-    this.giverSprite.add([this.add.rectangle(0, 2, 24, 34, 0x7a5c3a).setStrokeStyle(2, 0xc9a227), this.add.text(0, 24, q?.giver.name ?? 'stranger', { fontFamily: FONT, fontSize: '11px', color: '#e0c060' }).setOrigin(0.5, 0)]);
-    this.giverMark = this.add.text(0, -30, '', { fontFamily: FONT, fontSize: '22px', color: '#c9a227', fontStyle: 'bold' }).setOrigin(0.5);
+    if (this.hasArt) this.giverSprite.add(this.add.image(-22 * K, 14 * K, 'props_c', 'campfire').setOrigin(0.5, 1).setScale(0.4 * K));
+    this.giverSprite.add([this.add.rectangle(0, 2, 24 * K, 34 * K, 0x7a5c3a).setStrokeStyle(2, 0xc9a227), label(24 * K, q?.giver.name ?? 'stranger', '#e0c060')]);
+    this.giverMark = this.add.text(0, -30 * K, '', { fontFamily: FONT, fontSize: '26px', color: '#c9a227', fontStyle: 'bold', stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5);
     this.giverSprite.add(this.giverMark);
     if (q?.escort && q.status === 'active' && !q.escort.following) {
       const nc = this.centre(q.escort.pos);
       this.npcSprite = this.add.container(nc.x, nc.y).setDepth(5);
-      this.npcSprite.add([this.add.rectangle(0, 2, 22, 32, 0x9fb3c8).setStrokeStyle(2, 0xffffff, 0.6), this.add.text(0, 22, q.escort.name.split(' ')[0]!, { fontFamily: FONT, fontSize: '11px', color: '#dfe7f0' }).setOrigin(0.5, 0)]);
+      this.npcSprite.add([this.add.rectangle(0, 2, 22 * K, 32 * K, 0x9fb3c8).setStrokeStyle(2, 0xffffff, 0.6), label(22 * K, q.escort.name.split(' ')[0]!, '#dfe7f0')]);
     }
     // entry marker
     const ec = this.centre(m.entry);
-    this.add.text(ec.x, ec.y - 30, 'entry', { fontFamily: FONT, fontSize: '11px', color: '#8b93a7' }).setOrigin(0.5).setDepth(4);
+    this.add.text(ec.x, ec.y - 30 * K, 'entry', { fontFamily: FONT, fontSize: '12px', color: '#8b93a7', stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5).setDepth(4);
   }
 
   private drawPlayer() {
     const c = this.centre(this.session.playerPos);
-    this.player = this.add.rectangle(c.x, c.y, 26, 38, CLASS_COLORS[this.session.classId] ?? COLORS.player).setStrokeStyle(2, 0xffffff, 0.6).setDepth(6);
-    if (isEscorting(this.session)) this.follower = this.add.rectangle(c.x - 22, c.y + 6, 18, 26, 0x9fb3c8).setStrokeStyle(2, 0xffffff, 0.6).setDepth(6);
+    const k = artKey(this, `hero_${this.session.classId}`);
+    if (k) {
+      const src = this.textures.get(k).getSourceImage() as { height: number };
+      this.player = this.add.image(c.x, c.y + TILE * 0.42, k).setOrigin(0.5, 1).setScale((TILE * 1.25) / src.height).setDepth(6);
+    } else {
+      this.player = this.add.rectangle(c.x, c.y, 26 * K, 38 * K, CLASS_COLORS[this.session.classId] ?? COLORS.player).setStrokeStyle(2, 0xffffff, 0.6).setDepth(6);
+    }
+    if (isEscorting(this.session)) this.follower = this.add.rectangle(c.x - 22 * K, c.y + 6 * K, 18 * K, 26 * K, 0x9fb3c8).setStrokeStyle(2, 0xffffff, 0.6).setDepth(6);
+  }
+  /** The player's feet-anchored sprite sits lower than the tile centre; this is where it belongs for a tile. */
+  private playerPosFor(t: Tile) { const c = this.centre(t); return { x: c.x, y: this.player instanceof Phaser.GameObjects.Image ? c.y + TILE * 0.42 : c.y }; }
+
+  /** Fog of war (DECISIONS #34): black over unseen tiles, a dim over tiles seen but out of sight now. */
+  private drawFog() {
+    const m = this.session.map;
+    if (!m.authored) return;
+    for (let y = 0; y < m.height; y++) for (let x = 0; x < m.width; x++) {
+      this.fog.push(this.add.rectangle(x * TILE + TILE / 2, y * TILE + TILE / 2, TILE, TILE, 0x05070d).setDepth(40));
+    }
+    this.syncFog(false);
+  }
+  private syncFog(animate = true) {
+    const m = this.session.map, s = this.session, p = s.playerPos;
+    if (this.fog.length === 0) return;
+    const dusk = isDusk(s);
+    for (let y = 0; y < m.height; y++) for (let x = 0; x < m.width; x++) {
+      const r = this.fog[y * m.width + x]!;
+      const near = Math.abs(x - p.x) + Math.abs(y - p.y) <= SIGHT;
+      const target = !s.seen.has(`${x},${y}`) ? 1 : near ? (dusk ? 0.15 : 0) : (dusk ? 0.6 : 0.42);
+      if (!animate || Math.abs(r.alpha - target) < 0.01) r.setAlpha(target);
+      else this.tweens.add({ targets: r, alpha: target, duration: 220 });
+    }
   }
 
   private syncQuestHud() {
@@ -194,40 +267,47 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   private buildHud() {
-    const { width: W } = this.scale.gameSize;
+    const { width: W, height: H } = this.scale.gameSize;
+    const s = this.session;
     const hud = this.add.container(0, 0).setDepth(100).setScrollFactor(0);
     hud.add(this.add.rectangle(W / 2, 26, W, 52, 0x000000, 0.72).setOrigin(0.5));
     // HP
-    hud.add(this.add.text(16, 12, this.session.classId.toUpperCase(), { fontFamily: FONT, fontSize: '13px', color: COLORS.text, fontStyle: 'bold' }).setOrigin(0, 0));
+    hud.add(this.add.text(16, 12, s.classId.toUpperCase(), { fontFamily: FONT, fontSize: '13px', color: COLORS.text, fontStyle: 'bold' }).setOrigin(0, 0));
     hud.add(this.add.rectangle(16, 36, 160, 10, COLORS.hpBack).setOrigin(0, 0.5));
     this.hpFill = this.add.rectangle(16, 36, 160, 10, COLORS.hp).setOrigin(0, 0.5);
     hud.add(this.hpFill);
     this.hpText = this.add.text(182, 36, '', { fontFamily: FONT, fontSize: '13px', color: COLORS.muted }).setOrigin(0, 0.5);
     hud.add(this.hpText);
     // screen + seed
-    hud.add(this.add.text(W / 2, 14, `Screen ${this.session.screenIndex + 1} of ${SCREEN_COUNT}`, { fontFamily: FONT, fontSize: '14px', color: COLORS.text, fontStyle: 'bold' }).setOrigin(0.5, 0));
-    hud.add(this.add.text(W / 2, 34, `seed ${this.session.seed}`, text.mono).setOrigin(0.5, 0));
-    // threat
-    hud.add(this.add.text(W - 196, 12, 'THREAT', { fontFamily: FONT, fontSize: '12px', color: '#ff8c42', fontStyle: 'bold' }).setOrigin(0, 0));
+    hud.add(this.add.text(W / 2, 14, `Screen ${s.screenIndex + 1} of ${SCREEN_COUNT}`, { fontFamily: FONT, fontSize: '14px', color: COLORS.text, fontStyle: 'bold' }).setOrigin(0.5, 0));
+    hud.add(this.add.text(W / 2, 34, `seed ${s.seed}`, text.mono).setOrigin(0.5, 0));
+    // daylight (authored) or threat (procedural)
+    const authored = !!s.map.authored;
+    this.meterLabel = this.add.text(W - 196, 12, authored ? 'DAYLIGHT' : 'THREAT', { fontFamily: FONT, fontSize: '12px', color: authored ? '#ffd166' : '#ff8c42', fontStyle: 'bold' }).setOrigin(0, 0);
+    hud.add(this.meterLabel);
     hud.add(this.add.rectangle(W - 196, 36, 150, 10, COLORS.hpBack).setOrigin(0, 0.5));
-    this.threatFill = this.add.rectangle(W - 196, 36, 150, 10, 0xff8c42).setOrigin(0, 0.5); // full width first: displayWidth scales from it
-    hud.add(this.threatFill);
+    this.meterFill = this.add.rectangle(W - 196, 36, 150, 10, authored ? 0xffd166 : 0xff8c42).setOrigin(0, 0.5); // full width first: displayWidth scales from it
+    hud.add(this.meterFill);
+    this.meterText = this.add.text(W - 46, 12, '', { fontFamily: FONT, fontSize: '12px', color: COLORS.muted }).setOrigin(1, 0);
+    hud.add(this.meterText);
     this.goldText = this.add.text(W - 240, 24, '', { fontFamily: FONT, fontSize: '13px', color: COLORS.gold, fontStyle: 'bold' }).setOrigin(1, 0.5);
     hud.add(this.goldText);
+    // Dusk: the world goes blue. Drawn over the fog, under the HUD.
+    this.duskTint = this.add.rectangle(W / 2, H / 2, W, H, 0x0a1440, 0.32).setScrollFactor(0).setDepth(60).setVisible(isDusk(s));
     // Unspent skill points: a bare interactive text (container children with scrollFactor 0 do not hit-test).
-    const pts = getMeta(this).progress[this.session.classId]?.points ?? 0;
-    if (pts > 0 && !this.session.testMode) {
+    const pts = getMeta(this).progress[s.classId]?.points ?? 0;
+    if (pts > 0 && !s.testMode) {
       const t = this.add.text(W - 240, 44, `★ ${pts} skill point${pts === 1 ? '' : 's'} · tap to spend`, { fontFamily: FONT, fontSize: '12px', color: '#8ff0b8', fontStyle: 'bold', backgroundColor: '#0b0f1acc', padding: { x: 6, y: 3 } }).setOrigin(1, 0.5).setScrollFactor(0).setDepth(101).setInteractive({ useHandCursor: true });
-      t.on('pointerup', () => { void persistRun(this); this.scene.start('SkillTree', { classId: this.session.classId, returnTo: 'Overworld' }); });
+      t.on('pointerup', () => { void persistRun(this); this.scene.start('SkillTree', { classId: s.classId, returnTo: 'Overworld' }); });
     }
     // quit: a bare interactive rectangle, not a Button container (container children with scrollFactor 0 do not hit-test)
     const quitBg = this.add.rectangle(W - 24, 26, 32, 32, COLORS.panel).setStrokeStyle(2, COLORS.panelEdge).setScrollFactor(0).setDepth(101).setInteractive({ useHandCursor: true });
     this.add.text(W - 24, 26, '✕', { fontFamily: FONT, fontSize: '14px', color: COLORS.text, fontStyle: 'bold' }).setOrigin(0.5).setScrollFactor(0).setDepth(102);
     quitBg.on('pointerup', () => this.quit());
     // quest line (bottom)
-    this.questText = this.add.text(W / 2, this.scale.gameSize.height - 10, '', { fontFamily: FONT, fontSize: '13px', color: COLORS.gold, backgroundColor: '#000000aa', padding: { x: 8, y: 4 } }).setOrigin(0.5, 1).setScrollFactor(0).setDepth(101);
+    this.questText = this.add.text(W / 2, H - 10, '', { fontFamily: FONT, fontSize: '13px', color: COLORS.gold, backgroundColor: '#000000aa', padding: { x: 8, y: 4 } }).setOrigin(0.5, 1).setScrollFactor(0).setDepth(101);
     // toast
-    this.toastText = this.add.text(W / 2, 74, '', { fontFamily: FONT, fontSize: '15px', color: COLORS.text, backgroundColor: '#000000aa', padding: { x: 10, y: 6 } }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(101).setAlpha(0);
+    this.toastText = this.add.text(W / 2, 74, '', { fontFamily: FONT, fontSize: '15px', color: COLORS.text, backgroundColor: '#000000aa', padding: { x: 10, y: 6 }, wordWrap: { width: W - 80 }, align: 'center' }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(101).setAlpha(0);
     this.syncHud();
     this.syncQuestHud();
   }
@@ -237,7 +317,15 @@ export class OverworldScene extends Phaser.Scene {
     this.hpFill.displayWidth = 160 * Math.max(0, s.hp / s.stats.maxHp);
     this.hpFill.setFillStyle(s.hp / s.stats.maxHp <= 0.3 ? COLORS.hpLow : COLORS.hp);
     this.hpText.setText(`${s.hp}/${s.stats.maxHp}`);
-    this.threatFill.displayWidth = 150 * Math.min(1, s.threat);
+    if (s.map.authored) {
+      const frac = s.daylightMax > 0 ? s.daylight / s.daylightMax : 0;
+      this.meterFill.displayWidth = 150 * Math.max(0, Math.min(1, frac));
+      this.meterFill.setFillStyle(frac > 0.3 ? 0xffd166 : frac > 0 ? 0xff8c42 : 0x3b4a8a);
+      this.meterLabel.setText(frac > 0 ? 'DAYLIGHT' : 'DUSK').setColor(frac > 0 ? '#ffd166' : '#9ab4ff');
+      this.meterText.setText(frac > 0 ? `${s.daylight} steps` : 'the wilds are bold');
+    } else {
+      this.meterFill.displayWidth = 150 * Math.min(1, s.threat);
+    }
     this.goldText.setText(`${s.gold} g`);
   }
 
@@ -253,6 +341,7 @@ export class OverworldScene extends Phaser.Scene {
     const s = this.session;
     const guards = new Set<string>();
     for (const g of s.map.guards) if (!s.defeatedGuards.has(g.id)) guards.add(key(g.pos));
+    for (const n of s.map.nodes ?? []) if (!s.clearedNodes.has(n.id)) guards.add(key(n.pos));
     if (!s.bossDefeated) guards.add(key(s.map.boss));
     return guards;
   }
@@ -260,13 +349,14 @@ export class OverworldScene extends Phaser.Scene {
   private onTap(p: Phaser.Input.Pointer) {
     if (this.locked) return;
     const target: Tile = { x: Math.floor(p.worldX / TILE), y: Math.floor(p.worldY / TILE) };
+    if (this.session.map.authored && !this.session.seen.has(key(target))) { void this.toast('You have not seen that far.', 700); return; }
     if (this.walking) { this.retarget = target; return; }
     void this.walkTo(target);
   }
 
   private computePath(from: Tile, to: Tile): Tile[] | null {
     const obstacles = this.blockedSets();
-    // Guards and the boss can be the destination (that's how you fight them) but never walked through.
+    // Guards, nodes and the boss can be the destination (that's how you fight them) but never walked through.
     return findPath(this.session.map, from, to, { targetOnly: obstacles });
   }
 
@@ -281,7 +371,7 @@ export class OverworldScene extends Phaser.Scene {
     this.pathGfx.strokePath();
     const end = this.centre(path[path.length - 1]!);
     this.pathGfx.lineStyle(3, 0xffffff, 0.9);
-    this.pathGfx.strokeCircle(end.x, end.y, 14);
+    this.pathGfx.strokeCircle(end.x, end.y, 14 * K);
   }
 
   private async walkTo(target: Tile) {
@@ -298,10 +388,13 @@ export class OverworldScene extends Phaser.Scene {
         if (path.length === 0) break;
       }
       const next = path.shift()!;
-      const c = this.centre(next);
+      const c = this.playerPosFor(next);
       const prev = { x: this.player.x, y: this.player.y };
-      await tween(this, { targets: this.player, x: c.x, y: c.y, duration: 110, ease: 'Linear' });
-      if (this.follower) void tween(this, { targets: this.follower, x: prev.x, y: prev.y + 6, duration: 110, ease: 'Linear' });
+      if (this.player instanceof Phaser.GameObjects.Image) this.player.setFlipX(c.x < prev.x);
+      // a small hop per step reads as walking without frames
+      this.tweens.add({ targets: this.player, scaleY: this.player.scaleY * 0.94, duration: STEP_MS / 2, yoyo: true, ease: 'Sine.InOut' });
+      await tween(this, { targets: this.player, x: c.x, y: c.y, duration: STEP_MS, ease: 'Linear' });
+      if (this.follower) void tween(this, { targets: this.follower, x: prev.x - (this.player instanceof Phaser.GameObjects.Image ? 0 : 0), y: prev.y + 6, duration: STEP_MS, ease: 'Linear' });
       s.playerPos = next;
       this.drawPath(path);
       const stop = await this.onArrive(next);
@@ -316,6 +409,17 @@ export class OverworldScene extends Phaser.Scene {
     const s = this.session, m = s.map;
     const k = key(t);
 
+    if (m.authored) {
+      revealAround(s, t);
+      this.syncFog();
+      if (spendDaylight(s)) {
+        this.duskTint.setVisible(true);
+        this.syncFog();
+        void this.toast('Dusk falls. The clearings ahead will not be fought alone, and the shrine goes dark.', 3200);
+      }
+      this.syncHud();
+    }
+
     // Quest giver and escort NPC are walked onto like POIs.
     const q = currentQuest(s);
     if (key(m.questGiver) === k && q) { this.locked = true; await persistRun(this); this.scene.start('Quest', { questId: q.id }); return true; }
@@ -323,16 +427,21 @@ export class OverworldScene extends Phaser.Scene {
       q.escort.following = true;
       this.npcSprite?.destroy(); this.npcSprite = null;
       const c = this.centre(t);
-      this.follower = this.add.rectangle(c.x - 22, c.y + 6, 18, 26, 0x9fb3c8).setStrokeStyle(2, 0xffffff, 0.6).setDepth(6);
+      this.follower = this.add.rectangle(c.x - 22 * K, c.y + 6 * K, 18 * K, 26 * K, 0x9fb3c8).setStrokeStyle(2, 0xffffff, 0.6).setDepth(6);
       this.syncQuestHud();
       void persistRun(this);
-      void this.toast(`${q.escort.name} follows you. Get back to ${q.giver.name}. The wilds will notice.`, 2600);
+      void this.toast(`${q.escort.name} follows you. Get back to ${q.giver.name}.${m.authored ? '' : ' The wilds will notice.'}`, 2600);
       return true;
     }
 
     const guard = m.guards.find((g) => key(g.pos) === k && !s.defeatedGuards.has(g.id));
     if (guard) { await this.startEncounter({ kind: 'guard', enemyId: guard.enemyId, guardId: guard.id }); return true; }
+    const node = nodeAt(s, t);
+    if (node) { await this.startEncounter(nodeEncounter(s, node), node); return true; }
     if (key(m.boss) === k && !s.bossDefeated) { await this.startEncounter({ kind: 'boss', enemyId: m.bossId }); return true; }
+
+    const sign = m.signposts?.find((sp) => key(sp.pos) === k);
+    if (sign) { void this.toast(signpostText(sign.id), 2600); }
 
     const poi = m.pois.find((p) => key(p.pos) === k);
     if (poi) {
@@ -347,6 +456,7 @@ export class OverworldScene extends Phaser.Scene {
         return true;
       }
       if (poi.kind === 'shrine' && !s.usedShrines.has(poi.id)) {
+        if (isDusk(s)) { void this.toast('The shrine is dark. Its light went with the day.', 1800); return true; }
         s.usedShrines.add(poi.id);
         s.hp = s.stats.maxHp;
         this.poiSprites.get(poi.id)?.setAlpha(0.35);
@@ -358,7 +468,8 @@ export class OverworldScene extends Phaser.Scene {
       if (poi.kind === 'shop') { this.locked = true; await persistRun(this); this.scene.start('Shop'); return true; }
     }
 
-    // Plain tile: feed the threat meter.
+    if (m.authored) return false;
+    // Procedural maps: plain tiles feed the threat meter.
     const tile = tileAt(m, t.x, t.y)!;
     const r = stepThreat(s.threat, tile, s.screenIndex, s.rng.stream('encounter'), isEscorting(s) ? ESCORT_THREAT_MULT : 1);
     s.threat = r.meter;
@@ -367,12 +478,13 @@ export class OverworldScene extends Phaser.Scene {
     return false;
   }
 
-  private async startEncounter(e: PendingEncounter) {
+  private async startEncounter(e: PendingEncounter, node?: MapNode) {
     this.locked = true;
     const pp = this.session.playerPos;
     this.session.pendingEncounter = { ...e, tile: tileAt(this.session.map, pp.x, pp.y) };
     const name = [e.enemyId, ...(e.extra ?? [])].map((id) => getEnemy(id).name).join(' & ');
-    void this.toast(e.kind === 'random' ? `Ambush! ${name}` : e.kind === 'guard' ? `${name} blocks the way` : `${name} awaits`, 600);
+    const line = e.kind === 'random' ? `Ambush! ${name}` : e.kind === 'guard' ? `${name} blocks the way` : e.kind === 'node' ? (node?.kind === 'elite' ? `${name} hold the clearing` : e.extra?.length ? `${name}, bold in the dark` : `${name} waits here`) : `${name} awaits`;
+    void this.toast(line, 600);
     this.cameras.main.flash(180, 255, 255, 255);
     await wait(this, 450);
     this.scene.start('Combat');
@@ -396,6 +508,10 @@ export class OverworldScene extends Phaser.Scene {
       s.defeatedGuards.add(r.encounter.guardId);
       this.guardSprites.get(r.encounter.guardId)?.destroy();
       void this.toast('The way is clear.');
+    } else if (r.encounter.kind === 'node' && r.encounter.nodeId) {
+      s.clearedNodes.add(r.encounter.nodeId);
+      this.nodeSprites.get(r.encounter.nodeId)?.destroy();
+      void this.toast('The clearing is yours.');
     } else if (r.encounter.kind === 'boss') {
       s.bossDefeated = true;
       s.hp = s.stats.maxHp;
@@ -438,4 +554,19 @@ export class OverworldScene extends Phaser.Scene {
   private quit() {
     void persistRun(this).then(() => { setSession(this, null); this.scene.start('Title'); });
   }
+}
+
+/** Signpost lines until the dialogue system lands (next phase); keyed by signpost id. */
+function signpostText(id: string): string {
+  const LINES: Record<string, string> = {
+    sign_1_0: 'North: the long way round the lake. A chest, the shrine, and whatever got there first.',
+    sign_1_1: 'South: the woods, the warren, and a chest nobody came back from. Straight on: the gate road.',
+    sign_1_2: 'The road turns down to the gate from here. Andre does not like visitors at dusk.',
+    sign_1_3: 'Up this way to the gate road. Behind you, the far chest and someone calling for help.',
+    sign_2_0: 'North: dry ground, mostly. A chest, a shrine, two things that want you.',
+    sign_2_1: 'South: the drowned way. Slow going, and the rats got big. Straight on: the Warden.',
+    sign_2_2: 'The marsh road descends to the Warden from here.',
+    sign_2_3: 'Up to the Warden’s road. The far chest is behind you, and so is the lost one.',
+  };
+  return LINES[id] ?? 'The sign has rotted away.';
 }

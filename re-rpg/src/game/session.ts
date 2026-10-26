@@ -4,7 +4,10 @@ import type Phaser from 'phaser';
 import { enemiesOfTier, getClass, getSet, getSkill } from '@data/index';
 import type { ClassId, EnemyId, Item, SetId, Skill, SkillId, Stats } from '@data/types';
 import { RunRng, newSeed } from '@core/rng';
-import { generateScreen, type ScreenMap, type Tile, type TileType } from '@core/map';
+import { entryToBossSteps, generateScreen, key, parseScreen, type MapNode, type ScreenMap, type Tile, type TileType } from '@core/map';
+import { SCREEN1 } from '@data/maps/screen1';
+import { SCREEN2 } from '@data/maps/screen2';
+import { getMapMode } from '@game/mapmode';
 import { DECK_CAP } from '@core/combat';
 import { DUO_CHANCE, PAIRS } from '@data/packs';
 import { TOME_COPY_CAP } from '@data/skills';
@@ -17,9 +20,13 @@ import type { SaveStore } from '@save/SaveStore';
 
 export const SCREEN_COUNT = 2;
 
-export type EncounterKind = 'random' | 'guard' | 'boss';
+export type EncounterKind = 'random' | 'guard' | 'boss' | 'node';
+/** Daylight per screen (DECISIONS #34): this many times the shortest entry-to-boss walk, in steps. Dusk after that. */
+export const DAYLIGHT_MULT = 2.5;
+/** After dusk, a fight node has this chance to be a duo. */
+export const DUSK_DUO_CHANCE = 0.6;
 /** `tile` is where the fight started; the combat backdrop is chosen from it (docs/ART.md). */
-export interface PendingEncounter { kind: EncounterKind; enemyId: EnemyId; guardId?: string; tile?: TileType; /** Further enemies behind the first (duos, DECISIONS #29). */ extra?: EnemyId[]; }
+export interface PendingEncounter { kind: EncounterKind; enemyId: EnemyId; guardId?: string; /** Authored map node (kind 'node'). */ nodeId?: string; tile?: TileType; /** Further enemies behind the first (duos, DECISIONS #29). */ extra?: EnemyId[]; }
 export interface CombatResult { encounter: PendingEncounter; won: boolean; }
 export interface PendingOffer { source: RewardSource; gold?: number; }
 
@@ -45,6 +52,11 @@ export interface RunSession {
   openedPois: Set<string>;
   usedShrines: Set<string>;
   defeatedGuards: Set<string>;
+  /** Authored maps (DECISIONS #34): fought nodes, tiles seen through the fog, and daylight left in steps. */
+  clearedNodes: Set<string>;
+  seen: Set<string>;
+  daylight: number;
+  daylightMax: number;
   bossDefeated: boolean;
   encountersWon: number;
   newDiscoveries: string[];
@@ -106,7 +118,7 @@ export function createSession(classId: ClassId, meta: MetaState, seed = newSeed(
     seed, rng, classId, setId, families: unlockedSets(meta, classId), base: { ...base }, stats: { ...base }, hp: base.maxHp, gold: 0,
     deck: [], equipment: emptyEquipment(),
     screenIndex: 0, map: undefined as unknown as ScreenMap, playerPos: { x: 0, y: 0 }, threat: 0,
-    openedPois: new Set(), usedShrines: new Set(), defeatedGuards: new Set(), bossDefeated: false, encountersWon: 0,
+    openedPois: new Set(), usedShrines: new Set(), defeatedGuards: new Set(), clearedNodes: new Set(), seen: new Set(), daylight: 0, daylightMax: 0, bossDefeated: false, encountersWon: 0,
     newDiscoveries: [], heirloomName: null, shop: { lines: [], healPrice: 0, healPct: 0.5, healUsed: true }, quests: [], skillUpgrades: {}, customItems: [],
     pendingEncounter: null, lastResult: null, pendingOffer: null, heirloomChoices: [],
   };
@@ -143,12 +155,19 @@ export const poolCtx = (s: RunSession, meta?: MetaState) => ({ classId: s.classI
 /** Generate screen `index`, stock its shop, and put the player at its entry. */
 export function startScreen(s: RunSession, index: number, meta?: MetaState): void {
   s.screenIndex = index;
-  s.map = generateScreen(s.rng.stream('map'), { seed: s.seed, screenIndex: index });
+  s.map = getMapMode() === 'procedural'
+    ? generateScreen(s.rng.stream('map'), { seed: s.seed, screenIndex: index })
+    : parseScreen(index === 0 ? SCREEN1 : SCREEN2, s.rng.stream('map'), { seed: s.seed, screenIndex: index });
   s.playerPos = { ...s.map.entry };
   s.threat = 0;
   s.openedPois = new Set();
   s.usedShrines = new Set();
   s.defeatedGuards = new Set();
+  s.clearedNodes = new Set();
+  s.seen = new Set();
+  s.daylightMax = s.map.authored ? Math.round(entryToBossSteps(s.map) * DAYLIGHT_MULT) : 0;
+  s.daylight = s.daylightMax;
+  revealAround(s, s.playerPos);
   s.bossDefeated = false;
   s.shop = rollShopStock(index, poolCtx(s, meta), s.rng.stream('loot'));
   // One randomised quest per screen (DECISIONS #19). Earlier screens' quests are kept for the run summary.
@@ -181,6 +200,39 @@ export function turnInQuest(s: RunSession, q: Quest): { gold: number; offer?: Re
 }
 
 export const screenTier = (s: RunSession): 1 | 2 => (s.screenIndex === 0 ? 1 : 2);
+
+/** Fog of war: tiles within this many steps (diamond) of the player are revealed and stay revealed. */
+export const SIGHT = 4;
+export function revealAround(s: RunSession, at: Tile): string[] {
+  const fresh: string[] = [];
+  for (let dy = -SIGHT; dy <= SIGHT; dy++) for (let dx = -SIGHT; dx <= SIGHT; dx++) {
+    if (Math.abs(dx) + Math.abs(dy) > SIGHT) continue;
+    const x = at.x + dx, y = at.y + dy;
+    if (x < 0 || y < 0 || x >= s.map.width || y >= s.map.height) continue;
+    const k = `${x},${y}`;
+    if (!s.seen.has(k)) { s.seen.add(k); fresh.push(k); }
+  }
+  return fresh;
+}
+
+export const isDusk = (s: RunSession): boolean => !!s.map.authored && s.daylight <= 0;
+/** A step on an authored map spends daylight. Returns true the moment dusk falls. */
+export function spendDaylight(s: RunSession): boolean {
+  if (!s.map.authored || s.daylight <= 0) return false;
+  s.daylight -= 1;
+  return s.daylight === 0;
+}
+
+/** The fight waiting at an authored node; after dusk a plain fight may bring a friend (DECISIONS #34). */
+export function nodeEncounter(s: RunSession, node: MapNode): PendingEncounter {
+  const e: PendingEncounter = { kind: 'node', enemyId: node.enemyId, nodeId: node.id, extra: node.extra ? [...node.extra] : undefined };
+  if (!e.extra && isDusk(s) && s.rng.stream('encounter').chance(DUSK_DUO_CHANCE)) {
+    const pair = PAIRS[screenTier(s)].find(([front]) => front === node.enemyId) ?? s.rng.stream('encounter').pick(PAIRS[screenTier(s)]);
+    e.enemyId = pair[0]; e.extra = [pair[1]];
+  }
+  return e;
+}
+export const nodeAt = (s: RunSession, t: Tile): MapNode | undefined => s.map.nodes?.find((n) => key(n.pos) === key(t) && !s.clearedNodes.has(n.id));
 export const randomEnemy = (s: RunSession): EnemyId => s.rng.stream('encounter').pick(enemiesOfTier(screenTier(s))).id;
 
 /** A wild encounter: a single enemy, or one of the screen's authored pairs (DECISIONS #29). */
@@ -250,6 +302,7 @@ export function serialize(s: RunSession): RunState {
     hp: s.hp, gold: s.gold, deck: [...s.deck], equipment: equipmentToIds(s.equipment),
     screenIndex: s.screenIndex, map: s.map, playerPos: { ...s.playerPos }, threat: s.threat,
     openedPois: [...s.openedPois], usedShrines: [...s.usedShrines], defeatedGuards: [...s.defeatedGuards],
+    clearedNodes: [...s.clearedNodes], seen: [...s.seen], daylight: s.daylight, daylightMax: s.daylightMax,
     bossDefeated: s.bossDefeated, encountersWon: s.encountersWon, newDiscoveries: [...s.newDiscoveries], heirloomName: s.heirloomName,
     shop: JSON.parse(JSON.stringify(s.shop)) as ShopStock,
     quests: JSON.parse(JSON.stringify(s.quests)) as Quest[], skillUpgrades: { ...s.skillUpgrades }, customItems: JSON.parse(JSON.stringify(s.customItems)) as Item[],
@@ -266,6 +319,7 @@ export function deserialize(st: RunState, meta: MetaState): RunSession {
     hp: st.hp, gold: st.gold, deck: [...st.deck], equipment,
     screenIndex: st.screenIndex, map: st.map, playerPos: { ...st.playerPos }, threat: st.threat,
     openedPois: new Set(st.openedPois), usedShrines: new Set(st.usedShrines), defeatedGuards: new Set(st.defeatedGuards),
+    clearedNodes: new Set(st.clearedNodes ?? []), seen: new Set(st.seen ?? []), daylight: st.daylight ?? 0, daylightMax: st.daylightMax ?? 0,
     bossDefeated: st.bossDefeated, encountersWon: st.encountersWon, newDiscoveries: [...st.newDiscoveries], heirloomName: st.heirloomName,
     shop: st.shop, quests: st.quests ?? [], skillUpgrades: st.skillUpgrades ?? {}, customItems: st.customItems ?? [],
     pendingEncounter: null, lastResult: null, pendingOffer: null, heirloomChoices: [],

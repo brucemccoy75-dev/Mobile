@@ -86,3 +86,18 @@ The run log showed power coming from volume of rewards and stacked gear, and vet
 
 Run log after the flat-gear change: +8 gear attack still made the basic Attack a 12-damage one-shot against 10–12 HP enemies, so fights ended before the enemy acted and HP never mattered. Supersedes the attack budget in #13. Caps: body DEF +1 at most, weapons ATK +1 at most, relics ATK +1 at most; rarity shows up as max HP (+3 common, +5/6 uncommon, +6/8 rare) and costs are paid in HP. The most attack ordinary gear can add is +2 (weapon plus relic), so a geared warrior's Attack is 6, not 12. Boss relics are the one place the caps break (Gatekeeper's Eye +2/+2, Warden's Seal +3 DEF/+8 HP) and they only drop from boss loot; more of them is the plan for making bosses worth it. Quest upgrades still add +1 to an item's main stat, run-local.
 
+
+## 34. Authored maps, daylight and fog (routes as roads)
+
+The procedural generator (#23) is parked on branch `overworld-procedural` and behind the title's
+map toggle. Each screen is now a hand-authored ASCII layout (`src/data/maps`, legend in
+`core/map/authored.ts`, drafted with `scripts/author-map.py`): three lanes of clearings joined
+by roads, converging on the boss gate. Fights live only at nodes (`f` single, `x` elite duo),
+guards and the gate; the road between is safe. Node and guard species are rolled per run from
+the screen's roster, so layouts are fixed and contents are not. Steps spend a daylight budget
+(2.5× the shortest entry-to-boss walk); after dusk plain nodes roll duos 60% of the time and the
+shrine goes dark. Fog of war hides tiles never within 4 steps; only seen tiles can be tapped.
+Tiles are 72 px (about 11×5 on a phone), steps take 190 ms, and the hero and enemies stand on
+the map as their stills. Why: a fixed world can be designed for flow, landmarks and story, and
+knowing where the harpies wait is player knowledge beating RNG; the daylight clock keeps
+exploring a decision instead of free upside.

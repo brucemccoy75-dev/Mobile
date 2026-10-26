@@ -22,8 +22,27 @@ export interface Guard {
   poiId: string;
 }
 
+export type NodeKind = 'fight' | 'elite';
+
+/** A clearing on an authored road (DECISIONS #34): one fight, rolled per run from the screen's roster. */
+export interface MapNode {
+  id: string;
+  kind: NodeKind;
+  pos: Tile;
+  enemyId: EnemyId;
+  /** Elites are always a duo; fights may become one after dusk. */
+  extra?: EnemyId[];
+}
+
+/** A written signpost at a fork; its lines live in data/dialogue.ts under `id`. */
+export interface Signpost { id: string; pos: Tile; }
+
 export interface ScreenMap {
   seed: string;
+  /** True for hand-authored layouts (core/map/authored.ts); fights then live only at nodes. */
+  authored?: boolean;
+  nodes?: MapNode[];
+  signposts?: Signpost[];
   screenIndex: number;
   width: number;
   height: number;
