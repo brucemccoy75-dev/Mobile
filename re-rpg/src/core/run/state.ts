@@ -11,7 +11,7 @@ import type { SkillUpgrades } from './upgrade';
 import { resolveItem } from './upgrade';
 import type { Versioned } from '@save/SaveStore';
 
-export const RUN_VERSION = 3;
+export const RUN_VERSION = 4;
 
 export interface RunState extends Versioned {
   seed: string;
@@ -33,12 +33,10 @@ export interface RunState extends Versioned {
   openedPois: string[];
   usedShrines: string[];
   defeatedGuards: string[];
-  /** Authored maps (DECISIONS #34). Absent on older saves. */
+  /** Node overworld (DECISIONS #37). */
   clearedNodes?: string[];
-  seen?: string[];
+  lastClearedNode?: string | null;
   flags?: string[];
-  daylight?: number;
-  daylightMax?: number;
   bossDefeated: boolean;
   encountersWon: number;
   /** Ids discovered during this run, for the end-of-run summary. */

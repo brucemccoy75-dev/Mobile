@@ -2,11 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { Rng } from '@core/rng';
 import { DIALOGUE } from '@data/dialogue';
 import { ENEMIES, getSkill } from '@data/index';
-import { SCREEN1 } from '@data/maps/screen1';
-import { SCREEN2 } from '@data/maps/screen2';
 import { defaultOption, pickDialogue, resolve, visibleOptions, type DialogueCtx } from './index';
 
-const ctx = (over: Partial<DialogueCtx> = {}): DialogueCtx => ({ flags: new Set(), relations: {}, deathsOnScreen: 0, deathsTotal: 0, level: 1, classId: 'warrior', gold: 10, daylight: 40, rng: new Rng(1), ...over });
+const ctx = (over: Partial<DialogueCtx> = {}): DialogueCtx => ({ flags: new Set(), relations: {}, deathsOnScreen: 0, deathsTotal: 0, level: 1, classId: 'warrior', gold: 10, fights: 0, rng: new Rng(1), ...over });
 
 describe('dialogue data', () => {
   it('every enemy and both gates have a pre-fight entry that always matches', () => {
@@ -16,12 +14,16 @@ describe('dialogue data', () => {
     }
     expect(pickDialogue(DIALOGUE, 'gate:wren', ctx())).not.toBeNull();
     expect(pickDialogue(DIALOGUE, 'pre_fight:ghost', ctx())).not.toBeNull();
+    expect(pickDialogue(DIALOGUE, 'pre_fight:brother', ctx())).not.toBeNull();
   });
-  it('every signpost on both screens has lines', () => {
-    for (const [i, a] of [SCREEN1, SCREEN2].entries()) {
-      const n = (a.match(/p/g) ?? []).length;
-      for (let k = 0; k < n; k++) expect(pickDialogue(DIALOGUE, `sign:sign_${i + 1}_${k}`, ctx()), `sign_${i + 1}_${k}`).not.toBeNull();
-    }
+  it('the story nodes always have something to say, and the tinker quest arc chains', () => {
+    expect(pickDialogue(DIALOGUE, 'node:quest', ctx())!.id).toBe('tinker_first');
+    expect(pickDialogue(DIALOGUE, 'node:quest', ctx({ fights: 1 }))!.id).toBe('tinker_quest');
+    expect(pickDialogue(DIALOGUE, 'node:quest', ctx({ fights: 2, flags: new Set(['tinker_quest']) }))!.id).toBe('tinker_waiting');
+    expect(pickDialogue(DIALOGUE, 'node:quest', ctx({ fights: 2, flags: new Set(['tinker_quest', 'tinker_fight_won']) }))!.id).toBe('tinker_reward');
+    expect(pickDialogue(DIALOGUE, 'node:lost', ctx())).not.toBeNull();
+    expect(pickDialogue(DIALOGUE, 'giver:wren', ctx({ fights: 1, flags: new Set(['wren_met']) }))!.id).toBe('wren_after_fight');
+    expect(resolve(pickDialogue(DIALOGUE, 'node:quest', ctx({ fights: 1 }))!.options[0]!.effects).rearm).toBe(true);
   });
   it('every next target exists, every option ends in fight, skip or next, and named tomes exist', () => {
     const ids = new Set(DIALOGUE.map((d) => d.trigger));

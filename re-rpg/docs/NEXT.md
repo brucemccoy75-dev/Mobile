@@ -246,3 +246,16 @@ Still open, in suggested order:
 5. Enemy affinities, overflow-exhausts, shrine 50%: not built; decide after a few logs.
 6. More dialogue consequences: the escort NPC, the shop keeper, Andre's running gag past 5 deaths,
    Gerald as a possible ally. A per-character "memory" line on the title screen.
+
+## 13. Node overworld (2026-10-26, later)
+
+Daylight and fog are gone; the map is a static node network over the authored terrain with per-run
+contents (DECISIONS #37). The back-and-forth quest scenario works end to end (Wren → fight →
+Wren → tinker → re-armed fight → tinker). Next for this layer:
+1. A quest system that uses nodes properly: "go to node X", "escort from n back to start", hunts
+   that re-arm specific nodes; replace the hunt/fetch/escort generator's tile logic with node ids.
+2. A second screen-1 story NPC and a screen-2 arc (the Warden's marsh has only Wren's rats as a
+   thread so far).
+3. Marker polish: an "entered" tick on cleared calm nodes, a route preview line when a node is
+   tapped, the ghost marker offset.
+4. Bag tuning from play: 13 open slots, 1 shop, 1 shrine, 3 treasures, 8 monsters (3 unknown).

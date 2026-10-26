@@ -18,6 +18,7 @@ export class DialogueScene extends Phaser.Scene {
   private data_!: DialogueData;
   private made: Phaser.GameObjects.GameObject[] = [];
   private notes: string[] = [];
+  private rearmed: string | undefined;
   private busy = false;
 
   constructor() { super('Dialogue'); }
@@ -27,6 +28,7 @@ export class DialogueScene extends Phaser.Scene {
     this.session = getSession(this);
     this.made = [];
     this.notes = [];
+    this.rearmed = undefined;
     this.busy = false;
     const { width: W, height: H } = this.scale.gameSize;
     // A full-screen catcher so taps never reach the map underneath.
@@ -78,11 +80,12 @@ export class DialogueScene extends Phaser.Scene {
     const meta = getMeta(this);
     const a = applyOption(this.session, meta, o);
     this.notes.push(...a.notes);
+    if (a.rearmed) this.rearmed = a.rearmed;
     if (a.next) {
       const next = findDialogue(a.next, this.session, meta);
       if (next) { this.busy = false; this.show(next); return; }
     }
-    this.finish({ fight: a.fight, skip: a.skip || (!a.fight && !a.next), notes: this.notes });
+    this.finish({ fight: a.fight, skip: a.skip || (!a.fight && !a.next), notes: this.notes, rearmed: this.rearmed });
     void d;
   }
 
@@ -96,10 +99,11 @@ export class DialogueScene extends Phaser.Scene {
     for (let guard = 0; cur && guard < 8; guard++) {
       const a = applyOption(this.session, meta, defaultOption(cur, dialogueCtx(this.session, meta)));
       this.notes.push(...a.notes);
+      if (a.rearmed) this.rearmed = a.rearmed;
       fight = fight || a.fight; skip = skip || a.skip;
       cur = a.next ? findDialogue(a.next, this.session, meta) : null;
     }
-    this.finish({ fight, skip: skip || !fight, notes: this.notes });
+    this.finish({ fight, skip: skip || !fight, notes: this.notes, rearmed: this.rearmed });
   }
 
   private finish(r: DialogueResult) {

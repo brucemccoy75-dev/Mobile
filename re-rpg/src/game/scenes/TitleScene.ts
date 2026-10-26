@@ -6,7 +6,6 @@ import { deserialize, getMeta, getStore, setMeta, setSession } from '@game/sessi
 import { legacySummary } from '@core/meta';
 import { Button } from '@game/ui/Button';
 import { ART_STYLE_LABEL, getArtStyle, nextArtStyle, setArtStyle } from '@game/art';
-import { MAP_MODE_LABEL, getMapMode, setMapMode } from '@game/mapmode';
 import { shareRunLog } from '@game/telemetry';
 import type { FirebaseCloud } from '@save/firebase';
 import type { SyncedSaveStore } from '@save/SyncedSaveStore';
@@ -73,11 +72,6 @@ export class TitleScene extends Phaser.Scene {
       setArtStyle(nextArtStyle(getArtStyle()));
       artBtn.label.setText(`art ${ART_STYLE_LABEL[getArtStyle()]}`);
     }, { width: 120, height: 28, fontSize: '12px' }).setAlpha(0.5);
-    // Map mode (DECISIONS #34): authored lanes are the game; the generator stays one tap away.
-    const mapBtn = new Button(this, width - 420, height - 24, `map ${MAP_MODE_LABEL[getMapMode()]}`, () => {
-      setMapMode(getMapMode() === 'authored' ? 'procedural' : 'authored');
-      mapBtn.label.setText(`map ${MAP_MODE_LABEL[getMapMode()]}`);
-    }, { width: 130, height: 28, fontSize: '12px' }).setAlpha(0.5);
     new Button(this, width - 80, height - 24, 'wipe save', async () => {
       await getStore(this).clearRun();
       const fresh = createMeta();

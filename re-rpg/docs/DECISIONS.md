@@ -130,3 +130,22 @@ rear partner's place, and grows by one each time a run dies there again. Laying 
 back its gold (capped at 60) and one of the cards it died holding. One ghost per screen, in meta.
 Why: deaths become content, the map gets a personal grudge on it, and the first "the world
 reacted to me" moment arrives on the first return trip.
+
+## 37. The node overworld: static network, random contents, tap to travel
+
+Supersedes the free-walking parts of #34. Free-form walking felt wrong once fights lived only in
+clearings, so the overworld is now a node network drawn over the authored terrain: tap a node, the
+hero walks the road to it, arriving runs its task. The network per screen is authored
+(`scripts/author-map.py`, every road junction is a node so a link never forks between nodes);
+what each open slot holds is rolled per run from a bag (one shop, one shrine, a few treasures,
+the rest monsters, about 40% of them unknown; dead ends take the calm types first). Fixed: the
+start node (always the story chat), the mid-map quest node, the lost one, two elites, the boss at
+the end. Node icons carry the risk: a known monster shows its still, an unknown one a question
+mark with a skull, elites a bigger skull, the boss the biggest, quests a question mark. Rules: a
+node can be passed through only once its task is done; fights are quiet once won; shops can be
+revisited but do not restock; treasure and shrines are consumed once; any direction is allowed,
+so quests can send you back. First quest arc: Wren at node 1, a fight at node 2, Wren comments on
+it, Tam the tinker at node 3 re-arms node 2 with "the brother" (a bigger pair), the reward on
+return. Daylight, fog of war, signposts and the procedural toggle are gone from play (the
+generator stays in the tree and on branch `overworld-procedural`). Inspiration: Puzzle Quest's
+overworld, kept simpler.

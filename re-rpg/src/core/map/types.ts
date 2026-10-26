@@ -22,27 +22,28 @@ export interface Guard {
   poiId: string;
 }
 
-export type NodeKind = 'fight' | 'elite';
+export type NodeKind = 'start' | 'quest' | 'lost' | 'monster' | 'unknown' | 'elite' | 'shop' | 'treasure' | 'shrine' | 'boss';
 
-/** A clearing on an authored road (DECISIONS #34): one fight, rolled per run from the screen's roster. */
+/**
+ * A clearing in the node overworld (DECISIONS #37). The network is authored; the kind of each open
+ * slot and the species at it are rolled per run. `links` are the nodes one road away.
+ */
 export interface MapNode {
   id: string;
   kind: NodeKind;
   pos: Tile;
-  enemyId: EnemyId;
-  /** Elites are always a duo; fights may become one after dusk. */
+  links: string[];
+  enemyId?: EnemyId;
   extra?: EnemyId[];
+  /** True once the slot's species was revealed (unknown monsters) or the node was ever entered. */
+  seen?: boolean;
 }
-
-/** A written signpost at a fork; its lines live in data/dialogue.ts under `id`. */
-export interface Signpost { id: string; pos: Tile; }
 
 export interface ScreenMap {
   seed: string;
-  /** True for hand-authored layouts (core/map/authored.ts); fights then live only at nodes. */
+  /** True for hand-authored layouts (core/map/authored.ts): play happens on `nodes`. */
   authored?: boolean;
   nodes?: MapNode[];
-  signposts?: Signpost[];
   screenIndex: number;
   width: number;
   height: number;

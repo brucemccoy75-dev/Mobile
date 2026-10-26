@@ -16,7 +16,7 @@ export type Cond =
   | { killedBy: string }
   | { level: { min?: number; max?: number } }
   | { gold: { min?: number } }
-  | { daylight: { min?: number } }
+  | { fights: { min?: number; max?: number } }
   | { class: ClassId }
   | { chance: number };
 
@@ -25,8 +25,9 @@ export type DEffect =
   | { relation: string; delta: number }
   | { gold: number }
   | { hp: number }
-  | { daylight: number }
   | { tome: SkillId | 'random' }
+  /** Re-arm the last cleared monster node with a bigger fight (a quest sends you back). */
+  | { rearm: true }
   | { fight: true }
   | { skip: true }
   | { next: string };
@@ -60,7 +61,8 @@ export interface DialogueCtx {
   level: number;
   classId: ClassId;
   gold: number;
-  daylight: number;
+  /** Fights won this run. */
+  fights: number;
   rng: Rng;
 }
 
@@ -71,7 +73,7 @@ export function holds(c: Cond, ctx: DialogueCtx): boolean {
   if ('killedBy' in c) return ctx.lastKiller === c.killedBy;
   if ('level' in c) return (c.level.min === undefined || ctx.level >= c.level.min) && (c.level.max === undefined || ctx.level <= c.level.max);
   if ('gold' in c) return c.gold.min === undefined || ctx.gold >= c.gold.min;
-  if ('daylight' in c) return c.daylight.min === undefined || ctx.daylight >= c.daylight.min;
+  if ('fights' in c) return (c.fights.min === undefined || ctx.fights >= c.fights.min) && (c.fights.max === undefined || ctx.fights <= c.fights.max);
   if ('class' in c) return ctx.classId === c.class;
   if ('chance' in c) return ctx.rng.chance(c.chance);
   return false;
@@ -96,22 +98,22 @@ export interface Resolution {
   relations: { relation: string; delta: number }[];
   gold: number;
   hp: number;
-  daylight: number;
   tomes: (SkillId | 'random')[];
+  rearm: boolean;
   fight: boolean;
   skip: boolean;
   next?: string;
 }
 
 export function resolve(effects: DEffect[]): Resolution {
-  const r: Resolution = { flags: [], relations: [], gold: 0, hp: 0, daylight: 0, tomes: [], fight: false, skip: false };
+  const r: Resolution = { flags: [], relations: [], gold: 0, hp: 0, tomes: [], rearm: false, fight: false, skip: false };
   for (const e of effects) {
     if ('flag' in e) r.flags.push({ flag: e.flag, value: e.value ?? true });
     else if ('relation' in e) r.relations.push(e);
     else if ('gold' in e) r.gold += e.gold;
     else if ('hp' in e) r.hp += e.hp;
-    else if ('daylight' in e) r.daylight += e.daylight;
     else if ('tome' in e) r.tomes.push(e.tome);
+    else if ('rearm' in e) r.rearm = true;
     else if ('fight' in e) r.fight = true;
     else if ('skip' in e) r.skip = true;
     else if ('next' in e) r.next = e.next;
