@@ -33,14 +33,14 @@ export class Card extends Phaser.GameObjects.Container {
     // The unit may carry the reasons the number moved ("damage · armour, hardened"). The reasons go on
     // their own line in white above the unit, and both stay clear of a use tag in the corner.
     const [unitWord, why] = face.unit.split(' · ');
-    const ux = -CARD_W / 2 + 12 + value.width + 4, wrap = CARD_W - 24 - value.width - (skill.uses ? 58 : 0);
+    const ux = -CARD_W / 2 + 12 + value.width + 4, wrap = CARD_W - 24 - value.width - (skill.uses === 'once_per_screen' ? 74 : skill.uses ? 58 : 0);
     const unit = scene.add.text(ux, CARD_H / 2 - 10, unitWord ?? '', { fontFamily: FONT, fontSize: '10px', color: c.accent, wordWrap: { width: wrap } }).setOrigin(0, 1);
     this.add([this.bg, name, body, value, unit]);
     if (why) this.add(scene.add.text(ux, CARD_H / 2 - 10 - unit.height + 1, why, { fontFamily: FONT, fontSize: '10px', color: '#ffffff', fontStyle: 'bold', wordWrap: { width: wrap }, lineSpacing: -2 }).setOrigin(0, 1));
     // Use limits ride the bottom-right corner so they are never missed.
     if (skill.uses) {
       const fleeting = skill.uses === 'fleeting';
-      const tag = scene.add.text(CARD_W / 2 - 6, CARD_H / 2 - 6, fleeting ? 'FLEETING' : 'ONCE', { fontFamily: FONT, fontSize: '9px', color: '#0b0f1a', fontStyle: 'bold', backgroundColor: fleeting ? '#c084fc' : '#e0c060', padding: { x: 5, y: 2 } }).setOrigin(1, 1);
+      const tag = scene.add.text(CARD_W / 2 - 6, CARD_H / 2 - 6, fleeting ? 'FLEETING' : skill.uses === 'once_per_screen' ? 'ONCE/SCREEN' : 'ONCE', { fontFamily: FONT, fontSize: '9px', color: '#0b0f1a', fontStyle: 'bold', backgroundColor: fleeting ? '#c084fc' : '#e0c060', padding: { x: 5, y: 2 } }).setOrigin(1, 1);
       this.add(tag);
     }
     this.setSize(CARD_W, CARD_H);

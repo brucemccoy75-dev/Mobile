@@ -10,6 +10,8 @@ export { CLASSES, ENEMIES, SETS, SKILLS, ITEMS };
 
 const skillById = new Map<SkillId, Skill>(SKILLS.map((s) => [s.id, s]));
 const setById = new Map<SetId, SkillSet>(SETS.map((s) => [s.id, s]));
+/** The family a tome belongs to for this class (a general tome sits in one family per class); undefined for basics. */
+export const familyOf = (classId: ClassId, skillId: string): SkillSet | undefined => SETS.find((st) => st.classId === classId && st.skills.includes(skillId));
 const classById = new Map<ClassId, PlayerClass>(CLASSES.map((c) => [c.id, c]));
 const enemyById = new Map<EnemyId, Enemy>(ENEMIES.map((e) => [e.id, e]));
 const itemById = new Map<string, Item>(ITEMS.map((i) => [i.id, i]));

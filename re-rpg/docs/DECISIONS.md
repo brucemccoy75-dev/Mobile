@@ -219,3 +219,29 @@ earned, so an existing level-3 warrior arrives with two points to spend on exact
 nodes. A family bought during a run (from the overworld or a reward screen) joins the run at
 once: its tomes drop from the next reward on and the run is saved with it; the shop keeps its
 stock until the next screen.
+
+## 42. Nothing drops without a node; Mighty Blow and Stand Firm are once per screen
+
+The first fresh run after #41 (IRON-CROW-8003) said the lock did not bite: the general tomes
+were ungated and stronger than either family. Mighty Blow came out of the second chest, was
+played in 7 of the next 9 fights, and one-shot every 11-HP enemy on the screen, so six singles in
+a row cost 3 HP; the three duos did 39 of the 46 pre-boss damage. Selling five unwanted offers
+paid for the shop heal and a Last Strike.
+- **The general tomes are family cards.** The attack pair (Mighty Blow, Last Strike) sits in each
+  class's damage family (Berserker, Pyromancy, Stormcaller), the defence trio (Warding Blast,
+  Stand Firm, Final Stand) in its defence family (Bulwark, Cryomancy, Spiritcaller). The loot
+  pool, the shop and the heirloom spread draw from the run's families only, so a warrior with no
+  node finds no tomes at all. `familyOf(classId, skillId)` names a tome's family for a class.
+- **Basics are per class.** Warrior: Attack, Attack, Defend. Wizard: Attack, Attack, Ward.
+  Shaman: all four. A warrior's answer to magic is Bulwark (Warding Blast, Stand Firm, Final
+  Stand), not a free Ward every fight. The engine's default stays the full four for tests.
+- **Once per screen.** Mighty Blow and Stand Firm are spent until the screen's boss falls, one
+  copy per play (`screenExhausted` on the run, cleared by `startScreen`, left out of the next
+  fight's deck). The card reads "Once per screen." and carries an ONCE/SCREEN tag; the float says
+  "spent for this screen". The question the run already asked about Last Strike (the duo, or
+  the boss?) now applies to the rare tomes too.
+- **Duos at 30% on screen 1** (was 20%), because duos are where the HP goes.
+- **Selling pays 25%** of shop price (was 40%). Selling stays so no reward is dead (#4), but it
+  no longer converts a spare vest into a third of a heal.
+Not taken: gear max HP as a heal stays (the user chose to keep it). The sim gauntlet now honours
+once per screen across its fights and uses the class basics; see BALANCE.md.

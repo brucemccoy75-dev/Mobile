@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { describeSkill, getSet } from '@data/index';
+import { describeSkill, familyOf } from '@data/index';
 import { HEIRLOOM_PICKS, type Heirloom } from '@core/meta';
 import { applyHeirlooms, getMeta, getSession, persistRun, type RunSession } from '@game/session';
 import { Button } from '@game/ui/Button';
@@ -40,7 +40,7 @@ export class HeirloomScene extends Phaser.Scene {
     const rarity = c.kind === 'tome' ? c.skill.rarity : c.item.rarity;
     const bg = this.add.rectangle(x, y, w, h, COLORS.panel).setStrokeStyle(3, RARITY_COLORS[rarity]);
     this.frames.push(bg);
-    const tag = c.kind === 'tome' ? `TOME · ${c.skill.setId ? getSet(c.skill.setId).name : 'skill'}` : `${c.item.slot.toUpperCase()} · ${rarity}`;
+    const tag = c.kind === 'tome' ? `TOME · ${familyOf(this.session.classId, c.skill.id)?.name ?? 'skill'}` : `${c.item.slot.toUpperCase()} · ${rarity}`;
     this.add.text(x, y - h / 2 + 16, tag, { fontFamily: FONT, fontSize: '12px', color: '#9aa3b8', fontStyle: 'bold' }).setOrigin(0.5);
     this.add.text(x, y - h / 2 + 46, c.kind === 'tome' ? c.skill.name : c.item.name, { ...text.h2, fontSize: '19px', wordWrap: { width: w - 20 }, align: 'center' }).setOrigin(0.5);
     this.add.text(x, y + 4, c.kind === 'tome' ? describeSkill(c.skill, this.session.stats) : c.item.text, { ...text.body, fontSize: '13px', wordWrap: { width: w - 24 }, align: 'center' }).setOrigin(0.5);

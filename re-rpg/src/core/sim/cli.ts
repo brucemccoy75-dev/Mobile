@@ -1,3 +1,4 @@
+import { basicsFor } from '@data/skills';
 // Headless balance simulator.
 //   npm run sim                       all classes, screen 1 gauntlet, 1000 runs each
 //   npm run sim -- --runs 5000 --class warrior --fights 4 --tier 1 --boss gatekeeper
@@ -34,7 +35,7 @@ if (duel) {
         const rng = new RunRng(`duel-${i}`);
         const cls = CLASSES.find((c) => c.id === classId)!;
         const stats = withMods(cls.stats, lo.statMods);
-        const s = runFight(createCombat({ player: { stats, deck: lo.deck }, enemy, rng: rng.stream('combat') }), greedy);
+        const s = runFight(createCombat({ player: { stats, deck: lo.deck, basics: basicsFor(lo.classId) }, enemy, rng: rng.stream('combat') }), greedy);
         if (s.outcome === 'won') { wins++; hpLeft += s.player.hp / stats.maxHp; }
         rounds += s.round;
       }

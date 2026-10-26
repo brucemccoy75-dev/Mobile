@@ -17,8 +17,19 @@ export const WARD: Skill = {
 /** Most copies of one tome a deck may hold. */
 export const TOME_COPY_CAP = 2;
 
-/** Cards every fight starts with, in addition to the run deck. Not counted against DECK_CAP. */
+/** Every basic card; the engine's default when no class is named (tests). Not counted against DECK_CAP. */
 export const BASIC_DECK: string[] = ['attack', 'attack', 'defend', 'ward'];
+/**
+ * Cards every fight starts with for a class, on top of the run deck (DECISIONS #42): the warrior
+ * attacks and defends, the wizard attacks and wards, the shaman does both. Everything else,
+ * Ward for a warrior included, lives on the skill tree.
+ */
+export const CLASS_BASICS: Record<string, string[]> = {
+  warrior: ['attack', 'attack', 'defend'],
+  wizard: ['attack', 'attack', 'ward'],
+  shaman: ['attack', 'attack', 'defend', 'ward'],
+};
+export const basicsFor = (classId: string): string[] => CLASS_BASICS[classId] ?? BASIC_DECK;
 
 // Healing is rare and taxed on purpose (DECISIONS #1, #11): every heal leaves you Exposed, so it is a bet on blocking the next hits.
 export const SKILLS: Skill[] = [
@@ -67,9 +78,9 @@ export const SKILLS: Skill[] = [
 // Special tomes (DECISIONS #21), usable by every class. Rare ones are once per fight;
 // fleeting ones are spent for good when played. All enter the pool like any tome.
 export const SPECIAL_TOMES: Skill[] = [
-  { id: 'mighty_blow', name: 'Mighty Blow', text: 'Deal 200% damage. Once per fight.', classId: 'any', rarity: 'rare', uses: 'once_per_fight',
+  { id: 'mighty_blow', name: 'Mighty Blow', text: 'Deal 200% damage. Once per screen.', classId: 'any', rarity: 'rare', uses: 'once_per_screen',
     effects: [{ type: 'damage', mult: 2.0 }] },
-  { id: 'stand_firm', name: 'Stand Firm', text: 'Block every hit for 2 rounds. Once per fight.', classId: 'any', rarity: 'rare', uses: 'once_per_fight',
+  { id: 'stand_firm', name: 'Stand Firm', text: 'Block every hit for 2 rounds. Once per screen.', classId: 'any', rarity: 'rare', uses: 'once_per_screen',
     effects: [{ type: 'status', target: 'self', status: 'aegis', turns: 2 }] },
   { id: 'warding_blast', name: 'Warding Blast', text: 'Deal 60% magic damage and block the next magic hit or curse. Tiring: Weak next turn.', classId: 'any', rarity: 'common',
     effects: [{ type: 'damage', mult: 0.6, kind: 'magic' }, { type: 'status', target: 'self', status: 'ward', turns: 99, magnitude: 1 }, { type: 'status', target: 'self', status: 'weak', turns: 2 }] },
@@ -81,10 +92,12 @@ export const SPECIAL_TOMES: Skill[] = [
 SKILLS.push(...SPECIAL_TOMES);
 
 export const SETS: SkillSet[] = [
-  { id: 'warrior_tank', classId: 'warrior', name: 'Bulwark', skills: ['shield_bash', 'bind_wound'] },
-  { id: 'warrior_dps', classId: 'warrior', name: 'Berserker', skills: ['broadsword', 'exposing_strike'] },
-  { id: 'wizard_fire', classId: 'wizard', name: 'Pyromancy', skills: ['fireball', 'inferno'] },
-  { id: 'wizard_frost', classId: 'wizard', name: 'Cryomancy', skills: ['frost_bolt', 'ice_armor'] },
-  { id: 'shaman_spirit', classId: 'shaman', name: 'Spiritcaller', skills: ['spirit_lash', 'mend'] },
-  { id: 'shaman_storm', classId: 'shaman', name: 'Stormcaller', skills: ['lightning', 'static_field'] },
+  // The general tomes are family cards too (DECISIONS #42): the attack pair sits in each class's
+  // damage family, the defence trio in its defence family, so nothing drops without a node.
+  { id: 'warrior_tank', classId: 'warrior', name: 'Bulwark', skills: ['shield_bash', 'bind_wound', 'warding_blast', 'stand_firm', 'final_stand'] },
+  { id: 'warrior_dps', classId: 'warrior', name: 'Berserker', skills: ['broadsword', 'exposing_strike', 'mighty_blow', 'last_strike'] },
+  { id: 'wizard_fire', classId: 'wizard', name: 'Pyromancy', skills: ['fireball', 'inferno', 'mighty_blow', 'last_strike'] },
+  { id: 'wizard_frost', classId: 'wizard', name: 'Cryomancy', skills: ['frost_bolt', 'ice_armor', 'warding_blast', 'stand_firm', 'final_stand'] },
+  { id: 'shaman_spirit', classId: 'shaman', name: 'Spiritcaller', skills: ['spirit_lash', 'mend', 'warding_blast', 'stand_firm', 'final_stand'] },
+  { id: 'shaman_storm', classId: 'shaman', name: 'Stormcaller', skills: ['lightning', 'static_field', 'mighty_blow', 'last_strike'] },
 ];

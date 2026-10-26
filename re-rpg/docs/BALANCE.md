@@ -11,6 +11,14 @@ Loadouts: **fresh** = Attack/Defend only, empty deck. **Set** = the two set tome
 - Set + screen-1 kit should beat Boss 1 most of the time. ✅ for guard-bearing sets; ❌ Berserker and Stormcaller (pure damage, no block) still lose the rhythm fight.
 - Screen 2 should need screen-2 gear and a bigger deck. ✅ for Bulwark, Cryomancy, Spiritcaller; ❌ pure damage sets vs the Warden.
 
+## Changes after the first fresh run under the tree lock (DECISIONS #42)
+
+- **General tomes are family cards; nothing drops without a node.** The sim's "set" loadouts now carry the family's generals too (Berserker = Broadsword, Exposing Strike, Mighty Blow, Last Strike; Bulwark = Shield Bash, Bind Wound, Warding Blast, Stand Firm, Final Stand), so the set rows are richer decks than before. "Fresh" is basics only, which for a warrior is now Attack, Attack, Defend (no Ward).
+- **Once per screen**: the gauntlet keeps Mighty Blow and Stand Firm spent across its fights, the way the run does.
+- **Duos 30% on screen 1, selling 25%**: neither is modelled by the sim (no duos, no loot).
+- This is the first re-run of the table since the pacing pass (#30 cut enemy HP a third), Bind Wound once per fight (#38) and the heal nerfs (#39), so the deltas against the old table carry all of those at once. The two that matter: under greedy play a fresh warrior now reaches Andre about three times in four (the four-fight gauntlet is short, and the greedy policy never holds a card), and Bulwark no longer beats him on its own (a single 25% Bind Wound is not a plan). The policy plays Mighty Blow in the first fight it is dealt, which is the choice the rule is meant to create; a smarter policy would hold it, and the "both sets" rows are the ones to read for a run that found its cards.
+- The real fresh run that prompted this (docs/audit, IRON-CROW-8003) had 11 fights, 3 duos and a shop, none of which the gauntlet has. Treat these as floors for a deck, not as run outcomes.
+
 ## Changes after phone test 7
 
 - **Physical vs magic**: Guard stops only physical hits, the new **Ward** basic stops only magic, Aegis stops both. Basics are now Attack ×2, Defend, Ward (one more dead card against physical enemies on screen 1). **Shield Bash** and the new **Warding Blast** are tiring: Weak on your next turn. Witch and Necromancer cast; everything else is physical. Enemy Guard is physical-only, so spells pass a guarding boss.
@@ -70,26 +78,26 @@ Resulting shape (with the opening hand of 3): fresh reaches boss 13–32% / beat
 loadout, greedy policy
 
 loadout                        reach boss  beat boss  hp@boss fights rounds  deaths
-warrior fresh                        8.8%       0.0%      3.3   2.37   19.3  boar 36%, adept_necromancer 23%, rat_pack 19%
-warrior Bulwark                     52.2%       2.3%     13.0   3.04   46.8  gatekeeper 50%, adept_necromancer 31%, boar 13%
-warrior Berserker                   54.8%       0.0%      5.9   3.37   16.1  gatekeeper 55%, boar 18%, adept_necromancer 11%
-warrior Bulwark+gear1               99.3%      93.5%     17.4   4.92   49.5  gatekeeper 6%, adept_necromancer 0%, boar 0%
-warrior Berserker+gear1             99.8%       8.5%     18.8   4.08   17.2  gatekeeper 91%, boar 0%
-warrior both sets+gear1            100.0%      51.1%     18.2   4.51   26.0  gatekeeper 49%
+warrior fresh                       72.9%       0.0%      5.8   3.66   18.6  gatekeeper 73%, adept_necromancer 23%, rat_pack 5%
+warrior Bulwark                     91.4%       0.0%     11.9   3.87   38.5  gatekeeper 91%, adept_necromancer 5%, boar 3%
+warrior Berserker                  100.0%       0.0%     19.7   4.00   11.0  gatekeeper 100%
+warrior Bulwark+gear1               99.6%       0.0%     17.7   3.99   36.3  gatekeeper 100%, adept_necromancer 0%, boar 0%
+warrior Berserker+gear1            100.0%       2.2%     24.8   4.02   12.1  gatekeeper 98%
+warrior both sets+gear1             99.9%      26.1%     22.1   4.26   22.9  gatekeeper 74%, boar 0%
 
-wizard fresh                         7.8%       0.0%      3.4   2.06   14.4  boar 34%, adept_necromancer 32%, rat_pack 15%
-wizard Pyromancy                    62.8%       0.3%      6.5   3.46   12.1  gatekeeper 63%, boar 20%, rat_pack 6%
-wizard Cryomancy                    54.4%       0.8%      5.1   3.31   23.6  gatekeeper 54%, boar 17%, adept_necromancer 15%
-wizard Pyromancy+gear1              99.8%      41.6%     17.1   4.41   11.8  gatekeeper 58%, boar 0%
-wizard Cryomancy+gear1              99.4%      45.6%     13.7   4.45   25.1  gatekeeper 54%, boar 0%, adept_necromancer 0%
-wizard both sets+gear1             100.0%      71.5%     17.7   4.71   15.4  gatekeeper 29%
+wizard fresh                         1.1%       0.0%      1.9   1.65   26.4  adept_necromancer 32%, boar 30%, rat_pack 16%
+wizard Pyromancy                    99.3%       8.0%     13.8   4.07    9.5  gatekeeper 91%, rat_pack 0%, boar 0%
+wizard Cryomancy                    88.6%      15.6%      9.8   3.96   29.4  gatekeeper 73%, boar 6%, rat_pack 4%
+wizard Pyromancy+gear1             100.0%      25.5%     19.5   4.25    9.2  gatekeeper 75%
+wizard Cryomancy+gear1              98.5%      49.7%     15.3   4.47   29.7  gatekeeper 49%, boar 1%, rat_pack 0%
+wizard both sets+gear1             100.0%      80.0%     19.2   4.80   16.4  gatekeeper 20%
 
-shaman fresh                         3.7%       0.0%      2.9   1.88   16.6  boar 36%, adept_necromancer 28%, rat_pack 21%
-shaman Spiritcaller                 56.8%       0.0%     10.9   3.13   30.2  gatekeeper 57%, boar 29%, adept_necromancer 13%
-shaman Stormcaller                  21.9%       0.0%      3.0   2.70   13.8  boar 34%, gatekeeper 22%, adept_necromancer 16%
-shaman Spiritcaller+gear1          100.0%      61.0%     17.6   4.61   35.6  gatekeeper 39%
-shaman Stormcaller+gear1            96.2%       2.9%     10.4   3.99   16.4  gatekeeper 93%, boar 2%, adept_necromancer 1%
-shaman both sets+gear1              99.3%      43.6%     14.2   4.43   21.9  gatekeeper 56%, boar 1%, adept_necromancer 0%
+shaman fresh                        19.1%       0.0%      3.4   2.56   14.9  boar 32%, adept_necromancer 30%, gatekeeper 19%
+shaman Spiritcaller                 89.7%       0.0%     12.1   3.82   31.0  gatekeeper 90%, boar 9%, adept_necromancer 0%
+shaman Stormcaller                  92.8%       0.0%     11.6   3.90   11.0  gatekeeper 93%, boar 5%, adept_necromancer 1%
+shaman Spiritcaller+gear1           98.0%       0.0%     16.7   3.96   30.3  gatekeeper 98%, boar 2%, adept_necromancer 0%
+shaman Stormcaller+gear1            99.0%       1.2%     16.9   4.00   11.7  gatekeeper 98%, boar 1%, adept_necromancer 0%
+shaman both sets+gear1              99.3%      11.1%     16.9   4.10   19.8  gatekeeper 88%, boar 1%, shell_beetle 0%
 ```
 
 ## Screen 2 (500 runs, screen-2 kit)

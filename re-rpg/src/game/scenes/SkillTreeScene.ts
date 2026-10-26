@@ -37,7 +37,7 @@ export class SkillTreeScene extends Phaser.Scene {
       this.add.rectangle(x, y, cw, ch, st.state === 'owned' ? 0x1f2a44 : COLORS.panel).setStrokeStyle(3, edge);
       this.add.text(x, y - ch / 2 + 18, st.state === 'owned' ? 'OWNED' : n.cost === 0 ? 'FREE' : `${n.cost} POINT${n.cost === 1 ? '' : 'S'}`, { ...text.small, fontSize: '11px', color: st.state === 'owned' ? COLORS.gold : '#9aa3b8' }).setOrigin(0.5);
       this.add.text(x, y - ch / 2 + 46, set.name, { ...text.h2, fontSize: '19px', wordWrap: { width: cw - 20 }, align: 'center' }).setOrigin(0.5);
-      this.add.text(x, y - ch / 2 + 78, set.skills.map((id) => getSkill(id).name).join('\n'), { ...text.body, fontSize: '13px', align: 'center', lineSpacing: 4, color: st.state === 'locked' ? COLORS.muted : COLORS.text }).setOrigin(0.5, 0);
+      this.add.text(x, y - ch / 2 + 78, set.skills.map((id) => getSkill(id).name).join('\n'), { ...text.body, fontSize: '12px', align: 'center', lineSpacing: 1, color: st.state === 'locked' ? COLORS.muted : COLORS.text }).setOrigin(0.5, 0);
       if (st.state === 'available') {
         new Button(this, x, y + ch / 2 - 28, 'Unlock', () => {
           if (!unlockNode(meta, classId, n.setId)) return;

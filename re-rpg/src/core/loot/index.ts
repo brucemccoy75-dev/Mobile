@@ -32,8 +32,8 @@ export interface PoolContext {
  */
 export function buildPool(ctx: PoolContext): { tomes: Skill[]; items: Item[] } {
   const held = new Set<string>(Object.values(ctx.equipment).filter(Boolean).map((i) => i!.id));
-  // Families decide the tomes (plus the always-on general tomes); equipment is still gated by discovery and class.
-  const tomeIds = new Set<string>([...ctx.families.flatMap((id) => getSet(id).skills), ...SKILLS.filter((s) => s.classId === 'any' && s.rarity !== 'basic').map((s) => s.id)]);
+  // Families decide the tomes, general tomes included (DECISIONS #42: nothing drops without a node); equipment is still gated by discovery and class.
+  const tomeIds = new Set<string>(ctx.families.flatMap((id) => getSet(id).skills));
   const copies = (id: string) => ctx.deck.filter((d) => d === id).length;
   const tomes = SKILLS.filter((s) => tomeIds.has(s.id) && s.rarity !== 'basic' && (s.classId === ctx.classId || s.classId === 'any') && copies(s.id) < TOME_COPY_CAP);
   // Rarity gating lives in the source weights (a kill almost never rolls rare), so the
@@ -109,6 +109,8 @@ export interface ShopStock {
 
 const PRICE: Record<Rarity, number> = { basic: 10, common: 20, uncommon: 35, rare: 60, boss: 90 };
 
+/** Selling an offered reward pays this share of its shop price (DECISIONS #4; 0.4 → 0.25 in #42, selling bought too much sustain). */
+export const SELL_RATE = 0.25;
 export const itemPrice = (rarity: Rarity, screenIndex: number) => PRICE[rarity] * (screenIndex + 1);
 
 /** A shelf line the player cannot take again: an equipped item, or a tome already at its copy cap. */
@@ -117,9 +119,9 @@ export function isLineOwned(line: ShopLine, deck: SkillId[], equipment: Equipmen
   return Object.values(equipment).some((i) => i?.id === line.id);
 }
 
-/** Gold for selling a reward instead of taking it: roughly 40% of its shop price. */
+/** Gold for selling a reward instead of taking it: SELL_RATE of its shop price. */
 export function sellValue(rarity: Rarity, screenIndex: number): number {
-  return Math.round(PRICE[rarity] * 0.4) * (screenIndex + 1);
+  return Math.round(PRICE[rarity] * SELL_RATE) * (screenIndex + 1);
 }
 export const tomePrice = (rarity: Rarity, screenIndex: number) => (PRICE[rarity] + 10) * (screenIndex + 1);
 

@@ -7,14 +7,19 @@ describe('content integrity', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('every set references existing skills of its class', () => {
+  it('every set holds its two class cards plus the general tomes of its kind (DECISIONS #42)', () => {
+    const ATTACK_GENERALS = ['mighty_blow', 'last_strike'], DEFENCE_GENERALS = ['warding_blast', 'stand_firm', 'final_stand'];
     for (const set of SETS) {
-      expect(set.skills).toHaveLength(2);
-      for (const id of set.skills) {
-        const s = getSkill(id);
-        expect(s.classId).toBe(set.classId);
-        expect(s.setId).toBe(set.id);
-      }
+      const own = set.skills.filter((id) => getSkill(id).classId !== 'any');
+      const general = set.skills.filter((id) => getSkill(id).classId === 'any');
+      expect(own).toHaveLength(2);
+      for (const id of own) { expect(getSkill(id).classId).toBe(set.classId); expect(getSkill(id).setId).toBe(set.id); }
+      expect([ATTACK_GENERALS, DEFENCE_GENERALS]).toContainEqual(general);
+    }
+    // each class has one attack family and one defence family, so every general tome sits in exactly one of its families
+    for (const c of ['warrior', 'wizard', 'shaman'] as const) {
+      const fams = SETS.filter((s) => s.classId === c);
+      for (const id of [...ATTACK_GENERALS, ...DEFENCE_GENERALS]) expect(fams.filter((f) => f.skills.includes(id))).toHaveLength(1);
     }
   });
 

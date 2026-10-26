@@ -17,7 +17,8 @@ describe('describeSkill', () => {
   });
 
   it('special tomes state their usage rule', () => {
-    expect(describeSkill(getSkill('mighty_blow'), warrior)).toBe('Deal 8 damage. Once per fight.');
+    expect(describeSkill(getSkill('mighty_blow'), warrior)).toBe('Deal 8 damage. Once per screen.');
+    expect(describeSkill(getSkill('stand_firm'), warrior)).toBe('Block every hit for 2 rounds. Once per screen.');
     expect(describeSkill(getSkill('final_stand'), warrior)).toBe('Block every hit for 3 rounds. Fleeting: spent when played.');
   });
 

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Rng } from '@core/rng';
+import { familyOf } from '@data/index';
 import { allocateLegacy, classProgress, classUnlocked, createMeta, discoverItem, discoverSkill, gainExp, mergeMeta, migrateMeta, nodeState, recordDeath, recordWin, rollHeirloomChoices, unlockNode } from './index';
 
 describe('meta', () => {
@@ -14,16 +15,16 @@ describe('meta', () => {
   it('heirlooms are a random spread of tomes from the unlocked families, no repeats', () => {
     const m = createMeta();
     const h = rollHeirloomChoices(m, 'wizard', new Rng(1));
-    expect(h).toHaveLength(4); // two free families x two tomes
+    expect(h).toHaveLength(4); // from the nine tomes of the two free families
     const ids = h.map((x) => (x.kind === 'tome' ? x.skill.id : x.item.id));
     expect(new Set(ids).size).toBe(4);
-    expect(h.every((x) => x.kind === 'tome' && ['wizard_fire', 'wizard_frost'].includes(x.skill.setId!))).toBe(true);
+    expect(h.every((x) => x.kind === 'tome' && ['wizard_fire', 'wizard_frost'].includes(familyOf('wizard', x.skill.id)!.id))).toBe(true);
     // a fresh warrior owns no family yet (DECISIONS #41), so there is no spread; one bought family gives a spread of its two tomes
     expect(rollHeirloomChoices(m, 'warrior', new Rng(2))).toEqual([]);
     gainExp(m, 'warrior', 30);
     expect(unlockNode(m, 'warrior', 'warrior_dps')).toBe(true);
     const w = rollHeirloomChoices(m, 'warrior', new Rng(2));
-    expect(w.map((x) => (x.kind === 'tome' ? x.skill.id : '')).sort()).toEqual(['broadsword', 'exposing_strike']);
+    expect(w.map((x) => (x.kind === 'tome' ? x.skill.id : '')).sort()).toEqual(['broadsword', 'exposing_strike', 'last_strike', 'mighty_blow']);
   });
 
   it('EXP levels the class, grants points, and nodes are bought per class', () => {

@@ -18,13 +18,15 @@ see `git log`. Everything below in sections 1–14 is history; the game today is
 - **Combat**: duos, target arrow, fixed enemy rotations, flat gear attack (#31), equipment caps
   (#33), Bind Wound 25% once per fight, shop heal 35%, shrine half (#38, #39).
 - **Progression**: EXP levels 1–10 per class; the warrior's two nodes cost a point each (#41),
-  wizard and shaman nodes are still free; heirlooms every run that has a family.
+  wizard and shaman nodes are still free; heirlooms every run that has a family. Nothing drops
+  without a node, the general tomes included (#42); basics are per class (warrior has no Ward);
+  Mighty Blow and Stand Firm are once per screen; duos 30% on screen 1; selling pays 25%.
 
 **Working loop.** Edit → `npm run check` → `npm run build` → `nohup npx vite preview --port
 4174 --strictPort &` (start it in its own command; `pkill` in a chained command kills the chain)
 → Playwright at 844×390 with `window.__rerpg` (scripts in the scratchpad were throwaway; write a
 new one per check) → commit with the attribution lines → `git push -u origin <branch>` → poll
-gh-pages. Record decisions in `docs/DECISIONS.md` (next number is 42).
+gh-pages. Record decisions in `docs/DECISIONS.md` (next number is 43).
 
 **Done this session: the buff/debuff audit (DECISIONS #40).** The engine and the chips were
 already in step; the card was the liar (it said 4 against the beetle's DEF 1, so 3 landed from
@@ -37,6 +39,11 @@ Test Mode from Playwright were throwaway (registry `testSetup` + `TestMode.fight
 844×390). Open question for play: the chip count flips from HARDENED 2 to 1 at the round
 boundary; if that still confuses, the fix is in the chip (show ticks left after this round),
 not the engine.
+
+**Watch in the next fresh run (#42):** does a no-node warrior die before the boss, does a one-node
+warrior reach it, and does holding Mighty Blow for the boss feel like a choice. If singles still
+cost nothing after a node, the next lever is gear max HP no longer healing (proposed, declined
+for now).
 
 **Then, in order:** screen-2 painting (prompt in docs/ART.md, layout in
 `art-src/layout-screen2.png`); life on the painting (lake shimmer, cloud shadows); painted

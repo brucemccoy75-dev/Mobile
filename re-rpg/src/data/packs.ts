@@ -20,4 +20,4 @@ export const PAIRS: Record<1 | 2, [EnemyId, EnemyId][]> = {
 };
 
 /** Chance a wild encounter is a duo, by screen index. */
-export const DUO_CHANCE = [0.2, 0.4];
+export const DUO_CHANCE = [0.3, 0.4]; // screen 1 was 0.2: duos are where the HP goes (DECISIONS #42)

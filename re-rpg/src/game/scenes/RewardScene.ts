@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { describeSkill, getSet } from '@data/index';
+import { describeSkill, familyOf } from '@data/index';
 import type { SkillId } from '@data/types';
 import { rollOffer, sellValue, type Offer, type RewardChoice } from '@core/loot';
 import { DECK_CAP } from '@core/combat';
@@ -61,7 +61,7 @@ export class RewardScene extends Phaser.Scene {
   private drawChoice(c: RewardChoice, x: number, y: number, w: number, h: number) {
     const rarity = c.kind === 'tome' ? c.skill.rarity : c.item.rarity;
     const bg = this.add.rectangle(x, y, w, h, COLORS.panel).setStrokeStyle(3, RARITY_COLORS[rarity]);
-    const tag = c.kind === 'tome' ? `TOME · ${c.skill.setId ? getSet(c.skill.setId).name : 'skill'}` : `${c.item.slot.toUpperCase()} · ${rarity}`;
+    const tag = c.kind === 'tome' ? `TOME · ${familyOf(this.session.classId, c.skill.id)?.name ?? 'skill'}` : `${c.item.slot.toUpperCase()} · ${rarity}`;
     this.add.text(x, y - h / 2 + 16, tag, { fontFamily: FONT, fontSize: '12px', color: '#9aa3b8', fontStyle: 'bold' }).setOrigin(0.5);
     const name = c.kind === 'tome' ? c.skill.name : c.item.name;
     this.add.text(x, y - h / 2 + 46, name, { ...text.h2, fontSize: '21px', wordWrap: { width: w - 20 }, align: 'center' }).setOrigin(0.5);

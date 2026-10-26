@@ -55,6 +55,7 @@ export function describeSkill(skill: Skill, stats: Stats): string {
     }
   }
   if (skill.uses === 'once_per_fight') parts.push('Once per fight.');
+  if (skill.uses === 'once_per_screen') parts.push('Once per screen.');
   if (skill.uses === 'fleeting') parts.push('Fleeting: spent when played.');
   return parts.join(' ');
 }

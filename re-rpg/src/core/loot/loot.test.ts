@@ -3,14 +3,16 @@ import { Rng } from '@core/rng';
 import { getItem } from '@data/index';
 import { createMeta } from '@core/meta';
 import { emptyEquipment } from '@core/run/equipment';
-import { buildPool, rollOffer, rarityWeights, type PoolContext } from './index';
+import { SELL_RATE, buildPool, itemPrice, rollOffer, rarityWeights, sellValue, type PoolContext } from './index';
 
 const ctx = (over: Partial<PoolContext> = {}): PoolContext => ({ classId: 'warrior', families: ['warrior_tank'], meta: createMeta(), deck: [], equipment: emptyEquipment(), ...over });
 
 describe('buildPool', () => {
-  it('fresh warrior: tomes are the rolled set plus the class-agnostic specials; items are class-usable', () => {
+  it('tomes are exactly the families\' cards, general tomes included; no family, no tomes; items are class-usable', () => {
     const p = buildPool(ctx());
-    expect(p.tomes.map((t) => t.id).sort()).toEqual(['bind_wound', 'final_stand', 'last_strike', 'mighty_blow', 'shield_bash', 'stand_firm', 'warding_blast']);
+    expect(p.tomes.map((t) => t.id).sort()).toEqual(['bind_wound', 'final_stand', 'shield_bash', 'stand_firm', 'warding_blast']);
+    expect(buildPool(ctx({ families: ['warrior_dps'] })).tomes.map((t) => t.id).sort()).toEqual(['broadsword', 'exposing_strike', 'last_strike', 'mighty_blow']);
+    expect(buildPool(ctx({ families: [] })).tomes).toEqual([]);
     expect(p.items.every((i) => !i.classes || i.classes.includes('warrior'))).toBe(true);
     expect(p.items.some((i) => i.id === 'oak_wand')).toBe(false);
   });
@@ -119,5 +121,11 @@ describe('rollShopStock', () => {
     expect(dry.lines.some((l) => l.kind === 'tome')).toBe(false);
     expect(dry.healPrice).toBe(60);
     expect(dry.lines.every((l) => l.price >= 40)).toBe(true);
+  });
+
+  it('selling pays a quarter of the shop price', () => {
+    expect(SELL_RATE).toBe(0.25);
+    expect(sellValue('common', 0)).toBe(Math.round(itemPrice('common', 0) * 0.25));
+    expect(sellValue('rare', 1)).toBe(Math.round(itemPrice('rare', 0) * 0.25) * 2);
   });
 });

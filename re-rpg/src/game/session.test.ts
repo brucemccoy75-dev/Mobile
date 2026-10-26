@@ -2,7 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { getItem, getSkill } from '@data/index';
 import { DECK_CAP } from '@core/combat';
 import { createMeta, gainExp, unlockNode } from '@core/meta';
-import { adoptFamily, applyHeirlooms, createSession, currentQuest, deserialize, poolCtx, serialize, spendConsumedTomes, setName, takeChoice, turnInQuest } from './session';
+import { adoptFamily, applyHeirlooms, createSession, currentQuest, deserialize, exhaustForScreen, poolCtx, serialize, spendConsumedTomes, setName, startScreen, takeChoice, turnInQuest } from './session';
+import { createCombat } from '@core/combat';
+import { Rng } from '@core/rng';
+import { basicsFor } from '@data/skills';
+import { getSet } from '@data/index';
 import { buildPool } from '@core/loot';
 
 describe('session', () => {
@@ -29,7 +33,7 @@ describe('session', () => {
     expect(s.heirloomChoices).toEqual([]);
     expect(s.families).toEqual([]);
     expect(setName(s)).toBe('basics only');
-    expect(s.shop.lines.every((l) => l.kind !== 'tome' || getSkill(l.id).classId === 'any')).toBe(true);
+    expect(s.shop.lines.every((l) => l.kind !== 'tome')).toBe(true); // nothing drops without a node, general tomes included
   });
 
   it('a family bought mid-run drops from the next reward on', () => {
@@ -61,7 +65,27 @@ describe('session', () => {
     expect(s.setId).toBe('warrior_tank');
     expect(s.deck.every((id) => ['shield_bash', 'bind_wound'].includes(id))).toBe(true);
     expect(s.heirloomChoices).toEqual([]);
-    expect(s.shop.lines.every((l) => l.kind !== 'tome' || getSkill(l.id).setId === 'warrior_tank' || getSkill(l.id).classId === 'any')).toBe(true);
+    expect(s.shop.lines.every((l) => l.kind !== 'tome' || getSet('warrior_tank').skills.includes(l.id))).toBe(true);
+  });
+
+  it('once-per-screen tomes stay spent until the next screen, survive a save, and leave the fight deck', () => {
+    const meta = createMeta();
+    const s = createSession('warrior', meta, 'SCREEN-1');
+    s.deck = ['mighty_blow', 'mighty_blow', 'stand_firm'];
+    expect(exhaustForScreen(s, ['mighty_blow', 'bind_wound'])).toEqual(['Mighty Blow']); // once-per-fight cards are not held
+    expect(s.screenExhausted).toEqual(['mighty_blow']);
+    const back = deserialize(JSON.parse(JSON.stringify(serialize(s))), meta);
+    expect(back.screenExhausted).toEqual(['mighty_blow']);
+    const fight = createCombat({ player: { stats: s.stats, deck: s.deck, basics: [], exhausted: s.screenExhausted }, enemy: 'boar', rng: new Rng(1) });
+    expect([...fight.player.deck, ...fight.player.hand].sort()).toEqual(['mighty_blow', 'stand_firm']); // one copy out, the other still plays
+    startScreen(s, 1, meta);
+    expect(s.screenExhausted).toEqual([]);
+  });
+
+  it('a warrior fights with Attack, Attack and Defend; Ward is a wizard basic', () => {
+    expect(basicsFor('warrior')).toEqual(['attack', 'attack', 'defend']);
+    expect(basicsFor('wizard')).toEqual(['attack', 'attack', 'ward']);
+    expect(basicsFor('shaman')).toEqual(['attack', 'attack', 'defend', 'ward']);
   });
 
   it('legacy bonuses raise the run base and are frozen into the save', () => {

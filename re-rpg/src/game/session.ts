@@ -1,7 +1,7 @@
 // The live run object the scenes share, plus (de)serialisation to the
 // RunState that SaveStore persists. Pure rules live in core/run, core/loot, core/meta.
 import type Phaser from 'phaser';
-import { enemiesOfTier, getClass, getSet, getSkill } from '@data/index';
+import { enemiesOfTier, familyOf, getClass, getSet, getSkill } from '@data/index';
 import type { ClassId, Enemy, EnemyId, Item, SetId, Skill, SkillId, Stats } from '@data/types';
 import { RunRng, newSeed } from '@core/rng';
 import { key, parseScreen, type MapNode, type ScreenMap, type Tile, type TileType } from '@core/map';
@@ -34,6 +34,8 @@ export interface RunSession {
   setId: SetId;
   /** Families whose tomes drop this run: the heirloom picks' sets (DECISIONS #32). */
   families: SetId[];
+  /** Once-per-screen tomes spent on this screen, one entry per copy; cleared when a new screen starts (DECISIONS #42). */
+  screenExhausted: SkillId[];
   base: Stats;
   stats: Stats;
   hp: number;
@@ -111,7 +113,7 @@ export function createSession(classId: ClassId, meta: MetaState, seed = newSeed(
   const setId = rollSet(classId, rng);
   const base = baseStatsFor(classId, meta);
   const s: RunSession = {
-    seed, rng, classId, setId, families: unlockedSets(meta, classId), base: { ...base }, stats: { ...base }, hp: base.maxHp, gold: 0,
+    seed, rng, classId, setId, families: unlockedSets(meta, classId), screenExhausted: [], base: { ...base }, stats: { ...base }, hp: base.maxHp, gold: 0,
     deck: [], equipment: emptyEquipment(),
     screenIndex: 0, map: undefined as unknown as ScreenMap, playerPos: { x: 0, y: 0 }, threat: 0,
     openedPois: new Set(), usedShrines: new Set(), defeatedGuards: new Set(), clearedNodes: new Set(), lastClearedNode: null, flags: new Set(), bossDefeated: false, encountersWon: 0,
@@ -134,7 +136,8 @@ export function applyHeirlooms(s: RunSession, picks: Heirloom[], meta?: MetaStat
     if (h.kind === 'tome') {
       if (s.deck.length < DECK_CAP && s.deck.filter((d) => d === h.skill.id).length < TOME_COPY_CAP) s.deck.push(h.skill.id);
       names.push(h.skill.name);
-      if (h.skill.setId && !fams.includes(h.skill.setId)) fams.push(h.skill.setId);
+      const fam = familyOf(s.classId, h.skill.id)?.id;
+      if (fam && !fams.includes(fam)) fams.push(fam);
     } else { applyEquip(s, h.item); names.push(h.item.name); }
   }
   if (fams.length) { s.families = fams; s.setId = fams[0]!; }
@@ -166,6 +169,7 @@ export const poolCtx = (s: RunSession, meta?: MetaState) => ({ classId: s.classI
 /** Generate screen `index`, stock its shop, and put the player at its entry. */
 export function startScreen(s: RunSession, index: number, meta?: MetaState): void {
   s.screenIndex = index;
+  s.screenExhausted = [];
   s.map = parseScreen(index === 0 ? SCREEN1 : SCREEN2, s.rng.stream('map'), { seed: s.seed, screenIndex: index });
   s.playerPos = { ...s.map.entry };
   s.threat = 0;
@@ -318,6 +322,17 @@ export function takeChoice(s: RunSession, meta: MetaState, choice: RewardChoice,
 export const setName = (s: RunSession) => (s.families.length ? s.families.map((id) => getSet(id).name).join(' + ') : 'basics only');
 
 /** After a fight: fleeting tomes that were played leave the deck for good. Returns their names. */
+/** After a fight: once-per-screen cards it exhausted stay out until the screen's boss falls. Returns their names. */
+export function exhaustForScreen(s: RunSession, exhausted: SkillId[]): string[] {
+  const names: string[] = [];
+  for (const id of exhausted) {
+    if (getSkill(id).uses !== 'once_per_screen') continue;
+    s.screenExhausted.push(id);
+    names.push(getSkill(id).name);
+  }
+  return names;
+}
+
 export function spendConsumedTomes(s: RunSession, consumed: SkillId[]): string[] {
   const names: string[] = [];
   for (const id of consumed) {
@@ -332,7 +347,7 @@ export function spendConsumedTomes(s: RunSession, consumed: SkillId[]): string[]
 export function serialize(s: RunSession): RunState {
   return {
     version: RUN_VERSION, updatedAt: Date.now(),
-    seed: s.seed, rngStates: s.rng.snapshot(), classId: s.classId, setId: s.setId, families: [...s.families], base: { ...s.base },
+    seed: s.seed, rngStates: s.rng.snapshot(), classId: s.classId, setId: s.setId, families: [...s.families], screenExhausted: [...s.screenExhausted], base: { ...s.base },
     hp: s.hp, gold: s.gold, deck: [...s.deck], equipment: equipmentToIds(s.equipment),
     screenIndex: s.screenIndex, map: s.map, playerPos: { ...s.playerPos }, threat: s.threat,
     openedPois: [...s.openedPois], usedShrines: [...s.usedShrines], defeatedGuards: [...s.defeatedGuards],
@@ -349,7 +364,7 @@ export function deserialize(st: RunState, meta: MetaState): RunSession {
   const base = st.base ?? baseStatsFor(st.classId, meta);
   const equipment = equipmentFromIds(st.equipment, st.customItems ?? []);
   return {
-    seed: st.seed, rng, classId: st.classId, setId: st.setId, families: st.families ?? [st.setId], base, stats: computeStats(base, equipment),
+    seed: st.seed, rng, classId: st.classId, setId: st.setId, families: st.families ?? [st.setId], screenExhausted: [...(st.screenExhausted ?? [])], base, stats: computeStats(base, equipment),
     hp: st.hp, gold: st.gold, deck: [...st.deck], equipment,
     screenIndex: st.screenIndex, map: st.map, playerPos: { ...st.playerPos }, threat: st.threat,
     openedPois: new Set(st.openedPois), usedShrines: new Set(st.usedShrines), defeatedGuards: new Set(st.defeatedGuards),

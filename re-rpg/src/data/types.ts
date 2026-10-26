@@ -37,7 +37,7 @@ export type Effect =
   | { type: 'status'; target: Target; status: StatusId; turns: number; magnitude?: number; chance?: number; kind?: DamageKind };
 
 /** How often a tome may be played. Default: every time it is drawn. */
-export type SkillUses = 'once_per_fight' | 'fleeting';
+export type SkillUses = 'once_per_fight' | 'once_per_screen' | 'fleeting';
 
 export interface Skill {
   id: SkillId;
@@ -47,7 +47,7 @@ export interface Skill {
   setId?: SetId;
   rarity: Rarity;
   effects: Effect[];
-  /** once_per_fight: exhausted when played, back next fight. fleeting: the tome is destroyed when played. */
+  /** once_per_fight: exhausted when played, back next fight. once_per_screen: back after the screen's boss (DECISIONS #42). fleeting: the tome is destroyed when played. */
   uses?: SkillUses;
 }
 
