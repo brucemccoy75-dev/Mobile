@@ -39,6 +39,9 @@ export class OverworldScene extends Phaser.Scene {
   private goldText!: Phaser.GameObjects.Text;
   private toastText!: Phaser.GameObjects.Text;
   private locked = false;
+  /** Swipe-to-pan: where the drag began, and whether this pointer moved far enough to count as a drag. */
+  private drag: { px: number; py: number; sx: number; sy: number } | null = null;
+  private dragged = false;
 
   constructor() { super('Overworld'); }
 
@@ -64,6 +67,7 @@ export class OverworldScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.cameras.main.fadeIn(250, 11, 15, 26);
     this.syncRings();
+    this.enablePan();
 
     const fresh = !this.session.lastResult && this.session.clearedNodes.size === 0;
     void this.applyLastResult().then(async () => {
@@ -254,14 +258,33 @@ export class OverworldScene extends Phaser.Scene {
 
   // ---------------------------------------------------------------- travel
 
+  /** Drag anywhere to look around; the camera returns to the hero when travel starts. */
+  private enablePan() {
+    const cam = this.cameras.main;
+    const DEAD = 10; // pixels before a touch becomes a drag, so taps on nodes stay taps
+    this.drag = null; this.dragged = false;
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => { this.drag = { px: p.x, py: p.y, sx: cam.scrollX, sy: cam.scrollY }; this.dragged = false; });
+    this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      if (!this.drag || !p.isDown) return;
+      const dx = p.x - this.drag.px, dy = p.y - this.drag.py;
+      if (!this.dragged && Math.hypot(dx, dy) < DEAD) return;
+      if (!this.dragged) { this.dragged = true; cam.stopFollow(); }
+      cam.setScroll(this.drag.sx - dx / cam.zoom, this.drag.sy - dy / cam.zoom);
+    });
+    const end = () => { this.drag = null; this.time.delayedCall(0, () => { this.dragged = false; }); };
+    this.input.on('pointerup', end);
+    this.input.on('pointerupoutside', end);
+  }
+
   private async onTapNode(id: string) {
-    if (this.locked) return;
+    if (this.locked || this.dragged) return;
     const s = this.session;
     if (currentNode(s).id === id) { await this.enterNode(currentNode(s)); return; }
     const route = routeTo(s, id);
     if (!route) { void this.toast('No open road there yet.', 900); return; }
     this.locked = true;
     this.syncRings();
+    this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     let from = currentNode(s);
     for (const n of route) {
       await this.walkLeg(from.pos, n.pos);
