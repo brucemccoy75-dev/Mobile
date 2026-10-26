@@ -256,7 +256,9 @@ export class CombatScene extends Phaser.Scene {
   /** Make `slot` the target of the next card and park the arrow over it. Dead slots fall back to the front living one. */
   private setTarget(slot: number, silent = false) {
     const live = this.state.enemies.filter((e) => !e.dead);
-    const chosen = this.state.enemies[slot] && !this.state.enemies[slot]!.dead ? slot : (live[0]?.slot ?? 0);
+    // Nobody left to point at: the arrow goes, rather than hopping back onto a corpse during the win fade.
+    if (live.length === 0) { this.targetArrow.setVisible(false); return; }
+    const chosen = this.state.enemies[slot] && !this.state.enemies[slot]!.dead ? slot : live[0]!.slot;
     this.target = chosen;
     const v = this.views[chosen];
     if (!v) return;
