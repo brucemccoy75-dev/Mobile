@@ -134,3 +134,12 @@ Greedy-sim duels, fresh warrior (basics only), 200 fights each, after the pass:
 
 Gauntlet (4 wild fights then Knight Andre): fresh warrior reaches the boss 41% (was 8%), beats it 0%; Bulwark+gear1 beats it 92% in ~30 rounds (the greedy tank defends every third round; humans with Broadsword do it in far fewer). Tier 2: Bulwark+gear2 beats the Warden 18%, dies to him 60%. Duos are not in the sim yet; their first numbers come from the run log.
 
+
+## Node-map playthrough 1 (2026-10-26, ASH-ELK-4673)
+
+Warrior, Berserker + Bulwark heirlooms, no gear at start. All 11 fight nodes on screen 1 cleared,
+then the gate (where a crash stopped the run; fixed). Singles ended in 1–3 rounds (Last Strike
+one-shot two of them). The three duo fights took 29, 24 and 37 damage over 7–11 rounds; everything
+else combined took 21. Healed 80 of 129 taken. Gold 154 by fight 9, 145 spent at the shop (heal,
+mace, shirt, Final Stand). Reading: trash pacing is right, duos are the game, sustain erased the
+attrition that should make a full clear a gamble. Change: Bind Wound once per fight (DECISIONS #38).

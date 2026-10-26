@@ -149,3 +149,12 @@ it, Tam the tinker at node 3 re-arms node 2 with "the brother" (a bigger pair), 
 return. Daylight, fog of war, signposts and the procedural toggle are gone from play (the
 generator stays in the tree and on branch `overworld-procedural`). Inspiration: Puzzle Quest's
 overworld, kept simpler.
+
+## 38. Bind Wound is once per fight
+
+The first full node-map playthrough (ASH-ELK-4673, 11 fights, no deaths) took 129 damage and
+healed 80 of it back, 7 Bind Wound plays doing most of that. Duos were the only fights that hurt
+(108 of the 129) and they ran 7–11 rounds, long enough for the deck to cycle and the heal to come
+round twice or three times. Bind Wound is now once per fight: still the emergency button, no longer
+a loop. Two copies in the deck still mean two heals. If duos still feel soft after this, the next
+levers are the shop heal price and the shrine healing half rather than full.

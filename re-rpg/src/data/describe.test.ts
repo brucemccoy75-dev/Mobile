@@ -22,7 +22,7 @@ describe('describeSkill', () => {
   });
 
   it('covers heals, guards, statuses, multi-hit and lifesteal', () => {
-    expect(describeSkill(getSkill('bind_wound'), warrior)).toBe('Heal 9 HP. You are Exposed for 2 rounds.');
+    expect(describeSkill(getSkill('bind_wound'), warrior)).toBe('Heal 9 HP. You are Exposed for 2 rounds. Once per fight.');
     expect(describeSkill(getSkill('ice_armor'), warrior)).toBe('Block the next 2 physical hits.');
     expect(describeSkill(getSkill('fireball'), { maxHp: 20, atk: 5, def: 0 })).toBe('Deal 8 magic damage. Burn 2 per round for 2 rounds.');
     expect(describeSkill(getSkill('frost_bolt'), { maxHp: 20, atk: 5, def: 0 })).toBe('Deal 6 magic damage. 65% chance: Chill: the enemy skips its next action.');

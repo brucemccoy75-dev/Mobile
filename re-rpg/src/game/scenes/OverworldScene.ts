@@ -310,6 +310,16 @@ export class OverworldScene extends Phaser.Scene {
 
   /** Arriving at a node runs its task. Cleared nodes are quiet places you can stand in. */
   private async enterNode(n: MapNode) {
+    try { await this.runNodeTask(n); }
+    catch (err) {
+      // A bug in a task must never freeze the map: report it and hand control back.
+      console.error('node task failed', n.id, err);
+      this.locked = false; this.syncRings();
+      void this.toast(`Something went wrong here (${(err as Error).message}). You can move on.`, 2600);
+    }
+  }
+
+  private async runNodeTask(n: MapNode) {
     const s = this.session, meta = getMeta(this);
     this.locked = true;
     this.syncRings();
@@ -385,7 +395,7 @@ export class OverworldScene extends Phaser.Scene {
       trigger = 'pre_fight:ghost';
     }
     const firstTome = ghost?.deck.find((id) => getSkill(id).rarity !== 'basic');
-    const r = await openDialogue(this, s, meta, trigger, { species: getEnemy(e.enemyId).name.toLowerCase(), weapon: s.equipment.weapon?.name ?? 'fists', killer: ghost?.killerName ?? '', ghostClass: ghost?.classId ?? '', ghostCard: firstTome ? getSkill(firstTome).name : 'nothing' });
+    const r = await openDialogue(this, s, meta, trigger, { species: (e.custom?.[0]?.name ?? getEnemy(e.enemyId).name).toLowerCase(), weapon: s.equipment.weapon?.name ?? 'fists', killer: ghost?.killerName ?? '', ghostClass: ghost?.classId ?? '', ghostCard: firstTome ? getSkill(firstTome).name : 'nothing' });
     if (r?.notes.length) { void persistMeta(this); void this.toast(r.notes.join('  ·  '), 1800); this.syncHud(); }
     if (r && r.skip && !r.fight) {
       s.clearedNodes.add(node.id);
