@@ -54,7 +54,8 @@ describe('meta', () => {
     recordWin(m, 2, 'warrior');
     expect(classUnlocked(m, 'wizard')).toBe(true);
     const old = migrateMeta({ version: 1, updatedAt: 1, deaths: 3, wins: 1, bestScreen: 2, discoveredSkills: ['x'], discoveredItems: [] })!;
-    expect(old.version).toBe(4);
+    expect(old.version).toBe(5);
+    expect(old.relations).toEqual({});
     expect(old.winsByClass).toEqual({ warrior: 1 });
     expect(old.legacyUnspent).toBe(1); // the earlier win becomes a point to spend
     expect(migrateMeta({ version: 99 })).toBeNull();

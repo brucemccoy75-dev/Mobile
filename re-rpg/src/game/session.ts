@@ -14,7 +14,8 @@ import { TOME_COPY_CAP } from '@data/skills';
 import { computeStats, emptyEquipment, equip as equipItem, equipmentFromIds, equipmentToIds, type Equipment, RUN_VERSION, type RunState } from '@core/run';
 import { createMeta, discoverItem, discoverSkill, rollHeirloomChoices, unlockedSets, type Heirloom, type MetaState } from '@core/meta';
 import { rollShopStock, type RewardChoice, type RewardSource, type ShopStock } from '@core/loot';
-import { generateQuest, questReady, type Quest } from '@core/quest';
+import { generateQuest, questReady, type Quest, type QuestOptions } from '@core/quest';
+import { WREN } from '@data/quests';
 import { upgradeItem, upgradeSkill, type SkillUpgrades } from '@core/run/upgrade';
 import type { SaveStore } from '@save/SaveStore';
 
@@ -55,6 +56,8 @@ export interface RunSession {
   /** Authored maps (DECISIONS #34): fought nodes, tiles seen through the fog, and daylight left in steps. */
   clearedNodes: Set<string>;
   seen: Set<string>;
+  /** Run-scoped story flags set by dialogue options (DECISIONS #35). */
+  flags: Set<string>;
   daylight: number;
   daylightMax: number;
   bossDefeated: boolean;
@@ -118,7 +121,7 @@ export function createSession(classId: ClassId, meta: MetaState, seed = newSeed(
     seed, rng, classId, setId, families: unlockedSets(meta, classId), base: { ...base }, stats: { ...base }, hp: base.maxHp, gold: 0,
     deck: [], equipment: emptyEquipment(),
     screenIndex: 0, map: undefined as unknown as ScreenMap, playerPos: { x: 0, y: 0 }, threat: 0,
-    openedPois: new Set(), usedShrines: new Set(), defeatedGuards: new Set(), clearedNodes: new Set(), seen: new Set(), daylight: 0, daylightMax: 0, bossDefeated: false, encountersWon: 0,
+    openedPois: new Set(), usedShrines: new Set(), defeatedGuards: new Set(), clearedNodes: new Set(), seen: new Set(), flags: new Set(), daylight: 0, daylightMax: 0, bossDefeated: false, encountersWon: 0,
     newDiscoveries: [], heirloomName: null, shop: { lines: [], healPrice: 0, healPct: 0.5, healUsed: true }, quests: [], skillUpgrades: {}, customItems: [],
     pendingEncounter: null, lastResult: null, pendingOffer: null, heirloomChoices: [],
   };
@@ -146,8 +149,11 @@ export function applyHeirlooms(s: RunSession, picks: Heirloom[], meta?: MetaStat
   s.heirloomChoices = [];
   // The shop and quest were rolled before the picks; re-roll so they draw from the run's families.
   s.shop = rollShopStock(s.screenIndex, poolCtx(s, meta), s.rng.stream('loot'));
-  s.quests = [...s.quests.filter((q) => !q.id.startsWith(`quest_${s.screenIndex}_`)), generateQuest(s.map, { ...poolCtx(s, meta), screenIndex: s.screenIndex }, s.rng.stream('quest'), s.map.questGiver, s.map.npcSpot)];
+  s.quests = [...s.quests.filter((q) => !q.id.startsWith(`quest_${s.screenIndex}_`)), generateQuest(s.map, { ...poolCtx(s, meta), screenIndex: s.screenIndex }, s.rng.stream('quest'), s.map.questGiver, s.map.npcSpot, questOptions(s))];
 }
+
+/** Screen 1's authored giver is Wren, who would never ask you to hunt her rats (DECISIONS #35). */
+const questOptions = (s: RunSession): QuestOptions => (s.map.authored && s.screenIndex === 0 ? { voice: WREN, avoidHunt: ['rat_pack'] } : {});
 
 /** Loot/quest context for this run: class, families, what is held. */
 export const poolCtx = (s: RunSession, meta?: MetaState) => ({ classId: s.classId, families: s.families, meta: meta ?? createMeta(), deck: s.deck, equipment: s.equipment });
@@ -171,7 +177,7 @@ export function startScreen(s: RunSession, index: number, meta?: MetaState): voi
   s.bossDefeated = false;
   s.shop = rollShopStock(index, poolCtx(s, meta), s.rng.stream('loot'));
   // One randomised quest per screen (DECISIONS #19). Earlier screens' quests are kept for the run summary.
-  s.quests = [...s.quests.filter((q) => !q.id.startsWith(`quest_${index}_`)), generateQuest(s.map, { ...poolCtx(s, meta), screenIndex: index }, s.rng.stream('quest'), s.map.questGiver, s.map.npcSpot)];
+  s.quests = [...s.quests.filter((q) => !q.id.startsWith(`quest_${index}_`)), generateQuest(s.map, { ...poolCtx(s, meta), screenIndex: index }, s.rng.stream('quest'), s.map.questGiver, s.map.npcSpot, questOptions(s))];
 }
 
 export const currentQuest = (s: RunSession): Quest | undefined => s.quests.find((q) => q.id.startsWith(`quest_${s.screenIndex}_`));
@@ -302,7 +308,7 @@ export function serialize(s: RunSession): RunState {
     hp: s.hp, gold: s.gold, deck: [...s.deck], equipment: equipmentToIds(s.equipment),
     screenIndex: s.screenIndex, map: s.map, playerPos: { ...s.playerPos }, threat: s.threat,
     openedPois: [...s.openedPois], usedShrines: [...s.usedShrines], defeatedGuards: [...s.defeatedGuards],
-    clearedNodes: [...s.clearedNodes], seen: [...s.seen], daylight: s.daylight, daylightMax: s.daylightMax,
+    clearedNodes: [...s.clearedNodes], seen: [...s.seen], flags: [...s.flags], daylight: s.daylight, daylightMax: s.daylightMax,
     bossDefeated: s.bossDefeated, encountersWon: s.encountersWon, newDiscoveries: [...s.newDiscoveries], heirloomName: s.heirloomName,
     shop: JSON.parse(JSON.stringify(s.shop)) as ShopStock,
     quests: JSON.parse(JSON.stringify(s.quests)) as Quest[], skillUpgrades: { ...s.skillUpgrades }, customItems: JSON.parse(JSON.stringify(s.customItems)) as Item[],
@@ -319,7 +325,7 @@ export function deserialize(st: RunState, meta: MetaState): RunSession {
     hp: st.hp, gold: st.gold, deck: [...st.deck], equipment,
     screenIndex: st.screenIndex, map: st.map, playerPos: { ...st.playerPos }, threat: st.threat,
     openedPois: new Set(st.openedPois), usedShrines: new Set(st.usedShrines), defeatedGuards: new Set(st.defeatedGuards),
-    clearedNodes: new Set(st.clearedNodes ?? []), seen: new Set(st.seen ?? []), daylight: st.daylight ?? 0, daylightMax: st.daylightMax ?? 0,
+    clearedNodes: new Set(st.clearedNodes ?? []), seen: new Set(st.seen ?? []), flags: new Set(st.flags ?? []), daylight: st.daylight ?? 0, daylightMax: st.daylightMax ?? 0,
     bossDefeated: st.bossDefeated, encountersWon: st.encountersWon, newDiscoveries: [...st.newDiscoveries], heirloomName: st.heirloomName,
     shop: st.shop, quests: st.quests ?? [], skillUpgrades: st.skillUpgrades ?? {}, customItems: st.customItems ?? [],
     pendingEncounter: null, lastResult: null, pendingOffer: null, heirloomChoices: [],

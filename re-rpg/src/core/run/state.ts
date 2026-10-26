@@ -36,6 +36,7 @@ export interface RunState extends Versioned {
   /** Authored maps (DECISIONS #34). Absent on older saves. */
   clearedNodes?: string[];
   seen?: string[];
+  flags?: string[];
   daylight?: number;
   daylightMax?: number;
   bossDefeated: boolean;

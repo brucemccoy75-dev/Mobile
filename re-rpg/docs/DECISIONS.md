@@ -101,3 +101,17 @@ Tiles are 72 px (about 11×5 on a phone), steps take 190 ms, and the hero and en
 the map as their stills. Why: a fixed world can be designed for flow, landmarks and story, and
 knowing where the harpies wait is player knowledge beating RNG; the daylight clock keeps
 exploring a decision instead of free upside.
+
+## 35. Dialogue with options at every encounter; the world remembers
+
+Every node, guard, gate, signpost and the quest giver opens a speech box (`DialogueScene`) with a
+few lines and two or three options. Writing is data (`src/data/dialogue.ts`); the rules are a
+small pure module (`core/dialogue`): conditions read run flags, persistent relations, deaths on
+this screen, the last killer, level, gold and daylight; effects set flags, nudge a relation, cost
+or pay gold, HP or daylight, hand over a tome, and then start the fight or let you walk on.
+Relations and deaths per screen live in meta (v5) so the world reacts across deaths: Knight
+Andre's lines escalate with each death at his gate, the imp remembers the book, Gerald remembers
+the dance. Screen 1's giver is Wren the rat-keeper; every rat pack killed on her screen costs
+standing (double if you promised). Dialogue becomes skippable once the screen has been beaten;
+Skip applies the default option of the whole chain. Why: the comparison with other card games
+is unavoidable, so the uniqueness budget goes to characters who remember you dying.

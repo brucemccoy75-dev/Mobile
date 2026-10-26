@@ -3,7 +3,7 @@ import type { ClassId, Item, SetId, Skill } from '@data/types';
 import type { Rng } from '@core/rng';
 import { LEVEL_CAP, POINTS_PER_LEVEL, TREES, levelForExp } from '@data/progression';
 
-export const META_VERSION = 4;
+export const META_VERSION = 5;
 
 /** Cross-run progress. Persisted; merged across devices by union/max (ARCHITECTURE §8). */
 export interface MetaState {
@@ -22,6 +22,12 @@ export interface MetaState {
   legacyUnspent: number;
   /** Per-class EXP, level, skill points and unlocked card families (DECISIONS #32). Never shared between classes. */
   progress: Partial<Record<ClassId, ClassProgress>>;
+  /** How the world feels about you, per character (DECISIONS #35). Negative is bad. */
+  relations: Record<string, number>;
+  /** Deaths per screen index; drives the dialogue variants. */
+  deathsByScreen: number[];
+  /** Species that landed the last killing blow. */
+  lastKiller?: string;
 }
 
 export interface ClassProgress {
@@ -34,7 +40,7 @@ export interface ClassProgress {
 export type LegacyChoice = 'atk' | 'def' | 'maxHp';
 export const LEGACY_GRANT: Record<LegacyChoice, number> = { atk: 1, def: 1, maxHp: 5 };
 
-export const createMeta = (): MetaState => ({ version: META_VERSION, updatedAt: Date.now(), deaths: 0, wins: 0, bestScreen: 0, discoveredSkills: [], discoveredItems: [], winsByClass: {}, legacy: { atk: 0, def: 0, maxHp: 0 }, legacyUnspent: 0, progress: {} });
+export const createMeta = (): MetaState => ({ version: META_VERSION, updatedAt: Date.now(), deaths: 0, wins: 0, bestScreen: 0, discoveredSkills: [], discoveredItems: [], winsByClass: {}, legacy: { atk: 0, def: 0, maxHp: 0 }, legacyUnspent: 0, progress: {}, relations: {}, deathsByScreen: [] });
 
 /** Bring an older saved meta up to date; returns null if it cannot be read. */
 export function migrateMeta(raw: unknown): MetaState | null {
@@ -51,6 +57,10 @@ export function migrateMeta(raw: unknown): MetaState | null {
     legacyUnspent: m.legacyUnspent ?? (m.legacy ? 0 : (m.wins ?? 0)),
     // v3 had no progression: everyone starts at level 1 with the free nodes.
     progress: m.progress ?? {},
+    // v4 had no relations or per-screen deaths: the world starts neutral and forgets earlier deaths.
+    relations: m.relations ?? {},
+    deathsByScreen: m.deathsByScreen ?? [],
+    lastKiller: m.lastKiller,
   };
   return out;
 }
@@ -136,8 +146,18 @@ export function discoverItem(meta: MetaState, id: string): boolean {
   meta.discoveredItems.push(id); meta.updatedAt = Date.now(); return true;
 }
 
-export function recordDeath(meta: MetaState, screenIndex: number): void {
+export function recordDeath(meta: MetaState, screenIndex: number, killer?: string): void {
   meta.deaths += 1; meta.bestScreen = Math.max(meta.bestScreen, screenIndex); meta.updatedAt = Date.now();
+  meta.deathsByScreen[screenIndex] = (meta.deathsByScreen[screenIndex] ?? 0) + 1;
+  if (killer) meta.lastKiller = killer;
+}
+export const deathsOn = (meta: MetaState, screenIndex: number): number => meta.deathsByScreen?.[screenIndex] ?? 0;
+
+/** Nudge a relation (clamped to ±9 so one grudge never becomes a number nobody can climb out of). */
+export function nudgeRelation(meta: MetaState, who: string, delta: number): number {
+  const v = Math.max(-9, Math.min(9, (meta.relations[who] ?? 0) + delta));
+  meta.relations[who] = v; meta.updatedAt = Date.now();
+  return v;
 }
 export function recordWin(meta: MetaState, screenCount: number, classId: ClassId): void {
   meta.wins += 1; meta.bestScreen = Math.max(meta.bestScreen, screenCount); meta.updatedAt = Date.now();
@@ -183,6 +203,10 @@ export function mergeMeta(a: MetaState, b: MetaState): MetaState {
     legacy: { atk: Math.max(a.legacy?.atk ?? 0, b.legacy?.atk ?? 0), def: Math.max(a.legacy?.def ?? 0, b.legacy?.def ?? 0), maxHp: Math.max(a.legacy?.maxHp ?? 0, b.legacy?.maxHp ?? 0) },
     legacyUnspent: Math.max(a.legacyUnspent ?? 0, b.legacyUnspent ?? 0),
     progress: mergeProgress(a.progress ?? {}, b.progress ?? {}),
+    // Relations are a story, not a score: the device that played most recently has the truer one.
+    relations: { ...((a.updatedAt >= b.updatedAt ? b : a).relations ?? {}), ...((a.updatedAt >= b.updatedAt ? a : b).relations ?? {}) },
+    deathsByScreen: Array.from({ length: Math.max(a.deathsByScreen?.length ?? 0, b.deathsByScreen?.length ?? 0) }, (_, i) => Math.max(a.deathsByScreen?.[i] ?? 0, b.deathsByScreen?.[i] ?? 0)),
+    lastKiller: (a.updatedAt >= b.updatedAt ? a : b).lastKiller,
   };
 }
 

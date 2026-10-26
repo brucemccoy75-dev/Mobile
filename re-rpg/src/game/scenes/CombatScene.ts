@@ -323,6 +323,7 @@ export class CombatScene extends Phaser.Scene {
     for (const o of [v.intentBg, v.intentHead, v.intentText, v.intentNum, v.postureText]) o.setVisible(false);
   }
 
+  private killerId(): string { return this.state.enemyDefs.find((d) => d.name === this.killerName())?.id ?? this.enemyDef.id; }
   /** The enemy whose hit (or tick) took the last HP; the primary enemy if the log is unclear. */
   private killerName(): string {
     for (let i = this.state.log.length - 1; i >= 0; i--) {
@@ -669,7 +670,7 @@ export class CombatScene extends Phaser.Scene {
       new Button(this, W / 2, H * 0.62, 'Take spoils', () => this.scene.start('Reward'), { width: 220, fill: 0x1f2a44, edge: COLORS.goldHex }).setDepth(72);
     } else {
       this.session.lastResult = { encounter: this.encounter, won: false };
-      recordDeath(getMeta(this), this.session.screenIndex);
+      recordDeath(getMeta(this), this.session.screenIndex, this.killerId());
       void Promise.all([persistMeta(this), getStore(this).clearRun()]);
       const killer = this.killerName();
       this.add.text(W / 2, H * 0.34 + 46, `Slain by ${killer} on screen ${this.session.screenIndex + 1}.`, text.body).setOrigin(0.5).setDepth(71);

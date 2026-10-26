@@ -3,7 +3,8 @@ import { getEnemy } from '@data/index';
 import { findPath, stepThreat, key, tileAt, type MapNode, type Tile, type TileType } from '@core/map';
 import { SCREEN_COUNT, SIGHT, currentQuest, getMeta, getSession, getStore, isDusk, isEscorting, nodeAt, nodeEncounter, persistMeta, persistRun, revealAround, rollEncounter, setSession, spendDaylight, startScreen, type PendingEncounter, type RunSession } from '@game/session';
 import { ESCORT_THREAT_MULT, noteKill, questProgress, questReady } from '@core/quest';
-import { gainExp, recordWin } from '@core/meta';
+import { gainExp, nudgeRelation, recordWin } from '@core/meta';
+import { openDialogue } from '@game/dialogue';
 import { WIN_EXP } from '@data/progression';
 import { artKey } from '@game/art';
 import { Button } from '@game/ui/Button';
@@ -422,7 +423,11 @@ export class OverworldScene extends Phaser.Scene {
 
     // Quest giver and escort NPC are walked onto like POIs.
     const q = currentQuest(s);
-    if (key(m.questGiver) === k && q) { this.locked = true; await persistRun(this); this.scene.start('Quest', { questId: q.id }); return true; }
+    if (key(m.questGiver) === k && q) {
+      this.locked = true;
+      if (m.authored && s.screenIndex === 0) { const r = await openDialogue(this, s, getMeta(this), 'giver:wren'); if (r?.notes.length) void persistMeta(this); }
+      await persistRun(this); this.scene.start('Quest', { questId: q.id }); return true;
+    }
     if (q?.escort && q.status === 'active' && !q.escort.following && key(q.escort.pos) === k) {
       q.escort.following = true;
       this.npcSprite?.destroy(); this.npcSprite = null;
@@ -435,13 +440,13 @@ export class OverworldScene extends Phaser.Scene {
     }
 
     const guard = m.guards.find((g) => key(g.pos) === k && !s.defeatedGuards.has(g.id));
-    if (guard) { await this.startEncounter({ kind: 'guard', enemyId: guard.enemyId, guardId: guard.id }); return true; }
+    if (guard) { await this.encounterWithWords({ kind: 'guard', enemyId: guard.enemyId, guardId: guard.id }); return true; }
     const node = nodeAt(s, t);
-    if (node) { await this.startEncounter(nodeEncounter(s, node), node); return true; }
-    if (key(m.boss) === k && !s.bossDefeated) { await this.startEncounter({ kind: 'boss', enemyId: m.bossId }); return true; }
+    if (node) { await this.encounterWithWords(nodeEncounter(s, node), node); return true; }
+    if (key(m.boss) === k && !s.bossDefeated) { await this.encounterWithWords({ kind: 'boss', enemyId: m.bossId }); return true; }
 
     const sign = m.signposts?.find((sp) => key(sp.pos) === k);
-    if (sign) { void this.toast(signpostText(sign.id), 2600); }
+    if (sign) { this.locked = true; await openDialogue(this, s, getMeta(this), `sign:${sign.id}`); this.locked = false; }
 
     const poi = m.pois.find((p) => key(p.pos) === k);
     if (poi) {
@@ -478,6 +483,27 @@ export class OverworldScene extends Phaser.Scene {
     return false;
   }
 
+  /**
+   * Every fight opens with words (DECISIONS #35): the species' dialogue, or the gate's. An option may
+   * end it without a fight, in which case the clearing or post is simply yours. Random ambushes
+   * on procedural maps keep their old silence.
+   */
+  private async encounterWithWords(e: PendingEncounter, node?: MapNode) {
+    const s = this.session, meta = getMeta(this);
+    this.locked = true;
+    const trigger = e.kind === 'boss' ? `gate:${s.flags.has('wren_boss') ? 'wren' : e.enemyId}` : `pre_fight:${e.enemyId}`;
+    const r = await openDialogue(this, s, meta, trigger, { weapon: s.equipment.weapon?.name ?? 'fists' });
+    if (r?.notes.length) { void persistMeta(this); void this.toast(r.notes.join('  ·  '), 1800); this.syncHud(); }
+    if (r && r.skip && !r.fight) {
+      if (e.kind === 'guard' && e.guardId) { s.defeatedGuards.add(e.guardId); this.guardSprites.get(e.guardId)?.destroy(); }
+      if (e.kind === 'node' && e.nodeId) { s.clearedNodes.add(e.nodeId); this.nodeSprites.get(e.nodeId)?.destroy(); }
+      await persistRun(this);
+      this.locked = false;
+      return;
+    }
+    await this.startEncounter(e, node);
+  }
+
   private async startEncounter(e: PendingEncounter, node?: MapNode) {
     this.locked = true;
     const pp = this.session.playerPos;
@@ -499,6 +525,13 @@ export class OverworldScene extends Phaser.Scene {
     s.lastResult = null;
     if (!r.won) return; // death is handled in the combat scene
     const killed = [r.encounter.enemyId, ...(r.encounter.extra ?? [])];
+    // Wren's rats (DECISIONS #35): every pack killed on her screen costs standing, double if you promised.
+    const rats = killed.filter((id) => id === 'rat_pack').length;
+    if (rats && s.map.authored && s.screenIndex === 0) {
+      const v = nudgeRelation(getMeta(this), 'wren', -rats * (s.flags.has('rats_promise') ? 2 : 1));
+      void persistMeta(this);
+      void this.toast(v <= -2 ? 'Somewhere, Wren feels it. She will not forget.' : 'Somewhere, Wren feels it.', 2000);
+    }
     if (killed.map((id) => noteKill(s.quests, id)).some(Boolean)) {
       const q = currentQuest(s);
       if (q?.hunt) void this.toast(`Hunt: ${q.hunt.name} ${Math.min(q.hunt.have, q.hunt.need)} / ${q.hunt.need}${q.hunt.have >= q.hunt.need ? ' — return to ' + q.giver.name : ''}`, 2200);
@@ -554,19 +587,4 @@ export class OverworldScene extends Phaser.Scene {
   private quit() {
     void persistRun(this).then(() => { setSession(this, null); this.scene.start('Title'); });
   }
-}
-
-/** Signpost lines until the dialogue system lands (next phase); keyed by signpost id. */
-function signpostText(id: string): string {
-  const LINES: Record<string, string> = {
-    sign_1_0: 'North: the long way round the lake. A chest, the shrine, and whatever got there first.',
-    sign_1_1: 'South: the woods, the warren, and a chest nobody came back from. Straight on: the gate road.',
-    sign_1_2: 'The road turns down to the gate from here. Andre does not like visitors at dusk.',
-    sign_1_3: 'Up this way to the gate road. Behind you, the far chest and someone calling for help.',
-    sign_2_0: 'North: dry ground, mostly. A chest, a shrine, two things that want you.',
-    sign_2_1: 'South: the drowned way. Slow going, and the rats got big. Straight on: the Warden.',
-    sign_2_2: 'The marsh road descends to the Warden from here.',
-    sign_2_3: 'Up to the Warden’s road. The far chest is behind you, and so is the lost one.',
-  };
-  return LINES[id] ?? 'The sign has rotted away.';
 }

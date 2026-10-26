@@ -1,5 +1,5 @@
 import { enemiesOfTier, getEnemy } from '@data/index';
-import { ESCORT_NAMES, GIVERS } from '@data/quests';
+import { ESCORT_NAMES, GIVERS, type GiverVoice } from '@data/quests';
 import type { ClassId, SetId, SkillId } from '@data/types';
 import type { Rng } from '@core/rng';
 import type { ScreenMap, Tile } from '@core/map';
@@ -42,8 +42,10 @@ const fill = (s: string, vars: Record<string, string | number>) => s.replace(/\{
  * come from the live loot pool (so they can actually drop), hunt targets from
  * enemies present on this map, escort NPCs from a far off-road tile.
  */
-export function generateQuest(map: ScreenMap, ctx: QuestContext, rng: Rng, giverPos: Tile, npcPos: Tile): Quest {
-  const voice = rng.pick(GIVERS);
+export interface QuestOptions { voice?: GiverVoice; avoidHunt?: string[]; }
+
+export function generateQuest(map: ScreenMap, ctx: QuestContext, rng: Rng, giverPos: Tile, npcPos: Tile, opts: QuestOptions = {}): Quest {
+  const voice = opts.voice ?? rng.pick(GIVERS);
   const kind = rng.pick(['fetch', 'hunt', 'escort'] as const);
   const tier = ctx.screenIndex === 0 ? 1 : 2;
   const base = { id: `quest_${ctx.screenIndex}_${kind}`, kind, status: 'offered' as QuestStatus };
@@ -63,7 +65,7 @@ export function generateQuest(map: ScreenMap, ctx: QuestContext, rng: Rng, giver
   }
   if (kind === 'hunt') {
     const present = new Set<string>([...map.guards.map((g) => g.enemyId), ...enemiesOfTier(tier).map((e) => e.id)]);
-    const enemyId = rng.pick([...present].filter((id) => getEnemy(id).archetype !== 'boss'));
+    const enemyId = rng.pick([...present].filter((id) => getEnemy(id).archetype !== 'boss' && !(opts.avoidHunt ?? []).includes(id)));
     const need = 2;
     return { ...base, giver: giver(getEnemy(enemyId).name, need), hunt: { enemyId, name: getEnemy(enemyId).name, need, have: 0 }, reward: { gold: 25 * (ctx.screenIndex + 1), offer: 'guard' } };
   }
