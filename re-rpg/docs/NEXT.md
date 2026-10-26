@@ -158,3 +158,29 @@ contents rolled per run from the roster, (3) daylight counter + HUD dial + dusk 
 Open questions: daylight budget size (steps), what dusk does to the boss (nothing,
 or +1 ATK), whether shops/shrines are fixed slots or shuffled per run, and whether an
 elite lane should be visible from the screen entry or only after the first fork.
+
+## 10. Identity check: not a Spire clone (added 2026-10-26)
+
+User concern: the routes-as-roads blend (§9) drifts toward recreating Slay the Spire;
+a strong, funny, well-written story may be the real differentiator.
+
+Agreed position:
+- The combat verb is cards, so the comparison is unavoidable. The identity is "an RPG
+  wearing cards": stats, gear, hand of 3 and one draw per round, levels and trees that
+  persist across deaths, a world you walk. Design test: "would a 90s JRPG do this?"
+- Closest relative is Hades, not Spire: growth across deaths, story told through dying.
+- Drop from §9: the parchment DAG overlay and the lane icon vocabulary (the one image
+  everyone recognises). Keep: authored lanes drawn as roads, fog, side clearings,
+  daylight budget, no random road encounters, tap-to-walk between clearings.
+- Replace icons with written signposts in the game's voice. They carry risk/reward
+  legibility and the comedy at the same time.
+- Death is the narrative engine ("Re-"): dialogue keyed to meta counters we already
+  track (deaths per screen, killer species, class level). Quest giver, NPC, Knight
+  Andre and the child necromancer each have an escalating script across deaths. The
+  Ghost speaks (telemetry gives it material).
+- Story work needs a small dialogue system: lines keyed by speaker + condition
+  (deaths >= n, killedBy, level, bossDefeated), authored in a data file, shown as a
+  speech box on the overworld. Cheap to build; the writing is the real work.
+
+Tomorrow's first decision: confirm this direction, then start with the ASCII map
+format and the dialogue data format so writing can begin in parallel with code.
