@@ -184,3 +184,41 @@ Agreed position:
 
 Tomorrow's first decision: confirm this direction, then start with the ASCII map
 format and the dialogue data format so writing can begin in parallel with code.
+
+## 11. Dialogue with options at every encounter; choices change the run (added 2026-10-26)
+
+User direction (confirmed): every encounter opens with a short dialogue that has
+options, skippable once the player has passed that screen. Choices plus RNG can
+change what the run contains, up to rotating bosses. Reference: Hades. Example given:
+the friendly quest giver becomes the screen-1 boss, swinging your own iron mace at
+you, because you killed her pet rats.
+
+Design that keeps it buildable:
+- **Dialogue data**, not code: `src/data/dialogue.ts` entries
+  `{ id, speaker, when: Condition[], lines: string[], options: Option[] }`, where
+  `Option = { text, effects: Effect[], next?: id }`. Conditions read run flags, meta
+  counters (deaths on this screen, killedBy, class level, relations) and RNG rolls.
+  Effects: set a run flag, change a relation counter (persistent, per character),
+  gold/HP/card/item deltas, start the fight, skip the fight, mark a boss variant.
+- **One speech box scene** overlaid on the overworld (and before combat): portrait,
+  lines, 2–3 option buttons. Tap-through. Same scene serves NPCs, signposts, ghosts.
+- **Skippable**: once the player's class has beaten the screen (or seen that node
+  once), the box collapses to one line with a "…" tap and a Skip button; default
+  option is applied on skip. Never skippable the first time.
+- **Relations** live in meta per character (quest giver, imp, child necromancer,
+  Knight Andre, the Ghost): a small integer each. They are the memory that makes
+  the world react across deaths.
+- **Boss variants**: the gate resolves the boss at arrival from flags, e.g.
+  `bossFor(session)`: default Knight Andre; `killed_rats && relation.giver <= -2`
+  → the quest giver, built from a template plus the player's equipped weapon (her
+  attack is named after it and uses its ATK). Variants are EnemyDefs produced by a
+  factory, so the combat engine does not change. Each variant needs one still.
+- **RNG portions**: which character occupies a "?" clearing, what the imp's book
+  turns out to be, which of two favours the giver asks for. Rolled from the run seed.
+- **Scope guard**: 4–5 characters, 2–3 options per box, 2 boss variants per screen
+  to start. Options affect flags, not new mechanics. The writing is the real work;
+  the system is small. Keep Test Mode able to set flags/relations to jump to any state.
+
+Build order: speech box scene + dialogue data format → first encounter scripts
+(imp's book, giver's rats) → relations in meta v5 → `bossFor` with the giver variant
+and her still → skip rules → ghost lines from telemetry.
