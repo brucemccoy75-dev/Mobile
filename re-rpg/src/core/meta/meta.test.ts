@@ -21,7 +21,7 @@ describe('meta', () => {
     expect(h.every((x) => x.kind === 'tome' && ['wizard_fire', 'wizard_frost'].includes(familyOf('wizard', x.skill.id)!.id))).toBe(true);
     // a fresh warrior owns no family yet (DECISIONS #41), so there is no spread; one bought family gives a spread of its two tomes
     expect(rollHeirloomChoices(m, 'warrior', new Rng(2))).toEqual([]);
-    gainExp(m, 'warrior', 30);
+    gainExp(m, 'warrior', 78); // level 3: two points, one family
     expect(unlockNode(m, 'warrior', 'warrior_dps')).toBe(true);
     const w = rollHeirloomChoices(m, 'warrior', new Rng(2));
     expect(w.map((x) => (x.kind === 'tome' ? x.skill.id : '')).sort()).toEqual(['broadsword', 'exposing_strike', 'last_strike', 'mighty_blow']);
@@ -31,19 +31,21 @@ describe('meta', () => {
     const m = createMeta();
     expect(classProgress(m, 'warrior')).toMatchObject({ level: 1, exp: 0, points: 0, unlocked: [] });
     expect(classProgress(m, 'wizard')).toMatchObject({ unlocked: ['wizard_fire', 'wizard_frost'] });
-    expect(nodeState(m, 'warrior', 'warrior_tank')).toEqual({ state: 'locked', reason: '1 point (you have 0)' });
+    expect(nodeState(m, 'warrior', 'warrior_tank')).toEqual({ state: 'locked', reason: '2 points (you have 0)' });
     expect(unlockNode(m, 'warrior', 'warrior_tank')).toBe(false);
     expect(gainExp(m, 'warrior', 29)).toMatchObject({ from: 1, to: 1, points: 0 });
     expect(gainExp(m, 'warrior', 1)).toMatchObject({ from: 1, to: 2, points: 1 });
     expect(classProgress(m, 'warrior').points).toBe(1);
     expect(classProgress(m, 'wizard').level).toBe(1); // nothing shared
+    expect(nodeState(m, 'warrior', 'warrior_tank')).toEqual({ state: 'locked', reason: '2 points (you have 1)' }); // one point buys nothing
+    expect(gainExp(m, 'warrior', 48)).toMatchObject({ from: 2, to: 3, points: 1 });
     expect(nodeState(m, 'warrior', 'warrior_tank').state).toBe('available');
     expect(unlockNode(m, 'warrior', 'warrior_tank')).toBe(true);
     expect(classProgress(m, 'warrior')).toMatchObject({ points: 0, unlocked: ['warrior_tank'] });
     expect(nodeState(m, 'warrior', 'warrior_tank').state).toBe('owned');
     expect(nodeState(m, 'warrior', 'warrior_dps').state).toBe('locked');
     expect(gainExp(m, 'warrior', 10000).to).toBe(10);
-    expect(classProgress(m, 'warrior').points).toBe(8);
+    expect(classProgress(m, 'warrior').points).toBe(7);
     expect(unlockNode(m, 'warrior', 'warrior_dps')).toBe(true);
     expect(nodeState(m, 'warrior', 'wizard_fire').state).toBe('locked');
   });
@@ -62,8 +64,8 @@ describe('meta', () => {
     expect(old.version).toBe(6);
     expect(old.progress.warrior).toEqual({ level: 3, exp: 90, points: 2, unlocked: [] });
     expect(old.progress.wizard?.unlocked).toEqual(['wizard_fire', 'wizard_frost']);
-    expect(unlockNode(old, 'warrior', 'warrior_tank')).toBe(true);
-    expect(unlockNode(old, 'warrior', 'warrior_dps')).toBe(true);
+    expect(unlockNode(old, 'warrior', 'warrior_tank')).toBe(true); // two points buy one family now
+    expect(unlockNode(old, 'warrior', 'warrior_dps')).toBe(false);
     expect(classProgress(old, 'warrior').points).toBe(0);
   });
 

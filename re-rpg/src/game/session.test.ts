@@ -52,7 +52,7 @@ describe('session', () => {
 
   it('every run opens with a heirloom spread; the picks set the run families and the tome pool', () => {
     const meta = createMeta();
-    gainExp(meta, 'warrior', 100); // level 3: two points, one per family
+    gainExp(meta, 'warrior', 300); // level 5: four points, two per family
     unlockNode(meta, 'warrior', 'warrior_tank'); unlockNode(meta, 'warrior', 'warrior_dps');
     const s = createSession('warrior', meta, 'HEIR-1');
     expect(s.heirloomChoices).toHaveLength(4);

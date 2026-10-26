@@ -26,7 +26,7 @@ see `git log`. Everything below in sections 1–14 is history; the game today is
 4174 --strictPort &` (start it in its own command; `pkill` in a chained command kills the chain)
 → Playwright at 844×390 with `window.__rerpg` (scripts in the scratchpad were throwaway; write a
 new one per check) → commit with the attribution lines → `git push -u origin <branch>` → poll
-gh-pages. Record decisions in `docs/DECISIONS.md` (next number is 43).
+gh-pages. Record decisions in `docs/DECISIONS.md` (next number is 44). Cards are edited in `docs/cards.xlsx` (DECISIONS #43): `python3 scripts/cards-xlsx.py import docs/cards.xlsx` then `npm run check`.
 
 **Done this session: the buff/debuff audit (DECISIONS #40).** The engine and the chips were
 already in step; the card was the liar (it said 4 against the beetle's DEF 1, so 3 landed from

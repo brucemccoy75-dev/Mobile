@@ -245,3 +245,16 @@ paid for the shop heal and a Last Strike.
   no longer converts a spare vest into a third of a heal.
 Not taken: gear max HP as a heal stays (the user chose to keep it). The sim gauntlet now drops
 fleeting tomes from its deck once played and uses the class basics; see BALANCE.md.
+
+## 43. The card sheet is the editing surface; warrior families cost two points
+
+Only the warrior is being balanced; wizard and shaman are out of scope until it is done. Cards,
+families and tree nodes now live in `src/data/cards.json`, and `scripts/cards-xlsx.py` turns it
+into `docs/cards.xlsx` and back (`export` / `import` / `check`). The sheet has one row per card
+with its family (the tree node that drops it), rarity, uses and up to three effects in a small
+language ("damage 100% +4", "self guard 1", "enemy burn 2 for 2 rounds"), a Skill tree sheet
+with costs and prerequisites, and a How-to sheet. The round trip is byte-identical; an edited
+sheet is imported with one command and `npm run check` then says what the numbers broke.
+Bulwark and Berserker cost two points each (was one, #41): the second fresh run under #42
+bought its first family after three kills and reached Wren with a full Berserker deck; at two
+points the first family lands at level 3, about seven kills in.

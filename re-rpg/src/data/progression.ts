@@ -1,4 +1,5 @@
 import type { ClassId, Enemy, SetId } from './types';
+import cards from './cards.json';
 
 /**
  * Per-class progression (DECISIONS #32): EXP from kills, levels 1-10 on a steep curve,
@@ -13,22 +14,8 @@ export interface TreeNode {
   requires?: SetId[];
 }
 
-export const TREES: Record<ClassId, TreeNode[]> = {
-  // Warrior: both families cost a point (DECISIONS #41), so a fresh warrior runs on basics and
-  // general tomes until level 2 and the level-up and heirloom systems get exercised from the start.
-  warrior: [
-    { setId: 'warrior_tank', cost: 1 },
-    { setId: 'warrior_dps', cost: 1 },
-  ],
-  wizard: [
-    { setId: 'wizard_fire', cost: 0 },
-    { setId: 'wizard_frost', cost: 0 },
-  ],
-  shaman: [
-    { setId: 'shaman_spirit', cost: 0 },
-    { setId: 'shaman_storm', cost: 0 },
-  ],
-};
+/** Per-class trees, from cards.json (the card spreadsheet's "Skill tree" sheet, DECISIONS #43). Warrior nodes cost 2 (#43); the other classes are out of scope and stay free. */
+export const TREES: Record<ClassId, TreeNode[]> = cards.trees as Record<ClassId, TreeNode[]>;
 
 export const LEVEL_CAP = 10;
 export const POINTS_PER_LEVEL = 1;
