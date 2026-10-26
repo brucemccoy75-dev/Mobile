@@ -30,9 +30,13 @@ export class Card extends Phaser.GameObjects.Container {
     const name = scene.add.text(0, -CARD_H / 2 + 7, skill.name, { fontFamily: FONT, fontSize: '14px', color: rarityText(skill), fontStyle: 'bold', wordWrap: { width: CARD_W - 16 }, align: 'center' }).setOrigin(0.5, 0);
     const body = scene.add.text(0, -CARD_H / 2 + 7 + name.height + 3, text, { fontFamily: FONT, fontSize: '10px', color: '#d7dbe6', wordWrap: { width: CARD_W - 14 }, align: 'center' }).setOrigin(0.5, 0);
     const value = scene.add.text(-CARD_W / 2 + 10, CARD_H / 2 - 6, face.value, { fontFamily: FONT, fontSize: '30px', color: c.accent, fontStyle: 'bold' }).setOrigin(0, 1);
-    // The unit may carry the reasons the number moved ("damage · armour, hardened"); it wraps upward beside the number.
-    const unit = scene.add.text(-CARD_W / 2 + 12 + value.width + 4, CARD_H / 2 - 10, face.unit, { fontFamily: FONT, fontSize: '10px', color: c.accent, wordWrap: { width: CARD_W - 24 - value.width }, lineSpacing: -2 }).setOrigin(0, 1);
+    // The unit may carry the reasons the number moved ("damage · armour, hardened"). The reasons go on
+    // their own line in white above the unit, and both stay clear of a use tag in the corner.
+    const [unitWord, why] = face.unit.split(' · ');
+    const ux = -CARD_W / 2 + 12 + value.width + 4, wrap = CARD_W - 24 - value.width - (skill.uses ? 58 : 0);
+    const unit = scene.add.text(ux, CARD_H / 2 - 10, unitWord ?? '', { fontFamily: FONT, fontSize: '10px', color: c.accent, wordWrap: { width: wrap } }).setOrigin(0, 1);
     this.add([this.bg, name, body, value, unit]);
+    if (why) this.add(scene.add.text(ux, CARD_H / 2 - 10 - unit.height + 1, why, { fontFamily: FONT, fontSize: '10px', color: '#ffffff', fontStyle: 'bold', wordWrap: { width: wrap }, lineSpacing: -2 }).setOrigin(0, 1));
     // Use limits ride the bottom-right corner so they are never missed.
     if (skill.uses) {
       const fleeting = skill.uses === 'fleeting';
