@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { BACKDROP_GROUND, BACKDROP_HORIZON, artKey, backdropKey } from '@game/art';
 import { describeSkill, getEnemy, getSkill } from '@data/index';
 import type { Enemy, Intent, Posture } from '@data/types';
-import { createCombat, currentIntent, isPlayerStunned, skillInCombat, step, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
+import { createCombat, currentIntent, isPlayerStunned, previewDamage, resolveTarget, skillInCombat, step, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
 import { getMeta, getSession, getStore, persistMeta, persistRun, setName, setSession, spendConsumedTomes, type PendingEncounter, type RunSession } from '@game/session';
 import { gainExp, ghostOn, layGhost, leaveGhost, nudgeRelation, recordDeath } from '@core/meta';
 import { ghostSpoils } from '@core/variants';
@@ -266,7 +266,8 @@ export class CombatScene extends Phaser.Scene {
     this.targetArrow.setPosition(v.x, v.y - v.sprite.displayHeight / 2 - 10);
     this.tweens.add({ targets: this.targetArrow, y: '+=6', duration: 500, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
     for (const o of this.views) o.intentBg.setStrokeStyle(2, o.slot === chosen && this.views.length > 1 ? COLORS.goldHex : COLORS.panelEdge);
-    void silent;
+    // The cards' numbers are against the target, so a retarget redraws them (silent calls come from syncAll, which rebuilds anyway).
+    if (!silent && !this.busy) this.rebuildHand();
   }
 
   /** Tap-to-explain panel for a status or the enemy's intent. Any tap dismisses it. */
@@ -377,9 +378,16 @@ export class CombatScene extends Phaser.Scene {
     const gap = 12;
     const total = ids.length * CARD_W + (ids.length - 1) * gap;
     const startX = this.scale.gameSize.width / 2 - total / 2 + CARD_W / 2;
+    // Each damage card's headline is what the chosen target will take, judged by the statuses the
+    // playback has shown so far (the same rule as the chips), so card and chips never disagree (DECISIONS #40).
+    const target = resolveTarget(this.state, this.target);
+    const shownTarget = { ...target, statuses: this.statusList('enemy', target.slot) };
+    const shownPlayer = { ...this.state.player, statuses: this.statusList('player') };
     ids.forEach((id, i) => {
       const sk = skillInCombat(this.state, id);
-      const card = new Card(this, startX + i * (CARD_W + gap), this.handY, sk, () => this.act(this.holdMode ? { type: 'hold', index: i } : { type: 'card', index: i, target: this.target }), describeSkill(sk, this.state.player.stats), this.state.player.stats);
+      const dmg = sk.effects.find((e) => e.type === 'damage');
+      const preview = dmg && dmg.type === 'damage' ? previewDamage(shownPlayer, shownTarget, dmg) : undefined;
+      const card = new Card(this, startX + i * (CARD_W + gap), this.handY, sk, () => this.act(this.holdMode ? { type: 'hold', index: i } : { type: 'card', index: i, target: this.target }), describeSkill(sk, this.state.player.stats), this.state.player.stats, preview);
       this.hand.push(card);
     });
   }

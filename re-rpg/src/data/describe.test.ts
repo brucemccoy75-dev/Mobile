@@ -54,5 +54,19 @@ describe('cardFace', () => {
     expect(cardFace(getSkill('stand_firm'), warrior)).toEqual({ kind: 'defense', value: '2', unit: 'rounds' });
     expect(cardFace(getSkill('shield_bash'), warrior).kind).toBe('attack');
   });
+
+  it('with a preview, the headline is what lands and the unit says why', () => {
+    const one = (amount: number, reasons: string[] = []) => ({ hits: [{ amount, blocked: false }], reasons });
+    expect(cardFace(getSkill('attack'), warrior, one(4))).toEqual({ kind: 'attack', value: '4', unit: 'damage' });
+    expect(cardFace(getSkill('attack'), warrior, one(3, ['armour']))).toEqual({ kind: 'attack', value: '3', unit: 'damage · armour' });
+    expect(cardFace(getSkill('attack'), warrior, one(2, ['armour', 'hardened']))).toEqual({ kind: 'attack', value: '2', unit: 'damage · armour, hardened' });
+    expect(cardFace(getSkill('fireball'), warrior, one(12, ['exposed']))).toEqual({ kind: 'magic', value: '12', unit: 'magic · exposed' });
+    expect(cardFace(getSkill('attack'), warrior, { hits: [{ amount: 0, blocked: true }], reasons: ['guarded'] })).toEqual({ kind: 'attack', value: '0', unit: 'blocked · guarded' });
+    expect(cardFace(getSkill('attack'), warrior, { hits: [{ amount: 0, blocked: true }, { amount: 4, blocked: false }, { amount: 4, blocked: false }], reasons: ['guarded'] })).toEqual({ kind: 'attack', value: '8', unit: 'damage · guarded' });
+    const flurry = { ...getSkill('attack'), effects: [{ type: 'damage' as const, mult: 1, hits: 2 }] };
+    expect(cardFace(flurry, warrior, { hits: [{ amount: 3, blocked: false }, { amount: 3, blocked: false }], reasons: ['armour'] })).toEqual({ kind: 'attack', value: '3×2', unit: 'damage · armour' });
+    // Non-damage cards ignore the preview.
+    expect(cardFace(getSkill('defend'), warrior, one(0))).toEqual({ kind: 'defense', value: '1', unit: 'hit' });
+  });
 });
 

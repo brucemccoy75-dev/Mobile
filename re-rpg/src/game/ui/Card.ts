@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { Skill, Stats } from '@data/types';
-import { cardFace, type CardKind } from '@data/describe';
+import { cardFace, type CardKind, type CardPreview } from '@data/describe';
 import { COLORS, FONT, RARITY_COLORS } from './theme';
 
 export const CARD_W = 150;
@@ -19,17 +19,19 @@ export class Card extends Phaser.GameObjects.Container {
   readonly bg: Phaser.GameObjects.Rectangle;
   readonly skillId: string;
 
-  constructor(scene: Phaser.Scene, x: number, y: number, skill: Skill, onTap: () => void, text: string = skill.text, stats: Stats = { maxHp: 1, atk: 1, def: 0 }) {
+  /** `preview` (combat only) makes the headline the number the chosen target will take; see cardFace. */
+  constructor(scene: Phaser.Scene, x: number, y: number, skill: Skill, onTap: () => void, text: string = skill.text, stats: Stats = { maxHp: 1, atk: 1, def: 0 }, preview?: CardPreview) {
     super(scene, x, y);
     this.skillId = skill.id;
-    const face = cardFace(skill, stats);
+    const face = cardFace(skill, stats, preview);
     const c = CARD_COLORS[face.kind];
     this.bg = scene.add.rectangle(0, 0, CARD_W, CARD_H, c.fill).setStrokeStyle(2, c.edge);
     // Name in the rarity colour, body text under it, the headline number big in the bottom-left corner.
     const name = scene.add.text(0, -CARD_H / 2 + 7, skill.name, { fontFamily: FONT, fontSize: '14px', color: rarityText(skill), fontStyle: 'bold', wordWrap: { width: CARD_W - 16 }, align: 'center' }).setOrigin(0.5, 0);
     const body = scene.add.text(0, -CARD_H / 2 + 7 + name.height + 3, text, { fontFamily: FONT, fontSize: '10px', color: '#d7dbe6', wordWrap: { width: CARD_W - 14 }, align: 'center' }).setOrigin(0.5, 0);
     const value = scene.add.text(-CARD_W / 2 + 10, CARD_H / 2 - 6, face.value, { fontFamily: FONT, fontSize: '30px', color: c.accent, fontStyle: 'bold' }).setOrigin(0, 1);
-    const unit = scene.add.text(-CARD_W / 2 + 12 + value.width + 4, CARD_H / 2 - 10, face.unit, { fontFamily: FONT, fontSize: '10px', color: c.accent }).setOrigin(0, 1);
+    // The unit may carry the reasons the number moved ("damage · armour, hardened"); it wraps upward beside the number.
+    const unit = scene.add.text(-CARD_W / 2 + 12 + value.width + 4, CARD_H / 2 - 10, face.unit, { fontFamily: FONT, fontSize: '10px', color: c.accent, wordWrap: { width: CARD_W - 24 - value.width }, lineSpacing: -2 }).setOrigin(0, 1);
     this.add([this.bg, name, body, value, unit]);
     // Use limits ride the bottom-right corner so they are never missed.
     if (skill.uses) {

@@ -62,15 +62,29 @@ export function describeSkill(skill: Skill, stats: Stats): string {
 /** Card face: colour family plus the one number that matters, shown large under the text (DECISIONS #28). */
 export type CardKind = 'attack' | 'defense' | 'heal' | 'magic';
 export interface CardFace { kind: CardKind; value: string; unit: string; }
+/** What a damage card will do to the current target, hit by hit, with the reasons the number differs from the card's own (DECISIONS #40). Computed by core/combat `previewDamage`. */
+export interface CardPreview { hits: { amount: number; blocked: boolean }[]; reasons: string[]; }
 
-export function cardFace(skill: Skill, stats: Stats): CardFace {
+/**
+ * With a `preview` (in combat, against the chosen target) the headline is the number that will
+ * actually land, armour, Harden, Exposed, Weak, Scatter and blocks included, and the unit names
+ * why it differs from the text's base number. Without one (shop, rewards) it is the base.
+ */
+export function cardFace(skill: Skill, stats: Stats, preview?: CardPreview): CardFace {
   const dmg = skill.effects.find((e): e is Extract<Effect, { type: 'damage' }> => e.type === 'damage');
   const heal = skill.effects.find((e): e is Extract<Effect, { type: 'heal' }> => e.type === 'heal');
   const st = skill.effects.filter((e): e is Extract<Effect, { type: 'status' }> => e.type === 'status');
   if (dmg) {
     const hits = dmg.hits ?? 1, n = baseHit(stats, dmg);
     const magic = dmg.kind === 'magic';
-    return { kind: magic ? 'magic' : 'attack', value: hits > 1 ? `${n}×${hits}` : `${n}`, unit: magic ? 'magic' : 'damage' };
+    const kind = magic ? 'magic' : 'attack', unit = magic ? 'magic' : 'damage';
+    if (!preview) return { kind, value: hits > 1 ? `${n}×${hits}` : `${n}`, unit };
+    const landing = preview.hits.filter((h) => !h.blocked);
+    const why = preview.reasons.length ? ` · ${preview.reasons.join(', ')}` : '';
+    if (landing.length === 0) return { kind, value: '0', unit: `blocked${why}` };
+    const same = landing.every((h) => h.amount === landing[0]!.amount);
+    const value = landing.length > 1 && same && landing.length === hits ? `${landing[0]!.amount}×${hits}` : `${landing.reduce((a, h) => a + h.amount, 0)}`;
+    return { kind, value, unit: unit + why };
   }
   if (heal) return { kind: 'heal', value: `${Math.round((heal.flat ?? 0) + (heal.pct ?? 0) * stats.maxHp)}`, unit: 'heal' };
   const block = st.find((e) => e.target === 'self' && (e.status === 'guard' || e.status === 'ward' || e.status === 'aegis'));

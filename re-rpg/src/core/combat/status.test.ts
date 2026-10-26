@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Rng } from '@core/rng';
 import { createCombat, step } from './engine';
+import { previewDamage } from './damage';
 import { getStatus, hasStatus } from './status';
 import type { CombatEvent, CombatState } from './types';
 import type { Enemy, EnemyMove, StatusId } from '@data/types';
@@ -326,5 +327,48 @@ describe('duos: every status event names its enemy slot', () => {
     const r3 = play(s, 'attack', 1);
     expect(landed(r3, 'player')).toEqual([4]);                     // the shell lapsed at the end of round 2
     expect(r3.find((e) => e.t === 'damage' && e.source === 'player')).toMatchObject({ who: 1 });
+  });
+});
+
+describe('card preview (what the headline will say)', () => {
+  const dmg = { type: 'damage', mult: 1 } as const;
+  const vs = (def: number, statuses: { id: StatusId; turns: number; magnitude: number }[] = [], attackerStatuses: typeof statuses = []) => {
+    const s = fight(['attack'], seq('t', [WAIT], { maxHp: 30, atk: 3, def }));
+    s.enemy.statuses.push(...statuses);
+    s.player.statuses.push(...attackerStatuses);
+    return s;
+  };
+  const st = (id: StatusId, magnitude = 1) => ({ id, turns: 2, magnitude });
+
+  it('matches computeHit for armour, Harden, Exposed, Weak and Scatter, and names each', () => {
+    const s0 = vs(0);
+    expect(previewDamage(s0.player, s0.enemy, dmg)).toEqual({ hits: [{ amount: 4, blocked: false }], reasons: [] });
+    const s1 = vs(1);
+    expect(previewDamage(s1.player, s1.enemy, dmg)).toEqual({ hits: [{ amount: 3, blocked: false }], reasons: ['armour'] });
+    const s2 = vs(1, [st('harden')]);
+    expect(previewDamage(s2.player, s2.enemy, dmg)).toEqual({ hits: [{ amount: 2, blocked: false }], reasons: ['armour', 'hardened'] });
+    const s3 = vs(1, [st('exposed')]);
+    expect(previewDamage(s3.player, s3.enemy, dmg)).toEqual({ hits: [{ amount: 6, blocked: false }], reasons: ['armour', 'exposed'] });
+    const s4 = vs(1, [st('harden')], [st('weak')]);
+    expect(previewDamage(s4.player, s4.enemy, dmg)).toEqual({ hits: [{ amount: 1, blocked: false }], reasons: ['weak', 'armour', 'hardened'] });
+    const s5 = vs(0, [st('scatter')]);
+    expect(previewDamage(s5.player, s5.enemy, dmg)).toEqual({ hits: [{ amount: 2, blocked: false }], reasons: ['scattered'] });
+    // Every preview equals what the engine then deals.
+    for (const s of [s0, s1, s2, s3, s4, s5]) {
+      const want = previewDamage(s.player, s.enemy, dmg).hits[0]!.amount;
+      expect(landed(play(s, 'attack'), 'player')).toEqual([want]);
+    }
+  });
+
+  it('spends blocks in order: Guard stops physical hits, Ward magic, Aegis all; the rest land', () => {
+    const s = vs(0, [st('guard', 1)]);
+    expect(previewDamage(s.player, s.enemy, dmg)).toEqual({ hits: [{ amount: 0, blocked: true }], reasons: ['guarded'] });
+    expect(previewDamage(s.player, s.enemy, { ...dmg, kind: 'magic' })).toEqual({ hits: [{ amount: 4, blocked: false }], reasons: [] });
+    expect(previewDamage(s.player, s.enemy, { ...dmg, hits: 3 })).toEqual({ hits: [{ amount: 0, blocked: true }, { amount: 4, blocked: false }, { amount: 4, blocked: false }], reasons: ['guarded'] });
+    const w = vs(0, [st('ward', 1)]);
+    expect(previewDamage(w.player, w.enemy, { ...dmg, kind: 'magic' })).toEqual({ hits: [{ amount: 0, blocked: true }], reasons: ['warded'] });
+    expect(previewDamage(w.player, w.enemy, dmg).hits[0]).toEqual({ amount: 4, blocked: false });
+    const a = vs(0, [st('aegis')]);
+    expect(previewDamage(a.player, a.enemy, { ...dmg, hits: 2 })).toEqual({ hits: [{ amount: 0, blocked: true }, { amount: 0, blocked: true }], reasons: ['aegis'] });
   });
 });

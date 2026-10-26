@@ -1,5 +1,7 @@
+import type { Effect } from '@data/types';
+import type { CardPreview } from '@data/describe';
 import type { Combatant } from './types';
-import { hasStatus } from './status';
+import { getStatus, hasStatus } from './status';
 
 export const EXPOSED_MULT = 2;
 export const WEAK_MULT = 0.5;
@@ -32,4 +34,31 @@ export function computeHit(attacker: Combatant, target: Combatant, mult: number,
 /** What the intent display shows: total damage if every hit lands unblocked, given current statuses. */
 export function predictDamage(attacker: Combatant, target: Combatant, mult: number, hits: number, ignoreDef = false, flat = 0): number {
   return computeHit(attacker, target, mult, ignoreDef, flat, hits) * hits;
+}
+
+/**
+ * What one damage effect will do to `target` right now, hit by hit, for the card face
+ * (DECISIONS #40): blocks are spent in order (Aegis stops all, Guard the physical, Ward the
+ * magic), then each hit is exactly `computeHit`. `reasons` names everything that moved the
+ * number off the card's own base: the target's armour, Harden, Exposed, Scatter and blocks,
+ * the attacker's Weak. Brace's counter is not a change to what lands, so it is not here.
+ */
+export function previewDamage(attacker: Combatant, target: Combatant, e: Extract<Effect, { type: 'damage' }>): CardPreview {
+  const hits = e.hits ?? 1;
+  const aegis = hasStatus(target, 'aegis');
+  let stacks = getStatus(target, e.kind === 'magic' ? 'ward' : 'guard')?.magnitude ?? 0;
+  const out: CardPreview['hits'] = [];
+  for (let i = 0; i < hits; i++) {
+    const amount = computeHit(attacker, target, e.mult, e.ignoreDef, e.flat ?? 0, hits);
+    if (aegis || stacks > 0) { if (!aegis) stacks -= 1; out.push({ amount: 0, blocked: true }); continue; }
+    out.push({ amount, blocked: false });
+  }
+  const reasons: string[] = [];
+  if (hasStatus(attacker, 'weak')) reasons.push('weak');
+  if (hits === 1 && hasStatus(target, 'scatter')) reasons.push('scattered');
+  if (!e.ignoreDef && target.stats.def > 0) reasons.push('armour');
+  if (hasStatus(target, 'harden')) reasons.push('hardened');
+  if (hasStatus(target, 'exposed')) reasons.push('exposed');
+  if (out.some((h) => h.blocked)) reasons.push(aegis ? 'aegis' : e.kind === 'magic' ? 'warded' : 'guarded');
+  return { hits: out, reasons };
 }
