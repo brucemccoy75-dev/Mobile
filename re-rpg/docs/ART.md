@@ -147,3 +147,24 @@ Same flat vector cel-shaded style sheet as the others. Prompt:
 
 Cut with `scripts/cut-sprite.py <src> public/art/c wren 230` and add `enemy_wren_c` to
 `BootScene.ART_FILES`. Until then she is the purple placeholder.
+
+## Painted overworld maps (DECISIONS #39)
+
+One painting per screen, 2592×1296 (36×18 tiles at 72 px), saved as `public/art/c/map<N>.jpg`
+around 85% quality. Process:
+
+1. `python3 scripts/layout-image.py screen1 art-src/layout-screen1.png` renders the flat layout
+   with gold dots on the node clearings.
+2. Generate image-to-image from that file at moderate strength (about 0.5–0.6) with the prompt
+   below, so the composition survives and only the rendering changes.
+3. Drop the result in, open the game with `?dev` and compare the magenta road overlay to the
+   painting; move the ASCII roads in `scripts/author-map.py` to the painting, never the reverse.
+   Every road junction must stay a node.
+
+Prompt (screen 1): top-down three-quarter view fantasy map painting of a forest valley, flat vector
+cel-shaded style with thick clean outlines and a limited saturated palette, consistent soft light
+from the top left; keep the exact layout of the reference (winding dirt road west to a walled stone
+arena in the east, a northern loop around a lake, a southern loop past a smaller lake, short spur
+paths, dense forest in the corners, rocky cliff edges); each gold dot is an open grassy clearing on
+the road with nothing in it; no text, icons, characters or UI. For screen 2 swap the forest for
+marsh: reeds, standing water, dead trees, mist, the arena half drowned.

@@ -158,3 +158,15 @@ healed 80 of it back, 7 Bind Wound plays doing most of that. Duos were the only 
 round twice or three times. Bind Wound is now once per fight: still the emergency button, no longer
 a loop. Two copies in the deck still mean two heals. If duos still feel soft after this, the next
 levers are the shop heal price and the shrine healing half rather than full.
+
+## 39. Painted overworld backdrops; sustain nerfs
+
+Each screen can carry one painted map (`public/art/c/map<N>.jpg`, texture `map_<N>`); when it
+exists it replaces the tileset and props for that screen, and the node markers, hero and ghost
+stand on it. Pipeline (docs/ART.md): `scripts/layout-image.py` renders the ASCII layout at
+in-game size, the painting is generated image-to-image from it, then the dev overlay
+(`?dev` or `localStorage rerpg:dev=1`) draws the code's roads over the painting and the ASCII is
+moved to match. Screen 1 is painted; the tileset still draws screen 2 until it is.
+Sustain, after the first node-map playthrough healed back most of the duo damage: Bind Wound
+heals 25% (was 35%) and is once per fight (#38), the shop heal restores 35% (was 50%), the
+shrine heals half (was full).

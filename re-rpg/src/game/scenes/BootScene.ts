@@ -24,6 +24,7 @@ export const ART_FILES: Record<string, string> = {
   enemy_rat_pack_c: 'art/c/rat_pack@2x.png',
   enemy_gatekeeper_c: 'art/c/gatekeeper@2x.png', // Knight Andre
   bg_forest: 'art/c/bg_forest.jpg',
+  map_1: 'art/c/map1.jpg', // painted screen 1 (docs/ART.md); the tileset draws when a screen has no painting
 };
 
 /** Wires persistence and loads meta before the title shows. Optional art loads here too. */

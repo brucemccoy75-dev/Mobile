@@ -259,3 +259,10 @@ Wren → tinker → re-armed fight → tinker). Next for this layer:
 3. Marker polish: an "entered" tick on cleared calm nodes, a route preview line when a node is
    tapped, the ghost marker offset.
 4. Bag tuning from play: 13 open slots, 1 shop, 1 shrine, 3 treasures, 8 monsters (3 unknown).
+
+## 14. Painted map shipped (2026-10-26)
+
+Screen 1 has its painting; the roads were traced to it (north loop row 2, west side column 10).
+Open: the screen-2 painting from `art-src/layout-screen2.png`; a little life on the painting (lake
+shimmer, drifting cloud shadows, fireflies at clearings); painted node icons to replace the prop
+sprites; the Wren still.

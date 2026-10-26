@@ -30,8 +30,8 @@ export const SKILLS: Skill[] = [
   { id: 'shield_bash', name: 'Shield Bash', text: 'Deal 60% damage and block the next hit. Tiring: Weak next turn.', classId: 'warrior', setId: 'warrior_tank', rarity: 'common',
     effects: [{ type: 'damage', mult: 0.6 }, { type: 'status', target: 'self', status: 'guard', turns: 99, magnitude: 1 }, { type: 'status', target: 'self', status: 'weak', turns: 2 }] },
   // Once per fight (DECISIONS #38): a second and third Bind Wound in a long duo fight healed back most of what duos deal.
-  { id: 'bind_wound', name: 'Bind Wound', text: 'Heal 35% HP. You are Exposed for 2 rounds.', classId: 'warrior', setId: 'warrior_tank', rarity: 'uncommon', uses: 'once_per_fight',
-    effects: [{ type: 'heal', pct: 0.35 }, { type: 'status', target: 'self', status: 'exposed', turns: 2 }] },
+  { id: 'bind_wound', name: 'Bind Wound', text: 'Heal 25% HP. You are Exposed for 2 rounds.', classId: 'warrior', setId: 'warrior_tank', rarity: 'uncommon', uses: 'once_per_fight',
+    effects: [{ type: 'heal', pct: 0.25 }, { type: 'status', target: 'self', status: 'exposed', turns: 2 }] },
 
   // Warrior / DPS
   { id: 'broadsword', name: 'Broadsword Strike', text: 'Deal 100% + 4 damage. You overextend: Exposed this round.', classId: 'warrior', setId: 'warrior_dps', rarity: 'common',

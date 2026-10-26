@@ -27,13 +27,13 @@ def screen(biome):
     # main road and arena
     hline(g, 8, 1, 28)
     rect(g, 29, 5, 33, 11, '^'); rect(g, 30, 6, 32, 10, 'A'); put(g, 29, 8, 'A'); put(g, 31, 8, 'B')
-    # north lane with two spurs
-    vline(g, 9, 3, 7); hline(g, 3, 9, 23); vline(g, 23, 4, 7); vline(g, 13, 1, 2); vline(g, 18, 1, 2)
+    # north lane with two spurs (traced from the screen-1 painting: row 2, west side at x=10, rounded corners)
+    vline(g, 10, 3, 7); hline(g, 2, 11, 22); put(g, 11, 3, '='); put(g, 22, 3, '='); put(g, 23, 3, '='); vline(g, 23, 4, 7); put(g, 14, 1, '='); put(g, 18, 1, '=')
     # south lane with a spur and the road east to the lost one
     vline(g, 14, 9, 13); hline(g, 13, 14, 30); vline(g, 26, 9, 12); vline(g, 20, 14, 15)
     # nodes: every road junction is a node, so a link never forks between nodes
-    put(g, 1, 8, 'E'); put(g, 5, 8, 'o'); put(g, 9, 8, 'q'); put(g, 14, 8, 'o'); put(g, 19, 8, 'o'); put(g, 23, 8, 'o'); put(g, 26, 8, 'x')
-    put(g, 9, 5, 'o'); put(g, 13, 3, 'o'); put(g, 13, 1, 'o'); put(g, 18, 3, 'o'); put(g, 18, 1, 'o'); put(g, 23, 5, 'o')
+    put(g, 1, 8, 'E'); put(g, 5, 8, 'o'); put(g, 10, 8, 'q'); put(g, 14, 8, 'o'); put(g, 19, 8, 'o'); put(g, 23, 8, 'o'); put(g, 26, 8, 'x')
+    put(g, 10, 5, 'o'); put(g, 14, 2, 'o'); put(g, 14, 1, 'o'); put(g, 18, 2, 'o'); put(g, 18, 1, 'o'); put(g, 23, 5, 'o')
     put(g, 14, 11, 'o'); put(g, 20, 13, 'x'); put(g, 20, 15, 'o'); put(g, 26, 13, 'o'); put(g, 30, 13, 'n')
     # a rock bar so the south lane is only entered at its two ends
     hline(g, 10, 15, 16, '^'); hline(g, 10, 22, 25, '^')

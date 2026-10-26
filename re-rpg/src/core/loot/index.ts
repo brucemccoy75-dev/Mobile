@@ -143,5 +143,5 @@ export function rollShopStock(screenIndex: number, ctx: PoolContext, rng: Rng): 
     const skill = rng.weighted(pool.tomes, (s) => Math.max(1, rw[s.rarity] ?? 0));
     lines.push({ kind: 'tome', id: skill.id, price: tomePrice(skill.rarity, screenIndex), sold: false });
   }
-  return { lines, healPrice: 30 * (screenIndex + 1), healPct: 0.5, healUsed: false };
+  return { lines, healPrice: 30 * (screenIndex + 1), healPct: 0.35, healUsed: false };
 }

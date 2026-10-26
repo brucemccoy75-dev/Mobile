@@ -22,7 +22,7 @@ describe('describeSkill', () => {
   });
 
   it('covers heals, guards, statuses, multi-hit and lifesteal', () => {
-    expect(describeSkill(getSkill('bind_wound'), warrior)).toBe('Heal 9 HP. You are Exposed for 2 rounds. Once per fight.');
+    expect(describeSkill(getSkill('bind_wound'), warrior)).toBe('Heal 6 HP. You are Exposed for 2 rounds. Once per fight.');
     expect(describeSkill(getSkill('ice_armor'), warrior)).toBe('Block the next 2 physical hits.');
     expect(describeSkill(getSkill('fireball'), { maxHp: 20, atk: 5, def: 0 })).toBe('Deal 8 magic damage. Burn 2 per round for 2 rounds.');
     expect(describeSkill(getSkill('frost_bolt'), { maxHp: 20, atk: 5, def: 0 })).toBe('Deal 6 magic damage. 65% chance: Chill: the enemy skips its next action.');
@@ -47,7 +47,7 @@ describe('cardFace', () => {
     expect(cardFace(getSkill('attack'), warrior)).toEqual({ kind: 'attack', value: '4', unit: 'damage' });
     expect(cardFace(getSkill('defend'), warrior)).toEqual({ kind: 'defense', value: '1', unit: 'hit' });
     expect(cardFace(getSkill('ward'), warrior)).toEqual({ kind: 'defense', value: '1', unit: 'spell' });
-    expect(cardFace(getSkill('bind_wound'), warrior)).toEqual({ kind: 'heal', value: '9', unit: 'heal' });
+    expect(cardFace(getSkill('bind_wound'), warrior)).toEqual({ kind: 'heal', value: '6', unit: 'heal' });
     expect(cardFace(getSkill('fireball'), warrior)).toEqual({ kind: 'magic', value: '6', unit: 'magic' });
     expect(cardFace(getSkill('ice_armor'), warrior)).toEqual({ kind: 'defense', value: '2', unit: 'hits' });
     expect(cardFace(getSkill('static_field'), warrior)).toEqual({ kind: 'magic', value: '3×3', unit: 'burn' });

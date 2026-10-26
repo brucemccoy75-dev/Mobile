@@ -16,8 +16,12 @@ import { ensureRun } from '@game/telemetry';
 
 /** World pixels per tile: about 11×5 tiles on a phone, close enough to read the ground. */
 export const TILE = 72;
+/** Dev switches: `localStorage.setItem('rerpg:dev', '1')` or `?dev` in the URL. */
+export const devMode = (): boolean => { try { return localStorage.getItem('rerpg:dev') === '1' || location.search.includes('dev'); } catch { return false; } };
 const K = TILE / 48;
 const STEP_MS = 105;
+/** A shrine heals this share of max HP (DECISIONS #39); it used to heal everything. */
+const SHRINE_HEAL = 0.5;
 
 /**
  * The node overworld (DECISIONS #37). The authored terrain is the backdrop; play happens on the
@@ -84,6 +88,13 @@ export class OverworldScene extends Phaser.Scene {
 
   private drawTiles() {
     const m = this.session.map;
+    // A painted map (docs/ART.md, DECISIONS #39) replaces the tileset when one exists for this screen.
+    const painted = `map_${m.screenIndex + 1}`;
+    if (this.textures.exists(painted)) {
+      this.add.image(0, 0, painted).setOrigin(0).setDisplaySize(m.width * TILE, m.height * TILE).setDepth(1);
+      if (devMode()) this.drawAlignmentOverlay();
+      return;
+    }
     if (!this.hasArt) {
       const fill: Record<string, number> = { grass: 0x3b6d3a, forest: 0x244d2a, swamp: 0x4a5b3a, water: 0x2b5d8a, rock: 0x4a4f5a, road: 0xb8a06a, arena: 0x5a2b3a };
       const g = this.add.graphics().setDepth(1);
@@ -97,6 +108,21 @@ export class OverworldScene extends Phaser.Scene {
     const tileset = tilemap.addTilesetImage('ground', 'ground_c', 96, 96, 0, 0);
     if (tileset) tilemap.createLayer(0, tileset, 0, 0)?.setScale(TILE / 96).setDepth(1);
     for (const p of propsFor(m)) this.add.image(p.x * TILE, p.y * TILE, 'props_c', p.frame).setOrigin(0.5, 1).setScale(p.scale * K).setDepth(2 + p.y / m.height);
+  }
+
+  /** Dev only: the code's roads and node ids over the painting, to line the two up. */
+  private drawAlignmentOverlay() {
+    const m = this.session.map;
+    const g = this.add.graphics().setDepth(3).setAlpha(0.45);
+    for (let y = 0; y < m.height; y++) for (let x = 0; x < m.width; x++) {
+      const t = m.tiles[y * m.width + x]!;
+      if (t === 'road' || t === 'arena') { g.fillStyle(t === 'road' ? 0xff00ff : 0xffff00, 1); g.fillRect(x * TILE + 8, y * TILE + 8, TILE - 16, TILE - 16); }
+      else if (t === 'water') { g.fillStyle(0x00ffff, 1); g.fillRect(x * TILE + 20, y * TILE + 20, TILE - 40, TILE - 40); }
+    }
+    g.lineStyle(1, 0xffffff, 0.25);
+    for (let x = 0; x <= m.width; x++) g.lineBetween(x * TILE, 0, x * TILE, m.height * TILE);
+    for (let y = 0; y <= m.height; y++) g.lineBetween(0, y * TILE, m.width * TILE, y * TILE);
+    for (const n of m.nodes ?? []) this.add.text(n.pos.x * TILE + 4, n.pos.y * TILE + 2, `${n.id.replace('node_', '')} ${n.pos.x},${n.pos.y}`, { fontFamily: FONT, fontSize: '11px', color: '#ffffff', backgroundColor: '#000000aa' }).setDepth(8);
   }
 
   private label(y: number, str: string, color = '#e6e9f2', size = 12) {
@@ -361,8 +387,8 @@ export class OverworldScene extends Phaser.Scene {
       }
       case 'shrine': {
         if (isCleared(s, n)) { void this.toast('The shrine is dark now.', 900); this.locked = false; this.syncRings(); return; }
-        s.hp = s.stats.maxHp;
-        void this.toast('Shrine: fully healed. It fades.');
+        s.hp = Math.min(s.stats.maxHp, s.hp + Math.round(s.stats.maxHp * SHRINE_HEAL));
+        void this.toast('Shrine: half your wounds close. It fades.');
         await done(); return;
       }
       default: {

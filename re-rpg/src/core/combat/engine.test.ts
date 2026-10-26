@@ -147,15 +147,15 @@ describe('statuses', () => {
     expect(hasStatus(s.enemy, 'exposed')).toBe(false);
   });
 
-  it('Bind Wound heals 35% and leaves you Exposed for two rounds, never blocking anything', () => {
+  it('Bind Wound heals 25% and leaves you Exposed for two rounds, never blocking anything', () => {
     const s = fight(['bind_wound', 'attack'], DUMMY, 1, 10);
-    play(s, 'bind_wound'); // +round(0.35*25)=9 → 19, enemy hits 2 doubled → 15
-    expect(s.player.hp).toBe(15);
+    play(s, 'bind_wound'); // +round(0.25*25)=6 → 16, enemy hits 2 doubled → 12
+    expect(s.player.hp).toBe(12);
     expect(hasStatus(s.player, 'exposed')).toBe(true);
     expect(hasStatus(s.player, 'guard')).toBe(false);
     expect(s.log.some((e) => e.t === 'damage' && e.target === 'player' && e.blocked)).toBe(false);
-    play(s, 'attack'); // still exposed: 2 doubled → 11, then it expires
-    expect(s.player.hp).toBe(11);
+    play(s, 'attack'); // still exposed: 2 doubled → 8, then it expires
+    expect(s.player.hp).toBe(8);
     expect(hasStatus(s.player, 'exposed')).toBe(false);
   });
 
@@ -353,8 +353,8 @@ describe('curse and lifetap', () => {
   it('curse ticks like burn and halves healing while it lasts', () => {
     const s = fight(['bind_wound'], PASSIVE, 1, 10);
     s.player.statuses.push({ id: 'curse', turns: 3, magnitude: 2 });
-    play(s, 'bind_wound'); // heal 9 → halved to 4 → 14; then curse ticks 2 → 12 (passive enemy: Exposed never bites)
-    expect(s.player.hp).toBe(12);
+    play(s, 'bind_wound'); // heal 6 → halved to 3 → 13; then curse ticks 2 → 11 (passive enemy: Exposed never bites)
+    expect(s.player.hp).toBe(11);
     expect(s.log.find((e) => e.t === 'burn')).toMatchObject({ status: 'curse', amount: 2 });
   });
 
