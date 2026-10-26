@@ -1,7 +1,64 @@
-# Next session notes (written end of 2026-10-25)
+# Next session notes
 
-Read this first in a fresh session. It is the handoff from the session that shipped
-duos, progression, the card redesign, telemetry and the equipment caps.
+## 0. Start here (updated 2026-10-26, evening)
+
+**State.** Branch `claude/re-rpg-mobile-architecture-t26won`, folder `re-rpg/`, live on GitHub
+Pages at https://brucemccoy75-dev.github.io/Mobile/ (deploys ~70 s after a push; poll
+`origin/gh-pages` for "Deploy re-rpg <sha>"). 157 tests pass (`npm run check`). Last commit
+`4aa5075`. Everything below in sections 1–14 is history; the game today is:
+
+- **Node overworld** (DECISIONS #37): a static node network per screen over an authored
+  terrain, contents rolled per run, tap a reachable node to travel, swipe to pan. Screen 1 has a
+  painted backdrop (`public/art/c/map1.jpg`, DECISIONS #39); screen 2 still uses the tileset.
+  Dark plates under markers. Dev overlay with `?dev` in the URL.
+- **Dialogue with options** at every node (DECISIONS #35), relations and deaths per screen in
+  meta v5, Wren the rat-keeper at the start node, Tam the tinker's re-arm quest, Andre's
+  escalating gate lines, Wren replacing Andre at relation ≤ −2, your ghost at the node you died
+  on (DECISIONS #36).
+- **Combat**: duos, target arrow, fixed enemy rotations, flat gear attack (#31), equipment caps
+  (#33), Bind Wound 25% once per fight, shop heal 35%, shrine half (#38, #39).
+- **Progression**: EXP levels 1–10 per class, skill trees with only the two free nodes so far,
+  heirlooms every run.
+
+**Working loop.** Edit → `npm run check` → `npm run build` → `nohup npx vite preview --port
+4174 --strictPort &` (start it in its own command; `pkill` in a chained command kills the chain)
+→ Playwright at 844×390 with `window.__rerpg` (scripts in the scratchpad were throwaway; write a
+new one per check) → commit with the attribution lines → `git push -u origin <branch>` → poll
+gh-pages. Record decisions in `docs/DECISIONS.md` (next number is 40).
+
+**First task for the next session: audit buff and debuff timing and display.**
+Report from play: the Shell Beetle often takes reduced damage before HARDENED shows as a
+status. Validate every status end to end (engine order, duration ticks, when the chip appears
+and disappears, what the card's predicted number says):
+- Engine: `src/core/combat/engine.ts` (`step`: player → each living enemy → enemy ticks → player
+  tick → advance → `startRound`), `status.ts` (`applyStatus`, `tickStatuses`, `consumeBlock`,
+  `consumeBrace`, `STACKING_TURNS`, cap 4), `damage.ts` (`computeHit`: def, Exposed ×2,
+  Harden ×0.5, Weak ×0.5, gear flat).
+- Display: `src/game/scenes/CombatScene.ts` keeps `dispStatus` and `dispHp` from the event log
+  during playback (`playEvents`), snaps from the engine at the end (`syncAll`/`snapStatuses`);
+  chips are `src/game/ui/StatusChips.ts`; the card headline number comes from
+  `src/data/describe.ts` (`cardFace`, `baseHit`) and may not include the target's Harden/Exposed
+  or DEF.
+- Hypotheses for the beetle: (a) its DEF 1 is read as a shell (4 ATK − 1 DEF = 3, and the card
+  says 4); (b) `harden` is applied on the enemy's turn with `turns: 2`, ticks to 1 the same
+  round, and the chip for it is only drawn after the next deal; (c) the status event for a
+  self-buff is tagged to the wrong `who` in a duo. Write engine tests that pin the intended
+  timing for each status (exposed, guard, ward, aegis, burn, chill, weak, stun, brace, scatter,
+  curse, harden), then fix the scene so the chip and the card's predicted number agree with the
+  engine at the moment the player chooses. Make the card face show the number the target will
+  actually take (DEF, Harden, Exposed, Weak) or say why not in DECISIONS.
+- Test Mode (`src/game/scenes/TestModeScene.ts`) can pick any enemy; the Shell Beetle, Hex Imp
+  (Hex = Exposed), Adept Necromancer (Curse) and Boar (Brace) cover most statuses.
+
+**Then, in order:** screen-2 painting (prompt in docs/ART.md, layout in
+`art-src/layout-screen2.png`); life on the painting (lake shimmer, cloud shadows); painted
+node icons; fill the skill trees; a quest generator that speaks node ids; Wren's still.
+
+---
+
+# Earlier notes (2026-10-25)
+
+Read section 0 first; the rest is the record of how we got here.
 
 ## 1. Where the game is
 
