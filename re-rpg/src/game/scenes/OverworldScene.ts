@@ -152,6 +152,9 @@ export class OverworldScene extends Phaser.Scene {
     const cont = this.add.container(c.x, c.y).setDepth(5);
     const cleared = isCleared(s, n);
     const names = [n.enemyId, ...(n.extra ?? [])].filter((id): id is string => !!id).map((id) => getEnemy(id).name);
+    // A dark ground plate under every marker: stills and icons read as tokens on the painting (DECISIONS #39).
+    const big = n.kind === 'boss' ? 1.5 : n.kind === 'elite' ? 1.25 : 1;
+    cont.add(this.add.ellipse(0, TILE * 0.22, TILE * 1.15 * big, TILE * 0.58 * big, 0x070a12, cleared ? 0.3 : 0.55).setStrokeStyle(2, 0xffffff, cleared ? 0.12 : 0.28));
     switch (n.kind) {
       case 'start': {
         this.prop(cont, 'campfire', 0.4, 14 * K, () => [this.add.circle(0, 0, 10 * K, 0xff8c42)]);
@@ -214,6 +217,7 @@ export class OverworldScene extends Phaser.Scene {
   private drawPlayer() {
     const c = this.centre(this.session.playerPos);
     const k = artKey(this, `hero_${this.session.classId}`);
+    this.add.ellipse(c.x, c.y + TILE * 0.36, TILE * 0.8, TILE * 0.3, 0x070a12, 0.45).setDepth(5.5);
     if (k) { const src = this.textures.get(k).getSourceImage() as { height: number }; this.player = this.add.image(c.x, c.y + TILE * 0.42, k).setOrigin(0.5, 1).setScale((TILE * 1.25) / src.height).setDepth(6); }
     else this.player = this.add.rectangle(c.x, c.y, 26 * K, 38 * K, CLASS_COLORS[this.session.classId] ?? COLORS.player).setStrokeStyle(2, 0xffffff, 0.6).setDepth(6);
     if (isEscorting(this.session)) this.follower = this.add.rectangle(c.x - 22 * K, c.y + 6 * K, 18 * K, 26 * K, 0x9fb3c8).setStrokeStyle(2, 0xffffff, 0.6).setDepth(6);
