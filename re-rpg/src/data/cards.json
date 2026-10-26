@@ -1,4 +1,5 @@
 {
+  "version": 2,
   "basics": {
     "warrior": [
       "attack",
@@ -17,389 +18,443 @@
       "ward"
     ]
   },
-  "skills": [
+  "modifiers": [
+    {
+      "id": "block_1",
+      "name": "Block 1",
+      "target": "self",
+      "status": "guard",
+      "amount": 1
+    },
+    {
+      "id": "ward_1",
+      "name": "Ward 1",
+      "target": "self",
+      "status": "ward",
+      "amount": 1
+    },
+    {
+      "id": "tiring",
+      "name": "Tiring",
+      "target": "self",
+      "status": "weak",
+      "rounds": 2,
+      "text": "Tiring: Weak next turn."
+    },
+    {
+      "id": "winded",
+      "name": "Winded",
+      "target": "self",
+      "status": "exposed",
+      "rounds": 2,
+      "text": "You are Exposed for 2 rounds."
+    },
+    {
+      "id": "overextend",
+      "name": "Overextend",
+      "target": "self",
+      "status": "exposed",
+      "rounds": 1,
+      "text": "You overextend: Exposed this round."
+    },
+    {
+      "id": "exposed_2",
+      "name": "Exposed 2",
+      "target": "enemy",
+      "status": "exposed",
+      "rounds": 2
+    },
+    {
+      "id": "burn_2x2",
+      "name": "Burn 2\u00d72",
+      "target": "enemy",
+      "status": "burn",
+      "rounds": 2,
+      "amount": 2
+    },
+    {
+      "id": "chill_65",
+      "name": "Chill 65%",
+      "target": "enemy",
+      "status": "chill",
+      "rounds": 1,
+      "chance": 65
+    },
+    {
+      "id": "block_2",
+      "name": "Block 2",
+      "target": "self",
+      "status": "guard",
+      "amount": 2
+    },
+    {
+      "id": "burn_3x3",
+      "name": "Burn 3\u00d73",
+      "target": "enemy",
+      "status": "burn",
+      "rounds": 3,
+      "amount": 3
+    },
+    {
+      "id": "aegis_2",
+      "name": "Aegis 2",
+      "target": "self",
+      "status": "aegis",
+      "rounds": 2
+    },
+    {
+      "id": "aegis_3",
+      "name": "Aegis 3",
+      "target": "self",
+      "status": "aegis",
+      "rounds": 3
+    }
+  ],
+  "cards": [
     {
       "id": "attack",
       "name": "Attack",
-      "text": "Deal 100% damage.",
       "classId": "any",
       "rarity": "basic",
-      "effects": [
-        {
-          "type": "damage",
-          "mult": 1
-        }
-      ]
+      "uses": null,
+      "damage": {
+        "percent": 100,
+        "bonus": 0,
+        "hits": 1,
+        "type": "physical",
+        "ignoreDef": false,
+        "drain": 0,
+        "targets": "one"
+      },
+      "heal": null,
+      "modifiers": []
     },
     {
       "id": "defend",
       "name": "Defend",
-      "text": "Block the next hit.",
       "classId": "any",
       "rarity": "basic",
-      "effects": [
-        {
-          "type": "status",
-          "target": "self",
-          "status": "guard",
-          "turns": 99,
-          "magnitude": 1
-        }
+      "uses": null,
+      "damage": null,
+      "heal": null,
+      "modifiers": [
+        "block_1"
       ]
     },
     {
       "id": "ward",
       "name": "Ward",
-      "text": "Block the next magic hit or curse.",
       "classId": "any",
       "rarity": "basic",
-      "effects": [
-        {
-          "type": "status",
-          "target": "self",
-          "status": "ward",
-          "turns": 99,
-          "magnitude": 1
-        }
+      "uses": null,
+      "damage": null,
+      "heal": null,
+      "modifiers": [
+        "ward_1"
       ]
     },
     {
       "id": "shield_bash",
       "name": "Shield Bash",
-      "text": "Deal 60% damage and block the next hit. Tiring: Weak next turn.",
       "classId": "warrior",
-      "setId": "warrior_tank",
       "rarity": "common",
-      "effects": [
-        {
-          "type": "damage",
-          "mult": 0.6
-        },
-        {
-          "type": "status",
-          "target": "self",
-          "status": "guard",
-          "turns": 99,
-          "magnitude": 1
-        },
-        {
-          "type": "status",
-          "target": "self",
-          "status": "weak",
-          "turns": 2
-        }
+      "uses": null,
+      "damage": {
+        "percent": 60,
+        "bonus": 0,
+        "hits": 1,
+        "type": "physical",
+        "ignoreDef": false,
+        "drain": 0,
+        "targets": "one"
+      },
+      "heal": null,
+      "modifiers": [
+        "block_1",
+        "tiring"
       ]
     },
     {
       "id": "bind_wound",
       "name": "Bind Wound",
-      "text": "Heal 25% HP. You are Exposed for 2 rounds.",
       "classId": "warrior",
-      "setId": "warrior_tank",
       "rarity": "uncommon",
       "uses": "once_per_fight",
-      "effects": [
-        {
-          "type": "heal",
-          "pct": 0.25
-        },
-        {
-          "type": "status",
-          "target": "self",
-          "status": "exposed",
-          "turns": 2
-        }
+      "damage": null,
+      "heal": {
+        "percent": 25,
+        "flat": 0
+      },
+      "modifiers": [
+        "winded"
       ],
       "note": "Once per fight (DECISIONS #38): a second and third Bind Wound in a long duo fight healed back most of what duos deal."
     },
     {
       "id": "broadsword",
       "name": "Broadsword Strike",
-      "text": "Deal 100% + 4 damage. You overextend: Exposed this round.",
       "classId": "warrior",
-      "setId": "warrior_dps",
       "rarity": "common",
-      "effects": [
-        {
-          "type": "damage",
-          "mult": 1,
-          "flat": 4
-        },
-        {
-          "type": "status",
-          "target": "self",
-          "status": "exposed",
-          "turns": 1
-        }
+      "uses": null,
+      "damage": {
+        "percent": 100,
+        "bonus": 4,
+        "hits": 1,
+        "type": "physical",
+        "ignoreDef": false,
+        "drain": 0,
+        "targets": "one"
+      },
+      "heal": null,
+      "modifiers": [
+        "overextend"
       ],
       "note": "Flat +4 so gear does not multiply it (DECISIONS #14)."
     },
     {
       "id": "exposing_strike",
       "name": "Exposing Strike",
-      "text": "Deal 100% damage. Enemy is Exposed for 2 rounds.",
       "classId": "warrior",
-      "setId": "warrior_dps",
       "rarity": "uncommon",
-      "effects": [
-        {
-          "type": "damage",
-          "mult": 1
-        },
-        {
-          "type": "status",
-          "target": "enemy",
-          "status": "exposed",
-          "turns": 2
-        }
+      "uses": null,
+      "damage": {
+        "percent": 100,
+        "bonus": 0,
+        "hits": 1,
+        "type": "physical",
+        "ignoreDef": false,
+        "drain": 0,
+        "targets": "one"
+      },
+      "heal": null,
+      "modifiers": [
+        "exposed_2"
       ]
     },
     {
       "id": "fireball",
       "name": "Fireball",
-      "text": "Deal 150% magic damage and Burn 2 for 2 rounds.",
       "classId": "wizard",
-      "setId": "wizard_fire",
       "rarity": "common",
-      "effects": [
-        {
-          "type": "damage",
-          "mult": 1.5,
-          "kind": "magic"
-        },
-        {
-          "type": "status",
-          "target": "enemy",
-          "status": "burn",
-          "turns": 2,
-          "magnitude": 2
-        }
+      "uses": null,
+      "damage": {
+        "percent": 150,
+        "bonus": 0,
+        "hits": 1,
+        "type": "magic",
+        "ignoreDef": false,
+        "drain": 0,
+        "targets": "one"
+      },
+      "heal": null,
+      "modifiers": [
+        "burn_2x2"
       ]
     },
     {
       "id": "inferno",
       "name": "Inferno",
-      "text": "Deal 100% + 10 magic damage. You are Exposed for 2 rounds.",
       "classId": "wizard",
-      "setId": "wizard_fire",
       "rarity": "uncommon",
-      "effects": [
-        {
-          "type": "damage",
-          "mult": 1,
-          "flat": 10,
-          "kind": "magic"
-        },
-        {
-          "type": "status",
-          "target": "self",
-          "status": "exposed",
-          "turns": 2
-        }
+      "uses": null,
+      "damage": {
+        "percent": 100,
+        "bonus": 10,
+        "hits": 1,
+        "type": "magic",
+        "ignoreDef": false,
+        "drain": 0,
+        "targets": "one"
+      },
+      "heal": null,
+      "modifiers": [
+        "winded"
       ]
     },
     {
       "id": "frost_bolt",
       "name": "Frost Bolt",
-      "text": "Deal 120% damage. 65% chance to Chill (enemy skips its next action).",
       "classId": "wizard",
-      "setId": "wizard_frost",
       "rarity": "common",
-      "effects": [
-        {
-          "type": "damage",
-          "mult": 1.2,
-          "kind": "magic"
-        },
-        {
-          "type": "status",
-          "target": "enemy",
-          "status": "chill",
-          "turns": 1,
-          "chance": 0.65
-        }
+      "uses": null,
+      "damage": {
+        "percent": 120,
+        "bonus": 0,
+        "hits": 1,
+        "type": "magic",
+        "ignoreDef": false,
+        "drain": 0,
+        "targets": "one"
+      },
+      "heal": null,
+      "modifiers": [
+        "chill_65"
       ]
     },
     {
       "id": "ice_armor",
       "name": "Ice Armor",
-      "text": "Block the next 2 hits.",
       "classId": "wizard",
-      "setId": "wizard_frost",
       "rarity": "uncommon",
-      "effects": [
-        {
-          "type": "status",
-          "target": "self",
-          "status": "guard",
-          "turns": 99,
-          "magnitude": 2
-        }
+      "uses": null,
+      "damage": null,
+      "heal": null,
+      "modifiers": [
+        "block_2"
       ]
     },
     {
       "id": "spirit_lash",
       "name": "Spirit Lash",
-      "text": "Deal 120% damage and heal 50% of damage dealt.",
       "classId": "shaman",
-      "setId": "shaman_spirit",
       "rarity": "common",
-      "effects": [
-        {
-          "type": "damage",
-          "mult": 1.2,
-          "lifesteal": 0.5
-        }
-      ]
+      "uses": null,
+      "damage": {
+        "percent": 120,
+        "bonus": 0,
+        "hits": 1,
+        "type": "physical",
+        "ignoreDef": false,
+        "drain": 50,
+        "targets": "one"
+      },
+      "heal": null,
+      "modifiers": []
     },
     {
       "id": "mend",
       "name": "Mend",
-      "text": "Heal 35% HP. You are Exposed for 2 rounds.",
       "classId": "shaman",
-      "setId": "shaman_spirit",
       "rarity": "uncommon",
-      "effects": [
-        {
-          "type": "heal",
-          "pct": 0.35
-        },
-        {
-          "type": "status",
-          "target": "self",
-          "status": "exposed",
-          "turns": 2
-        }
+      "uses": null,
+      "damage": null,
+      "heal": {
+        "percent": 35,
+        "flat": 0
+      },
+      "modifiers": [
+        "winded"
       ]
     },
     {
       "id": "lightning",
       "name": "Lightning",
-      "text": "Deal 160% damage, ignoring defense.",
       "classId": "shaman",
-      "setId": "shaman_storm",
       "rarity": "common",
-      "effects": [
-        {
-          "type": "damage",
-          "mult": 1.6,
-          "ignoreDef": true,
-          "kind": "magic"
-        }
-      ]
+      "uses": null,
+      "damage": {
+        "percent": 160,
+        "bonus": 0,
+        "hits": 1,
+        "type": "magic",
+        "ignoreDef": true,
+        "drain": 0,
+        "targets": "one"
+      },
+      "heal": null,
+      "modifiers": []
     },
     {
       "id": "static_field",
       "name": "Static Field",
-      "text": "Burn 3 for 3 rounds.",
       "classId": "shaman",
-      "setId": "shaman_storm",
       "rarity": "uncommon",
-      "effects": [
-        {
-          "type": "status",
-          "target": "enemy",
-          "status": "burn",
-          "turns": 3,
-          "magnitude": 3
-        }
+      "uses": null,
+      "damage": null,
+      "heal": null,
+      "modifiers": [
+        "burn_3x3"
       ]
     },
     {
       "id": "mighty_blow",
       "name": "Mighty Blow",
-      "text": "Deal 200% damage. Fleeting: spent when played.",
       "classId": "any",
       "rarity": "rare",
       "uses": "fleeting",
-      "effects": [
-        {
-          "type": "damage",
-          "mult": 2
-        }
-      ],
+      "damage": {
+        "percent": 200,
+        "bonus": 0,
+        "hits": 1,
+        "type": "physical",
+        "ignoreDef": false,
+        "drain": 0,
+        "targets": "one"
+      },
+      "heal": null,
+      "modifiers": [],
       "note": "Fleeting like every special tome (DECISIONS #42)."
     },
     {
       "id": "stand_firm",
       "name": "Stand Firm",
-      "text": "Block every hit for 2 rounds. Fleeting: spent when played.",
       "classId": "any",
       "rarity": "rare",
       "uses": "fleeting",
-      "effects": [
-        {
-          "type": "status",
-          "target": "self",
-          "status": "aegis",
-          "turns": 2
-        }
+      "damage": null,
+      "heal": null,
+      "modifiers": [
+        "aegis_2"
       ]
     },
     {
       "id": "warding_blast",
       "name": "Warding Blast",
-      "text": "Deal 60% magic damage and block the next magic hit or curse. Tiring: Weak next turn.",
       "classId": "any",
       "rarity": "common",
-      "effects": [
-        {
-          "type": "damage",
-          "mult": 0.6,
-          "kind": "magic"
-        },
-        {
-          "type": "status",
-          "target": "self",
-          "status": "ward",
-          "turns": 99,
-          "magnitude": 1
-        },
-        {
-          "type": "status",
-          "target": "self",
-          "status": "weak",
-          "turns": 2
-        }
+      "uses": null,
+      "damage": {
+        "percent": 60,
+        "bonus": 0,
+        "hits": 1,
+        "type": "magic",
+        "ignoreDef": false,
+        "drain": 0,
+        "targets": "one"
+      },
+      "heal": null,
+      "modifiers": [
+        "ward_1",
+        "tiring"
       ]
     },
     {
       "id": "last_strike",
       "name": "Last Strike",
-      "text": "Deal 300% damage. Fleeting: the tome is spent.",
       "classId": "any",
       "rarity": "uncommon",
       "uses": "fleeting",
-      "effects": [
-        {
-          "type": "damage",
-          "mult": 3
-        }
-      ]
+      "damage": {
+        "percent": 300,
+        "bonus": 0,
+        "hits": 1,
+        "type": "physical",
+        "ignoreDef": false,
+        "drain": 0,
+        "targets": "one"
+      },
+      "heal": null,
+      "modifiers": []
     },
     {
       "id": "final_stand",
       "name": "Final Stand",
-      "text": "Block every hit for 3 rounds. Fleeting: the tome is spent.",
       "classId": "any",
       "rarity": "uncommon",
       "uses": "fleeting",
-      "effects": [
-        {
-          "type": "status",
-          "target": "self",
-          "status": "aegis",
-          "turns": 3
-        }
+      "damage": null,
+      "heal": null,
+      "modifiers": [
+        "aegis_3"
       ]
     }
   ],
-  "sets": [
+  "families": [
     {
       "id": "warrior_tank",
       "classId": "warrior",
       "name": "Bulwark",
-      "skills": [
+      "cards": [
         "shield_bash",
         "bind_wound",
         "warding_blast",
@@ -411,7 +466,7 @@
       "id": "warrior_dps",
       "classId": "warrior",
       "name": "Berserker",
-      "skills": [
+      "cards": [
         "broadsword",
         "exposing_strike",
         "mighty_blow",
@@ -422,7 +477,7 @@
       "id": "wizard_fire",
       "classId": "wizard",
       "name": "Pyromancy",
-      "skills": [
+      "cards": [
         "fireball",
         "inferno",
         "mighty_blow",
@@ -433,7 +488,7 @@
       "id": "wizard_frost",
       "classId": "wizard",
       "name": "Cryomancy",
-      "skills": [
+      "cards": [
         "frost_bolt",
         "ice_armor",
         "warding_blast",
@@ -445,7 +500,7 @@
       "id": "shaman_spirit",
       "classId": "shaman",
       "name": "Spiritcaller",
-      "skills": [
+      "cards": [
         "spirit_lash",
         "mend",
         "warding_blast",
@@ -457,7 +512,7 @@
       "id": "shaman_storm",
       "classId": "shaman",
       "name": "Stormcaller",
-      "skills": [
+      "cards": [
         "lightning",
         "static_field",
         "mighty_blow",

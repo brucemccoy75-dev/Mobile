@@ -20,7 +20,7 @@ Roughly two focused weeks to a tunable POC.
 ## Fast-POC tactics
 
 - **Shapes first.** Rectangles and circles with labels until milestone 5. Art never blocks the loop.
-- **Content in one file per type.** `data/skills.ts`, `data/items.ts`, `data/enemies.ts`. Add rows, not code.
+- **Content in one file per type.** `data/cards.json` (via the card editor, docs/CARDS.md), `data/items.ts`, `data/enemies.ts`. Add rows, not code.
 - **Sim before scene.** Every balance change is validated headless in seconds, then felt on the phone.
 - **Debug menu** behind a triple tap: set seed, grant item, jump to boss, show RNG streams.
 - **Phone testing loop**: `npm run dev --host` on LAN, or push → Pages URL in ~1 min.

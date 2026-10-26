@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { BACKDROP_GROUND, BACKDROP_HORIZON, artKey, backdropKey, reloadArt } from '@game/art';
 import { describeSkill, getEnemy, getSkill } from '@data/index';
+import type { CardPreview } from '@data/describe';
 import { basicsFor } from '@data/skills';
 import type { Enemy, Intent, Posture } from '@data/types';
 import { createCombat, currentIntent, isPlayerStunned, previewDamage, resolveTarget, skillInCombat, step, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
@@ -414,12 +415,18 @@ export class CombatScene extends Phaser.Scene {
     // Each damage card's headline is what the chosen target will take, judged by the statuses the
     // playback has shown so far (the same rule as the chips), so card and chips never disagree (DECISIONS #40).
     const target = resolveTarget(this.state, this.target);
-    const shownTarget = { ...target, statuses: this.statusList('enemy', target.slot) };
+    const shown = (en: typeof target) => ({ ...en, statuses: this.statusList('enemy', en.slot) });
     const shownPlayer = { ...this.state.player, statuses: this.statusList('player') };
     ids.forEach((id, i) => {
       const sk = skillInCombat(this.state, id);
       const dmg = sk.effects.find((e) => e.type === 'damage');
-      const preview = dmg && dmg.type === 'damage' ? previewDamage(shownPlayer, shownTarget, dmg) : undefined;
+      let preview: CardPreview | undefined;
+      if (dmg && dmg.type === 'damage') {
+        // A sweep's headline is the total over every living enemy, each judged by its own statuses.
+        const victims = dmg.targets === 'all' ? this.state.enemies.filter((e) => !e.dead) : [target];
+        const parts = victims.map((v) => previewDamage(shownPlayer, shown(v), dmg));
+        preview = { hits: parts.flatMap((p) => p.hits), reasons: [...new Set(parts.flatMap((p) => p.reasons))] };
+      }
       const card = new Card(this, startX + i * (CARD_W + gap), this.handY, sk, () => this.act(this.holdMode ? { type: 'hold', index: i } : { type: 'card', index: i, target: this.target }), describeSkill(sk, this.state.player.stats), this.state.player.stats, preview);
       this.hand.push(card);
     });

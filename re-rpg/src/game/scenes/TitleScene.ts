@@ -66,6 +66,7 @@ export class TitleScene extends Phaser.Scene {
     }, { width: 100, height: 28, fontSize: '12px' }).setAlpha(0.5);
     // Dev row: sandbox fights and the run log export (DECISIONS #26).
     new Button(this, width - 80, height - 58, 'test mode', () => this.scene.start('TestMode'), { width: 120, height: 28, fontSize: '12px' }).setAlpha(0.7);
+    new Button(this, width - 340, height - 58, 'card editor', () => { window.location.href = './editor.html'; }, { width: 120, height: 28, fontSize: '12px' }).setAlpha(0.7);
     const logBtn = new Button(this, width - 210, height - 58, 'run log', () => void shareRunLog(this).then((m) => { logBtn.label.setText(m); logBtn.bg.width = Math.max(120, logBtn.label.width + 24); }), { width: 120, height: 28, fontSize: '12px' }).setAlpha(0.7);
     // Art style A/B switch (docs/ART.md): C is the chosen look, A stays for comparison.
     const artBtn = new Button(this, width - 290, height - 24, `art ${ART_STYLE_LABEL[getArtStyle()]}`, () => {

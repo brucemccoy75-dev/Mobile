@@ -21,5 +21,5 @@
       "@save/*": ["src/save/*"]
     }
   },
-  "include": ["src", "vite.config.ts", "vitest.config.ts"]
+  "include": ["src", "scripts/cards-validate.ts", "vite.config.ts", "vitest.config.ts"]
 }

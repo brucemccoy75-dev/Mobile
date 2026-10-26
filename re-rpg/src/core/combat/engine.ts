@@ -127,8 +127,16 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
       if (skill.uses === 'once_per_fight') { state.player.exhausted.push(skill.id); events.push({ t: 'exhaust', skill: skill.id }); }
       else { state.player.consumed.push(skill.id); events.push({ t: 'consumed', skill: skill.id }); }
     }
-    applyEffects(skill.effects, state.player, target, roll, events);
     tagWho(events, from, target.slot);
+    for (const e of skill.effects) {
+      // A sweep (DECISIONS #44) runs the damage over every living enemy, front to back; everything else goes to the chosen one.
+      const victims = e.type === 'damage' && e.targets === 'all' ? livingEnemies(state) : [target];
+      for (const v of victims) {
+        const f = events.length;
+        applyEffects([e], state.player, v, roll, events);
+        tagWho(events, f, v.slot);
+      }
+    }
     if (checkDeaths(state, events)) return finish(state, rng, events);
   }
 

@@ -1,14 +1,18 @@
 import type { Skill, SkillSet } from './types';
 
 /**
- * Every card, family and tree node lives in cards.json, which is the file the card spreadsheet
- * round-trips through (scripts/cards-xlsx.py export | import, DECISIONS #43). Edit the sheet or
- * the JSON, never this file, to change what a card does or where it sits on a tree.
+ * Every card, modifier, family and tree node lives in cards.json, the file the card editor
+ * (editor.html, DECISIONS #44) writes. `compileCards` turns those records into the engine's
+ * skills; nothing here is edited by hand.
  */
-import cards from './cards.json';
+import cardsJson from './cards.json';
+import { compileCards, type CardsData } from './cardsSchema';
 
-export const SKILLS: Skill[] = cards.skills as Skill[];
-export const SETS: SkillSet[] = cards.sets as SkillSet[];
+export const CARDS_DATA = cardsJson as unknown as CardsData;
+const compiled = compileCards(CARDS_DATA);
+
+export const SKILLS: Skill[] = compiled.skills;
+export const SETS: SkillSet[] = compiled.sets;
 
 const basic = (id: string): Skill => SKILLS.find((s) => s.id === id)!;
 export const ATTACK: Skill = basic('attack');
@@ -25,7 +29,7 @@ export const BASIC_DECK: string[] = ['attack', 'attack', 'defend', 'ward'];
  * attacks and defends, the wizard attacks and wards, the shaman does both. Everything else,
  * Ward for a warrior included, lives on the skill tree.
  */
-export const CLASS_BASICS: Record<string, string[]> = cards.basics;
+export const CLASS_BASICS: Record<string, string[]> = compiled.basics;
 export const basicsFor = (classId: string): string[] => CLASS_BASICS[classId] ?? BASIC_DECK;
 
 /** The class-agnostic tomes (DECISIONS #21): fleeting specials and Warding Blast; each sits in a family per class (#42). */

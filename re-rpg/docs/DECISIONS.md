@@ -258,3 +258,22 @@ sheet is imported with one command and `npm run check` then says what the number
 Bulwark and Berserker cost two points each (was one, #41): the second fresh run under #42
 bought its first family after three kills and reached Wren with a full Berserker deck; at two
 points the first family lands at level 3, about seven kills in.
+
+## 44. One card model, a card editor in the game, and a mechanical import
+
+The spreadsheet of #43 asked the designer to think in percentages and a mini-language; it lasted
+one message. Replaced by a model every card shares (`docs/CARDS.md`): damage as percent of class
+attack plus a flat bonus, hits, type, ignore-defence, drain, and the target shape; heal; and
+links into a modifier lookup, where a status with fixed numbers (Tiring = self Weak 2 rounds) is
+defined once and linked from any card. Families own membership and the tree owns costs. The
+game compiles the records into engine effects at load; the engine did not change for this,
+except for the first new capability built the way all future ones will be: a damage effect may
+target every living enemy (`targets: all`), with the sweep running front to back and the card
+headline showing the total.
+The editor is a page reached from the title screen, phone first: test attack, test gear and
+target DEF drive a computed number per card through the engine's own formula; tabs for cards,
+modifiers and the tree; an export button. It never changes the game on the device: the file it
+exports is imported by a fixed procedure (validate against the committed file, run the checks,
+update only pinned numbers, re-run the sim, commit) written so a cheaper model can do it without
+judgement. Shipped card ids are permanent (retire by removing the family); basics and the other
+two classes are frozen by the validator. The sheet and its script are gone.

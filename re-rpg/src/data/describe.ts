@@ -25,6 +25,7 @@ export function describeSkill(skill: Skill, stats: Stats): string {
         const hits = e.hits ?? 1;
         const kind = e.kind === 'magic' ? 'magic ' : '';
         let s = hits > 1 ? `${hits} hits of ${n} ${kind}damage` : `Deal ${n} ${kind}damage`;
+        if (e.targets === 'all') s += ' to every enemy';
         if (e.ignoreDef) s += ', ignoring defence';
         if (e.lifesteal) s += `, heal ${e.lifesteal >= 1 ? 'all' : e.lifesteal === 0.5 ? 'half' : `${Math.round(e.lifesteal * 100)}%`} of it`;
         parts.push(s + '.');
@@ -77,7 +78,7 @@ export function cardFace(skill: Skill, stats: Stats, preview?: CardPreview): Car
   if (dmg) {
     const hits = dmg.hits ?? 1, n = baseHit(stats, dmg);
     const magic = dmg.kind === 'magic';
-    const kind = magic ? 'magic' : 'attack', unit = magic ? 'magic' : 'damage';
+    const kind = magic ? 'magic' : 'attack', unit = (magic ? 'magic' : 'damage') + (dmg.targets === 'all' ? ' to all' : '');
     if (!preview) return { kind, value: hits > 1 ? `${n}×${hits}` : `${n}`, unit };
     const landing = preview.hits.filter((h) => !h.blocked);
     const why = preview.reasons.length ? ` · ${preview.reasons.join(', ')}` : '';

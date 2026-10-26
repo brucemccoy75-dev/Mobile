@@ -53,7 +53,7 @@ Rarity: common / uncommon / rare / boss. Rarity gates the modifier budget, not j
 
 ## 5. Loot & pools (the replay engine)
 
-**Per-run pool** = the tomes of the run's families (the heirloom picks' families, plus any node bought during the run; the general tomes belong to a family too, DECISIONS #42) + equipment the class can use, **minus equipped items** (a slot holds one). With no family there are no tomes. Tomes may repeat: a second copy of a skill in the deck makes it come up more often, which is the deck-building lever.
+**Per-run pool** = the tomes of the run's families (the heirloom picks' families, plus any node bought during the run; the general tomes belong to a family too, DECISIONS #42) + equipment the class can use, **minus equipped items** (a slot holds one). With no family there are no tomes. Cards, families and tree costs are data in `src/data/cards.json`, edited in the in-game card editor (docs/CARDS.md). Tomes may repeat: a second copy of a skill in the deck makes it come up more often, which is the deck-building lever.
 
 Rules:
 

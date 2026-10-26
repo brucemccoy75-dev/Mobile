@@ -31,7 +31,7 @@ export interface Status {
 export type Target = 'self' | 'enemy';
 
 export type Effect =
-  | { type: 'damage'; mult: number; flat?: number; hits?: number; ignoreDef?: boolean; lifesteal?: number; kind?: DamageKind }
+  | { type: 'damage'; targets?: 'all'; mult: number; flat?: number; hits?: number; ignoreDef?: boolean; lifesteal?: number; kind?: DamageKind }
   | { type: 'heal'; pct?: number; flat?: number }
   /** `kind: 'magic'` on a hostile status means Ward (or Aegis) blocks it like a spell. */
   | { type: 'status'; target: Target; status: StatusId; turns: number; magnitude?: number; chance?: number; kind?: DamageKind };

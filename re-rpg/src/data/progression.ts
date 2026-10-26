@@ -1,5 +1,5 @@
 import type { ClassId, Enemy, SetId } from './types';
-import cards from './cards.json';
+import { CARDS_DATA } from './skills';
 
 /**
  * Per-class progression (DECISIONS #32): EXP from kills, levels 1-10 on a steep curve,
@@ -15,7 +15,7 @@ export interface TreeNode {
 }
 
 /** Per-class trees, from cards.json (the card spreadsheet's "Skill tree" sheet, DECISIONS #43). Warrior nodes cost 2 (#43); the other classes are out of scope and stay free. */
-export const TREES: Record<ClassId, TreeNode[]> = cards.trees as Record<ClassId, TreeNode[]>;
+export const TREES: Record<ClassId, TreeNode[]> = CARDS_DATA.trees;
 
 export const LEVEL_CAP = 10;
 export const POINTS_PER_LEVEL = 1;

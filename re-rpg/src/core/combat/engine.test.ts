@@ -4,7 +4,7 @@ import { createCombat, step, currentIntent, isPlayerStunned } from './engine';
 import { hasStatus, getStatus } from './status';
 import type { CombatState } from './types';
 import type { Enemy } from '@data/types';
-import { getEnemy } from '@data/index';
+import { getEnemy, registerSkill } from '@data/index';
 
 const WARRIOR = { stats: { maxHp: 25, atk: 4, def: 1 } };
 
@@ -552,3 +552,29 @@ describe('gear attack is flat per hit', () => {
   });
 });
 
+
+describe('sweeps (DECISIONS #44)', () => {
+  const SWEEP = { id: 'test_sweep', name: 'Sweep', text: '', classId: 'any' as const, rarity: 'common' as const, effects: [{ type: 'damage' as const, mult: 1, targets: 'all' as const }, { type: 'status' as const, target: 'enemy' as const, status: 'exposed' as const, turns: 2 }] };
+  it('a targets-all hit lands on every living enemy, each with its own statuses, tagged by slot; other effects go to the chosen one', () => {
+    const s = createCombat({ player: { ...WARRIOR, deck: [], basics: [] }, enemies: [PASSIVE, { ...PASSIVE, id: 'p2', stats: { maxHp: 30, atk: 3, def: 1 } }], rng: new Rng(1) });
+    s.enemies[1]!.statuses.push({ id: 'harden', turns: 2, magnitude: 1 });
+    registerSkill(SWEEP);
+    s.player.hand.push('test_sweep');
+    const ev = step(s, { type: 'card', index: 0, target: 1 });
+    const hits = ev.filter((e) => e.t === 'damage' && e.source === 'player');
+    expect(hits.map((e) => (e.t === 'damage' ? [e.who, e.amount] : []))).toEqual([[0, 4], [1, 2]]); // 4 − 1 def = 3, hardened → 2
+    expect(s.enemies[0]!.hp).toBe(26);
+    expect(s.enemies[1]!.hp).toBe(28);
+    expect(ev.find((e) => e.t === 'statusApplied' && e.status === 'exposed')).toMatchObject({ who: 1 });
+    expect(hasStatus(s.enemies[0]!, 'exposed')).toBe(false);
+  });
+  it('a dead enemy is skipped and a single-target card is unchanged', () => {
+    const s = createCombat({ player: { ...WARRIOR, deck: [], basics: [] }, enemies: [PASSIVE, PASSIVE], rng: new Rng(1) });
+    s.enemies[0]!.hp = 0; s.enemies[0]!.dead = true;
+    registerSkill(SWEEP);
+    s.player.hand.push('test_sweep');
+    const ev = step(s, { type: 'card', index: 0, target: 0 });
+    expect(ev.filter((e) => e.t === 'damage' && e.source === 'player')).toHaveLength(1);
+    expect(s.enemies[1]!.hp).toBe(26);
+  });
+});
