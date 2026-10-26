@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { getItem, getSkill } from '@data/index';
 import { DECK_CAP } from '@core/combat';
 import { createMeta, gainExp, unlockNode } from '@core/meta';
-import { applyHeirlooms, createSession, currentQuest, deserialize, serialize, spendConsumedTomes, setName, takeChoice, turnInQuest } from './session';
+import { adoptFamily, applyHeirlooms, createSession, currentQuest, deserialize, poolCtx, serialize, spendConsumedTomes, setName, takeChoice, turnInQuest } from './session';
+import { buildPool } from '@core/loot';
 
 describe('session', () => {
   it('serialises and resumes identically, including RNG streams', () => {
@@ -29,6 +30,22 @@ describe('session', () => {
     expect(s.families).toEqual([]);
     expect(setName(s)).toBe('basics only');
     expect(s.shop.lines.every((l) => l.kind !== 'tome' || getSkill(l.id).classId === 'any')).toBe(true);
+  });
+
+  it('a family bought mid-run drops from the next reward on', () => {
+    const meta = createMeta();
+    const s = createSession('warrior', meta, 'ADOPT-1');
+    expect(buildPool(poolCtx(s, meta)).tomes.map((t) => t.id)).not.toContain('shield_bash');
+    expect(adoptFamily(s, 'warrior_tank')).toBe(true);
+    expect(adoptFamily(s, 'warrior_tank')).toBe(false);
+    expect(s.families).toEqual(['warrior_tank']);
+    expect(s.setId).toBe('warrior_tank');
+    expect(setName(s)).toBe('Bulwark');
+    expect(buildPool(poolCtx(s, meta)).tomes.map((t) => t.id)).toEqual(expect.arrayContaining(['shield_bash', 'bind_wound']));
+    adoptFamily(s, 'warrior_dps');
+    expect(s.families).toEqual(['warrior_tank', 'warrior_dps']);
+    expect(s.setId).toBe('warrior_tank');
+    expect(deserialize(JSON.parse(JSON.stringify(serialize(s))), meta).families).toEqual(['warrior_tank', 'warrior_dps']);
   });
 
   it('every run opens with a heirloom spread; the picks set the run families and the tome pool', () => {

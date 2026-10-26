@@ -145,6 +145,18 @@ export function applyHeirlooms(s: RunSession, picks: Heirloom[], meta?: MetaStat
   s.quests = [...s.quests.filter((q) => !q.id.startsWith(`quest_${s.screenIndex}_`)), generateQuest(s.map, { ...poolCtx(s, meta), screenIndex: s.screenIndex }, s.rng.stream('quest'), s.map.questGiver, s.map.npcSpot, questOptions(s))];
 }
 
+/**
+ * A family bought on the skill tree during a run joins the run at once (its tomes drop from the
+ * next reward on; the shop keeps its stock until the next screen). The heirloom rule "only the
+ * picks' families drop" still holds for what the run started with.
+ */
+export function adoptFamily(s: RunSession, setId: SetId): boolean {
+  if (s.families.includes(setId)) return false;
+  s.families.push(setId);
+  if (s.families.length === 1) s.setId = setId;
+  return true;
+}
+
 /** Screen 1's authored giver is Wren, who would never ask you to hunt her rats (DECISIONS #35). */
 const questOptions = (s: RunSession): QuestOptions => (s.map.authored && s.screenIndex === 0 ? { voice: WREN, avoidHunt: ['rat_pack'] } : {});
 

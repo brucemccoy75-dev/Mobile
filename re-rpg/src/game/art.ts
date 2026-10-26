@@ -1,4 +1,5 @@
 import type Phaser from 'phaser';
+import { ART_FILES } from '@game/scenes/BootScene';
 import type { TileType } from '@core/map';
 
 /**
@@ -47,3 +48,21 @@ export function backdropKey(tile?: TileType): string {
 /** Fraction of the backdrop's height where the flat ground begins; combatants' feet sit on this line. */
 export const BACKDROP_HORIZON = 0.84;
 export const BACKDROP_GROUND = 0x8b8d45;
+
+/**
+ * A texture that failed to load at boot (a dropped fetch, or a Pages deploy in progress) would
+ * leave its placeholder square for the whole session. Fetch it again now; `onLoaded` runs with
+ * the texture key once it is in, so the scene can swap the placeholder out.
+ */
+export function reloadArt(scene: Phaser.Scene, base: string, onLoaded: (key: string) => void): void {
+  const order = [getArtStyle(), ...ART_STYLES.filter((s) => s !== getArtStyle())];
+  for (const s of order) {
+    const key = `${base}_${s}`;
+    const path = ART_FILES[key];
+    if (!path) continue;
+    scene.load.image(key, path);
+    scene.load.once(`filecomplete-image-${key}`, () => { if (scene.textures.exists(key)) onLoaded(key); });
+    scene.load.start();
+    return;
+  }
+}

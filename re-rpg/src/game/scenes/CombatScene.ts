@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { BACKDROP_GROUND, BACKDROP_HORIZON, artKey, backdropKey } from '@game/art';
+import { BACKDROP_GROUND, BACKDROP_HORIZON, artKey, backdropKey, reloadArt } from '@game/art';
 import { describeSkill, getEnemy, getSkill } from '@data/index';
 import type { Enemy, Intent, Posture } from '@data/types';
 import { createCombat, currentIntent, isPlayerStunned, previewDamage, resolveTarget, skillInCombat, step, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
@@ -155,6 +155,8 @@ export class CombatScene extends Phaser.Scene {
         ey = groundY - sprite.displayHeight / 2;
       } else {
         sprite = this.add.rectangle(ex, ey, esize * scale * 2, esize * scale * 2, isBoss ? COLORS.boss : COLORS.enemy);
+        // The still exists but did not load at boot: fetch it now and swap the square out when it lands.
+        reloadArt(this, def.art ?? `enemy_${def.id}`, (key) => this.swapEnemyArt(slot, key, groundY, scale, def));
       }
       sprite.setDepth(n - slot); // front enemy over the rear one
       const nameText = this.add.text(ex, groundY + 12, def.name, text.small).setOrigin(0.5, 0);
@@ -193,10 +195,7 @@ export class CombatScene extends Phaser.Scene {
     // enemy intent panels: above each enemy; a tall boss would push it into the HUD, so then it sits beside him.
     for (const v of this.views) {
       const pw = n === 1 ? 230 : 176, half = pw / 2 - 11;
-      const tall = v.sprite.displayHeight > 170;
-      const ix = tall ? Math.max(W / 2 - 40, v.x - v.sprite.displayWidth / 2 - pw / 2 - 10) : Math.min(W - pw / 2 - 6, v.x);
-      // Duos sit the panels a little higher so the target arrow fits between panel and head.
-      const iy = tall ? 190 : n === 1 ? Math.max(126, v.y - v.sprite.displayHeight / 2 - 58) : Math.max(112, v.y - v.sprite.displayHeight / 2 - 72);
+      const { ix, iy } = this.intentPanelPos(v, n);
       v.intentBg = this.add.rectangle(ix, iy, pw, 64, COLORS.panel, 0.9).setStrokeStyle(2, COLORS.panelEdge).setInteractive({ useHandCursor: true });
       v.intentBg.on('pointerup', () => this.explainIntent(v.slot));
       // The panel is a promise, not a state: the enemy does this after your move.
@@ -342,6 +341,39 @@ export class CombatScene extends Phaser.Scene {
   }
 
   /** Idle breathing: a slow 2.5% vertical squash on the feet-anchored sprite. Lunges tween x, so the two never fight. */
+  /** Where an enemy's intent panel sits: above the sprite, or beside a tall boss that would push it into the HUD. */
+  private intentPanelPos(v: EnemyView, n: number): { ix: number; iy: number } {
+    const W = this.scale.gameSize.width, pw = n === 1 ? 230 : 176;
+    const tall = v.sprite.displayHeight > 170;
+    const ix = tall ? Math.max(W / 2 - 40, v.x - v.sprite.displayWidth / 2 - pw / 2 - 10) : Math.min(W - pw / 2 - 6, v.x);
+    // Duos sit the panels a little higher so the target arrow fits between panel and head.
+    const iy = tall ? 190 : n === 1 ? Math.max(126, v.y - v.sprite.displayHeight / 2 - 58) : Math.max(112, v.y - v.sprite.displayHeight / 2 - 72);
+    return { ix, iy };
+  }
+
+  /** Replace an enemy's placeholder square with its still once a late load succeeds (see reloadArt). */
+  private swapEnemyArt(slot: number, key: string, groundY: number, scale: number, def: Enemy) {
+    const v = this.views[slot];
+    if (!v || !(v.sprite instanceof Phaser.GameObjects.Rectangle) || !this.scene.isActive()) return;
+    const old = v.sprite;
+    const img = this.add.image(v.x, groundY, key).setOrigin(0.5, 1).setScale(scale).setDepth(old.depth).setAlpha(old.alpha);
+    if (def.art?.startsWith('hero_')) img.setFlipX(true);
+    if (def.tint !== undefined) img.setTint(def.tint).setAlpha(0.8);
+    img.setInteractive({ useHandCursor: true });
+    img.on('pointerup', () => this.setTarget(slot));
+    this.tweens.killTweensOf(old);
+    old.destroy();
+    v.sprite = img;
+    v.y = groundY - img.displayHeight / 2;
+    // The panel was placed for the square; move it to where the still wants it.
+    const { ix, iy } = this.intentPanelPos(v, this.views.length);
+    const dx = ix - v.intentBg.x, dy = iy - v.intentBg.y;
+    for (const o of [v.intentBg, v.intentHead, v.intentText, v.intentNum, v.postureText]) o.setPosition(o.x + dx, o.y + dy);
+    if (this.state.enemies[slot]?.dead) { img.setAlpha(0.15); img.disableInteractive(); return; }
+    this.breathe(img);
+    if (!this.busy) this.setTarget(this.target, true);
+  }
+
   private breathe(s: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite) {
     if (!s.active) return;
     this.tweens.add({ targets: s, scaleY: s.scaleY * 1.025, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.InOut' });

@@ -216,4 +216,6 @@ family has no spread and goes straight to the overworld; its label reads "basics
 and Shaman keep both families free for now. Meta v6 takes back the warrior nodes that v5 handed
 out for free (nothing was ever bought before, so nothing is lost) and keeps the points already
 earned, so an existing level-3 warrior arrives with two points to spend on exactly these two
-nodes.
+nodes. A family bought during a run (from the overworld or a reward screen) joins the run at
+once: its tomes drop from the next reward on and the run is saved with it; the shop keeps its
+stock until the next screen.

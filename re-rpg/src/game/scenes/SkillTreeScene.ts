@@ -3,7 +3,7 @@ import { getClass, getSet, getSkill } from '@data/index';
 import type { ClassId } from '@data/types';
 import { TREES, expToReach } from '@data/progression';
 import { classProgress, nodeState, unlockNode } from '@core/meta';
-import { getMeta, persistMeta } from '@game/session';
+import { adoptFamily, getMeta, peekSession, persistMeta, persistRun } from '@game/session';
 import { Button } from '@game/ui/Button';
 import { COLORS, text } from '@game/ui/theme';
 
@@ -39,7 +39,14 @@ export class SkillTreeScene extends Phaser.Scene {
       this.add.text(x, y - ch / 2 + 46, set.name, { ...text.h2, fontSize: '19px', wordWrap: { width: cw - 20 }, align: 'center' }).setOrigin(0.5);
       this.add.text(x, y - ch / 2 + 78, set.skills.map((id) => getSkill(id).name).join('\n'), { ...text.body, fontSize: '13px', align: 'center', lineSpacing: 4, color: st.state === 'locked' ? COLORS.muted : COLORS.text }).setOrigin(0.5, 0);
       if (st.state === 'available') {
-        new Button(this, x, y + ch / 2 - 28, 'Unlock', () => { if (unlockNode(meta, classId, n.setId)) void persistMeta(this).then(() => this.scene.restart({ classId, returnTo })); }, { width: cw - 40, height: 36, fontSize: '14px', fill: 0x173526, edge: 0x3fbf7a });
+        new Button(this, x, y + ch / 2 - 28, 'Unlock', () => {
+          if (!unlockNode(meta, classId, n.setId)) return;
+          // Bought mid-run (from the overworld or a reward screen): the family drops from now on, not next run.
+          const run = peekSession(this);
+          const inRun = run !== null && run.classId === classId && returnTo !== 'ClassSelect';
+          if (inRun && adoptFamily(run, n.setId)) void persistRun(this);
+          void persistMeta(this).then(() => this.scene.restart({ classId, returnTo }));
+        }, { width: cw - 40, height: 36, fontSize: '14px', fill: 0x173526, edge: 0x3fbf7a });
       } else if (st.state === 'locked' && st.reason) {
         this.add.text(x, y + ch / 2 - 22, st.reason, { ...text.small, fontSize: '11px', color: COLORS.muted, wordWrap: { width: cw - 20 }, align: 'center' }).setOrigin(0.5);
       }
