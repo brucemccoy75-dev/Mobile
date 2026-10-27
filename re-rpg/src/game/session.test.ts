@@ -75,7 +75,7 @@ describe('session', () => {
   });
 
   it('a warrior fights with Attack, Attack and Defend; Ward is a wizard basic', () => {
-    expect(basicsFor('warrior')).toEqual(['attack', 'attack', 'defend']);
+    expect(basicsFor('warrior')).toEqual(['attack', 'attack', 'defend', 'bellow']); // Bellow joined on 2026-10-27
     expect(basicsFor('wizard')).toEqual(['attack', 'attack', 'ward']);
     expect(basicsFor('shaman')).toEqual(['attack', 'attack', 'defend', 'ward']);
   });

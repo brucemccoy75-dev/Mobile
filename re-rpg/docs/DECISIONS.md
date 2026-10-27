@@ -277,3 +277,14 @@ exports is imported by a fixed procedure (validate against the committed file, r
 update only pinned numbers, re-run the sim, commit) written so a cheaper model can do it without
 judgement. Shipped card ids are permanent (retire by removing the family); basics and the other
 two classes are frozen by the validator. The sheet and its script are gone.
+
+## 45. The starting deck is the designer's too
+
+The first editor export built Bellow as a basic card and it arrived in no deck: the editor had
+no control over which cards are dealt every fight, and the import rules froze the basics lists
+outright. Now the Skill tree tab edits the warrior's starting deck (cards and copies), a card
+can be made basic on the Cards tab, and the validator allows the warrior's deck to change while
+keeping the shared basics (Attack, Defend, Ward, dealt to every class) and the other classes'
+decks frozen, and rejects a basic-rarity card that is in no deck. Bellow (0% +1, ignores
+defence, every enemy) joins the warrior's starting deck beside Attack ×2 and Defend, as it was
+meant to.

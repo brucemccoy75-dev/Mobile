@@ -27,7 +27,7 @@ vite preview --port 4174 --strictPort &` (start it in its own command; `pkill` i
 command kills the chain) → Playwright at 844×390 with `window.__rerpg` (write a throwaway script
 per check; Test Mode is driven by setting registry `testSetup` and calling `TestMode.fight()`,
 then `Combat.act()` and polling `busy`) → commit with the attribution lines → `git push -u origin
-<branch>` → poll gh-pages. Record decisions in `docs/DECISIONS.md` (next number is 45).
+<branch>` → poll gh-pages. Record decisions in `docs/DECISIONS.md` (next number is 46).
 
 **Cards.** Every card is a record in `src/data/cards.json`; the game compiles it at load. The
 designer edits cards in the in-game card editor (title screen → card editor, `editor.html`) and

@@ -4,7 +4,8 @@
     "warrior": [
       "attack",
       "attack",
-      "defend"
+      "defend",
+      "bellow"
     ],
     "wizard": [
       "attack",
@@ -66,7 +67,7 @@
     },
     {
       "id": "burn_2x2",
-      "name": "Burn 2×2",
+      "name": "Burn 2\u00d72",
       "target": "enemy",
       "status": "burn",
       "rounds": 2,
@@ -89,7 +90,7 @@
     },
     {
       "id": "burn_3x3",
-      "name": "Burn 3×3",
+      "name": "Burn 3\u00d73",
       "target": "enemy",
       "status": "burn",
       "rounds": 3,

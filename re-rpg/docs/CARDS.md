@@ -16,7 +16,7 @@ the file but out of scope and must not change.
 | modifier | id, name, target, status, rounds, amount, chance, magic, text | a status on `self` or `enemy`: guard/ward count `amount` hits, burn/curse deal `amount` per round, chill lasts one action, everything else lasts `rounds`; `chance` is a percent; `magic` marks a hostile status that Ward can block; `text` overrides the generated card line |
 | family | id, classId, name, cards | a skill-tree node; a card drops once a family that lists it is unlocked; a card is in at most one family per class |
 | trees | per class: setId, cost, requires | node costs in skill points and prerequisites |
-| basics | per class: card ids | cards in every fight, not counted against the deck cap |
+| basics | per class: card ids | the starting deck: cards dealt in every fight, not counted against the deck cap; a card may appear more than once (Attack ×2) |
 
 A hit is `round(class attack × percent / 100) + gear attack + bonus`, then armour (never more than
 half), then the target's Harden and Exposed and the attacker's Weak (DECISIONS #40). Status
@@ -40,7 +40,10 @@ browser while you work, and never changes the game: the game only reads what is 
   only.
 - **Modifiers**: the lookup. Add one here, then link it from any card. A modifier used by a card
   cannot be deleted or renamed by id.
-- **Skill tree**: family names, costs, prerequisites, `+ New family`.
+- **Skill tree**: the warrior's **starting deck** (which basic cards are dealt every fight, and how
+  many copies), then family names, costs, prerequisites, `+ New family`. To add a new basic:
+  make a card with rarity `basic` on the Cards tab, then add it to the starting deck here.
+  Attack, Defend and Ward are shared with the other classes and cannot be changed.
 - The green line says what differs from shipped; a red box lists rule breaks, with the card id.
 - **Export cards.json** downloads the file (the share sheet on iOS). Send it to the session that
   imports it.
@@ -51,9 +54,11 @@ Input: an exported `cards.json`. Work in `re-rpg/` on the game branch.
 
 1. Copy the file to `src/data/cards.json`. Do not edit it by hand, do not reformat it.
 2. Run `npm run cards:validate`. It checks the file against the committed one: ids unique and
-   lower_snake_case, no shipped card or family removed, basics unchanged, wizard and shaman data
-   unchanged, every family and modifier id resolves, every card has damage, heal or a modifier,
-   numbers in range, tree costs 0–10 with resolvable prerequisites. One line per problem, exit 1.
+   lower_snake_case, no shipped card or family removed, the shared basics (Attack, Defend, Ward)
+   and the wizard and shaman data unchanged, every basic-rarity card in some starting deck, the
+   warrior starting deck 1–6 basic cards, every family and modifier id resolves, every card has
+   damage, heal or a modifier, numbers in range, tree costs 0–10 with resolvable prerequisites.
+   One line per problem, exit 1.
    **Any problem: stop, report the lines verbatim, change nothing.**
 3. Run `npm run check` (typecheck, validate, tests, build). Tests that may legitimately fail
    after a card change are the pinned-number tests in `src/data/describe.test.ts`,

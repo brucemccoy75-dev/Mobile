@@ -11,12 +11,12 @@ const DRAFT_KEY = 'rerpg:cards-draft';
 const SHIPPED: CardsData = JSON.parse(JSON.stringify(CARDS_DATA));
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
 
-interface State { data: CardsData; tab: 'cards' | 'modifiers' | 'tree'; editing: string | null; editingMod: string | null; atk: number; gear: number; def: number; }
+interface State { data: CardsData & { basics: Record<string, string[]> & { warrior: string[] } }; tab: 'cards' | 'modifiers' | 'tree'; editing: string | null; editingMod: string | null; atk: number; gear: number; def: number; }
 const state: State = { data: loadDraft(), tab: 'cards', editing: null, editingMod: null, atk: 4, gear: 0, def: 0 };
 
-function loadDraft(): CardsData {
-  try { const raw = localStorage.getItem(DRAFT_KEY); if (raw) { const d = JSON.parse(raw) as CardsData; if (d.version === SHIPPED.version && Array.isArray(d.cards)) return d; } } catch { /* fresh */ }
-  return clone(SHIPPED);
+function loadDraft(): State['data'] {
+  try { const raw = localStorage.getItem(DRAFT_KEY); if (raw) { const d = JSON.parse(raw) as State['data']; if (d.version === SHIPPED.version && Array.isArray(d.cards) && Array.isArray(d.basics?.warrior)) return d; } } catch { /* fresh */ }
+  return clone(SHIPPED) as State['data'];
 }
 function saveDraft() { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(state.data)); } catch { /* ignore */ } }
 
@@ -79,7 +79,7 @@ function render() {
     h('div', { class: 'actions' },
       h('button', { class: 'primary', onclick: exportJson }, 'Export cards.json'),
       h('button', { onclick: copyJson }, 'Copy JSON'),
-      h('button', { class: 'danger', onclick: () => { if (confirm('Throw away every edit and reload the shipped cards?')) { state.data = clone(SHIPPED); state.editing = null; state.editingMod = null; render(); } } }, 'Reset to shipped'),
+      h('button', { class: 'danger', onclick: () => { if (confirm('Throw away every edit and reload the shipped cards?')) { state.data = clone(SHIPPED) as State['data']; state.editing = null; state.editingMod = null; render(); } } }, 'Reset to shipped'),
       h('button', { onclick: () => { window.location.href = './'; } }, 'Back to the game'),
     ),
     problems.length ? h('div', { class: 'problems' }, problems.join('\n')) : h('div', { class: 'ok' }, changes.length ? `${changes.length} change${changes.length === 1 ? '' : 's'} from shipped: ${changes.join('; ')}` : 'No changes from the shipped cards.'),
@@ -102,10 +102,11 @@ function select(value: string, options: [string, string][], onChange: (v: string
 
 function cardsTab(): HTMLElement {
   const groups: [string, CardDef[]][] = [];
-  groups.push(['Basics (in every warrior fight)', state.data.cards.filter((c) => c.rarity === 'basic')]);
+  groups.push(['Starting deck (dealt in every warrior fight; edit it on the Skill tree tab)', [...new Set(state.data.basics.warrior)].map((id) => state.data.cards.find((c) => c.id === id)!).filter(Boolean)]);
   for (const f of state.data.families.filter((f) => f.classId === 'warrior')) groups.push([`${f.name} (${state.data.trees.warrior.find((n) => n.setId === f.id)?.cost ?? 0} points)`, f.cards.map((id) => state.data.cards.find((c) => c.id === id)!).filter(Boolean)]);
   const placed = new Set(groups.flatMap(([, cs]) => cs.map((c) => c.id)));
-  groups.push(['No family (never drops for a warrior)', state.data.cards.filter((c) => inScope(c) && !placed.has(c.id))]);
+  groups.push(['Basic cards not in the warrior\'s starting deck (never dealt)', state.data.cards.filter((c) => inScope(c) && c.rarity === 'basic' && !placed.has(c.id))]);
+  groups.push(['No family (never drops for a warrior)', state.data.cards.filter((c) => inScope(c) && c.rarity !== 'basic' && !placed.has(c.id))]);
   const other = state.data.cards.filter((c) => !inScope(c));
   const el = h('div', {});
   el.append(h('div', { class: 'actions' }, h('button', { class: 'primary', onclick: addCard }, '+ New card')));
@@ -148,8 +149,8 @@ function cardForm(c: CardDef): HTMLElement {
       h('label', {}, 'id (fixed once shipped)', h('input', { value: c.id, disabled: shipped, onchange: (ev: Event) => { const v = slug((ev.target as HTMLInputElement).value); if (state.data.cards.some((x) => x.id === v && x !== c)) { alert('that id is taken'); render(); return; } for (const f of state.data.families) f.cards = f.cards.map((x) => (x === c.id ? v : x)); c.id = v; state.editing = v; render(); } })),
       h('label', {}, 'name', h('input', { value: c.name, onchange: (ev: Event) => { c.name = (ev.target as HTMLInputElement).value; render(); } })),
       h('label', {}, 'class', select(c.classId, [['warrior', 'warrior'], ['any', 'any class']], (v) => { c.classId = v as CardDef['classId']; render(); })),
-      h('label', {}, 'family (tree node)', c.rarity === 'basic' ? h('input', { value: 'basic', disabled: true }) : select(fam?.id ?? '', famOptions, (v) => { setFamily(v); render(); })),
-      h('label', {}, 'rarity', select(c.rarity, RARITIES.filter((r) => r !== 'basic' || c.rarity === 'basic').map((r) => [r, r]), (v) => { c.rarity = v as CardDef['rarity']; render(); })),
+      h('label', {}, c.rarity === 'basic' ? 'starting deck' : 'family (tree node)', c.rarity === 'basic' ? h('span', { class: 'muted' }, state.data.basics.warrior.includes(c.id) ? `in the warrior's starting deck ×${state.data.basics.warrior.filter((x) => x === c.id).length}` : 'not in the starting deck: add it on the Skill tree tab') : select(fam?.id ?? '', famOptions, (v) => { setFamily(v); render(); })),
+      h('label', {}, 'rarity', select(c.rarity, RARITIES.map((r) => [r, r === 'basic' ? 'basic (starting deck only, never drops)' : r]), (v) => { c.rarity = v as CardDef['rarity']; if (v === 'basic') setFamily(''); else state.data.basics.warrior = state.data.basics.warrior.filter((x) => x !== c.id); render(); })),
       h('label', {}, 'uses', select(c.uses ?? '', [['', 'normal tome'], ...USES.map((u) => [u, u === 'fleeting' ? 'fleeting (gone when played)' : 'once per fight'] as [string, string])], (v) => { c.uses = (v || null) as CardDef['uses']; render(); })),
     ),
     h('h2', {}, 'Damage'),
@@ -252,7 +253,15 @@ function treeTab(): HTMLElement {
       h('td', { class: 'muted' }, f.cards.map((id) => state.data.cards.find((c) => c.id === id)?.name ?? id).join(', ')),
     ));
   }
-  return h('div', {}, h('div', { class: 'muted' }, 'Points come one per level. A family drops its cards once bought; a card\'s family is set on the Cards tab.'), table,
+  // Starting deck: the basic cards dealt in every warrior fight, with copies.
+  const deck = state.data.basics.warrior;
+  const basicsAvail = state.data.cards.filter((c) => c.rarity === 'basic');
+  const deckBox = h('div', { class: 'form' },
+    h('div', { class: 'muted' }, 'Dealt on top of the run deck in every fight, not counted against the deck cap. Make a card basic on the Cards tab to list it here. Attack, Defend and Ward are shared with the other classes and cannot be edited; a new basic can.'),
+    h('div', { class: 'chips' }, ...[...new Set(deck)].map((id) => { const c = basicsAvail.find((x) => x.id === id); const n = deck.filter((x) => x === id).length; return h('label', {}, `${c?.name ?? id} ×${n} `, h('button', { onclick: () => { state.data.basics.warrior = [...deck, id]; render(); } }, '+'), h('button', { onclick: () => { const i = deck.lastIndexOf(id); if (i >= 0) { deck.splice(i, 1); render(); } } }, '−')); })),
+    h('div', { class: 'chips' }, ...basicsAvail.filter((c) => !deck.includes(c.id)).map((c) => h('button', { onclick: () => { state.data.basics.warrior = [...deck, c.id]; render(); } }, `+ ${c.name}`))),
+  );
+  return h('div', {}, h('h2', {}, 'Starting deck'), deckBox, h('h2', {}, 'Tree nodes'), h('div', { class: 'muted' }, 'Points come one per level. A family drops its cards once bought; a card\'s family is set on the Cards tab.'), table,
     h('div', { class: 'actions' }, h('button', { class: 'primary', onclick: () => { let id = 'warrior_new', i = 2; while (state.data.families.some((f) => f.id === id)) id = `warrior_new_${i++}`; state.data.families.push({ id, classId: 'warrior', name: 'New family', cards: [] }); nodes.push({ setId: id, cost: 2 }); render(); } }, '+ New family')));
 }
 

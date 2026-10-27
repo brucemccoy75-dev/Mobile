@@ -226,9 +226,14 @@ export function validateCards(data: CardsData, shipped?: CardsData): string[] {
       const n = (data.families ?? []).filter((f) => f.classId === cls && f.cards.includes(c.id)).length;
       if (n > 1) bad(`card ${c.id}: listed by ${n} ${cls} families; one at most`);
     }
+    // A basic card lives in a starting deck or nowhere at all.
+    if (c.rarity === 'basic' && !CLASS_IDS.some((cls) => (data.basics?.[cls] ?? []).includes(c.id))) bad(`card ${c.id}: basic rarity but in no class's starting deck (add it on the Skill tree tab, or give it a rarity and a family)`);
   }
   for (const cls of CLASS_IDS) {
-    for (const id of data.basics?.[cls] ?? []) { const c = cardById.get(id); if (!c) bad(`basics ${cls}: unknown card ${id}`); else if (c.rarity !== 'basic') bad(`basics ${cls}: ${id} is not a basic card`); }
+    const basics = data.basics?.[cls] ?? [];
+    if (!basics.length) bad(`basics ${cls}: the starting deck is empty`);
+    if (basics.length > 6) bad(`basics ${cls}: at most 6 starting cards`);
+    for (const id of basics) { const c = cardById.get(id); if (!c) bad(`basics ${cls}: unknown card ${id}`); else if (c.rarity !== 'basic') bad(`basics ${cls}: ${id} is not a basic card`); }
     const nodes = data.trees?.[cls] ?? [];
     for (const n of nodes) {
       if (!famIds.has(n.setId)) bad(`tree ${cls}: unknown family ${n.setId}`);
@@ -242,8 +247,9 @@ export function validateCards(data: CardsData, shipped?: CardsData): string[] {
     for (const id of shippedIds) if (!cardById.has(id)) bad(`import: card ${id} was removed; set its family to none instead`);
     for (const id of shipped.families.map((f) => f.id)) if (!famIds.has(id)) bad(`import: family ${id} was removed`);
     const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
-    if (!same(shipped.basics, data.basics)) bad('import: basics lists changed');
-    for (const c of shipped.cards) if (c.rarity === 'basic' && !same(c, cardById.get(c.id))) bad(`import: basic card ${c.id} changed`);
+    // The warrior's starting deck is the designer's; the other classes' decks and the shared basics (used by every class) are frozen.
+    for (const cls of ['wizard', 'shaman'] as ClassId[]) if (!same(shipped.basics[cls], data.basics[cls])) bad(`import: ${cls} starting deck changed; only the warrior is in scope`);
+    for (const c of shipped.cards) if (c.rarity === 'basic' && c.classId === 'any' && !same(c, cardById.get(c.id))) bad(`import: shared basic card ${c.id} changed (every class deals it; ask for a design change)`);
     for (const cls of ['wizard', 'shaman'] as ClassId[]) {
       const pick = (d: CardsData) => ({ cards: d.cards.filter((c) => c.classId === cls), families: d.families.filter((f) => f.classId === cls), tree: d.trees[cls] });
       if (!same(pick(shipped), pick(data))) bad(`import: ${cls} data changed; only the warrior is in scope`);
@@ -264,5 +270,6 @@ export function diffCards(shipped: CardsData, data: CardsData): string[] {
   const oldF = new Map(shipped.families.map((f) => [f.id, f]));
   for (const f of data.families) { const o = oldF.get(f.id); if (o && !same(o, f)) out.push(`family ${f.id}: ${o.name} [${o.cards.join(', ')}] -> ${f.name} [${f.cards.join(', ')}]`); }
   if (!same(shipped.trees, data.trees)) out.push('tree costs or prerequisites changed');
+  if (!same(shipped.basics.warrior, data.basics.warrior)) out.push(`warrior starting deck: [${(shipped.basics.warrior ?? []).join(', ')}] -> [${(data.basics.warrior ?? []).join(', ')}]`);
   return out;
 }
