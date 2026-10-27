@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { getItem, getSkill } from '@data/index';
 import { DECK_CAP } from '@core/combat';
 import { createMeta, gainExp, unlockNode } from '@core/meta';
-import { adoptFamily, applyHeirlooms, createSession, currentQuest, deserialize, poolCtx, serialize, spendConsumedTomes, setName, takeChoice, turnInQuest } from './session';
+import { LEVEL_GOLD, adoptFamily, applyHeirlooms, applyLevelUp, baseStatsFor, createSession, currentQuest, deserialize, poolCtx, serialize, spendConsumedTomes, setName, takeChoice, turnInQuest } from './session';
 import { basicsFor } from '@data/skills';
 import { getSet } from '@data/index';
 import { buildPool } from '@core/loot';
@@ -134,5 +134,44 @@ describe('session', () => {
     expect(s.deck[2]).toBe('broadsword');
     expect(s.deck).toHaveLength(DECK_CAP);
     expect(takeChoice(s, meta, { kind: 'tome', skill: getSkill('broadsword') }, 'shield_bash').isNew).toBe(false);
+  });
+  it('each level is +1 max HP for good (DECISIONS #49): new runs start with it, a level gained mid-run adds it at once', () => {
+    const meta = createMeta();
+    const fresh = baseStatsFor('warrior', meta).maxHp;
+    gainExp(meta, 'warrior', 300); // level 5
+    expect(baseStatsFor('warrior', meta).maxHp).toBe(fresh + 4);
+    const s = createSession('warrior', meta, 'LVL-1');
+    expect(s.stats.maxHp).toBe(fresh + 4);
+    s.hp = 10;
+    applyLevelUp(s, meta, 2, () => 0.99); // two levels, gold both times
+    expect(s.base.maxHp).toBe(fresh + 6);
+    expect(s.stats.maxHp).toBe(fresh + 6);
+    expect(s.hp).toBe(12);
+  });
+
+  it('a level-up rolls a rare card from the run\'s families, else gold', () => {
+    const meta = createMeta();
+    gainExp(meta, 'warrior', 300);
+    unlockNode(meta, 'warrior', 'warrior_dps');
+    const s = createSession('warrior', meta, 'LVL-2');
+    s.families = ['warrior_dps'];
+    const gold = s.gold;
+    const card = applyLevelUp(s, meta, 1, () => 0); // the roll succeeds
+    expect(card).toHaveLength(1);
+    expect(card[0]).toMatchObject({ kind: 'tome' });
+    const id = (card[0] as { kind: 'tome'; id: string }).id;
+    expect(getSkill(id).rarity).toBe('rare');
+    expect(getSet('warrior_dps').skills).toContain(id);
+    expect(s.deck).toContain(id);
+    const miss = applyLevelUp(s, meta, 1, () => 0.99);
+    expect(miss).toEqual([{ kind: 'gold', amount: LEVEL_GOLD }]);
+    expect(s.gold).toBe(gold + LEVEL_GOLD);
+    // No family, no rare card: always gold (nothing drops without a node, DECISIONS #42).
+    s.families = [];
+    expect(applyLevelUp(s, meta, 1, () => 0)).toEqual([{ kind: 'gold', amount: LEVEL_GOLD }]);
+    // A full deck takes gold too.
+    s.families = ['warrior_dps'];
+    s.deck = Array.from({ length: DECK_CAP }, () => 'broadsword');
+    expect(applyLevelUp(s, meta, 1, () => 0)).toEqual([{ kind: 'gold', amount: LEVEL_GOLD }]);
   });
 });

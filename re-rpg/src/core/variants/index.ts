@@ -2,12 +2,18 @@ import { MOVES } from '@data/enemies';
 import { getSkill } from '@data/index';
 import type { ClassId, Enemy, EnemyMove, SkillId, Slot, Stats } from '@data/types';
 import type { Tile } from '@core/map';
+import { Rng, hashString } from '@core/rng';
 
 /**
  * Enemies that exist only because of what the player did (DECISIONS #36): a boss who swapped in
  * because of a grudge, and the ghost of your last death on this screen. Both are plain Enemy
  * definitions built at encounter time, so the combat engine never knows the difference.
  */
+
+/** A ghost left on a screen walks in on about one run in ten (DECISIONS #49). */
+export const GHOST_CHANCE = 0.1;
+/** Whether this run meets the ghost on this screen: fixed by the run seed, so the marker and the fight agree and a reload keeps it. */
+export const ghostAppears = (seed: string, screenIndex: number): boolean => new Rng(hashString(`${seed}::ghost::${screenIndex}`)).next() < GHOST_CHANCE;
 
 /** Wren takes the gate when her standing is this low or lower. */
 export const WREN_GRUDGE = -2;

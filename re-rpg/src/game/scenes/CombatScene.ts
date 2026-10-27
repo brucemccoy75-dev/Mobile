@@ -9,7 +9,7 @@ import { getMeta, getSession, getStore, persistMeta, persistRun, setName, setSes
 import { gainExp, ghostOn, layGhost, leaveGhost, nudgeRelation, recordDeath } from '@core/meta';
 import { ghostSpoils } from '@core/variants';
 import { equipmentToIds } from '@core/run';
-import { applyTome } from '@game/session';
+import { applyLevelUp, applyTome } from '@game/session';
 import { expForEnemy } from '@data/progression';
 import { recordFight } from '@game/telemetry';
 import { Button } from '@game/ui/Button';
@@ -312,12 +312,15 @@ export class CombatScene extends Phaser.Scene {
   }
 
   /** A level is a moment: flash, a big banner, and the point can be spent right now (DECISIONS #32). */
-  private levelUpFanfare(level: number, points: number) {
+  private levelUpFanfare(level: number, points: number, rewards: string[] = []) {
     const { width: W, height: H } = this.scale.gameSize;
     this.cameras.main.flash(260, 255, 220, 120);
     const big = this.add.text(W / 2, H * 0.16, `LEVEL ${level}!`, { ...text.title, fontSize: '46px', color: COLORS.gold, stroke: '#000000', strokeThickness: 8 }).setOrigin(0.5).setDepth(73).setScale(0.2).setAlpha(0);
     this.tweens.add({ targets: big, scale: 1, alpha: 1, duration: 420, ease: 'Back.Out' });
     this.tweens.add({ targets: big, scale: 1.06, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut', delay: 420 });
+    // What the level brought (DECISIONS #49): the max HP, then the card or the gold for each level.
+    const gift = [`+${rewards.length || 1} max HP`, ...rewards].join('  ·  ');
+    this.add.text(W / 2, H * 0.16 + 38, gift, { ...text.body, fontSize: '16px', color: '#ffffff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5).setDepth(73);
     for (let i = 0; i < 14; i++) {
       const spark = this.add.text(W / 2 + (Math.random() - 0.5) * 60, H * 0.16, '✦', { fontFamily: FONT, fontSize: `${14 + Math.random() * 14}px`, color: i % 2 ? COLORS.gold : '#ffffff' }).setOrigin(0.5).setDepth(72);
       this.tweens.add({ targets: spark, x: spark.x + (Math.random() - 0.5) * 420, y: spark.y + (Math.random() - 0.7) * 220, alpha: 0, angle: 180, duration: 900 + Math.random() * 500, ease: 'Quad.Out', delay: 120, onComplete: () => spark.destroy() });
@@ -728,8 +731,13 @@ export class CombatScene extends Phaser.Scene {
       const gained = gainExp(getMeta(this), this.session.classId, exp);
       void persistMeta(this);
       this.add.text(W / 2, H * 0.34 + 74, `+${exp} EXP`, { ...text.body, fontSize: '15px', color: COLORS.gold, fontStyle: 'bold' }).setOrigin(0.5).setDepth(71);
-      if (gained.to > gained.from) this.levelUpFanfare(gained.to, gained.points);
       this.session.hp = this.state.player.hp;
+      if (gained.to > gained.from) {
+        // Each level: +1 max HP for good, and a rare card or gold (DECISIONS #49).
+        const rewards = applyLevelUp(this.session, getMeta(this), gained.to - gained.from);
+        void persistMeta(this); void persistRun(this);
+        this.levelUpFanfare(gained.to, gained.points, rewards.map((r) => (r.kind === 'tome' ? getSkill(r.id).name : `${r.amount} gold`)));
+      }
       this.session.encountersWon += 1;
       this.session.lastResult = { encounter: this.encounter, won: true };
       this.session.pendingEncounter = null;

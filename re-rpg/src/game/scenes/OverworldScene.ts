@@ -4,7 +4,7 @@ import { key, roadBetween, type MapNode, type Tile } from '@core/map';
 import { SCREEN_COUNT, currentNode, currentQuest, getMeta, getSession, getStore, isCleared, isEscorting, isFightNode, nodeById, nodeEncounter, persistMeta, persistRun, reachableNodes, routeTo, setSession, startScreen, treasureGold, type PendingEncounter, type RunSession } from '@game/session';
 import { noteKill, questProgress, questReady } from '@core/quest';
 import { gainExp, ghostOn, nudgeRelation, recordWin } from '@core/meta';
-import { WREN_GRUDGE, ghostDef, wrenBoss } from '@core/variants';
+import { WREN_GRUDGE, ghostAppears, ghostDef, wrenBoss } from '@core/variants';
 import { WIN_EXP } from '@data/progression';
 import { openDialogue } from '@game/dialogue';
 import { artKey } from '@game/art';
@@ -203,7 +203,8 @@ export class OverworldScene extends Phaser.Scene {
     const s = this.session;
     this.ghostSprite?.destroy(); this.ghostSprite = null;
     const ghost = ghostOn(getMeta(this), s.screenIndex);
-    if (!ghost || s.testMode || !ghost.nodeId || s.clearedNodes.has(ghost.nodeId)) return;
+    // The ghost walks in on about one run in ten (DECISIONS #49); on the others it stays away.
+    if (!ghost || !ghostAppears(s.seed, s.screenIndex) || s.testMode || !ghost.nodeId || s.clearedNodes.has(ghost.nodeId)) return;
     const gc = this.centre(nodeById(s, ghost.nodeId).pos);
     const cont = this.add.container(gc.x + TILE * 0.55, gc.y - TILE * 0.25).setDepth(5);
     const hk = artKey(this, `hero_${ghost.classId}`);
@@ -418,8 +419,8 @@ export class OverworldScene extends Phaser.Scene {
       e = { ...e, enemyId: 'wren', custom: [wrenBoss(w?.name ?? null, w ? w.mods.reduce((a, m) => a + (m.stat?.atk ?? 0), 0) : 0)] };
       trigger = 'gate:wren';
     }
-    // Your ghost joins the fight it fell in, in the rear partner's place.
-    const ghost = ghostOn(meta, s.screenIndex);
+    // Your ghost joins the fight it fell in, in the rear partner's place, on the runs it walks in (DECISIONS #49).
+    const ghost = ghostAppears(s.seed, s.screenIndex) ? ghostOn(meta, s.screenIndex) : undefined;
     if (ghost && !s.testMode && e.kind !== 'boss' && ghost.nodeId === node.id) {
       e = { ...e, extra: undefined, custom: [getEnemy(e.enemyId), ghostDef(ghost)], ghost: true };
       trigger = 'pre_fight:ghost';

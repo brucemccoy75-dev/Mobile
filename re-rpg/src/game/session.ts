@@ -12,7 +12,8 @@ import { DUO_CHANCE, PAIRS } from '@data/packs';
 import { TOME_COPY_CAP } from '@data/skills';
 import { computeStats, emptyEquipment, equip as equipItem, equipmentFromIds, equipmentToIds, type Equipment, RUN_VERSION, type RunState } from '@core/run';
 import { createMeta, discoverItem, discoverSkill, rollHeirloomChoices, unlockedSets, type Heirloom, type MetaState } from '@core/meta';
-import { rollShopStock, type RewardChoice, type RewardSource, type ShopStock } from '@core/loot';
+import { buildPool, rollShopStock, type RewardChoice, type RewardSource, type ShopStock } from '@core/loot';
+import { LEVEL_GOLD, LEVEL_HP, LEVEL_RARE_CHANCE } from '@data/progression';
 import { generateQuest, questReady, type Quest, type QuestOptions } from '@core/quest';
 import { WREN } from '@data/quests';
 import { upgradeItem, upgradeSkill, type SkillUpgrades } from '@core/run/upgrade';
@@ -103,7 +104,37 @@ export function rollSet(classId: ClassId, rng: RunRng): SetId {
 /** Class base plus permanent Legacy bonuses (DECISIONS #18). */
 export function baseStatsFor(classId: ClassId, meta: MetaState): Stats {
   const c = getClass(classId).stats;
-  return { maxHp: c.maxHp + meta.legacy.maxHp, atk: c.atk + meta.legacy.atk, def: c.def + meta.legacy.def };
+  // Each level past the first is LEVEL_HP max HP for good (DECISIONS #49).
+  const levelHp = ((meta.progress[classId]?.level ?? 1) - 1) * LEVEL_HP;
+  return { maxHp: c.maxHp + meta.legacy.maxHp + levelHp, atk: c.atk + meta.legacy.atk, def: c.def + meta.legacy.def };
+}
+
+export { LEVEL_GOLD };
+export type LevelReward = { kind: 'tome'; id: SkillId } | { kind: 'gold'; amount: number };
+
+/**
+ * Levels gained mid-run (DECISIONS #49): each one adds its max HP to this run at once (and the
+ * HP itself), then rolls a rare card from the run's families into the deck, or gold when the roll
+ * misses, no rare card is left in the pool, or the deck is full.
+ */
+export function applyLevelUp(s: RunSession, meta: MetaState, levels: number, roll: () => number = () => s.rng.stream('level').next()): LevelReward[] {
+  const out: LevelReward[] = [];
+  for (let i = 0; i < levels; i++) {
+    s.base.maxHp += LEVEL_HP;
+    s.stats = computeStats(s.base, s.equipment);
+    s.hp = Math.min(s.stats.maxHp, s.hp + LEVEL_HP);
+    const rares = buildPool(poolCtx(s, meta)).tomes.filter((t) => t.rarity === 'rare');
+    if (roll() < LEVEL_RARE_CHANCE && rares.length && s.deck.length < DECK_CAP) {
+      const pick = rares[Math.min(rares.length - 1, Math.floor(roll() * rares.length))]!;
+      applyTome(s, pick);
+      discoverSkill(meta, pick.id);
+      out.push({ kind: 'tome', id: pick.id });
+    } else {
+      s.gold += LEVEL_GOLD;
+      out.push({ kind: 'gold', amount: LEVEL_GOLD });
+    }
+  }
+  return out;
 }
 
 export function createSession(classId: ClassId, meta: MetaState, seed = newSeed()): RunSession {

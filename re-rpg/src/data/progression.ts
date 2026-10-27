@@ -45,5 +45,11 @@ export function expForEnemy(def: Enemy, kind: 'random' | 'guard' | 'boss' | 'nod
   const pack = packSize > 1 ? 1.5 : 1;
   return Math.round(base * guard * pack);
 }
+/** Every level past the first is this much max HP, for good, in every run of that class (DECISIONS #49). */
+export const LEVEL_HP = 1;
+/** A level-up rolls a rare card from the run's families with this chance, else pays LEVEL_GOLD (DECISIONS #49). */
+export const LEVEL_RARE_CHANCE = 0.25;
+export const LEVEL_GOLD = 15;
+
 /** Bonus for finishing a run. */
 export const WIN_EXP = 120;

@@ -333,3 +333,20 @@ validator rejects any of those, and the editor hides them.
 No card links a removal yet: the modifier is made and linked in the editor, then imported.
 Pinned by the strip tests in `engine.test.ts` and `data.test.ts`; screenshots in
 `docs/audit/strip-2026-10-27/` (taken with a throwaway build that linked one to Bellow).
+
+## 49. The ghost is rare; a level is +1 max HP and a rare card or gold
+
+Designer's call after play: your ghost should not wait at its clearing every run, and a level-up
+should give something beyond a skill point.
+- **The ghost walks in on one run in ten.** `GHOST_CHANCE = 0.1`, rolled per run and screen from
+  the run seed (`ghostAppears`), so the map marker and the fight always agree and a reload keeps
+  the answer. On the other nine runs the ghost record stays in meta, unseen, until a later run
+  meets it or a new death replaces it.
+- **Every level past the first is +1 max HP for good** (`LEVEL_HP`), per class: a new run's base
+  includes it, and a level gained mid-run adds it to the run at once, HP included.
+- **Each level also rolls a reward**: 25% a rare card (`LEVEL_RARE_CHANCE`) from the run's
+  families straight into the deck, otherwise 15 gold (`LEVEL_GOLD`). With no family, no rare card
+  left in the pool (two copies held) or a full deck, it is the gold. Nothing drops without a node
+  (#42) still holds. The level-up banner names what came: "+1 max HP · Mighty Blow".
+The numbers are first guesses for the designer to tune. Pinned by `session.test.ts` and
+`variants.test.ts`; screenshots in `docs/audit/levelup-ghost-2026-10-27/`.
