@@ -31,6 +31,12 @@ export function describeSkill(skill: Skill, stats: Stats): string {
         parts.push(s + '.');
         break;
       }
+      case 'strip': {
+        // Remove guard / remove buffs (DECISIONS #48): compiled ahead of the damage, read first.
+        const whose = e.targets === 'all' ? "every enemy's" : "the enemy's";
+        parts.push(e.statuses.length === 1 ? `Remove ${whose} ${STATUS_NAME[e.statuses[0]!]} first.` : `Remove ${whose} buffs first.`);
+        break;
+      }
       case 'heal': {
         const n = Math.round((e.flat ?? 0) + (e.pct ?? 0) * stats.maxHp);
         parts.push(`Heal ${n} HP.`);
@@ -100,6 +106,8 @@ export function cardFace(skill: Skill, stats: Stats, preview?: CardPreview): Car
     if (hostile.status === 'chill') return { kind: 'magic', value: '1', unit: 'skip' };
     return { kind: 'magic', value: `${hostile.turns}`, unit: STATUS_NAME[hostile.status].toLowerCase() };
   }
+  const strip = skill.effects.find((e): e is Extract<Effect, { type: 'strip' }> => e.type === 'strip');
+  if (strip) return { kind: 'attack', value: '', unit: strip.statuses.length === 1 ? `removes ${STATUS_NAME[strip.statuses[0]!].toLowerCase()}` : 'removes buffs' };
   return { kind: 'defense', value: '', unit: '' };
 }
 

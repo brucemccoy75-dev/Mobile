@@ -1,7 +1,7 @@
 import { BASIC_DECK } from '@data/skills';
 import { getEnemy, getSkill } from '@data/index';
 import { skillWith, type SkillUpgrades } from '@core/run/upgrade';
-import type { Effect, Enemy, EnemyId, Intent, SkillId, Stats } from '@data/types';
+import type { Effect, Enemy, EnemyId, Intent, SkillId, Stats, StatusId } from '@data/types';
 import { Rng } from '@core/rng';
 import { advanceMoves, pickMove } from './ai';
 import { computeHit, predictDamage } from './damage';
@@ -130,6 +130,7 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
     tagWho(events, from, target.slot);
     for (const e of skill.effects) {
       if (e.type === 'damage' && e.targets === 'all') { sweep(state, e, events); continue; }
+      if (e.type === 'strip') { strip(e.targets === 'all' ? livingEnemies(state) : [target], e.statuses, events); continue; }
       const f = events.length;
       applyEffects([e], state.player, target, roll, events);
       tagWho(events, f, target.slot);
@@ -232,6 +233,27 @@ function sweep(state: CombatState, e: Extract<Effect, { type: 'damage' }>, event
   });
 }
 
+/**
+ * Remove guard / remove buffs (DECISIONS #48): the listed statuses leave each victim before the
+ * card's hit. A strip over every enemy is volley 0, so the scene plays it on all of them at once.
+ */
+function strip(victims: EnemyCombatant[], statuses: StatusId[], events: CombatEvent[]): void {
+  for (const v of victims) {
+    const f = events.length;
+    stripStatuses(v, statuses, events);
+    tagWho(events, f, v.slot);
+    if (victims.length > 1) for (let j = f; j < events.length; j++) (events[j] as CombatEvent & { volley?: number }).volley = 0;
+  }
+}
+
+function stripStatuses(c: Combatant, statuses: StatusId[], events: CombatEvent[]): void {
+  for (const id of statuses) {
+    if (!hasStatus(c, id)) continue;
+    removeStatus(c, id, events);
+    (events[events.length - 1] as Extract<CombatEvent, { t: 'statusExpired' }>).stripped = true;
+  }
+}
+
 /** One hit of a damage effect: blocks, the damage, Brace's counter. Returns the damage that landed. */
 function applyHit(self: Combatant, other: Combatant, e: Extract<Effect, { type: 'damage' }>, i: number, hits: number, events: CombatEvent[]): number {
   const amount = computeHit(self, other, e.mult, e.ignoreDef, e.flat ?? 0, hits);
@@ -272,6 +294,9 @@ export function applyEffects(effects: Effect[], self: Combatant, other: Combatan
         afterHits(self, other, e, hits, dealt, events);
         break;
       }
+      case 'strip':
+        stripStatuses(other, e.statuses, events);
+        break;
       case 'heal': {
         const amount = Math.round((e.flat ?? 0) + (e.pct ?? 0) * self.stats.maxHp);
         heal(self, amount, events);

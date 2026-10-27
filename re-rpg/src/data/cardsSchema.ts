@@ -11,7 +11,9 @@ import type { ClassId, DamageKind, Effect, Rarity, SetId, Skill, SkillSet, Skill
  *   heal     percent of max HP and/or a flat amount.
  *   modifiers  links into the modifier lookup: a named status on self or enemy with its
  *            rounds, amount and chance. "Tiring" (self weak 2 rounds) is defined once and
- *            linked from every card that is tiring.
+ *            linked from every card that is tiring. Two modifier statuses take something away
+ *            instead (DECISIONS #48): remove_guard and remove_buffs run before the card's damage,
+ *            on the enemies the damage hits.
  *   families own membership: a card drops when a family that lists it is unlocked.
  */
 export const CARDS_VERSION = 2;
@@ -37,11 +39,13 @@ export interface CardDef {
   modifiers: string[];
   note?: string;
 }
+/** A status to give, or one of the two removals (DECISIONS #48). */
+export type ModifierStatus = StatusId | 'remove_guard' | 'remove_buffs';
 export interface ModifierDef {
   id: string;
   name: string;
   target: 'self' | 'enemy';
-  status: StatusId;
+  status: ModifierStatus;
   /** Rounds it lasts (end-of-round ticks, DECISIONS #40). Ignored for guard/ward (hits-based) and chill (one action). */
   rounds?: number;
   /** Hits blocked for guard/ward; damage per round for burn/curse. */
@@ -65,6 +69,14 @@ export interface CardsData {
 }
 
 export const STATUS_IDS: StatusId[] = ['exposed', 'guard', 'ward', 'aegis', 'burn', 'chill', 'weak', 'stun', 'brace', 'scatter', 'curse', 'harden'];
+/** What each removal takes off the enemy: Guard alone, or every status that helps its holder. */
+export const REMOVALS: Record<'remove_guard' | 'remove_buffs', StatusId[]> = {
+  remove_guard: ['guard'],
+  remove_buffs: ['guard', 'ward', 'aegis', 'harden', 'brace', 'scatter'],
+};
+export const isRemoval = (s: ModifierStatus): s is keyof typeof REMOVALS => s in REMOVALS;
+/** Every value the modifier's status field takes, in editor order. */
+export const MODIFIER_STATUSES: ModifierStatus[] = [...STATUS_IDS, 'remove_guard', 'remove_buffs'];
 export const RARITIES: Rarity[] = ['basic', 'common', 'uncommon', 'rare'];
 export const USES: SkillUses[] = ['fleeting', 'once_per_fight'];
 export const CLASS_IDS: ClassId[] = ['warrior', 'wizard', 'shaman'];
@@ -74,7 +86,12 @@ export const AMOUNT_STATUSES: StatusId[] = ['guard', 'ward', 'burn', 'curse'];
 
 // ---------------------------------------------------------------- compile
 
-export function modifierEffect(m: ModifierDef): Effect {
+export function modifierEffect(m: ModifierDef, targets?: 'one' | 'all'): Effect {
+  if (isRemoval(m.status)) {
+    const s: Extract<Effect, { type: 'strip' }> = { type: 'strip', statuses: [...REMOVALS[m.status]] };
+    if (targets === 'all') s.targets = 'all';
+    return s;
+  }
   const e: Extract<Effect, { type: 'status' }> = { type: 'status', target: m.target, status: m.status, turns: HIT_STATUSES.includes(m.status) ? 99 : m.status === 'chill' ? 1 : (m.rounds ?? 1) };
   if (m.amount !== undefined) e.magnitude = m.amount;
   if (m.chance !== undefined && m.chance < 100) e.chance = m.chance / 100;
@@ -96,8 +113,12 @@ export function damageEffect(d: CardDamage): Effect {
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** Text for a modifier: its own line if it has one, else built from the numbers. */
-export function modifierText(m: ModifierDef): string {
+export function modifierText(m: ModifierDef, targets?: 'one' | 'all'): string {
   if (m.text) return m.text;
+  if (isRemoval(m.status)) {
+    const whose = targets === 'all' ? "every enemy's" : "the enemy's";
+    return m.status === 'remove_guard' ? `Remove ${whose} Guard first.` : `Remove ${whose} buffs first (Guard, Ward, Aegis, Hardened, Braced, Scattered).`;
+  }
   const cap = m.status.charAt(0).toUpperCase() + m.status.slice(1);
   const chance = m.chance !== undefined && m.chance < 100 ? `${m.chance}% chance to ` : '';
   if (m.status === 'guard') return `Block the next ${m.amount === 1 || !m.amount ? 'physical hit' : `${m.amount} physical hits`}.`;
@@ -112,6 +133,9 @@ export function modifierText(m: ModifierDef): string {
 /** The static card text (percentages; the game shows computed numbers on the card itself). */
 export function cardText(c: CardDef, mods: Map<string, ModifierDef>): string {
   const parts: string[] = [];
+  // Removals run before the damage, so they read first (DECISIONS #48).
+  const linked = c.modifiers.map((id) => mods.get(id)).filter((m): m is ModifierDef => !!m);
+  for (const m of linked) if (isRemoval(m.status)) parts.push(modifierText(m, c.damage?.targets));
   if (c.damage) {
     const d = c.damage;
     const kind = d.type === 'magic' ? ' magic' : '';
@@ -122,7 +146,7 @@ export function cardText(c: CardDef, mods: Map<string, ModifierDef>): string {
     parts.push(s + '.');
   }
   if (c.heal) parts.push(`Heal ${c.heal.percent ? `${c.heal.percent}%` : ''}${c.heal.percent && c.heal.flat ? ' + ' : ''}${c.heal.flat ? `${c.heal.flat}` : ''} HP.`);
-  for (const id of c.modifiers) { const m = mods.get(id); if (m) parts.push(modifierText(m)); }
+  for (const m of linked) if (!isRemoval(m.status)) parts.push(modifierText(m));
   if (c.uses === 'once_per_fight') parts.push('Once per fight.');
   if (c.uses === 'fleeting') parts.push('Fleeting: spent when played.');
   return parts.join(' ');
@@ -141,7 +165,9 @@ export function compileCards(data: CardsData): Compiled {
     const effects: Effect[] = [];
     if (c.damage) effects.push(damageEffect(c.damage));
     if (c.heal) { const h: Extract<Effect, { type: 'heal' }> = { type: 'heal' }; if (c.heal.percent) h.pct = c.heal.percent / 100; if (c.heal.flat) h.flat = c.heal.flat; effects.push(h); }
-    for (const id of c.modifiers) { const m = mods.get(id); if (!m) throw new Error(`card ${c.id}: unknown modifier ${id}`); effects.push(modifierEffect(m)); }
+    for (const id of c.modifiers) { const m = mods.get(id); if (!m) throw new Error(`card ${c.id}: unknown modifier ${id}`); effects.push(modifierEffect(m, c.damage?.targets)); }
+    // Removals run ahead of the damage whatever their place in the list (DECISIONS #48).
+    effects.sort((a, b) => Number(b.type === 'strip') - Number(a.type === 'strip'));
     const sk: Skill = { id: c.id, name: c.name, text: cardText(c, mods), classId: c.classId, rarity: c.rarity, effects };
     const fam = familyOfClassCard.get(c.id);
     if (fam) sk.setId = fam;
@@ -174,7 +200,12 @@ export function validateCards(data: CardsData, shipped?: CardsData): string[] {
     if (!/^[a-z][a-z0-9_]*$/.test(m.id)) bad(`modifier ${m.id}: id must be lower_snake_case`);
     if (!m.name?.trim()) bad(`modifier ${m.id}: needs a name`);
     if (m.target !== 'self' && m.target !== 'enemy') bad(`modifier ${m.id}: target must be self or enemy`);
-    if (!STATUS_IDS.includes(m.status)) bad(`modifier ${m.id}: unknown status ${m.status}`);
+    if (!MODIFIER_STATUSES.includes(m.status)) bad(`modifier ${m.id}: unknown status ${m.status}`);
+    if (isRemoval(m.status)) {
+      if (m.target !== 'enemy') bad(`modifier ${m.id}: ${m.status} works on the enemy only`);
+      if (m.rounds !== undefined || m.amount !== undefined || m.chance !== undefined || m.magic) bad(`modifier ${m.id}: ${m.status} takes no rounds, amount, chance or magic`);
+      continue;
+    }
     if (m.rounds !== undefined && !isInt(m.rounds, 1, 9)) bad(`modifier ${m.id}: rounds must be 1-9`);
     if (!HIT_STATUSES.includes(m.status) && m.status !== 'chill' && m.rounds === undefined) bad(`modifier ${m.id}: ${m.status} needs rounds`);
     if (m.amount !== undefined && !isInt(m.amount, 1, 9)) bad(`modifier ${m.id}: amount must be 1-9`);

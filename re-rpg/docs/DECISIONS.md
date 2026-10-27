@@ -310,3 +310,26 @@ HP bars of all targets move at the same moment. Single-target cards carry no vol
 before. The outcome of a fight does not change (the sim table is identical); only the order of
 events and their playback do. Pinned by the multi-hit sweep test in `engine.test.ts`; screenshots
 in `docs/audit/sweep-2026-10-27/`.
+
+## 48. Remove guard and remove buffs: a modifier that takes away, before the hit
+
+The designer asked for a card attribute that strips the enemy's buffs, so Bellow can break
+every Guard and still land in the same turn. It is a modifier like the others, so any card can
+link it from the editor: the modifier's status list gains `remove_guard` (takes Guard) and
+`remove_buffs` (takes every status that helps its holder: Guard, Ward, Aegis, Hardened, Braced,
+Scattered). A removal is always on the enemy and has no rounds, amount, chance or magic; the
+validator rejects any of those, and the editor hides them.
+- **It runs first.** The compiler puts a removal ahead of the card's damage whatever its place
+  in the modifier list, so the hit that follows meets no Guard. The card text reads it first
+  ("Remove every enemy's Guard first. Deal 1 damage to every enemy…").
+- **It follows the damage's targets.** On a card that hits every enemy it strips every living
+  enemy, as one beat (volley 0, #47); otherwise only the chosen enemy. A card with no damage
+  strips the chosen enemy.
+- **It is never blocked**: a Ward does not stop a removal, and it leaves debuffs alone.
+- The engine has a new `strip` effect; each status it takes is a `statusExpired` event marked
+  `stripped`, which the scene calls out ("GUARD removed"). The card headline in combat already
+  assumes the strip, so a Bellow that will break a Guard shows the damage that will land, not
+  "0 blocked".
+No card links a removal yet: the modifier is made and linked in the editor, then imported.
+Pinned by the strip tests in `engine.test.ts` and `data.test.ts`; screenshots in
+`docs/audit/strip-2026-10-27/` (taken with a throwaway build that linked one to Bellow).

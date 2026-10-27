@@ -34,7 +34,9 @@ export type Effect =
   | { type: 'damage'; targets?: 'all'; mult: number; flat?: number; hits?: number; ignoreDef?: boolean; lifesteal?: number; kind?: DamageKind }
   | { type: 'heal'; pct?: number; flat?: number }
   /** `kind: 'magic'` on a hostile status means Ward (or Aegis) blocks it like a spell. */
-  | { type: 'status'; target: Target; status: StatusId; turns: number; magnitude?: number; chance?: number; kind?: DamageKind };
+  | { type: 'status'; target: Target; status: StatusId; turns: number; magnitude?: number; chance?: number; kind?: DamageKind }
+  /** Removes these statuses from the enemy before the hit (DECISIONS #48); `targets: 'all'` strips every living enemy. */
+  | { type: 'strip'; statuses: StatusId[]; targets?: 'all' };
 
 /** How often a tome may be played. Default: every time it is drawn. */
 export type SkillUses = 'once_per_fight' | 'fleeting';

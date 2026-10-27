@@ -415,16 +415,18 @@ export class CombatScene extends Phaser.Scene {
     // Each damage card's headline is what the chosen target will take, judged by the statuses the
     // playback has shown so far (the same rule as the chips), so card and chips never disagree (DECISIONS #40).
     const target = resolveTarget(this.state, this.target);
-    const shown = (en: typeof target) => ({ ...en, statuses: this.statusList('enemy', en.slot) });
+    const shown = (en: typeof target, strip: string[] = []) => ({ ...en, statuses: this.statusList('enemy', en.slot).filter((st) => !strip.includes(st.id)) });
     const shownPlayer = { ...this.state.player, statuses: this.statusList('player') };
     ids.forEach((id, i) => {
       const sk = skillInCombat(this.state, id);
       const dmg = sk.effects.find((e) => e.type === 'damage');
       let preview: CardPreview | undefined;
       if (dmg && dmg.type === 'damage') {
-        // A sweep's headline is the total over every living enemy, each judged by its own statuses.
+        // A sweep's headline is the total over every living enemy, each judged by its own statuses,
+        // less whatever the card removes before it hits (DECISIONS #48).
         const victims = dmg.targets === 'all' ? this.state.enemies.filter((e) => !e.dead) : [target];
-        const parts = victims.map((v) => previewDamage(shownPlayer, shown(v), dmg));
+        const strip = sk.effects.flatMap((e) => (e.type === 'strip' ? e.statuses : []));
+        const parts = victims.map((v) => previewDamage(shownPlayer, shown(v, strip), dmg));
         preview = { hits: parts.flatMap((p) => p.hits), reasons: [...new Set(parts.flatMap((p) => p.reasons))] };
       }
       const card = new Card(this, startX + i * (CARD_W + gap), this.handY, sk, () => this.act(this.holdMode ? { type: 'hold', index: i } : { type: 'card', index: i, target: this.target }), describeSkill(sk, this.state.player.stats), this.state.player.stats, preview);
@@ -646,6 +648,8 @@ export class CombatScene extends Phaser.Scene {
       case 'statusExpired':
         this.dispRemove(e.side, e.status, who);
         this.syncChips();
+        // A removal (DECISIONS #48) is the card's doing, so it gets a callout; a status running out does not.
+        if (e.stripped) { const p = pos(e.side); await floatText(this, p.x, p.y - 110, `${STATUS_LABELS[e.status].label} removed`, COLORS.muted, 22, 700); }
         return;
       case 'statusResisted': {
         const p = pos(e.side);

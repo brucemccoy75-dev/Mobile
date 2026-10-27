@@ -584,6 +584,32 @@ describe('sweeps (DECISIONS #44)', () => {
     const ev2 = step(s, { type: 'card', index: s.player.hand.indexOf('attack'), target: 0 });
     expect(ev2.filter((e) => 'volley' in e)).toEqual([]);
   });
+  it('a strip (DECISIONS #48) removes the listed statuses before the hit: every enemy for a sweep, all at once', () => {
+    const BREAK = { ...SWEEP, id: 'test_break', effects: [{ type: 'strip' as const, statuses: ['guard' as const], targets: 'all' as const }, { type: 'damage' as const, mult: 0, flat: 1, ignoreDef: true, targets: 'all' as const }] };
+    const s = createCombat({ player: { ...WARRIOR, deck: [], basics: [] }, enemies: [PASSIVE, PASSIVE], rng: new Rng(1) });
+    s.enemies[0]!.statuses.push({ id: 'guard', turns: 99, magnitude: 2 }, { id: 'harden', turns: 2, magnitude: 1 });
+    s.enemies[1]!.statuses.push({ id: 'guard', turns: 99, magnitude: 1 });
+    registerSkill(BREAK);
+    s.player.hand.push('test_break');
+    const ev = step(s, { type: 'card', index: 0, target: 0 });
+    const stripped = ev.filter((e) => e.t === 'statusExpired' && e.stripped);
+    expect(stripped.map((e) => (e.t === 'statusExpired' ? [e.who, e.status, e.volley] : []))).toEqual([[0, 'guard', 0], [1, 'guard', 0]]);
+    const hits = ev.filter((e) => e.t === 'damage' && e.source === 'player');
+    expect(hits.map((e) => (e.t === 'damage' ? e.blocked : null))).toEqual([false, false]);
+    expect(ev.indexOf(stripped[1]!)).toBeLessThan(ev.indexOf(hits[0]!));
+    expect(hasStatus(s.enemies[0]!, 'harden')).toBe(true); // only Guard was listed
+  });
+  it('a single-target strip removes every listed buff from the chosen enemy only', () => {
+    const STRIP = { ...SWEEP, id: 'test_strip', effects: [{ type: 'strip' as const, statuses: ['guard' as const, 'harden' as const, 'brace' as const] }, { type: 'damage' as const, mult: 1 }] };
+    const s = createCombat({ player: { ...WARRIOR, deck: [], basics: [] }, enemies: [PASSIVE, PASSIVE], rng: new Rng(1) });
+    for (const en of s.enemies) en.statuses.push({ id: 'guard', turns: 99, magnitude: 1 }, { id: 'harden', turns: 2, magnitude: 1 }, { id: 'brace', turns: 2, magnitude: 1 });
+    registerSkill(STRIP);
+    s.player.hand.push('test_strip');
+    const ev = step(s, { type: 'card', index: 0, target: 1 });
+    expect(s.enemies[1]!.hp).toBe(26); // the full 4: no guard, no harden, no counter
+    expect(ev.some((e) => e.t === 'counter')).toBe(false);
+    expect(s.enemies[0]!.statuses.map((x) => x.id).sort()).toEqual(['brace', 'guard', 'harden']);
+  });
   it('a dead enemy is skipped and a single-target card is unchanged', () => {
     const s = createCombat({ player: { ...WARRIOR, deck: [], basics: [] }, enemies: [PASSIVE, PASSIVE], rng: new Rng(1) });
     s.enemies[0]!.hp = 0; s.enemies[0]!.dead = true;

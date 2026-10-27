@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CARDS_DATA, CLASSES, ENEMIES, ITEMS, SETS, SKILLS, diffCards, getSkill, validateCards, type CardsData } from './index';
+import { CARDS_DATA, CLASSES, ENEMIES, ITEMS, SETS, SKILLS, compileCards, diffCards, getSkill, validateCards, type CardsData } from './index';
 
 describe('content integrity', () => {
   it('skill ids are unique', () => {
@@ -84,5 +84,22 @@ describe('cards.json (DECISIONS #44)', () => {
     expect(validateCards(e, CARDS_DATA)).toEqual(['import: wizard data changed; only the warrior is in scope']);
     const f = clone(); f.trees.warrior[0]!.cost = 11;
     expect(validateCards(f)).toEqual(['tree warrior/warrior_dps: cost must be 0-10']);
+  });
+  it('remove guard and remove buffs (DECISIONS #48) compile to a strip that runs before the damage and follows its targets', () => {
+    const data: CardsData = JSON.parse(JSON.stringify(CARDS_DATA));
+    data.modifiers.push({ id: 'break_guard', name: 'Break guard', target: 'enemy', status: 'remove_guard' }, { id: 'strip_all', name: 'Strip', target: 'enemy', status: 'remove_buffs' });
+    data.cards.find((c) => c.id === 'bellow')!.modifiers = ['break_guard'];
+    data.cards.find((c) => c.id === 'broadsword')!.modifiers = ['overextend', 'strip_all'];
+    expect(validateCards(data)).toEqual([]);
+    const { skills } = compileCards(data);
+    const bellow = skills.find((k) => k.id === 'bellow')!;
+    expect(bellow.effects).toEqual([{ type: 'strip', statuses: ['guard'], targets: 'all' }, { type: 'damage', mult: 0, flat: 1, ignoreDef: true, targets: 'all' }]);
+    expect(bellow.text).toBe("Remove every enemy's Guard first. Deal 0% + 1 damage to every enemy, ignoring defence.");
+    const broad = skills.find((k) => k.id === 'broadsword')!;
+    expect(broad.effects[0]).toEqual({ type: 'strip', statuses: ['guard', 'ward', 'aegis', 'harden', 'brace', 'scatter'] });
+    expect(broad.effects.map((e) => e.type)).toEqual(['strip', 'damage', 'status']);
+    const bad: CardsData = JSON.parse(JSON.stringify(data));
+    bad.modifiers.find((m) => m.id === 'break_guard')!.target = 'self';
+    expect(validateCards(bad)).toEqual(['modifier break_guard: remove_guard works on the enemy only']);
   });
 });
