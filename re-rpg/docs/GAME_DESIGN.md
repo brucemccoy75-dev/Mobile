@@ -29,8 +29,8 @@ Shaman is deliberately the "healer with teeth" so the three classes read as tank
 Known skills form a **deck** (cap **6**). Every encounter:
 
 1. Shuffle the deck.
-2. Round 1 deals a full hand of 3 (or the whole deck if smaller), then one card per round. **Hand cap 3.**
-3. Once the hand is full, each new round still deals one and the **oldest card in hand is discarded**. Holding skills is punished.
+2. Every round starts with a full hand of 3 (or the whole deck if smaller): the deal draws whatever is missing, one after a normal turn, two after a bonus turn (DECISIONS #53). **Hand cap 3.**
+3. A full hand draws nothing, so a card kept in hand stays; to cycle a card you do not want, Hold it (it goes to the discard).
 4. A played skill goes to the **discard pile**. When the deck is empty the discard is reshuffled.
 5. **Attack** (×2), **Defend** (×1) and **Ward** (×1) are shuffled into every fight's deck on top of the run deck and do not count against the cap. Defend blocks the next physical hit, Ward the next magic hit. There is no always-available button: a hand of three Attacks when you needed a block is the game.
 6. **Hold**: discard one card to pass the turn. The out for a trap turn (a braced enemy and a hand of strikes); it costs the card and the tempo, so it is never the default.

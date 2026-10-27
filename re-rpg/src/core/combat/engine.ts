@@ -205,8 +205,8 @@ function startRound(state: CombatState, rng: Rng, events: CombatEvent[]): void {
     const { intent, predictedDamage, moveName } = currentIntent(state, e.slot);
     events.push({ t: 'intent', intent, posture: e.next.posture, predictedDamage, moveName, who: e.slot });
   }
-  // Opening hand fills to the cap so round 1 is a choice; afterwards one card per round.
-  const deals = state.round === 1 ? HAND_CAP : 1;
+  // Every round starts with a full hand (DECISIONS #53): draw whatever is missing, two after a bonus turn, none if nothing was played.
+  const deals = Math.max(0, HAND_CAP - state.player.hand.length);
   for (let i = 0; i < deals; i++) dealOne(state.player, (a) => rng.shuffle(a), events);
 }
 

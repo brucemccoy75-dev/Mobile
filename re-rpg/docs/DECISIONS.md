@@ -402,3 +402,15 @@ a base-luck hero rolled 6% per card for each, and a fight is many cards. Now eac
 is 0.2% (`LUCK_PER_POINT`), so base luck 5 is 1% per card for a crit and 1% for a bonus turn. The
 rare-odds part of #50 (luck × 1.2 rare weight, luck × 1.2% on the level-up roll) is unchanged.
 The sim is back within a point of the luck-0 table. Pinned by the luck tests in `engine.test.ts`.
+
+## 53. Every round starts with a hand of 3
+
+Designer's call: the player should always start a round with three cards. The deal used to be a
+full hand on round 1 and then exactly one card per round, discarding the oldest when the hand
+was full. Now each round start draws whatever is missing to reach the hand cap of 3: one after
+a normal turn, two after a luck bonus turn (two cards played in the round), none when nothing
+was played (a Recovering turn) — so a full hand no longer throws away its oldest card. Nothing
+is drawn during a bonus turn itself. A smaller deck than 3 still deals what it has, and Hold is
+now the way to cycle a card you do not want. GAME_DESIGN §3 rules 2–3 rewritten to match. The
+sim moves less than a point (its greedy player always plays a card). Pinned by the dealing tests
+in `engine.test.ts`; screenshots in `docs/audit/draw-2026-10-27/`.

@@ -30,18 +30,34 @@ const play = (s: CombatState, id: string) => {
 };
 
 describe('rounds and dealing', () => {
-  it('opens with a full hand of 3, then deals 1 per round, overflowing oldest-first', () => {
+  it('every round starts with a hand of 3 (DECISIONS #53): a full hand draws nothing and discards nothing', () => {
     const s = fight(['broadsword', 'broadsword', 'broadsword', 'broadsword', 'broadsword'], PASSIVE);
     s.player.statuses.push({ id: 'stun', turns: 99, magnitude: 1 }); // pass every turn without playing
     expect(s.round).toBe(1);
     expect(s.player.hand).toHaveLength(3);
     expect(s.player.deck).toHaveLength(2);
-    const oldest = s.player.hand[0];
+    const hand = s.player.hand.slice();
     const ev = step(s, { type: 'skip' });
+    expect(s.player.hand).toEqual(hand);
+    expect(ev.filter((e) => e.t === 'deal')).toHaveLength(0);
+    expect(ev.some((e) => e.t === 'handOverflow')).toBe(false);
+  });
+
+  it('draws back up to 3: one after a normal turn, two after a bonus turn', () => {
+    const deck = ['attack', 'attack', 'attack', 'attack', 'attack', 'attack', 'attack', 'attack'];
+    const s = createCombat({ player: { stats: { ...WARRIOR.stats, luck: 0 }, deck, basics: [] }, enemy: PASSIVE, rng: new Rng(1) });
+    const ev1 = step(s, { type: 'card', index: 0 });
+    expect(ev1.filter((e) => e.t === 'deal')).toHaveLength(1);
     expect(s.player.hand).toHaveLength(3);
-    expect(ev.filter((e) => e.t === 'deal')).toHaveLength(1);
-    expect(ev.find((e) => e.t === 'handOverflow')).toMatchObject({ discarded: oldest });
-    expect(s.player.discard).toContain(oldest);
+    s.player.stats.luck = 500; // the next card always earns a bonus turn
+    const ev2 = step(s, { type: 'card', index: 0 });
+    expect(ev2.some((e) => e.t === 'bonusTurn')).toBe(true);
+    expect(ev2.filter((e) => e.t === 'deal')).toHaveLength(0); // no draw inside the round
+    expect(s.player.hand).toHaveLength(2);
+    s.player.stats.luck = 0;
+    const ev3 = step(s, { type: 'card', index: 0 });
+    expect(ev3.filter((e) => e.t === 'deal')).toHaveLength(2);
+    expect(s.player.hand).toHaveLength(3);
   });
 
   it('opens with fewer than 3 when the deck is smaller', () => {
