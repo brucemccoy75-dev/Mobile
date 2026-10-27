@@ -288,3 +288,12 @@ keeping the shared basics (Attack, Defend, Ward, dealt to every class) and the o
 decks frozen, and rejects a basic-rarity card that is in no deck. Bellow (0% +1, ignores
 defence, every enemy) joins the warrior's starting deck beside Attack ×2 and Defend, as it was
 meant to.
+
+## 46. The warrior tree: Shadow Knight, Paladin, Weaponmaster
+
+Three more families, laid out as a tree: Berserker unlocks Shadow Knight (2 points), Bulwark
+unlocks Paladin (2 points), and Weaponmaster (1 point) needs both and is the last warrior
+family. All three are empty until the designer fills them in the card editor; an empty family
+is legal and buys nothing yet. The skill tree screen now draws nodes in tiers by prerequisite
+with a link from each node to what it unlocks, and a detail panel for the tapped node with its
+cards and the Unlock button; a locked node says which family it needs by name.

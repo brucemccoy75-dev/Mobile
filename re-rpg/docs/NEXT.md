@@ -17,8 +17,10 @@ see `git log`. The game today is:
   on (DECISIONS #36).
 - **Combat**: duos, target arrow, fixed enemy rotations, flat gear attack (#31), equipment caps
   (#33), Bind Wound 25% once per fight, shop heal 35%, shrine half (#38, #39).
-- **Progression**: EXP levels 1–10 per class; the warrior's two nodes cost a point each (#41),
-  wizard and shaman nodes are still free; heirlooms every run that has a family. Nothing drops
+- **Progression**: EXP levels 1–10 per class; the warrior tree (#46) is Bulwark and Berserker (2
+  points each), then Paladin and Shadow Knight (2 each, behind them), then Weaponmaster (1, behind
+  both); the three new families are empty until filled in the editor; wizard and shaman nodes are
+  still free; heirlooms every run that has a family. Nothing drops
   without a node, the general tomes included (#42); basics are per class (warrior has no Ward);
   all four special tomes are fleeting; duos 30% on screen 1; selling pays 25%.
 
@@ -27,7 +29,7 @@ vite preview --port 4174 --strictPort &` (start it in its own command; `pkill` i
 command kills the chain) → Playwright at 844×390 with `window.__rerpg` (write a throwaway script
 per check; Test Mode is driven by setting registry `testSetup` and calling `TestMode.fight()`,
 then `Combat.act()` and polling `busy`) → commit with the attribution lines → `git push -u origin
-<branch>` → poll gh-pages. Record decisions in `docs/DECISIONS.md` (next number is 46).
+<branch>` → poll gh-pages. Record decisions in `docs/DECISIONS.md` (next number is 47).
 
 **Cards.** Every card is a record in `src/data/cards.json`; the game compiles it at load. The
 designer edits cards in the in-game card editor (title screen → card editor, `editor.html`) and

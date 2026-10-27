@@ -20,8 +20,8 @@ describe('progression curve', () => {
     expect(wild + guards + boss).toBeLessThan(260);
     expect(expForEnemy(getEnemy('boar'), 'random', 2)).toBe(15);
   });
-  it('the warrior pays two points per family; wizard and shaman still start with both', () => {
-    expect(TREES.warrior.map((n) => n.cost)).toEqual([2, 2]);
+  it('the warrior tree: two roots at 2, Shadow Knight and Paladin at 2 behind them, Weaponmaster at 1 behind both; wizard and shaman start with both', () => {
+    expect(TREES.warrior.map((n) => [n.setId, n.cost, n.requires ?? []])).toEqual([['warrior_dps', 2, []], ['warrior_tank', 2, []], ['warrior_shadow_knight', 2, ['warrior_dps']], ['warrior_paladin', 2, ['warrior_tank']], ['warrior_weaponmaster', 1, ['warrior_shadow_knight', 'warrior_paladin']]]);
     for (const c of ['wizard', 'shaman'] as const) expect(TREES[c].filter((n) => n.cost === 0)).toHaveLength(2);
   });
 });

@@ -268,7 +268,7 @@ export function diffCards(shipped: CardsData, data: CardsData): string[] {
   for (const m of data.modifiers) { const o = oldM.get(m.id); if (!o) out.push(`new modifier ${m.id}`); else if (!same(o, m)) out.push(`changed modifier ${m.id}`); }
   for (const id of oldM.keys()) if (!data.modifiers.some((m) => m.id === id)) out.push(`removed modifier ${id}`);
   const oldF = new Map(shipped.families.map((f) => [f.id, f]));
-  for (const f of data.families) { const o = oldF.get(f.id); if (o && !same(o, f)) out.push(`family ${f.id}: ${o.name} [${o.cards.join(', ')}] -> ${f.name} [${f.cards.join(', ')}]`); }
+  for (const f of data.families) { const o = oldF.get(f.id); if (!o) out.push(`new family ${f.id} (${f.name})`); else if (!same(o, f)) out.push(`family ${f.id}: ${o.name} [${o.cards.join(', ')}] -> ${f.name} [${f.cards.join(', ')}]`); }
   if (!same(shipped.trees, data.trees)) out.push('tree costs or prerequisites changed');
   if (!same(shipped.basics.warrior, data.basics.warrior)) out.push(`warrior starting deck: [${(shipped.basics.warrior ?? []).join(', ')}] -> [${(data.basics.warrior ?? []).join(', ')}]`);
   return out;

@@ -52,6 +52,20 @@ describe('meta', () => {
     expect(nodeState(m, 'warrior', 'wizard_fire').state).toBe('locked');
   });
 
+  it('prerequisites gate the deeper nodes and are named in the reason', () => {
+    const m = createMeta();
+    gainExp(m, 'warrior', 100000); // 9 points
+    expect(nodeState(m, 'warrior', 'warrior_shadow_knight')).toEqual({ state: 'locked', reason: 'needs Berserker' });
+    expect(nodeState(m, 'warrior', 'warrior_weaponmaster')).toEqual({ state: 'locked', reason: 'needs Shadow Knight and Paladin' });
+    expect(unlockNode(m, 'warrior', 'warrior_weaponmaster')).toBe(false);
+    unlockNode(m, 'warrior', 'warrior_dps'); unlockNode(m, 'warrior', 'warrior_shadow_knight');
+    expect(nodeState(m, 'warrior', 'warrior_weaponmaster')).toEqual({ state: 'locked', reason: 'needs Paladin' });
+    unlockNode(m, 'warrior', 'warrior_tank'); unlockNode(m, 'warrior', 'warrior_paladin');
+    expect(nodeState(m, 'warrior', 'warrior_weaponmaster').state).toBe('available');
+    expect(unlockNode(m, 'warrior', 'warrior_weaponmaster')).toBe(true);
+    expect(classProgress(m, 'warrior').points).toBe(0); // 2 + 2 + 2 + 2 + 1
+  });
+
   it('merges progress by max and union', () => {
     const a = createMeta(), b = createMeta();
     gainExp(a, 'warrior', 100); gainExp(b, 'shaman', 50);

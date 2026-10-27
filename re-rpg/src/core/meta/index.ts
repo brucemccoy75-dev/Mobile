@@ -133,7 +133,7 @@ export function nodeState(meta: MetaState, classId: ClassId, setId: SetId): { st
   if (!node) return { state: 'locked', reason: 'not in this tree' };
   if (p.unlocked.includes(setId)) return { state: 'owned' };
   const missing = (node.requires ?? []).filter((r) => !p.unlocked.includes(r));
-  if (missing.length) return { state: 'locked', reason: `needs ${missing.join(', ')}` };
+  if (missing.length) return { state: 'locked', reason: `needs ${missing.map((id) => getSet(id).name).join(missing.length === 2 ? ' and ' : ', ')}` };
   if (p.points < node.cost) return { state: 'locked', reason: `${node.cost} point${node.cost === 1 ? '' : 's'} (you have ${p.points})` };
   return { state: 'available' };
 }

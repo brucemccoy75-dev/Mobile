@@ -560,17 +560,57 @@
         "mighty_blow",
         "last_strike"
       ]
+    },
+    {
+      "id": "warrior_shadow_knight",
+      "classId": "warrior",
+      "name": "Shadow Knight",
+      "cards": []
+    },
+    {
+      "id": "warrior_paladin",
+      "classId": "warrior",
+      "name": "Paladin",
+      "cards": []
+    },
+    {
+      "id": "warrior_weaponmaster",
+      "classId": "warrior",
+      "name": "Weaponmaster",
+      "cards": []
     }
   ],
   "trees": {
     "warrior": [
       {
+        "setId": "warrior_dps",
+        "cost": 2
+      },
+      {
         "setId": "warrior_tank",
         "cost": 2
       },
       {
-        "setId": "warrior_dps",
-        "cost": 2
+        "setId": "warrior_shadow_knight",
+        "cost": 2,
+        "requires": [
+          "warrior_dps"
+        ]
+      },
+      {
+        "setId": "warrior_paladin",
+        "cost": 2,
+        "requires": [
+          "warrior_tank"
+        ]
+      },
+      {
+        "setId": "warrior_weaponmaster",
+        "cost": 1,
+        "requires": [
+          "warrior_shadow_knight",
+          "warrior_paladin"
+        ]
       }
     ],
     "wizard": [
