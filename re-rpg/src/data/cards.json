@@ -111,6 +111,13 @@
       "target": "self",
       "status": "aegis",
       "rounds": 3
+    },
+    {
+      "id": "backfire",
+      "name": "Backfire",
+      "target": "self",
+      "status": "backfire",
+      "amount": 100
     }
   ],
   "cards": [
@@ -513,6 +520,71 @@
         "ward_1"
       ],
       "note": "Flat +4 so gear does not multiply it (DECISIONS #14)."
+    },
+    {
+      "id": "minorleech",
+      "name": "Minor leech",
+      "classId": "warrior",
+      "rarity": "common",
+      "uses": null,
+      "damage": {
+        "percent": 100,
+        "bonus": 0,
+        "hits": 1,
+        "type": "physical",
+        "ignoreDef": false,
+        "drain": 0,
+        "targets": "one"
+      },
+      "heal": {
+        "percent": 10,
+        "flat": 0
+      },
+      "modifiers": [
+        "tiring"
+      ]
+    },
+    {
+      "id": "leech",
+      "name": "Leech",
+      "classId": "warrior",
+      "rarity": "rare",
+      "uses": "once_per_fight",
+      "damage": {
+        "percent": 100,
+        "bonus": 0,
+        "hits": 1,
+        "type": "physical",
+        "ignoreDef": false,
+        "drain": 40,
+        "targets": "all"
+      },
+      "heal": null,
+      "modifiers": [
+        "ward_1",
+        "overextend"
+      ]
+    },
+    {
+      "id": "deathtoufh",
+      "name": "Death Touch",
+      "classId": "warrior",
+      "rarity": "rare",
+      "uses": "fleeting",
+      "damage": {
+        "percent": 500,
+        "bonus": 0,
+        "hits": 1,
+        "type": "physical",
+        "ignoreDef": true,
+        "drain": 40,
+        "targets": "one"
+      },
+      "heal": null,
+      "modifiers": [
+        "backfire"
+      ],
+      "note": "Needs new modifier - if spell does not kill target damage self for max hp"
     }
   ],
   "families": [
@@ -591,7 +663,11 @@
       "id": "warrior_shadow_knight",
       "classId": "warrior",
       "name": "Shadow Knight",
-      "cards": []
+      "cards": [
+        "minorleech",
+        "leech",
+        "deathtoufh"
+      ]
     },
     {
       "id": "warrior_paladin",

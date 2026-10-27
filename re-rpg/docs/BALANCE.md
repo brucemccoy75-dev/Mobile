@@ -4,6 +4,10 @@ Produced by `npm run sim` with the greedy intent-reading policy (`src/core/sim/p
 
 Loadouts: **fresh** = Attack/Defend only, empty deck. **Set** = the two set tomes in the deck. **gearN** = a full three-slot kit for screen N (`GEAR_KIT` in `src/core/sim/gauntlet.ts`). The sim does not model loot choice, relics or 4-card decks, so these are floors, not expectations.
 
+## Cards import 2026-10-27 (Shadow Knight: Minor leech, Leech, Death Touch)
+
+Changed: new cards minorleech (Minor leech, common: 100%, heal 10%, Tiring), leech (Leech, rare, once per fight: 100% to every enemy, drain 40%, Ward 1 + Overextend), deathtoufh (Death Touch, rare, fleeting: 500%, ignores defence, drain 40%, Backfire 100%); new modifier backfire (DECISIONS #51), linked to Death Touch at the designer's request; Shadow Knight holds all three. The warrior gauntlet table is unchanged from the Luck entry below: the sim has no Shadow Knight loadout yet, so none of these cards is played in it.
+
 ## Luck 2026-10-27 (DECISIONS #50)
 
 Every class has luck 5: 6% per card of a critical hit (+50%) and 6% of a bonus turn (once per round), and +6 rare weight on rewards and the shop. The sim now passes luck through (its stat helper dropped it). Same cards as the entry below. Warrior gauntlet, 1000 runs, greedy policy:

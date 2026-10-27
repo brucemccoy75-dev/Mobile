@@ -4,7 +4,7 @@
 
 **State.** Branch `claude/re-rpg-mobile-architecture-t26won`, folder `re-rpg/`, live on GitHub
 Pages at https://brucemccoy75-dev.github.io/Mobile/ (deploys ~70 s after a push; poll
-`origin/gh-pages` for "Deploy re-rpg <sha>"). 207 tests pass (`npm run check`). The game today is:
+`origin/gh-pages` for "Deploy re-rpg <sha>"). 211 tests pass (`npm run check`). The game today is:
 
 - **Node overworld** (DECISIONS #37): a static node network per screen over an authored
   terrain, contents rolled per run, tap a reachable node to travel, swipe to pan. Screen 1 has a
@@ -18,7 +18,8 @@ Pages at https://brucemccoy75-dev.github.io/Mobile/ (deploys ~70 s after a push;
   (#33), Bind Wound 25% once per fight, shop heal 35%, shrine half (#38, #39). Luck (#50): every class has 5; luck × 1.2% per card is a critical hit (+50%) and a bonus turn (once per round), and it adds to the rare odds of rewards, the shop and level-ups.
 - **Progression**: EXP levels 1–10 per class; each level is +1 max HP for good and a 25% rare card from the run's families, else 15 gold (#49); the warrior tree (#46) is Bulwark and Berserker (2
   points each), then Paladin and Shadow Knight (2 each, behind them), then Weaponmaster (1, behind
-  both); the three new families are empty until filled in the editor; wizard and shaman nodes are
+  both); Shadow Knight holds Minor leech, Leech and Death Touch (whose Backfire, #51, costs all
+  your HP if the target survives); Paladin and Weaponmaster are empty until filled in the editor; wizard and shaman nodes are
   still free; heirlooms every run that has a family. Nothing drops
   without a node, the general tomes included (#42); basics are per class (warrior has no Ward);
   all four special tomes are fleeting; duos 30% on screen 1; selling pays 25%.
@@ -28,7 +29,7 @@ vite preview --port 4174 --strictPort &` (start it in its own command; `pkill` i
 command kills the chain) → Playwright at 844×390 with `window.__rerpg` (write a throwaway script
 per check; Test Mode is driven by setting registry `testSetup` and calling `TestMode.fight()`,
 then `Combat.act()` and polling `busy`) → commit with the attribution lines → `git push -u origin
-<branch>` → poll gh-pages. Record decisions in `docs/DECISIONS.md` (next number is 51).
+<branch>` → poll gh-pages. Record decisions in `docs/DECISIONS.md` (next number is 52).
 
 **Cards.** Every card is a record in `src/data/cards.json`; the game compiles it at load. The
 designer edits cards in the in-game card editor (title screen → card editor, `editor.html`) and
@@ -58,7 +59,7 @@ generator that speaks node ids (targets that place themselves on the node map, m
 chains, lore on completion). Any quest change: tests in `quest.test.ts` first, then the scene,
 then a Playwright check on the overworld.
 
-**Next, in order:** (1) card balance through editor imports (docs/CARDS.md; fill Shadow Knight,
-Paladin, Weaponmaster; watch the fresh-run questions above); (2) the quest system; then the
+**Next, in order:** (1) card balance through editor imports (docs/CARDS.md; fill Paladin and
+Weaponmaster; give the sim a Shadow Knight loadout; watch the fresh-run questions above); (2) the quest system; then the
 older queue: screen-2 painting (prompt in docs/ART.md, layout in `art-src/layout-screen2.png`),
 life on the painting, painted node icons, Wren's still.

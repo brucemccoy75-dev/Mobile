@@ -373,3 +373,24 @@ point of luck is 1.2%**.
   as before. Wizard and shaman get the same 5; their card data is untouched.
 The sim passes luck through now (BALANCE.md, 2026-10-27 Luck). Pinned by the luck tests in
 `engine.test.ts`, `loot.test.ts` and `session.test.ts`; screenshots in `docs/audit/luck-2026-10-27/`.
+
+## 51. Backfire: a card that costs you if it does not kill
+
+Death Touch (Shadow Knight: 500%, ignores defence, drain 40%, fleeting) came with a note asking
+for a new modifier: if the card does not kill its target, it damages you for your max HP. It is
+a modifier status like the others, `backfire`, on yourself, with one number: `amount`, the
+percent of max HP it costs (1-100; 100 reads "If the target survives, you lose all your HP.").
+- **When.** The compiler puts it after everything else on the card, so the damage, drain and
+  any crit have landed first. If the chosen target is still standing (any enemy the card struck,
+  for a card that hits every enemy), you lose that share of max HP. A kill costs nothing; a
+  different enemy surviving a single-target kill does not count.
+- **Nothing stops it.** No Guard, Ward or Aegis: it is the price of the card, not a hit. At
+  100% it is the gamble of your life, so the headline (the damage it will do, #40) is what the
+  player reads to decide.
+- **Fanfare.** A shake, a purple flash, the HP loss in big purple numbers and a "BACKFIRE! it
+  survived, and the spell turns on you" callout.
+- The editor offers it in the status list ("backfire (if the target survives)") with one field,
+  max HP lost (%); the validator requires it on yourself with an amount.
+Imported with the designer's export of the same day; the Backfire modifier (100%) was added and
+linked to Death Touch at their request, in the file, as the card's note asked. Pinned by the
+backfire tests in `engine.test.ts` and `data.test.ts`; screenshots in `docs/audit/backfire-2026-10-27/`.

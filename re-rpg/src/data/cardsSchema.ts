@@ -40,7 +40,7 @@ export interface CardDef {
   note?: string;
 }
 /** A status to give, or one of the two removals (DECISIONS #48). */
-export type ModifierStatus = StatusId | 'remove_guard' | 'remove_buffs';
+export type ModifierStatus = StatusId | 'remove_guard' | 'remove_buffs' | 'backfire';
 export interface ModifierDef {
   id: string;
   name: string;
@@ -76,7 +76,7 @@ export const REMOVALS: Record<'remove_guard' | 'remove_buffs', StatusId[]> = {
 };
 export const isRemoval = (s: ModifierStatus): s is keyof typeof REMOVALS => s in REMOVALS;
 /** Every value the modifier's status field takes, in editor order. */
-export const MODIFIER_STATUSES: ModifierStatus[] = [...STATUS_IDS, 'remove_guard', 'remove_buffs'];
+export const MODIFIER_STATUSES: ModifierStatus[] = [...STATUS_IDS, 'remove_guard', 'remove_buffs', 'backfire'];
 export const RARITIES: Rarity[] = ['basic', 'common', 'uncommon', 'rare'];
 export const USES: SkillUses[] = ['fleeting', 'once_per_fight'];
 export const CLASS_IDS: ClassId[] = ['warrior', 'wizard', 'shaman'];
@@ -87,6 +87,7 @@ export const AMOUNT_STATUSES: StatusId[] = ['guard', 'ward', 'burn', 'curse'];
 // ---------------------------------------------------------------- compile
 
 export function modifierEffect(m: ModifierDef, targets?: 'one' | 'all'): Effect {
+  if (m.status === 'backfire') return { type: 'backfire', pct: (m.amount ?? 100) / 100 };
   if (isRemoval(m.status)) {
     const s: Extract<Effect, { type: 'strip' }> = { type: 'strip', statuses: [...REMOVALS[m.status]] };
     if (targets === 'all') s.targets = 'all';
@@ -115,6 +116,7 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 /** Text for a modifier: its own line if it has one, else built from the numbers. */
 export function modifierText(m: ModifierDef, targets?: 'one' | 'all'): string {
   if (m.text) return m.text;
+  if (m.status === 'backfire') return (m.amount ?? 100) >= 100 ? 'If the target survives, you lose all your HP.' : `If the target survives, you lose ${m.amount}% of your max HP.`;
   if (isRemoval(m.status)) {
     const whose = targets === 'all' ? "every enemy's" : "the enemy's";
     return m.status === 'remove_guard' ? `Remove ${whose} Guard first.` : `Remove ${whose} buffs first (Guard, Ward, Aegis, Hardened, Braced, Scattered).`;
@@ -166,8 +168,9 @@ export function compileCards(data: CardsData): Compiled {
     if (c.damage) effects.push(damageEffect(c.damage));
     if (c.heal) { const h: Extract<Effect, { type: 'heal' }> = { type: 'heal' }; if (c.heal.percent) h.pct = c.heal.percent / 100; if (c.heal.flat) h.flat = c.heal.flat; effects.push(h); }
     for (const id of c.modifiers) { const m = mods.get(id); if (!m) throw new Error(`card ${c.id}: unknown modifier ${id}`); effects.push(modifierEffect(m, c.damage?.targets)); }
-    // Removals run ahead of the damage whatever their place in the list (DECISIONS #48).
-    effects.sort((a, b) => Number(b.type === 'strip') - Number(a.type === 'strip'));
+    // Removals run ahead of the damage, a backfire after everything, whatever their place in the list (DECISIONS #48, #51).
+    const order = (e: Effect) => (e.type === 'strip' ? 0 : e.type === 'backfire' ? 2 : 1);
+    effects.sort((a, b) => order(a) - order(b));
     const sk: Skill = { id: c.id, name: c.name, text: cardText(c, mods), classId: c.classId, rarity: c.rarity, effects };
     const fam = familyOfClassCard.get(c.id);
     if (fam) sk.setId = fam;
@@ -201,6 +204,12 @@ export function validateCards(data: CardsData, shipped?: CardsData): string[] {
     if (!m.name?.trim()) bad(`modifier ${m.id}: needs a name`);
     if (m.target !== 'self' && m.target !== 'enemy') bad(`modifier ${m.id}: target must be self or enemy`);
     if (!MODIFIER_STATUSES.includes(m.status)) bad(`modifier ${m.id}: unknown status ${m.status}`);
+    if (m.status === 'backfire') {
+      if (m.target !== 'self') bad(`modifier ${m.id}: backfire works on yourself only`);
+      if (!isInt(m.amount, 1, 100)) bad(`modifier ${m.id}: backfire needs an amount (percent of max HP, 1-100)`);
+      if (m.rounds !== undefined || m.chance !== undefined || m.magic) bad(`modifier ${m.id}: backfire takes no rounds, chance or magic`);
+      continue;
+    }
     if (isRemoval(m.status)) {
       if (m.target !== 'enemy') bad(`modifier ${m.id}: ${m.status} works on the enemy only`);
       if (m.rounds !== undefined || m.amount !== undefined || m.chance !== undefined || m.magic) bad(`modifier ${m.id}: ${m.status} takes no rounds, amount, chance or magic`);

@@ -15,8 +15,8 @@ describe('content integrity', () => {
       const general = set.skills.filter((id) => getSkill(id).classId === 'any');
       expect(own.length).toBeGreaterThanOrEqual(2); // two to start with; the editor may add more (Spirit Boomerang, 2026-10-27)
       for (const id of own) { expect(getSkill(id).classId).toBe(set.classId); expect(getSkill(id).setId).toBe(set.id); }
-      // Bulwark also holds Repair Boomerang, a class-any card (2026-10-27 import).
-      expect([ATTACK_GENERALS, DEFENCE_GENERALS, [...DEFENCE_GENERALS, 'healboomerang']]).toContainEqual(general);
+      // Bulwark also holds Repair Boomerang, a class-any card; Shadow Knight holds no general tomes (2026-10-27 imports).
+      expect([ATTACK_GENERALS, DEFENCE_GENERALS, [...DEFENCE_GENERALS, 'healboomerang'], []]).toContainEqual(general);
     }
     // each class has one attack family and one defence family, so every general tome sits in exactly one of its families
     for (const c of ['warrior', 'wizard', 'shaman'] as const) {
@@ -102,5 +102,24 @@ describe('cards.json (DECISIONS #44)', () => {
     const bad: CardsData = JSON.parse(JSON.stringify(data));
     bad.modifiers.find((m) => m.id === 'break_guard')!.target = 'self';
     expect(validateCards(bad)).toEqual(['modifier break_guard: remove_guard works on the enemy only']);
+  });
+});
+
+describe('backfire modifier (DECISIONS #51)', () => {
+  it('compiles last, reads as a warning, and the validator wants it on yourself with a percent', () => {
+    const data: CardsData = JSON.parse(JSON.stringify(CARDS_DATA));
+    data.modifiers.push({ id: 'backfire_all', name: 'Backfire', target: 'self', status: 'backfire', amount: 100 });
+    data.cards.find((c) => c.id === 'broadsword')!.modifiers = ['backfire_all', 'overextend'];
+    expect(validateCards(data)).toEqual([]);
+    const broad = compileCards(data).skills.find((k) => k.id === 'broadsword')!;
+    expect(broad.effects.at(-1)).toEqual({ type: 'backfire', pct: 1 });
+    expect(broad.text).toContain('If the target survives, you lose all your HP.');
+    const half: CardsData = JSON.parse(JSON.stringify(data));
+    half.modifiers.find((m) => m.id === 'backfire_all')!.amount = 50;
+    expect(compileCards(half).skills.find((k) => k.id === 'broadsword')!.text).toContain('If the target survives, you lose 50% of your max HP.');
+    const bad: CardsData = JSON.parse(JSON.stringify(data));
+    bad.modifiers.find((m) => m.id === 'backfire_all')!.target = 'enemy';
+    delete bad.modifiers.find((m) => m.id === 'backfire_all')!.amount;
+    expect(validateCards(bad)).toEqual(['modifier backfire_all: backfire works on yourself only', 'modifier backfire_all: backfire needs an amount (percent of max HP, 1-100)']);
   });
 });

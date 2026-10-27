@@ -37,6 +37,9 @@ export function describeSkill(skill: Skill, stats: Stats): string {
         parts.push(e.statuses.length === 1 ? `Remove ${whose} ${STATUS_NAME[e.statuses[0]!]} first.` : `Remove ${whose} buffs first.`);
         break;
       }
+      case 'backfire':
+        parts.push(e.pct >= 1 ? 'If the target survives, you lose all your HP.' : `If the target survives, you lose ${Math.round(e.pct * stats.maxHp)} HP.`);
+        break;
       case 'heal': {
         const n = Math.round((e.flat ?? 0) + (e.pct ?? 0) * stats.maxHp);
         parts.push(`Heal ${n} HP.`);

@@ -665,3 +665,37 @@ describe('luck (DECISIONS #50)', () => {
     }
   });
 });
+
+describe('backfire (DECISIONS #51)', () => {
+  const GAMBLE = { id: 'test_gamble', name: 'Gamble', text: '', classId: 'any' as const, rarity: 'rare' as const, effects: [{ type: 'damage' as const, mult: 5, ignoreDef: true }, { type: 'backfire' as const, pct: 1 }] };
+  const SWEEP_GAMBLE = { ...GAMBLE, id: 'test_gamble_all', effects: [{ type: 'damage' as const, mult: 5, ignoreDef: true, targets: 'all' as const }, { type: 'backfire' as const, pct: 0.5 }] };
+  it('a kill costs nothing', () => {
+    registerSkill(GAMBLE);
+    const s = createCombat({ player: { ...WARRIOR, deck: [], basics: [] }, enemy: PASSIVE, rng: new Rng(1) });
+    s.enemies[0]!.hp = 20; // 4 × 5 = 20: exactly lethal
+    s.player.hand.push('test_gamble');
+    const ev = step(s, { type: 'card', index: 0 });
+    expect(ev.some((e) => e.t === 'backfire')).toBe(false);
+    expect(s.outcome).toBe('won');
+  });
+  it('a survivor turns the card on you: that share of your max HP, through any block', () => {
+    registerSkill(GAMBLE);
+    const s = createCombat({ player: { ...WARRIOR, deck: [], basics: [] }, enemy: PASSIVE, rng: new Rng(1) });
+    s.player.statuses.push({ id: 'aegis', turns: 2, magnitude: 1 }, { id: 'guard', turns: 99, magnitude: 3 });
+    s.player.hand.push('test_gamble');
+    const ev = step(s, { type: 'card', index: 0 });
+    expect(ev.find((e) => e.t === 'backfire')).toMatchObject({ amount: 25 });
+    expect(s.player.hp).toBe(0);
+    expect(s.outcome).toBe('lost');
+  });
+  it('on a sweep it fires if any enemy is left standing; half max HP leaves you alive', () => {
+    registerSkill(SWEEP_GAMBLE);
+    const s = createCombat({ player: { ...WARRIOR, deck: [], basics: [] }, enemies: [PASSIVE, PASSIVE], rng: new Rng(1) });
+    s.enemies[0]!.hp = 20;
+    s.player.hand.push('test_gamble_all');
+    const ev = step(s, { type: 'card', index: 0 });
+    expect(ev.find((e) => e.t === 'backfire')).toMatchObject({ amount: 13 }); // round(25 × 0.5)
+    expect(s.player.hp).toBe(12);
+    expect(s.outcome).toBe('ongoing');
+  });
+});

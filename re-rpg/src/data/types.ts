@@ -38,7 +38,9 @@ export type Effect =
   /** `kind: 'magic'` on a hostile status means Ward (or Aegis) blocks it like a spell. */
   | { type: 'status'; target: Target; status: StatusId; turns: number; magnitude?: number; chance?: number; kind?: DamageKind }
   /** Removes these statuses from the enemy before the hit (DECISIONS #48); `targets: 'all'` strips every living enemy. */
-  | { type: 'strip'; statuses: StatusId[]; targets?: 'all' };
+  | { type: 'strip'; statuses: StatusId[]; targets?: 'all' }
+  /** If the card's damage leaves its target (any target, for a sweep) alive, the player loses `pct` of max HP, through any block (DECISIONS #51). */
+  | { type: 'backfire'; pct: number };
 
 /** How often a tome may be played. Default: every time it is drawn. */
 export type SkillUses = 'once_per_fight' | 'fleeting';

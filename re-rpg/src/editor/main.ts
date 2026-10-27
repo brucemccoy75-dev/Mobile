@@ -219,16 +219,20 @@ function modifierForm(m: ModifierDef): HTMLElement {
   const users = usedBy(m.id);
   // A removal (DECISIONS #48) is always on the enemy and has no numbers: it runs before the card's hit.
   const removal = isRemoval(m.status);
+  // A backfire (DECISIONS #51) is on yourself and takes one number: the share of max HP it costs.
+  const backfire = m.status === 'backfire';
+  const fixed = removal || backfire;
   const st = m.status as StatusId;
-  const needsRounds = !removal && !HIT_STATUSES.includes(st) && st !== 'chill';
-  const needsAmount = !removal && AMOUNT_STATUSES.includes(st);
+  const needsRounds = !fixed && !HIT_STATUSES.includes(st) && st !== 'chill';
+  const needsAmount = !fixed && AMOUNT_STATUSES.includes(st);
   return h('div', { class: 'form' },
     h('div', { class: 'grid' },
       h('label', {}, 'id', h('input', { value: m.id, disabled: users.length > 0, onchange: (ev: Event) => { const v = slug((ev.target as HTMLInputElement).value); if (state.data.modifiers.some((x) => x.id === v && x !== m)) { alert('that id is taken'); render(); return; } m.id = v; state.editingMod = v; render(); } })),
       h('label', {}, 'name', h('input', { value: m.name, onchange: (ev: Event) => { m.name = (ev.target as HTMLInputElement).value; render(); } })),
-      removal ? null : h('label', {}, 'who gets it', select(m.target, [['self', 'self (the hero)'], ['enemy', 'the enemy']], (v) => { m.target = v as 'self' | 'enemy'; render(); })),
-      h('label', {}, 'status', select(m.status, MODIFIER_STATUSES.map((s) => [s, s === 'remove_guard' ? 'remove guard (before the hit)' : s === 'remove_buffs' ? 'remove all buffs (before the hit)' : s]), (v) => {
+      fixed ? null : h('label', {}, 'who gets it', select(m.target, [['self', 'self (the hero)'], ['enemy', 'the enemy']], (v) => { m.target = v as 'self' | 'enemy'; render(); })),
+      h('label', {}, 'status', select(m.status, MODIFIER_STATUSES.map((s) => [s, s === 'remove_guard' ? 'remove guard (before the hit)' : s === 'remove_buffs' ? 'remove all buffs (before the hit)' : s === 'backfire' ? 'backfire (if the target survives)' : s]), (v) => {
         m.status = v as ModifierDef['status'];
+        if (m.status === 'backfire') { m.target = 'self'; m.amount = 100; delete m.rounds; delete m.chance; delete m.magic; render(); return; }
         if (isRemoval(m.status)) { m.target = 'enemy'; delete m.rounds; delete m.amount; delete m.chance; delete m.magic; render(); return; }
         const s = m.status as StatusId;
         if (HIT_STATUSES.includes(s) || s === 'chill') delete m.rounds; else m.rounds ??= 2;
@@ -236,14 +240,16 @@ function modifierForm(m: ModifierDef): HTMLElement {
         render();
       })),
       needsRounds ? h('label', {}, 'rounds (end-of-round ticks)', numInput(m.rounds ?? 1, (v) => { m.rounds = v; render(); }, 1, 9)) : null,
+      backfire ? h('label', {}, 'max HP lost if the target survives (%)', numInput(m.amount ?? 100, (v) => { m.amount = v; render(); }, 1, 100)) : null,
       needsAmount ? h('label', {}, HIT_STATUSES.includes(st) ? 'hits blocked' : 'damage per round', numInput(m.amount ?? 1, (v) => { m.amount = v; render(); }, 1, 9)) : null,
-      removal ? null : h('label', {}, 'chance % (blank = always)', h('input', { type: 'number', value: m.chance ?? '', min: 1, max: 100, inputmode: 'numeric', onchange: (ev: Event) => { const v = Number((ev.target as HTMLInputElement).value); if (v >= 1 && v <= 100) m.chance = v; else delete m.chance; render(); } })),
-      m.target === 'enemy' && !removal ? h('label', {}, 'counts as magic (Ward can block it)', h('input', { type: 'checkbox', checked: !!m.magic, onchange: (ev: Event) => { if ((ev.target as HTMLInputElement).checked) m.magic = true; else delete m.magic; render(); } })) : null,
+      fixed ? null : h('label', {}, 'chance % (blank = always)', h('input', { type: 'number', value: m.chance ?? '', min: 1, max: 100, inputmode: 'numeric', onchange: (ev: Event) => { const v = Number((ev.target as HTMLInputElement).value); if (v >= 1 && v <= 100) m.chance = v; else delete m.chance; render(); } })),
+      m.target === 'enemy' && !fixed ? h('label', {}, 'counts as magic (Ward can block it)', h('input', { type: 'checkbox', checked: !!m.magic, onchange: (ev: Event) => { if ((ev.target as HTMLInputElement).checked) m.magic = true; else delete m.magic; render(); } })) : null,
       h('label', {}, 'card text (blank = generated)', h('input', { value: m.text ?? '', onchange: (ev: Event) => { const v = (ev.target as HTMLInputElement).value.trim(); if (v) m.text = v; else delete m.text; render(); } })),
     ),
     h('div', { class: 'text' }, 'Reads as: ', modifierText(m)),
     removal ? h('div', { class: 'muted' }, 'Runs before the card\'s damage, on the enemies the damage hits (every enemy for a card that hits all). Remove guard takes Guard only; remove all buffs takes Guard, Ward, Aegis, Hardened, Braced and Scattered.') : null,
-    removal ? null : h('div', { class: 'muted' }, 'Timing: a status ticks at the end of the round it was applied in. Self, 1 round = this round only; self, 2 rounds = this round and your next turn; enemy, 2 rounds = your next turn. Guard and Ward count hits, Chill lasts one enemy action.'),
+    backfire ? h('div', { class: 'muted' }, 'Checked after the card\'s damage: if the target (any enemy it hit, for a card that hits all) is still standing, you lose this share of your max HP. No Guard, Ward or Aegis stops it. 100% means the gamble is your life.') : null,
+    fixed ? null : h('div', { class: 'muted' }, 'Timing: a status ticks at the end of the round it was applied in. Self, 1 round = this round only; self, 2 rounds = this round and your next turn; enemy, 2 rounds = your next turn. Guard and Ward count hits, Chill lasts one enemy action.'),
     h('div', { class: 'actions' },
       h('button', { class: 'primary', onclick: () => { state.editingMod = null; render(); } }, 'Done'),
       users.length ? h('span', { class: 'muted' }, `Linked by ${users.join(', ')}; unlink it there before deleting.`) : h('button', { class: 'danger', onclick: () => { state.data.modifiers = state.data.modifiers.filter((x) => x !== m); state.editingMod = null; render(); } }, 'Delete'),

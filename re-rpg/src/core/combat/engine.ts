@@ -132,8 +132,18 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
     const luckChance = (state.player.stats.luck ?? 0) * LUCK_PER_POINT;
     const crit = luckChance > 0 && skill.effects.some((e) => e.type === 'damage') && roll() < luckChance;
     if (crit) events.push({ t: 'crit' });
+    const struck = skill.effects.some((e) => e.type === 'damage' && e.targets === 'all') ? livingEnemies(state) : [target];
     for (const e of skill.effects) {
       if (e.type === 'damage' && e.targets === 'all') { sweep(state, e, events, crit); continue; }
+      // Backfire (DECISIONS #51): compiled last, so the damage has landed; a survivor among those struck turns it on you.
+      if (e.type === 'backfire') {
+        if (struck.some((v) => v.hp > 0)) {
+          const amount = Math.min(state.player.hp, Math.round(e.pct * state.player.stats.maxHp));
+          state.player.hp -= amount;
+          events.push({ t: 'backfire', amount });
+        }
+        continue;
+      }
       if (e.type === 'strip') { strip(e.targets === 'all' ? livingEnemies(state) : [target], e.statuses, events); continue; }
       const f = events.length;
       applyEffects([e], state.player, target, roll, events, crit);
@@ -314,6 +324,8 @@ export function applyEffects(effects: Effect[], self: Combatant, other: Combatan
       case 'strip':
         stripStatuses(other, e.statuses, events);
         break;
+      case 'backfire':
+        break; // the player's card play resolves it in step(); nothing else carries one
       case 'heal': {
         const amount = Math.round((e.flat ?? 0) + (e.pct ?? 0) * self.stats.maxHp);
         heal(self, amount, events);

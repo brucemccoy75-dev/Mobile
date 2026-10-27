@@ -82,6 +82,8 @@ export type CombatEvent =
   | { t: 'crit' }
   /** Luck (DECISIONS #50): the enemies wait; the player plays again this round. */
   | { t: 'bonusTurn' }
+  /** The card did not kill: it turns on the player (DECISIONS #51). */
+  | { t: 'backfire'; amount: number }
   | { t: 'heal'; side: Side; amount: number; who?: number }
   | { t: 'statusApplied'; side: Side; status: StatusId; turns: number; magnitude: number; who?: number }
   | { t: 'statusResisted'; side: Side; status: StatusId; warded?: boolean; who?: number }

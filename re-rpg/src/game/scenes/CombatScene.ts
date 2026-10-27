@@ -681,6 +681,15 @@ export class CombatScene extends Phaser.Scene {
         this.cameras.main.shake(160, 0.01);
         await this.luckFanfare('CRITICAL HIT!', '#ffb02e', 'every hit +50%');
         return;
+      case 'backfire': {
+        // The card did not kill (DECISIONS #51): it turns on you, unblockable.
+        this.cameras.main.shake(220, 0.012);
+        this.cameras.main.flash(180, 160, 40, 200);
+        this.showHp('player', -e.amount);
+        void floatText(this, this.px, this.py - 30, `-${e.amount}`, '#d06bff', 52, 1300);
+        await this.luckFanfare('BACKFIRE!', '#d06bff', 'it survived, and the spell turns on you');
+        return;
+      }
       case 'bonusTurn':
         this.cameras.main.flash(220, 120, 255, 180);
         await this.luckFanfare('BONUS TURN!', '#7cffb2', 'play again before they move');
