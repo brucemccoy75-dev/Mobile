@@ -5,7 +5,9 @@
       "attack",
       "attack",
       "defend",
-      "bellow"
+      "bellow",
+      "defend",
+      "ward"
     ],
     "wizard": [
       "attack",
@@ -488,6 +490,29 @@
       },
       "heal": null,
       "modifiers": []
+    },
+    {
+      "id": "healboomerang",
+      "name": "Repair Boomerang",
+      "classId": "any",
+      "rarity": "rare",
+      "uses": "once_per_fight",
+      "damage": {
+        "percent": 0,
+        "bonus": 2,
+        "hits": 2,
+        "type": "magic",
+        "ignoreDef": true,
+        "drain": 50,
+        "targets": "all"
+      },
+      "heal": null,
+      "modifiers": [
+        "overextend",
+        "tiring",
+        "ward_1"
+      ],
+      "note": "Flat +4 so gear does not multiply it (DECISIONS #14)."
     }
   ],
   "families": [
@@ -500,7 +525,8 @@
         "bind_wound",
         "warding_blast",
         "stand_firm",
-        "final_stand"
+        "final_stand",
+        "healboomerang"
       ]
     },
     {

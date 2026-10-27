@@ -4,6 +4,22 @@ Produced by `npm run sim` with the greedy intent-reading policy (`src/core/sim/p
 
 Loadouts: **fresh** = Attack/Defend only, empty deck. **Set** = the two set tomes in the deck. **gearN** = a full three-slot kit for screen N (`GEAR_KIT` in `src/core/sim/gauntlet.ts`). The sim does not model loot choice, relics or 4-card decks, so these are floors, not expectations.
 
+## Cards import 2026-10-27 (Repair Boomerang, six-card starting deck)
+
+Changed: new card healboomerang (Repair Boomerang, Bulwark, class any, rare, once per fight: 0% +2, 2 hits, magic, ignores defence, every enemy, drain 50%, Overextend + Tiring + Ward 1); warrior starting deck Attack, Attack, Defend, Bellow → Attack, Attack, Defend, Bellow, Defend, Ward. The export also added Overextend to the shared Ward; the validator rejected that and the designer dropped it, so Ward is unchanged. Warrior gauntlet, 1000 runs, greedy policy:
+
+```
+loadout                        reach boss  beat boss  hp@boss fights rounds  deaths
+warrior fresh                       25.4%       0.0%      5.6   2.62   20.4  adept_necromancer 30%, boar 27%, gatekeeper 25%
+warrior Bulwark                     39.1%       0.0%     10.6   2.82   28.9  gatekeeper 39%, boar 27%, adept_necromancer 24%
+warrior Berserker                   81.1%       0.0%     11.2   3.75   13.6  gatekeeper 81%, boar 8%, adept_necromancer 6%
+warrior Bulwark+gear1               85.8%       0.0%     16.5   3.76   30.5  gatekeeper 86%, boar 9%, adept_necromancer 4%
+warrior Berserker+gear1             99.1%       0.0%     17.7   3.99   13.7  gatekeeper 99%, boar 1%, adept_necromancer 0%
+warrior both sets+gear1             95.8%       0.5%     18.2   3.95   21.1  gatekeeper 95%, boar 2%, adept_necromancer 1%
+```
+
+Against the previous import: fresh 56.5% → 25.4% reach, Berserker 92.1% → 81.1%, Bulwark+gear1 87.8% → 85.8%, both sets+gear1 beat boss 1.8% → 0.5%. Two more non-attacking basics dilute the hand for every loadout; Bulwark's reach is unchanged and it arrives with more HP (9.0 → 10.6).
+
 ## Cards import 2026-10-27 (Spirit Boomerang)
 
 Changed: spiritboomerang (10% +4 → 0% +1, 2 hits, magic, now ignores defence; still every enemy, once per fight, Overextend + Tiring). Warrior gauntlet, 1000 runs, greedy policy:

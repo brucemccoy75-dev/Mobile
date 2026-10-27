@@ -15,7 +15,8 @@ describe('content integrity', () => {
       const general = set.skills.filter((id) => getSkill(id).classId === 'any');
       expect(own.length).toBeGreaterThanOrEqual(2); // two to start with; the editor may add more (Spirit Boomerang, 2026-10-27)
       for (const id of own) { expect(getSkill(id).classId).toBe(set.classId); expect(getSkill(id).setId).toBe(set.id); }
-      expect([ATTACK_GENERALS, DEFENCE_GENERALS]).toContainEqual(general);
+      // Bulwark also holds Repair Boomerang, a class-any card (2026-10-27 import).
+      expect([ATTACK_GENERALS, DEFENCE_GENERALS, [...DEFENCE_GENERALS, 'healboomerang']]).toContainEqual(general);
     }
     // each class has one attack family and one defence family, so every general tome sits in exactly one of its families
     for (const c of ['warrior', 'wizard', 'shaman'] as const) {
