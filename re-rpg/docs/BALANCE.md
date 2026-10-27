@@ -4,6 +4,22 @@ Produced by `npm run sim` with the greedy intent-reading policy (`src/core/sim/p
 
 Loadouts: **fresh** = Attack/Defend only, empty deck. **Set** = the two set tomes in the deck. **gearN** = a full three-slot kit for screen N (`GEAR_KIT` in `src/core/sim/gauntlet.ts`). The sim does not model loot choice, relics or 4-card decks, so these are floors, not expectations.
 
+## Luck 2026-10-27 (DECISIONS #50)
+
+Every class has luck 5: 6% per card of a critical hit (+50%) and 6% of a bonus turn (once per round), and +6 rare weight on rewards and the shop. The sim now passes luck through (its stat helper dropped it). Same cards as the entry below. Warrior gauntlet, 1000 runs, greedy policy:
+
+```
+loadout                        reach boss  beat boss  hp@boss fights rounds  deaths
+warrior fresh                       28.9%       0.0%      6.0   2.73   20.7  adept_necromancer 30%, gatekeeper 29%, boar 24%
+warrior Bulwark                     46.7%       0.0%     11.1   3.00   29.0  gatekeeper 47%, boar 22%, adept_necromancer 21%
+warrior Berserker                   85.5%       0.0%     11.9   3.80   13.6  gatekeeper 86%, boar 6%, adept_necromancer 5%
+warrior Bulwark+gear1               89.6%       0.0%     18.0   3.84   31.1  gatekeeper 90%, boar 6%, adept_necromancer 3%
+warrior Berserker+gear1             99.6%       0.1%     18.8   3.99   13.8  gatekeeper 100%, boar 0%
+warrior both sets+gear1             97.0%       1.2%     19.5   3.97   21.4  gatekeeper 96%, boar 2%, adept_necromancer 1%
+```
+
+Against luck 0: fresh 25.4% → 28.9% reach, Bulwark 39.1% → 46.7%, Berserker 81.1% → 85.5%, both sets+gear1 beat boss 0.5% → 1.2%. The sim does not model loot, so the rare-odds part is not in these numbers.
+
 ## Cards import 2026-10-27 (Repair Boomerang, six-card starting deck)
 
 Changed: new card healboomerang (Repair Boomerang, Bulwark, class any, rare, once per fight: 0% +2, 2 hits, magic, ignores defence, every enemy, drain 50%, Overextend + Tiring + Ward 1); warrior starting deck Attack, Attack, Defend, Bellow → Attack, Attack, Defend, Bellow, Defend, Ward. The export also added Overextend to the shared Ward; the validator rejected that and the designer dropped it, so Ward is unchanged. Warrior gauntlet, 1000 runs, greedy policy:

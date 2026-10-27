@@ -129,3 +129,12 @@ describe('rollShopStock', () => {
     expect(sellValue('rare', 1)).toBe(Math.round(itemPrice('rare', 0) * 0.25) * 2);
   });
 });
+
+describe('luck (DECISIONS #50)', () => {
+  it('adds luck × 1.2 to the rare weight of every source, rewards and shop alike', () => {
+    const base = rarityWeights('kill', 0), lucky = rarityWeights('kill', 0, 5);
+    expect(lucky.rare).toBeCloseTo(base.rare + 6);
+    expect(lucky.common).toBe(base.common);
+    expect(rarityWeights('chest', 1, 10).rare).toBeCloseTo(rarityWeights('chest', 1).rare + 12);
+  });
+});

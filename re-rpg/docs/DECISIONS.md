@@ -350,3 +350,26 @@ should give something beyond a skill point.
   (#42) still holds. The level-up banner names what came: "+1 max HP · Mighty Blow".
 The numbers are first guesses for the designer to tune. Pinned by `session.test.ts` and
 `variants.test.ts`; screenshots in `docs/audit/levelup-ghost-2026-10-27/`.
+
+## 50. Luck: critical hits, bonus turns and rarer finds
+
+The designer asked for a new player stat, luck, used three ways. One unit throughout: **each
+point of luck is 1.2%**.
+- **Critical hit.** One roll per damage card you play: luck × 1.2% chance that every hit of that
+  card lands at +50% (rounded up, after armour, before blocks; a sweep crits every enemy). The
+  card headline stays the normal number; the crit is a surprise.
+- **Bonus turn.** After a card resolves, a second roll: luck × 1.2% chance the enemies wait and
+  you play again this round (no ticks, no new card). At most once per round, never on an empty
+  hand, never from holding or skipping.
+- **Rarer finds.** Luck × 1.2 is added to the rare weight of every reward source and the shop
+  (the weights sum to about 100, so it reads as percentage points), and luck × 1.2% to the
+  level-up rare chance of #49.
+- **Fanfare.** A crit is a camera shake, a gold "CRITICAL HIT! every hit +50%" callout with
+  sparks, then big gold numbers with "!"; a bonus turn is a green flash, a "BONUS TURN! play again
+  before they move" callout, and the phase line reads "YOUR TURN · BONUS".
+- **Where luck comes from.** Every class starts at 5 (6%); gear can carry luck (`stat.luck` in an
+  item mod), though no item does yet. Luck shows beside ATK and DEF on class select, the reward
+  and shop status lines and Test Mode. Luck 0 rolls nothing, so fights without luck replay exactly
+  as before. Wizard and shaman get the same 5; their card data is untouched.
+The sim passes luck through now (BALANCE.md, 2026-10-27 Luck). Pinned by the luck tests in
+`engine.test.ts`, `loot.test.ts` and `session.test.ts`; screenshots in `docs/audit/luck-2026-10-27/`.

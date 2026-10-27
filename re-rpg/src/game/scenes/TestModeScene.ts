@@ -74,7 +74,7 @@ export class TestModeScene extends Phaser.Scene {
     const eq = equipmentFromIds(this.setup.equipment, []);
     const st = computeStats(getClass(this.setup.classId).stats, eq);
     const deckNames = this.setup.deck.map((d) => getSkill(d).name).join(', ') || 'basics only';
-    this.add.text(16, H - 12, `vs ${this.setup.enemyId === 'wren' ? 'Wren' : getEnemy(this.setup.enemyId).name}${this.setup.extraId ? ` & ${getEnemy(this.setup.extraId).name}` : ''}   ·   HP ${st.maxHp}  ATK ${st.atk}  DEF ${st.def}   ·   ${deckNames}`, { ...text.small, fontSize: '12px', wordWrap: { width: W - 32 } }).setOrigin(0, 1);
+    this.add.text(16, H - 12, `vs ${this.setup.enemyId === 'wren' ? 'Wren' : getEnemy(this.setup.enemyId).name}${this.setup.extraId ? ` & ${getEnemy(this.setup.extraId).name}` : ''}   ·   HP ${st.maxHp}  ATK ${st.atk}  DEF ${st.def}  LUCK ${st.luck ?? 0}   ·   ${deckNames}`, { ...text.small, fontSize: '12px', wordWrap: { width: W - 32 } }).setOrigin(0, 1);
   }
 
   private set(patch: Partial<TestSetup>) {

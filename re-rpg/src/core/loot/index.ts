@@ -22,6 +22,8 @@ export interface PoolContext {
   meta: MetaState;
   deck: SkillId[];
   equipment: Equipment;
+  /** The hero's luck (DECISIONS #50): raises the rare odds of rewards and the shop. */
+  luck?: number;
 }
 
 /**
@@ -43,7 +45,10 @@ export function buildPool(ctx: PoolContext): { tomes: Skill[]; items: Item[] } {
 }
 
 /** Rarity weights by source, shifted toward rarer on screen 2 (GAME_DESIGN §5 rule 4). */
-export function rarityWeights(source: RewardSource, screenIndex: number): Record<Rarity, number> {
+/** Luck adds this much rare weight per point (DECISIONS #50); the weights sum to about 100, so it reads as percentage points. */
+export const LUCK_RARE_WEIGHT = 1.2;
+
+export function rarityWeights(source: RewardSource, screenIndex: number, luck = 0): Record<Rarity, number> {
   const base: Record<RewardSource, Record<Rarity, number>> = {
     kill: { basic: 0, common: 70, uncommon: 25, rare: 5, boss: 0 },
     guard: { basic: 0, common: 50, uncommon: 38, rare: 12, boss: 0 },
@@ -52,6 +57,7 @@ export function rarityWeights(source: RewardSource, screenIndex: number): Record
   };
   const w = { ...base[source] };
   if (screenIndex > 0) { w.common = Math.max(0, w.common - 20); w.uncommon += 5; w.rare += 15; }
+  w.rare += Math.max(0, luck) * LUCK_RARE_WEIGHT;
   return w;
 }
 
@@ -75,7 +81,7 @@ export function goldFor(source: RewardSource, screenIndex: number, rng: Rng): nu
  */
 export function rollOffer(source: RewardSource, screenIndex: number, ctx: PoolContext, rng: Rng, gold = goldFor(source, screenIndex, rng)): Offer {
   const pool = buildPool(ctx);
-  const rw = rarityWeights(source, screenIndex);
+  const rw = rarityWeights(source, screenIndex, ctx.luck);
   const choices: RewardChoice[] = [];
   const taken = new Set<string>();
   const weightItem = (i: Item) => (rw[i.rarity] ?? 0) * (i.tags?.some((t) => ctx.families.includes(t as SetId)) ? 2 : 1);
@@ -132,7 +138,7 @@ export const tomePrice = (rarity: Rarity, screenIndex: number) => (PRICE[rarity]
  */
 export function rollShopStock(screenIndex: number, ctx: PoolContext, rng: Rng): ShopStock {
   const pool = buildPool(ctx);
-  const rw = rarityWeights('chest', screenIndex);
+  const rw = rarityWeights('chest', screenIndex, ctx.luck);
   const lines: ShopLine[] = [];
   const taken = new Set<string>();
   const items = pool.items.filter((i) => (rw[i.rarity] ?? 0) > 0);

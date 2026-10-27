@@ -38,7 +38,7 @@ export class ShopScene extends Phaser.Scene {
     const { width: W, height: H } = this.scale.gameSize;
     this.goldText.setText(`${s.gold} gold`);
     const eq = (['body', 'weapon', 'relic'] as const).map((k) => `${k}: ${s.equipment[k]?.name ?? '—'}`).join('   ');
-    this.statusText.setText(`HP ${s.hp}/${s.stats.maxHp}  ATK ${s.stats.atk}  DEF ${s.stats.def}   ·   deck ${s.deck.length}/${DECK_CAP}   ·   ${eq}`);
+    this.statusText.setText(`HP ${s.hp}/${s.stats.maxHp}  ATK ${s.stats.atk}  DEF ${s.stats.def}  LUCK ${s.stats.luck ?? 0}   ·   deck ${s.deck.length}/${DECK_CAP}   ·   ${eq}`);
 
     const entries: { line: ShopLine | null; label: string; title: string; body: string; price: number; sold: boolean; owned?: boolean; rarity: keyof typeof RARITY_COLORS }[] = st.lines.map((line) => {
       const owned = !line.sold && isLineOwned(line, s.deck, s.equipment);

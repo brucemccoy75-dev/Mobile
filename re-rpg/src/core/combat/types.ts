@@ -49,6 +49,8 @@ export interface CombatState {
   enemy: EnemyCombatant;
   enemyDef: Enemy;     // the content definition (data, serialisable)
   rngState: number;    // combat stream snapshot, for save/resume
+  /** A luck bonus turn was taken this round (one per round, DECISIONS #50). */
+  bonusTaken?: boolean;
   log: CombatEvent[];  // everything that has happened, in order
 }
 
@@ -75,7 +77,11 @@ export type CombatEvent =
   | { t: 'exhaust'; skill: SkillId }
   | { t: 'consumed'; skill: SkillId }
   | { t: 'counter'; amount: number; blocked: boolean; who?: number; volley?: number }
-  | { t: 'damage'; source: Side; target: Side; amount: number; blocked: boolean; hit: number; hits: number; kind: DamageKind; who?: number; volley?: number }
+  | { t: 'damage'; source: Side; target: Side; amount: number; blocked: boolean; hit: number; hits: number; kind: DamageKind; crit?: boolean; who?: number; volley?: number }
+  /** Luck (DECISIONS #50): the card just played lands every hit at +50%. */
+  | { t: 'crit' }
+  /** Luck (DECISIONS #50): the enemies wait; the player plays again this round. */
+  | { t: 'bonusTurn' }
   | { t: 'heal'; side: Side; amount: number; who?: number }
   | { t: 'statusApplied'; side: Side; status: StatusId; turns: number; magnitude: number; who?: number }
   | { t: 'statusResisted'; side: Side; status: StatusId; warded?: boolean; who?: number }

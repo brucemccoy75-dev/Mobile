@@ -33,7 +33,7 @@ export interface GauntletResult {
 
 /** Stat mods are additive bonuses on top of the class base. */
 export function withMods(base: Stats, mods?: Partial<Stats>): Stats {
-  return { maxHp: base.maxHp + (mods?.maxHp ?? 0), atk: base.atk + (mods?.atk ?? 0), def: base.def + (mods?.def ?? 0), gearAtk: mods?.atk ?? 0 };
+  return { maxHp: base.maxHp + (mods?.maxHp ?? 0), atk: base.atk + (mods?.atk ?? 0), def: base.def + (mods?.def ?? 0), gearAtk: mods?.atk ?? 0, luck: (base.luck ?? 0) + (mods?.luck ?? 0) };
 }
 
 export function runFight(s: CombatState, policy: Policy, maxRounds = 60): CombatState {

@@ -128,14 +128,24 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
       else { state.player.consumed.push(skill.id); events.push({ t: 'consumed', skill: skill.id }); }
     }
     tagWho(events, from, target.slot);
+    // Luck (DECISIONS #50): one roll per damage card for a critical hit. Luck 0 rolls nothing.
+    const luckChance = (state.player.stats.luck ?? 0) * LUCK_PER_POINT;
+    const crit = luckChance > 0 && skill.effects.some((e) => e.type === 'damage') && roll() < luckChance;
+    if (crit) events.push({ t: 'crit' });
     for (const e of skill.effects) {
-      if (e.type === 'damage' && e.targets === 'all') { sweep(state, e, events); continue; }
+      if (e.type === 'damage' && e.targets === 'all') { sweep(state, e, events, crit); continue; }
       if (e.type === 'strip') { strip(e.targets === 'all' ? livingEnemies(state) : [target], e.statuses, events); continue; }
       const f = events.length;
-      applyEffects([e], state.player, target, roll, events);
+      applyEffects([e], state.player, target, roll, events, crit);
       tagWho(events, f, target.slot);
     }
     if (checkDeaths(state, events)) return finish(state, rng, events);
+    // ...and one for a bonus turn: the enemies wait and nothing ticks; once per round, never on an empty hand.
+    if (luckChance > 0 && !state.bonusTaken && state.player.hand.length > 0 && roll() < luckChance) {
+      state.bonusTaken = true;
+      events.push({ t: 'bonusTurn' });
+      return finish(state, rng, events);
+    }
   }
 
   // Enemy turns, front to back
@@ -177,6 +187,7 @@ function finish(state: CombatState, rng: Rng, events: CombatEvent[]): CombatEven
 
 function startRound(state: CombatState, rng: Rng, events: CombatEvent[]): void {
   state.round += 1;
+  state.bonusTaken = false;
   events.push({ t: 'roundStart', round: state.round });
   // The new intents are announced before the deals, so the panels never show last
   // round's promise next to this round's state while cards are animating in.
@@ -213,7 +224,7 @@ function checkDeaths(state: CombatState, events: CombatEvent[]): boolean {
  * A sweep (DECISIONS #44, #47) lands on every living enemy at once: hit 1 on all of them front to back,
  * then hit 2, and so on. Every event of hit N carries `volley: N` so the scene can play a volley together.
  */
-function sweep(state: CombatState, e: Extract<Effect, { type: 'damage' }>, events: CombatEvent[]): void {
+function sweep(state: CombatState, e: Extract<Effect, { type: 'damage' }>, events: CombatEvent[], crit = false): void {
   const victims = livingEnemies(state);
   const hits = e.hits ?? 1;
   const dealt = victims.map(() => 0);
@@ -221,7 +232,7 @@ function sweep(state: CombatState, e: Extract<Effect, { type: 'damage' }>, event
     victims.forEach((v, k) => {
       if (v.hp <= 0) return;
       const f = events.length;
-      dealt[k]! += applyHit(state.player, v, e, i, hits, events);
+      dealt[k]! += applyHit(state.player, v, e, i, hits, events, crit);
       tagWho(events, f, v.slot);
       for (let j = f; j < events.length; j++) (events[j] as CombatEvent & { volley?: number }).volley = i + 1;
     });
@@ -254,9 +265,15 @@ function stripStatuses(c: Combatant, statuses: StatusId[], events: CombatEvent[]
   }
 }
 
+/** Luck (DECISIONS #50): each point is 1.2% chance of a critical hit and of a bonus turn, per card. */
+export const LUCK_PER_POINT = 0.012;
+export const CRIT_MULT = 1.5;
+
 /** One hit of a damage effect: blocks, the damage, Brace's counter. Returns the damage that landed. */
-function applyHit(self: Combatant, other: Combatant, e: Extract<Effect, { type: 'damage' }>, i: number, hits: number, events: CombatEvent[]): number {
-  const amount = computeHit(self, other, e.mult, e.ignoreDef, e.flat ?? 0, hits);
+function applyHit(self: Combatant, other: Combatant, e: Extract<Effect, { type: 'damage' }>, i: number, hits: number, events: CombatEvent[], crit = false): number {
+  const base = computeHit(self, other, e.mult, e.ignoreDef, e.flat ?? 0, hits);
+  // A critical hit (DECISIONS #50) is +50% of what would land, rounded up.
+  const amount = crit ? Math.ceil(base * CRIT_MULT) : base;
   // Aegis stops everything; Guard stops physical; Ward stops magic.
   if (hasStatus(other, 'aegis') || consumeBlock(other, e.kind === 'magic' ? 'ward' : 'guard', events)) {
     events.push({ t: 'damage', source: self.side, target: other.side, amount: 0, blocked: true, hit: i + 1, hits, kind: e.kind ?? 'physical' });
@@ -264,7 +281,7 @@ function applyHit(self: Combatant, other: Combatant, e: Extract<Effect, { type: 
   }
   const applied = Math.min(other.hp, amount);
   other.hp -= applied;
-  events.push({ t: 'damage', source: self.side, target: other.side, amount: applied, blocked: false, hit: i + 1, hits, kind: e.kind ?? 'physical' });
+  events.push({ t: 'damage', source: self.side, target: other.side, amount: applied, blocked: false, hit: i + 1, hits, kind: e.kind ?? 'physical', ...(crit ? { crit: true } : {}) });
   // Brace: the first hit that lands is thrown back at the attacker (blockable by Guard, ignores def).
   // A killing blow is never countered: death ends everything the dead side had going.
   if (i === 0 && applied > 0 && other.hp > 0 && consumeBrace(other, events)) {
@@ -281,7 +298,7 @@ function afterHits(self: Combatant, other: Combatant, e: Extract<Effect, { type:
   if (e.lifesteal && dealt > 0) heal(self, Math.round(dealt * e.lifesteal), events);
 }
 
-export function applyEffects(effects: Effect[], self: Combatant, other: Combatant, roll: () => number, events: CombatEvent[]): void {
+export function applyEffects(effects: Effect[], self: Combatant, other: Combatant, roll: () => number, events: CombatEvent[], crit = false): void {
   for (const e of effects) {
     switch (e.type) {
       case 'damage': {
@@ -289,7 +306,7 @@ export function applyEffects(effects: Effect[], self: Combatant, other: Combatan
         let dealt = 0;
         for (let i = 0; i < hits; i++) {
           if (other.hp <= 0) break;
-          dealt += applyHit(self, other, e, i, hits, events);
+          dealt += applyHit(self, other, e, i, hits, events, crit);
         }
         afterHits(self, other, e, hits, dealt, events);
         break;

@@ -13,6 +13,8 @@ export interface Stats {
   def: number;
   /** The part of `atk` that comes from gear. Added flat to every hit, never multiplied by a card (DECISIONS #31). */
   gearAtk?: number;
+  /** Luck (DECISIONS #50): luck × 1.2% is the chance of a critical hit and of a bonus turn per card, and it adds to the rare odds of rewards and the shop. */
+  luck?: number;
 }
 
 /** guard blocks the next physical hit; ward the next magic hit; aegis every hit for N rounds. */

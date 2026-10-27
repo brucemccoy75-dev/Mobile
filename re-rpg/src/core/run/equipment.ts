@@ -13,6 +13,7 @@ export function computeStats(base: Stats, eq: Equipment): Stats {
       out.maxHp += m.stat?.maxHp ?? 0;
       out.atk += m.stat?.atk ?? 0;
       out.def += m.stat?.def ?? 0;
+      if (m.stat?.luck) out.luck = (out.luck ?? 0) + m.stat.luck;
     }
   }
   out.maxHp = Math.max(1, out.maxHp);

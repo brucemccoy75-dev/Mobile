@@ -620,7 +620,9 @@ export class CombatScene extends Phaser.Scene {
           this.showHp(e.target, -e.amount, who);
           // Multi-hit numbers stagger sideways so they do not stack on top of each other.
           const dx = e.hits > 1 ? (e.hit - (e.hits + 1) / 2) * 34 : 0;
-          const p2 = floatText(this, p.x + dx, p.y - 30, `-${e.amount}`, COLORS.damage, 40, 1100);
+          const p2 = e.crit
+            ? floatText(this, p.x + dx, p.y - 34, `-${e.amount}!`, '#ffb02e', 54, 1200)
+            : floatText(this, p.x + dx, p.y - 30, `-${e.amount}`, COLORS.damage, 40, 1100);
           await (e.hits > 1 && e.hit < e.hits ? wait(this, 260) : p2);
         }
         return;
@@ -674,6 +676,16 @@ export class CombatScene extends Phaser.Scene {
       case 'phase':
         await this.bannerShow(`${view.def.name} rages!`);
         return;
+      case 'crit':
+        // Luck (DECISIONS #50): the card's hits land at +50%; the numbers that follow are gold and big.
+        this.cameras.main.shake(160, 0.01);
+        await this.luckFanfare('CRITICAL HIT!', '#ffb02e', 'every hit +50%');
+        return;
+      case 'bonusTurn':
+        this.cameras.main.flash(220, 120, 255, 180);
+        await this.luckFanfare('BONUS TURN!', '#7cffb2', 'play again before they move');
+        this.phaseText.setText('YOUR TURN · BONUS').setColor('#7cffb2');
+        return;
       case 'death': {
         const s = sprite(e.side);
         if (s instanceof Phaser.GameObjects.Sprite) s.anims.stop();
@@ -694,6 +706,22 @@ export class CombatScene extends Phaser.Scene {
     await wait(this, 500);
     await tween(this, { targets: t, alpha: 0, duration: 200 });
     t.destroy();
+  }
+
+  /** Luck's moments (DECISIONS #50): a big coloured callout with a line under it and a burst of sparks. */
+  private async luckFanfare(msg: string, color: string, sub: string) {
+    const { width: W, height: H } = this.scale.gameSize;
+    const big = this.add.text(W / 2, H * 0.3, msg, { ...text.title, fontSize: '44px', color, stroke: '#000000', strokeThickness: 8 }).setOrigin(0.5).setDepth(65).setScale(0.3).setAlpha(0);
+    const line = this.add.text(W / 2, H * 0.3 + 36, sub, { ...text.body, fontSize: '15px', color: '#ffffff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5).setDepth(65).setAlpha(0);
+    for (let i = 0; i < 12; i++) {
+      const spark = this.add.text(W / 2 + (Math.random() - 0.5) * 80, H * 0.3, '✦', { fontFamily: FONT, fontSize: `${14 + Math.random() * 12}px`, color: i % 2 ? color : '#ffffff' }).setOrigin(0.5).setDepth(64);
+      this.tweens.add({ targets: spark, x: spark.x + (Math.random() - 0.5) * 360, y: spark.y + (Math.random() - 0.6) * 180, alpha: 0, angle: 180, duration: 800 + Math.random() * 400, ease: 'Quad.Out', onComplete: () => spark.destroy() });
+    }
+    void tween(this, { targets: line, alpha: 1, duration: 200, delay: 120 });
+    await tween(this, { targets: big, scale: 1, alpha: 1, duration: 260, ease: 'Back.Out' });
+    await wait(this, 650);
+    await tween(this, { targets: [big, line], alpha: 0, duration: 200 });
+    big.destroy(); line.destroy();
   }
 
   private async bannerShow(msg: string) {

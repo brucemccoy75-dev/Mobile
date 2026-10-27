@@ -83,10 +83,10 @@ describe('session', () => {
   it('legacy bonuses raise the run base and are frozen into the save', () => {
     const meta = createMeta(); meta.legacy = { atk: 1, def: 0, maxHp: 5 };
     const s = createSession('warrior', meta, 'LEGACY-1');
-    expect(s.base).toEqual({ maxHp: 30, atk: 5, def: 1 });
+    expect(s.base).toEqual({ maxHp: 30, atk: 5, def: 1, luck: 5 });
     expect(s.hp).toBe(30);
     const later = createMeta(); later.legacy = { atk: 3, def: 3, maxHp: 15 };
-    expect(deserialize(JSON.parse(JSON.stringify(serialize(s))), later).base).toEqual({ maxHp: 30, atk: 5, def: 1 });
+    expect(deserialize(JSON.parse(JSON.stringify(serialize(s))), later).base).toEqual({ maxHp: 30, atk: 5, def: 1, luck: 5 });
   });
 
   it('each screen gets a quest; fetch turn-in swaps the carried copy for a +1 that survives a save', () => {
@@ -173,5 +173,16 @@ describe('session', () => {
     s.families = ['warrior_dps'];
     s.deck = Array.from({ length: DECK_CAP }, () => 'broadsword');
     expect(applyLevelUp(s, meta, 1, () => 0)).toEqual([{ kind: 'gold', amount: LEVEL_GOLD }]);
+  });
+  it('luck (DECISIONS #50): every class starts with it, gear adds it, and it raises the level-up rare chance', () => {
+    const meta = createMeta();
+    const s = createSession('warrior', meta, 'LUCK-1');
+    expect(s.stats.luck).toBe(5);
+    expect(poolCtx(s, meta).luck).toBe(5);
+    gainExp(meta, 'warrior', 300);
+    s.families = ['warrior_dps'];
+    // 25% + 5 × 1.2% = 31%: a roll of 0.30 lands a rare card, 0.32 does not.
+    expect(applyLevelUp(s, meta, 1, () => 0.30)[0]!.kind).toBe('tome');
+    expect(applyLevelUp(s, meta, 1, () => 0.32)[0]!.kind).toBe('gold');
   });
 });

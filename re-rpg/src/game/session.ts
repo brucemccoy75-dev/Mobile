@@ -12,7 +12,7 @@ import { DUO_CHANCE, PAIRS } from '@data/packs';
 import { TOME_COPY_CAP } from '@data/skills';
 import { computeStats, emptyEquipment, equip as equipItem, equipmentFromIds, equipmentToIds, type Equipment, RUN_VERSION, type RunState } from '@core/run';
 import { createMeta, discoverItem, discoverSkill, rollHeirloomChoices, unlockedSets, type Heirloom, type MetaState } from '@core/meta';
-import { buildPool, rollShopStock, type RewardChoice, type RewardSource, type ShopStock } from '@core/loot';
+import { LUCK_RARE_WEIGHT, buildPool, rollShopStock, type RewardChoice, type RewardSource, type ShopStock } from '@core/loot';
 import { LEVEL_GOLD, LEVEL_HP, LEVEL_RARE_CHANCE } from '@data/progression';
 import { generateQuest, questReady, type Quest, type QuestOptions } from '@core/quest';
 import { WREN } from '@data/quests';
@@ -106,7 +106,7 @@ export function baseStatsFor(classId: ClassId, meta: MetaState): Stats {
   const c = getClass(classId).stats;
   // Each level past the first is LEVEL_HP max HP for good (DECISIONS #49).
   const levelHp = ((meta.progress[classId]?.level ?? 1) - 1) * LEVEL_HP;
-  return { maxHp: c.maxHp + meta.legacy.maxHp + levelHp, atk: c.atk + meta.legacy.atk, def: c.def + meta.legacy.def };
+  return { maxHp: c.maxHp + meta.legacy.maxHp + levelHp, atk: c.atk + meta.legacy.atk, def: c.def + meta.legacy.def, luck: c.luck ?? 0 };
 }
 
 export { LEVEL_GOLD };
@@ -124,7 +124,8 @@ export function applyLevelUp(s: RunSession, meta: MetaState, levels: number, rol
     s.stats = computeStats(s.base, s.equipment);
     s.hp = Math.min(s.stats.maxHp, s.hp + LEVEL_HP);
     const rares = buildPool(poolCtx(s, meta)).tomes.filter((t) => t.rarity === 'rare');
-    if (roll() < LEVEL_RARE_CHANCE && rares.length && s.deck.length < DECK_CAP) {
+    // Luck adds its 1.2% per point to the rare chance (DECISIONS #50).
+    if (roll() < LEVEL_RARE_CHANCE + (s.stats.luck ?? 0) * LUCK_RARE_WEIGHT / 100 && rares.length && s.deck.length < DECK_CAP) {
       const pick = rares[Math.min(rares.length - 1, Math.floor(roll() * rares.length))]!;
       applyTome(s, pick);
       discoverSkill(meta, pick.id);
@@ -193,7 +194,7 @@ export function adoptFamily(s: RunSession, setId: SetId): boolean {
 const questOptions = (s: RunSession): QuestOptions => (s.map.authored && s.screenIndex === 0 ? { voice: WREN, avoidHunt: ['rat_pack'] } : {});
 
 /** Loot/quest context for this run: class, families, what is held. */
-export const poolCtx = (s: RunSession, meta?: MetaState) => ({ classId: s.classId, families: s.families, meta: meta ?? createMeta(), deck: s.deck, equipment: s.equipment });
+export const poolCtx = (s: RunSession, meta?: MetaState) => ({ classId: s.classId, families: s.families, meta: meta ?? createMeta(), deck: s.deck, equipment: s.equipment, luck: s.stats.luck ?? 0 });
 
 /** Generate screen `index`, stock its shop, and put the player at its entry. */
 export function startScreen(s: RunSession, index: number, meta?: MetaState): void {

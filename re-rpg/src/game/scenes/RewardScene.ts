@@ -55,7 +55,7 @@ export class RewardScene extends Phaser.Scene {
   private statusLine() {
     const s = this.session;
     const eq = (['body', 'weapon', 'relic'] as const).map((k) => `${k}: ${s.equipment[k]?.name ?? '—'}`).join('   ');
-    return `HP ${s.hp}/${s.stats.maxHp}  ATK ${s.stats.atk}  DEF ${s.stats.def}   ·   deck ${s.deck.length}/${DECK_CAP}   ·   ${eq}`;
+    return `HP ${s.hp}/${s.stats.maxHp}  ATK ${s.stats.atk}  DEF ${s.stats.def}  LUCK ${s.stats.luck ?? 0}   ·   deck ${s.deck.length}/${DECK_CAP}   ·   ${eq}`;
   }
 
   private drawChoice(c: RewardChoice, x: number, y: number, w: number, h: number) {

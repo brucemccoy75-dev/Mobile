@@ -37,7 +37,7 @@ export class ClassSelectScene extends Phaser.Scene {
       this.add.rectangle(x, y - 80, 56, 72, CLASS_COLORS[cls.id] ?? COLORS.player);
       this.add.text(x, y - 30, cls.name, text.h2).setOrigin(0.5);
       const st = baseStatsFor(cls.id, getMeta(this));
-      this.add.text(x, y + 4, `HP ${st.maxHp}   ATK ${st.atk}   DEF ${st.def}`, { ...text.body, color: legacySummary(getMeta(this)) ? COLORS.gold : COLORS.text }).setOrigin(0.5);
+      this.add.text(x, y + 4, `HP ${st.maxHp}   ATK ${st.atk}   DEF ${st.def}   LUCK ${st.luck ?? 0}`, { ...text.body, color: legacySummary(getMeta(this)) ? COLORS.gold : COLORS.text }).setOrigin(0.5);
       const sets = cls.sets.map((id) => getSet(id).name).join('  ·  ');
       this.add.text(x, y + 36, 'sets', text.small).setOrigin(0.5);
       this.add.text(x, y + 58, sets, { ...text.body, fontSize: '14px', color: COLORS.gold }).setOrigin(0.5);

@@ -620,3 +620,48 @@ describe('sweeps (DECISIONS #44)', () => {
     expect(s.enemies[1]!.hp).toBe(26);
   });
 });
+
+describe('luck (DECISIONS #50)', () => {
+  const lucky = (luck: number, enemy: Enemy = DUMMY, seed = 1) => createCombat({ player: { stats: { ...WARRIOR.stats, luck }, deck: [], basics: [] }, enemy, rng: new Rng(seed) });
+  it('luck × 1.2% is the chance per card: a crit adds 50% to every hit, with its own event', () => {
+    const s = lucky(100, PASSIVE); // 120%: always
+    s.player.hand.push('attack');
+    const ev = step(s, { type: 'card', index: 0 });
+    expect(ev.find((e) => e.t === 'crit')).toBeDefined();
+    const hit = ev.find((e) => e.t === 'damage' && e.source === 'player');
+    expect(hit).toMatchObject({ amount: 6, crit: true }); // 4 → 6
+    expect(s.enemies[0]!.hp).toBe(24);
+  });
+  it('a bonus turn skips the enemies once per round; the next card lets them act', () => {
+    const s = lucky(100);
+    s.player.hand.push('attack', 'attack');
+    const ev1 = step(s, { type: 'card', index: 0 });
+    expect(ev1.some((e) => e.t === 'bonusTurn')).toBe(true);
+    expect(ev1.some((e) => e.t === 'play' && e.side === 'enemy')).toBe(false);
+    expect(ev1.some((e) => e.t === 'roundStart')).toBe(false);
+    expect(s.round).toBe(1);
+    expect(s.player.hp).toBe(25);
+    const ev2 = step(s, { type: 'card', index: 0 });
+    expect(ev2.some((e) => e.t === 'bonusTurn')).toBe(false);
+    expect(ev2.some((e) => e.t === 'play' && e.side === 'enemy')).toBe(true);
+    expect(s.round).toBe(2);
+  });
+  it('no bonus turn with an empty hand, none from holding a card', () => {
+    const s = lucky(100);
+    s.player.hand = ['attack'];
+    expect(step(s, { type: 'card', index: 0 }).some((e) => e.t === 'bonusTurn')).toBe(false);
+    const h = lucky(100);
+    h.player.hand = ['attack', 'defend'];
+    expect(step(h, { type: 'hold', index: 0 }).some((e) => e.t === 'bonusTurn')).toBe(false);
+  });
+  it('luck 0 never crits or gets a bonus turn, and draws nothing from the combat stream', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const a = lucky(0, DUMMY, seed), b = createCombat({ player: { ...WARRIOR, deck: [], basics: [] }, enemy: DUMMY, rng: new Rng(seed) });
+      a.player.hand.push('attack'); b.player.hand.push('attack');
+      const ea = step(a, { type: 'card', index: a.player.hand.length - 1 });
+      step(b, { type: 'card', index: b.player.hand.length - 1 });
+      expect(ea.some((e) => e.t === 'crit' || e.t === 'bonusTurn')).toBe(false);
+      expect(a.rngState).toBe(b.rngState);
+    }
+  });
+});
