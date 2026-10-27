@@ -4,6 +4,22 @@ Produced by `npm run sim` with the greedy intent-reading policy (`src/core/sim/p
 
 Loadouts: **fresh** = Attack/Defend only, empty deck. **Set** = the two set tomes in the deck. **gearN** = a full three-slot kit for screen N (`GEAR_KIT` in `src/core/sim/gauntlet.ts`). The sim does not model loot choice, relics or 4-card decks, so these are floors, not expectations.
 
+## Cards import 2026-10-27 (Spirit Boomerang)
+
+Changed: spiritboomerang (10% +4 → 0% +1, 2 hits, magic, now ignores defence; still every enemy, once per fight, Overextend + Tiring). Warrior gauntlet, 1000 runs, greedy policy:
+
+```
+loadout                        reach boss  beat boss  hp@boss fights rounds  deaths
+warrior fresh                       56.5%       0.0%      4.9   3.46   16.3  gatekeeper 57%, adept_necromancer 23%, boar 11%
+warrior Bulwark                     39.1%       0.0%      9.0   2.89   28.0  gatekeeper 39%, adept_necromancer 32%, boar 19%
+warrior Berserker                   92.1%       0.0%     14.2   3.87   12.0  gatekeeper 92%, boar 4%, adept_necromancer 3%
+warrior Bulwark+gear1               87.8%       0.0%     14.2   3.84   29.4  gatekeeper 88%, adept_necromancer 6%, boar 5%
+warrior Berserker+gear1             99.4%       0.0%     20.4   3.99   12.2  gatekeeper 99%, boar 0%, hex_imp 0%
+warrior both sets+gear1             97.8%       1.8%     18.6   3.99   20.8  gatekeeper 96%, boar 1%, adept_necromancer 0%
+```
+
+Against the committed cards just before this import (same seeds): Berserker 99.7% → 92.1% reach, both sets+gear1 3.4% → 1.8% beat boss; fresh and Bulwark rows are unchanged. The fresh and Bulwark rows differ from the table below because Bellow joined the warrior's starting deck (DECISIONS #45) after that table was taken.
+
 ## Cards import 2026-10-27 (first editor export)
 
 Changed: shield_bash (60% → 25%), broadsword (100% +4 → 110% +4, uncommon), exposing_strike (100% → 75%), warding_blast (renamed Explosive Potion, 60% → 50% magic); new: spiritboomerang (Berserker: 10% +4, 2 hits, magic, every enemy, once per fight, Overextend + Tiring), bellow (basic rarity, in no basics list, so it is never dealt and never drops). Warrior gauntlet, 1000 runs, greedy policy:

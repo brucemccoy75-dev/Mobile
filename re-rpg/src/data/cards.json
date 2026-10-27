@@ -67,7 +67,7 @@
     },
     {
       "id": "burn_2x2",
-      "name": "Burn 2\u00d72",
+      "name": "Burn 2×2",
       "target": "enemy",
       "status": "burn",
       "rounds": 2,
@@ -90,7 +90,7 @@
     },
     {
       "id": "burn_3x3",
-      "name": "Burn 3\u00d73",
+      "name": "Burn 3×3",
       "target": "enemy",
       "status": "burn",
       "rounds": 3,
@@ -456,11 +456,11 @@
       "rarity": "uncommon",
       "uses": "once_per_fight",
       "damage": {
-        "percent": 10,
-        "bonus": 4,
+        "percent": 0,
+        "bonus": 1,
         "hits": 2,
         "type": "magic",
-        "ignoreDef": false,
+        "ignoreDef": true,
         "drain": 0,
         "targets": "all"
       },
