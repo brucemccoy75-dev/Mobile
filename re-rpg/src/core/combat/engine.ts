@@ -129,13 +129,10 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
     }
     tagWho(events, from, target.slot);
     for (const e of skill.effects) {
-      // A sweep (DECISIONS #44) runs the damage over every living enemy, front to back; everything else goes to the chosen one.
-      const victims = e.type === 'damage' && e.targets === 'all' ? livingEnemies(state) : [target];
-      for (const v of victims) {
-        const f = events.length;
-        applyEffects([e], state.player, v, roll, events);
-        tagWho(events, f, v.slot);
-      }
+      if (e.type === 'damage' && e.targets === 'all') { sweep(state, e, events); continue; }
+      const f = events.length;
+      applyEffects([e], state.player, target, roll, events);
+      tagWho(events, f, target.slot);
     }
     if (checkDeaths(state, events)) return finish(state, rng, events);
   }
@@ -211,6 +208,57 @@ function checkDeaths(state: CombatState, events: CombatEvent[]): boolean {
   return false;
 }
 
+/**
+ * A sweep (DECISIONS #44, #47) lands on every living enemy at once: hit 1 on all of them front to back,
+ * then hit 2, and so on. Every event of hit N carries `volley: N` so the scene can play a volley together.
+ */
+function sweep(state: CombatState, e: Extract<Effect, { type: 'damage' }>, events: CombatEvent[]): void {
+  const victims = livingEnemies(state);
+  const hits = e.hits ?? 1;
+  const dealt = victims.map(() => 0);
+  for (let i = 0; i < hits; i++) {
+    victims.forEach((v, k) => {
+      if (v.hp <= 0) return;
+      const f = events.length;
+      dealt[k]! += applyHit(state.player, v, e, i, hits, events);
+      tagWho(events, f, v.slot);
+      for (let j = f; j < events.length; j++) (events[j] as CombatEvent & { volley?: number }).volley = i + 1;
+    });
+  }
+  victims.forEach((v, k) => {
+    const f = events.length;
+    afterHits(state.player, v, e, hits, dealt[k]!, events);
+    tagWho(events, f, v.slot);
+  });
+}
+
+/** One hit of a damage effect: blocks, the damage, Brace's counter. Returns the damage that landed. */
+function applyHit(self: Combatant, other: Combatant, e: Extract<Effect, { type: 'damage' }>, i: number, hits: number, events: CombatEvent[]): number {
+  const amount = computeHit(self, other, e.mult, e.ignoreDef, e.flat ?? 0, hits);
+  // Aegis stops everything; Guard stops physical; Ward stops magic.
+  if (hasStatus(other, 'aegis') || consumeBlock(other, e.kind === 'magic' ? 'ward' : 'guard', events)) {
+    events.push({ t: 'damage', source: self.side, target: other.side, amount: 0, blocked: true, hit: i + 1, hits, kind: e.kind ?? 'physical' });
+    return 0;
+  }
+  const applied = Math.min(other.hp, amount);
+  other.hp -= applied;
+  events.push({ t: 'damage', source: self.side, target: other.side, amount: applied, blocked: false, hit: i + 1, hits, kind: e.kind ?? 'physical' });
+  // Brace: the first hit that lands is thrown back at the attacker (blockable by Guard, ignores def).
+  // A killing blow is never countered: death ends everything the dead side had going.
+  if (i === 0 && applied > 0 && other.hp > 0 && consumeBrace(other, events)) {
+    // The counter is a physical blow: Guard or Aegis stop it.
+    if (hasStatus(self, 'aegis') || consumeBlock(self, 'guard', events)) events.push({ t: 'counter', amount: 0, blocked: true });
+    else { const back = Math.min(self.hp, applied); self.hp -= back; events.push({ t: 'counter', amount: back, blocked: false }); }
+  }
+  return applied;
+}
+
+/** What follows the last hit of a damage effect on one target: Scatter is spent, drain heals. */
+function afterHits(self: Combatant, other: Combatant, e: Extract<Effect, { type: 'damage' }>, hits: number, dealt: number, events: CombatEvent[]): void {
+  if (hits === 1 && hasStatus(other, 'scatter')) removeStatus(other, 'scatter', events);
+  if (e.lifesteal && dealt > 0) heal(self, Math.round(dealt * e.lifesteal), events);
+}
+
 export function applyEffects(effects: Effect[], self: Combatant, other: Combatant, roll: () => number, events: CombatEvent[]): void {
   for (const e of effects) {
     switch (e.type) {
@@ -219,26 +267,9 @@ export function applyEffects(effects: Effect[], self: Combatant, other: Combatan
         let dealt = 0;
         for (let i = 0; i < hits; i++) {
           if (other.hp <= 0) break;
-          const amount = computeHit(self, other, e.mult, e.ignoreDef, e.flat ?? 0, hits);
-          // Aegis stops everything; Guard stops physical; Ward stops magic.
-          if (hasStatus(other, 'aegis') || consumeBlock(other, e.kind === 'magic' ? 'ward' : 'guard', events)) {
-            events.push({ t: 'damage', source: self.side, target: other.side, amount: 0, blocked: true, hit: i + 1, hits, kind: e.kind ?? 'physical' });
-            continue;
-          }
-          const applied = Math.min(other.hp, amount);
-          other.hp -= applied;
-          dealt += applied;
-          events.push({ t: 'damage', source: self.side, target: other.side, amount: applied, blocked: false, hit: i + 1, hits, kind: e.kind ?? 'physical' });
-          // Brace: the first hit that lands is thrown back at the attacker (blockable by Guard, ignores def).
-          // A killing blow is never countered: death ends everything the dead side had going.
-          if (i === 0 && applied > 0 && other.hp > 0 && consumeBrace(other, events)) {
-            // The counter is a physical blow: Guard or Aegis stop it.
-            if (hasStatus(self, 'aegis') || consumeBlock(self, 'guard', events)) events.push({ t: 'counter', amount: 0, blocked: true });
-            else { const back = Math.min(self.hp, applied); self.hp -= back; events.push({ t: 'counter', amount: back, blocked: false }); }
-          }
+          dealt += applyHit(self, other, e, i, hits, events);
         }
-        if (hits === 1 && hasStatus(other, 'scatter')) removeStatus(other, 'scatter', events);
-        if (e.lifesteal && dealt > 0) heal(self, Math.round(dealt * e.lifesteal), events);
+        afterHits(self, other, e, hits, dealt, events);
         break;
       }
       case 'heal': {

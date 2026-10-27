@@ -568,6 +568,22 @@ describe('sweeps (DECISIONS #44)', () => {
     expect(ev.find((e) => e.t === 'statusApplied' && e.status === 'exposed')).toMatchObject({ who: 1 });
     expect(hasStatus(s.enemies[0]!, 'exposed')).toBe(false);
   });
+  it('a multi-hit sweep lands hit by hit on every enemy at once: each volley is tagged and comes before the next hit', () => {
+    const TWO = { ...SWEEP, id: 'test_sweep2', effects: [{ type: 'damage' as const, mult: 1, hits: 2, targets: 'all' as const }] };
+    const s = createCombat({ player: { ...WARRIOR, deck: [], basics: [] }, enemies: [PASSIVE, PASSIVE], rng: new Rng(1) });
+    s.enemies[1]!.statuses.push({ id: 'guard', turns: 0, magnitude: 1 });
+    registerSkill(TWO);
+    s.player.hand.push('test_sweep2');
+    const ev = step(s, { type: 'card', index: 0, target: 0 });
+    const hits = ev.filter((e) => e.t === 'damage' && e.source === 'player');
+    expect(hits.map((e) => (e.t === 'damage' ? [e.hit, e.who, e.volley, e.blocked] : []))).toEqual([[1, 0, 1, false], [1, 1, 1, true], [2, 0, 2, false], [2, 1, 2, false]]);
+    // The guard spent by the first volley belongs to that volley.
+    expect(ev.find((e) => e.t === 'statusExpired' && e.status === 'guard')).toMatchObject({ who: 1, volley: 1 });
+    // Single-target hits carry no volley.
+    s.player.hand.push('attack');
+    const ev2 = step(s, { type: 'card', index: s.player.hand.indexOf('attack'), target: 0 });
+    expect(ev2.filter((e) => 'volley' in e)).toEqual([]);
+  });
   it('a dead enemy is skipped and a single-target card is unchanged', () => {
     const s = createCombat({ player: { ...WARRIOR, deck: [], basics: [] }, enemies: [PASSIVE, PASSIVE], rng: new Rng(1) });
     s.enemies[0]!.hp = 0; s.enemies[0]!.dead = true;

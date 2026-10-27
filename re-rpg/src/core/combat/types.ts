@@ -60,7 +60,10 @@ export type PlayerAction =
   /** Only valid while Recovering (stunned) or with an empty hand: the turn passes. */
   | { type: 'skip' };
 
-/** `who` is the enemy slot an event concerns (source or target); absent means slot 0 / not enemy-specific. */
+/**
+ * `who` is the enemy slot an event concerns (source or target); absent means slot 0 / not enemy-specific.
+ * `volley` marks the events of hit N of a sweep (DECISIONS #47): they land on every enemy at once.
+ */
 export type CombatEvent =
   | { t: 'roundStart'; round: number }
   | { t: 'deal'; skill: SkillId; hand: SkillId[] }
@@ -71,12 +74,12 @@ export type CombatEvent =
   | { t: 'hold'; skill: SkillId }
   | { t: 'exhaust'; skill: SkillId }
   | { t: 'consumed'; skill: SkillId }
-  | { t: 'counter'; amount: number; blocked: boolean; who?: number }
-  | { t: 'damage'; source: Side; target: Side; amount: number; blocked: boolean; hit: number; hits: number; kind: DamageKind; who?: number }
+  | { t: 'counter'; amount: number; blocked: boolean; who?: number; volley?: number }
+  | { t: 'damage'; source: Side; target: Side; amount: number; blocked: boolean; hit: number; hits: number; kind: DamageKind; who?: number; volley?: number }
   | { t: 'heal'; side: Side; amount: number; who?: number }
   | { t: 'statusApplied'; side: Side; status: StatusId; turns: number; magnitude: number; who?: number }
   | { t: 'statusResisted'; side: Side; status: StatusId; warded?: boolean; who?: number }
-  | { t: 'statusExpired'; side: Side; status: StatusId; who?: number }
+  | { t: 'statusExpired'; side: Side; status: StatusId; who?: number; volley?: number }
   | { t: 'burn'; side: Side; amount: number; status: 'burn' | 'curse'; who?: number }
   | { t: 'chilled'; side: Side; who?: number }
   | { t: 'stunned'; side: Side; turnsLeft: number }

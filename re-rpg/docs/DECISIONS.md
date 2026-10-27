@@ -297,3 +297,16 @@ family. All three are empty until the designer fills them in the card editor; an
 is legal and buys nothing yet. The skill tree screen now draws nodes in tiers by prerequisite
 with a link from each node to what it unlocks, and a detail panel for the tapped node with its
 cards and the Unlock button; a locked node says which family it needs by name.
+
+## 47. A sweep lands on every enemy at once
+
+Play report: Spirit Boomerang hit the first enemy twice, then the second twice, one after the
+other. A card that hits every enemy should hit them together. The engine now resolves a sweep
+(`targets: all`) hit by hit: hit 1 on every living enemy front to back, then hit 2, and so on;
+Scatter and drain still settle per enemy after its last hit. Every event of hit N (the damage,
+a Guard or Ward it spends, a Brace counter it draws) carries `volley: N`, and the combat scene
+plays each volley as one beat, one sequence per enemy running in parallel, so the numbers and
+HP bars of all targets move at the same moment. Single-target cards carry no volley and play as
+before. The outcome of a fight does not change (the sim table is identical); only the order of
+events and their playback do. Pinned by the multi-hit sweep test in `engine.test.ts`; screenshots
+in `docs/audit/sweep-2026-10-27/`.

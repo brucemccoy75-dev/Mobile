@@ -485,7 +485,20 @@ export class CombatScene extends Phaser.Scene {
     this.busy = true;
     this.setInputEnabled(false);
     this.hideInfo();
-    for (const e of events) await this.playEvent(e);
+    for (let i = 0; i < events.length; ) {
+      const volley = (events[i] as { volley?: number }).volley;
+      if (volley === undefined) { await this.playEvent(events[i]!); i++; continue; }
+      // A sweep's volley (DECISIONS #47) lands on every enemy at once: one sequence per enemy, played together.
+      let j = i;
+      while (j < events.length && (events[j] as { volley?: number }).volley === volley) j++;
+      const bySlot = new Map<number, CombatEvent[]>();
+      for (const e of events.slice(i, j)) {
+        const who = (e as { who?: number }).who ?? 0;
+        bySlot.set(who, [...(bySlot.get(who) ?? []), e]);
+      }
+      await Promise.all([...bySlot.values()].map(async (seq) => { for (const e of seq) await this.playEvent(e); }));
+      i = j;
+    }
     this.busy = false;
     if (this.state.outcome === 'ongoing') {
       this.syncAll();
