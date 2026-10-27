@@ -139,11 +139,11 @@ describe('damage and basics', () => {
 describe('statuses', () => {
   it('Exposed doubles damage taken and expires after its rounds', () => {
     const s = fight(['exposing_strike', 'attack'], DUMMY);
-    play(s, 'exposing_strike'); // 4 dmg, enemy exposed 2 rounds
-    expect(s.enemy.hp).toBe(26);
+    play(s, 'exposing_strike'); // 3 dmg (75%), enemy exposed 2 rounds
+    expect(s.enemy.hp).toBe(27);
     expect(hasStatus(s.enemy, 'exposed')).toBe(true);
     play(s, 'attack'); // 8 dmg; ticks to 0 → expires
-    expect(s.enemy.hp).toBe(18);
+    expect(s.enemy.hp).toBe(19);
     expect(hasStatus(s.enemy, 'exposed')).toBe(false);
   });
 
@@ -340,11 +340,11 @@ describe('physical vs magic', () => {
 
   it('Shield Bash leaves you Weak for your next turn', () => {
     const s = fight(['shield_bash', 'attack'], PASSIVE);
-    play(s, 'shield_bash'); // 2 dmg
+    play(s, 'shield_bash'); // 1 dmg (25%)
     expect(hasStatus(s.player, 'weak')).toBe(true);
     play(s, 'attack');      // halved: 2
     const hits = s.log.filter((e) => e.t === 'damage' && e.source === 'player').map((e) => (e as { amount: number }).amount);
-    expect(hits).toEqual([2, 2]);
+    expect(hits).toEqual([1, 2]);
     expect(hasStatus(s.player, 'weak')).toBe(false);
   });
 });

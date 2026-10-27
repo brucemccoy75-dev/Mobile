@@ -66,7 +66,7 @@
     },
     {
       "id": "burn_2x2",
-      "name": "Burn 2\u00d72",
+      "name": "Burn 2×2",
       "target": "enemy",
       "status": "burn",
       "rounds": 2,
@@ -89,7 +89,7 @@
     },
     {
       "id": "burn_3x3",
-      "name": "Burn 3\u00d73",
+      "name": "Burn 3×3",
       "target": "enemy",
       "status": "burn",
       "rounds": 3,
@@ -160,7 +160,7 @@
       "rarity": "common",
       "uses": null,
       "damage": {
-        "percent": 60,
+        "percent": 25,
         "bonus": 0,
         "hits": 1,
         "type": "physical",
@@ -194,10 +194,10 @@
       "id": "broadsword",
       "name": "Broadsword Strike",
       "classId": "warrior",
-      "rarity": "common",
+      "rarity": "uncommon",
       "uses": null,
       "damage": {
-        "percent": 100,
+        "percent": 110,
         "bonus": 4,
         "hits": 1,
         "type": "physical",
@@ -218,7 +218,7 @@
       "rarity": "uncommon",
       "uses": null,
       "damage": {
-        "percent": 100,
+        "percent": 75,
         "bonus": 0,
         "hits": 1,
         "type": "physical",
@@ -399,12 +399,12 @@
     },
     {
       "id": "warding_blast",
-      "name": "Warding Blast",
+      "name": "Explosive Potion",
       "classId": "any",
       "rarity": "common",
       "uses": null,
       "damage": {
-        "percent": 60,
+        "percent": 50,
         "bonus": 0,
         "hits": 1,
         "type": "magic",
@@ -447,6 +447,46 @@
       "modifiers": [
         "aegis_3"
       ]
+    },
+    {
+      "id": "spiritboomerang",
+      "name": "Spirit Boomerang",
+      "classId": "warrior",
+      "rarity": "uncommon",
+      "uses": "once_per_fight",
+      "damage": {
+        "percent": 10,
+        "bonus": 4,
+        "hits": 2,
+        "type": "magic",
+        "ignoreDef": false,
+        "drain": 0,
+        "targets": "all"
+      },
+      "heal": null,
+      "modifiers": [
+        "overextend",
+        "tiring"
+      ],
+      "note": "Flat +4 so gear does not multiply it (DECISIONS #14)."
+    },
+    {
+      "id": "bellow",
+      "name": "Bellow",
+      "classId": "any",
+      "rarity": "basic",
+      "uses": null,
+      "damage": {
+        "percent": 0,
+        "bonus": 1,
+        "hits": 1,
+        "type": "physical",
+        "ignoreDef": true,
+        "drain": 0,
+        "targets": "all"
+      },
+      "heal": null,
+      "modifiers": []
     }
   ],
   "families": [
@@ -470,7 +510,8 @@
         "broadsword",
         "exposing_strike",
         "mighty_blow",
-        "last_strike"
+        "last_strike",
+        "spiritboomerang"
       ]
     },
     {

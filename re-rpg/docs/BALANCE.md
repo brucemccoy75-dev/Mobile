@@ -4,6 +4,20 @@ Produced by `npm run sim` with the greedy intent-reading policy (`src/core/sim/p
 
 Loadouts: **fresh** = Attack/Defend only, empty deck. **Set** = the two set tomes in the deck. **gearN** = a full three-slot kit for screen N (`GEAR_KIT` in `src/core/sim/gauntlet.ts`). The sim does not model loot choice, relics or 4-card decks, so these are floors, not expectations.
 
+## Cards import 2026-10-27 (first editor export)
+
+Changed: shield_bash (60% → 25%), broadsword (100% +4 → 110% +4, uncommon), exposing_strike (100% → 75%), warding_blast (renamed Explosive Potion, 60% → 50% magic); new: spiritboomerang (Berserker: 10% +4, 2 hits, magic, every enemy, once per fight, Overextend + Tiring), bellow (basic rarity, in no basics list, so it is never dealt and never drops). Warrior gauntlet, 1000 runs, greedy policy:
+
+```
+loadout                        reach boss  beat boss  hp@boss fights rounds  deaths
+warrior fresh                       72.9%       0.0%      5.8   3.66   18.6  gatekeeper 73%, adept_necromancer 23%, rat_pack 5%
+warrior Bulwark                     57.8%       0.0%     10.3   3.29   30.3  gatekeeper 58%, adept_necromancer 27%, boar 10%
+warrior Berserker                  100.0%       0.0%     15.6   4.00   11.4  gatekeeper 100%
+warrior Bulwark+gear1               92.9%       0.0%     15.1   3.90   30.6  gatekeeper 93%, adept_necromancer 5%, boar 1%
+warrior Berserker+gear1            100.0%       0.1%     21.2   4.00   11.4  gatekeeper 100%
+warrior both sets+gear1             99.8%       7.8%     20.8   4.08   20.6  gatekeeper 92%, boar 0%
+```
+
 ## Targets (DECISIONS #1, #6)
 
 - Fresh runs should almost never reach Boss 1. ✅ (≤ 5%)

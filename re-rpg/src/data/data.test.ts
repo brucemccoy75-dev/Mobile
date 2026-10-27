@@ -12,7 +12,7 @@ describe('content integrity', () => {
     for (const set of SETS) {
       const own = set.skills.filter((id) => getSkill(id).classId !== 'any');
       const general = set.skills.filter((id) => getSkill(id).classId === 'any');
-      expect(own).toHaveLength(2);
+      expect(own.length).toBeGreaterThanOrEqual(2); // two to start with; the editor may add more (Spirit Boomerang, 2026-10-27)
       for (const id of own) { expect(getSkill(id).classId).toBe(set.classId); expect(getSkill(id).setId).toBe(set.id); }
       expect([ATTACK_GENERALS, DEFENCE_GENERALS]).toContainEqual(general);
     }
@@ -61,13 +61,13 @@ describe('cards.json (DECISIONS #44)', () => {
     expect(diffCards(CARDS_DATA, CARDS_DATA)).toEqual([]);
   });
   it('compiles the same effects the hand-written data had', () => {
-    expect(getSkill('shield_bash').effects).toEqual([{ type: 'damage', mult: 0.6 }, { type: 'status', target: 'self', status: 'guard', turns: 99, magnitude: 1 }, { type: 'status', target: 'self', status: 'weak', turns: 2 }]);
+    expect(getSkill('shield_bash').effects).toEqual([{ type: 'damage', mult: 0.25 }, { type: 'status', target: 'self', status: 'guard', turns: 99, magnitude: 1 }, { type: 'status', target: 'self', status: 'weak', turns: 2 }]);
     expect(getSkill('frost_bolt').effects).toEqual([{ type: 'damage', mult: 1.2, kind: 'magic' }, { type: 'status', target: 'enemy', status: 'chill', turns: 1, chance: 0.65 }]);
     expect(getSkill('lightning').effects).toEqual([{ type: 'damage', mult: 1.6, ignoreDef: true, kind: 'magic' }]);
     expect(getSkill('spirit_lash').effects).toEqual([{ type: 'damage', mult: 1.2, lifesteal: 0.5 }]);
     expect(getSkill('bind_wound')).toMatchObject({ setId: 'warrior_tank', uses: 'once_per_fight', effects: [{ type: 'heal', pct: 0.25 }, { type: 'status', target: 'self', status: 'exposed', turns: 2 }] });
     expect(getSkill('mighty_blow').setId).toBeUndefined();
-    expect(getSkill('shield_bash').text).toBe('Deal 60% damage. Block the next physical hit. Tiring: Weak next turn.');
+    expect(getSkill('shield_bash').text).toBe('Deal 25% damage. Block the next physical hit. Tiring: Weak next turn.');
   });
   it('the validator names what is wrong', () => {
     const clone = (): CardsData => JSON.parse(JSON.stringify(CARDS_DATA));

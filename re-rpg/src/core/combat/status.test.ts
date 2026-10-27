@@ -164,7 +164,7 @@ describe('exposed', () => {
 
   it('Exposing Strike (enemy, turns 2) doubles your next hit only', () => {
     const s = fight(['exposing_strike', 'attack', 'attack'], PASSIVE);
-    expect(landed(play(s, 'exposing_strike'), 'player')).toEqual([4]);  // the strike itself is not doubled
+    expect(landed(play(s, 'exposing_strike'), 'player')).toEqual([3]);  // 75%; the strike itself is not doubled
     expect(getStatus(s.enemy, 'exposed')).toMatchObject({ turns: 1 });
     expect(landed(play(s, 'attack'), 'player')).toEqual([8]);
     expect(hasStatus(s.enemy, 'exposed')).toBe(false);
@@ -182,7 +182,7 @@ describe('exposed', () => {
 describe('weak', () => {
   it('Shield Bash (self, turns 2) halves your next turn, not this one', () => {
     const s = fight(['shield_bash', 'attack', 'attack'], PASSIVE);
-    expect(landed(play(s, 'shield_bash'), 'player')).toEqual([2]);  // round(4 × 0.6), at full strength
+    expect(landed(play(s, 'shield_bash'), 'player')).toEqual([1]);  // round(4 × 0.25), at full strength
     expect(getStatus(s.player, 'weak')).toMatchObject({ turns: 1 });
     expect(landed(play(s, 'attack'), 'player')).toEqual([2]);        // floor(4 × 0.5)
     expect(hasStatus(s.player, 'weak')).toBe(false);

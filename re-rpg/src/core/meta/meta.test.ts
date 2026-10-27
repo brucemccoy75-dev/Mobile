@@ -24,7 +24,9 @@ describe('meta', () => {
     gainExp(m, 'warrior', 78); // level 3: two points, one family
     expect(unlockNode(m, 'warrior', 'warrior_dps')).toBe(true);
     const w = rollHeirloomChoices(m, 'warrior', new Rng(2));
-    expect(w.map((x) => (x.kind === 'tome' ? x.skill.id : '')).sort()).toEqual(['broadsword', 'exposing_strike', 'last_strike', 'mighty_blow']);
+    const picked = w.map((x) => (x.kind === 'tome' ? x.skill.id : ''));
+    expect(picked).toHaveLength(4); // four of the family's five
+    for (const id of picked) expect(['broadsword', 'exposing_strike', 'last_strike', 'mighty_blow', 'spiritboomerang']).toContain(id);
   });
 
   it('EXP levels the class, grants points, and nodes are bought per class', () => {

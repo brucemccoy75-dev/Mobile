@@ -11,7 +11,7 @@ describe('buildPool', () => {
   it('tomes are exactly the families\' cards, general tomes included; no family, no tomes; items are class-usable', () => {
     const p = buildPool(ctx());
     expect(p.tomes.map((t) => t.id).sort()).toEqual(['bind_wound', 'final_stand', 'shield_bash', 'stand_firm', 'warding_blast']);
-    expect(buildPool(ctx({ families: ['warrior_dps'] })).tomes.map((t) => t.id).sort()).toEqual(['broadsword', 'exposing_strike', 'last_strike', 'mighty_blow']);
+    expect(buildPool(ctx({ families: ['warrior_dps'] })).tomes.map((t) => t.id).sort()).toEqual(['broadsword', 'exposing_strike', 'last_strike', 'mighty_blow', 'spiritboomerang']);
     expect(buildPool(ctx({ families: [] })).tomes).toEqual([]);
     expect(p.items.every((i) => !i.classes || i.classes.includes('warrior'))).toBe(true);
     expect(p.items.some((i) => i.id === 'oak_wand')).toBe(false);
@@ -29,7 +29,7 @@ describe('buildPool', () => {
     const meta = createMeta(); meta.discoveredSkills.push('broadsword', 'fireball');
     expect(buildPool(ctx({ meta })).tomes.filter((t) => t.classId !== 'any').map((t) => t.id).sort()).toEqual(['bind_wound', 'shield_bash']);
     const both = buildPool(ctx({ meta, families: ['warrior_tank', 'warrior_dps'] }));
-    expect(both.tomes.filter((t) => t.classId !== 'any').map((t) => t.id).sort()).toEqual(['bind_wound', 'broadsword', 'exposing_strike', 'shield_bash']);
+    expect(both.tomes.filter((t) => t.classId !== 'any').map((t) => t.id).sort()).toEqual(['bind_wound', 'broadsword', 'exposing_strike', 'shield_bash', 'spiritboomerang']);
   });
 
   it('never offers basics', () => {
