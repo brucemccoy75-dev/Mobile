@@ -1,11 +1,10 @@
 # Next session notes
 
-## Start here (updated 2026-10-26, night)
+## Start here (updated 2026-10-27)
 
 **State.** Branch `claude/re-rpg-mobile-architecture-t26won`, folder `re-rpg/`, live on GitHub
 Pages at https://brucemccoy75-dev.github.io/Mobile/ (deploys ~70 s after a push; poll
-`origin/gh-pages` for "Deploy re-rpg <sha>"). 193 tests pass (`npm run check`). Last commit:
-see `git log`. The game today is:
+`origin/gh-pages` for "Deploy re-rpg <sha>"). 194 tests pass (`npm run check`). The game today is:
 
 - **Node overworld** (DECISIONS #37): a static node network per screen over an authored
   terrain, contents rolled per run, tap a reachable node to travel, swipe to pan. Screen 1 has a
@@ -48,6 +47,18 @@ choice? If singles still cost nothing after a node, the next lever is gear max H
 healing (proposed in the #42 review, declined for now). The last two fresh runs reached Wren and
 died there (run log in docs/audit is from before #42; export a new one).
 
-**Then, in order (unchanged):** screen-2 painting (prompt in docs/ART.md, layout in
-`art-src/layout-screen2.png`); life on the painting (lake shimmer, cloud shadows); painted
-node icons; fill the skill trees; a quest generator that speaks node ids; Wren's still.
+**Quests (the other open track).** First cut is GAME_DESIGN §7b and DECISIONS #19: one giver per
+screen, fetch / hunt / escort rolled from the run seed. Code: `src/core/quest/index.ts`
+(`generateQuest`, `questReady`, kinds and rewards, tests in `quest.test.ts`), `src/data/quests.ts`
+(giver voices and lines, Wren's voice for screen 1), `src/game/scenes/QuestScene.ts` (the
+hand-in screen), and the overworld's giver and NPC spots (`questGiver`, `npcSpot` on the map,
+`currentQuest` / `turnInQuest` in `src/game/session.ts`). Dialogue with options at nodes is
+DECISIONS #35 (`src/core/dialogue`, `src/data/dialogue.ts`). The queued design item is a quest
+generator that speaks node ids (targets that place themselves on the node map, multi-step
+chains, lore on completion). Any quest change: tests in `quest.test.ts` first, then the scene,
+then a Playwright check on the overworld.
+
+**Next, in order:** (1) card balance through editor imports (docs/CARDS.md; fill Shadow Knight,
+Paladin, Weaponmaster; watch the fresh-run questions above); (2) the quest system; then the
+older queue: screen-2 painting (prompt in docs/ART.md, layout in `art-src/layout-screen2.png`),
+life on the painting, painted node icons, Wren's still.
