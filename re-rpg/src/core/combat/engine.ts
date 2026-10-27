@@ -275,8 +275,8 @@ function stripStatuses(c: Combatant, statuses: StatusId[], events: CombatEvent[]
   }
 }
 
-/** Luck (DECISIONS #50): each point is 1.2% chance of a critical hit and of a bonus turn, per card. */
-export const LUCK_PER_POINT = 0.012;
+/** Luck (DECISIONS #50, #52): each point is 0.2% chance of a critical hit and of a bonus turn, per card; base luck 5 is 1%. */
+export const LUCK_PER_POINT = 0.002;
 export const CRIT_MULT = 1.5;
 
 /** One hit of a damage effect: blocks, the damage, Brace's counter. Returns the damage that landed. */

@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { Rng, RunRng } from '@core/rng';
-import { createCombat, step, currentIntent, isPlayerStunned } from './engine';
+import { createCombat, step, currentIntent, isPlayerStunned, LUCK_PER_POINT } from './engine';
 import { hasStatus, getStatus } from './status';
 import type { CombatState } from './types';
 import type { Enemy } from '@data/types';
-import { getEnemy, registerSkill } from '@data/index';
+import { getClass, getEnemy, registerSkill } from '@data/index';
 
 const WARRIOR = { stats: { maxHp: 25, atk: 4, def: 1 } };
 
@@ -623,8 +623,11 @@ describe('sweeps (DECISIONS #44)', () => {
 
 describe('luck (DECISIONS #50)', () => {
   const lucky = (luck: number, enemy: Enemy = DUMMY, seed = 1) => createCombat({ player: { stats: { ...WARRIOR.stats, luck }, deck: [], basics: [] }, enemy, rng: new Rng(seed) });
-  it('luck × 1.2% is the chance per card: a crit adds 50% to every hit, with its own event', () => {
-    const s = lucky(100, PASSIVE); // 120%: always
+  it('base luck (5) is a 1% chance per card of each (DECISIONS #52)', () => {
+    expect(getClass('warrior').stats.luck! * LUCK_PER_POINT).toBeCloseTo(0.01);
+  });
+  it('a crit adds 50% to every hit, with its own event', () => {
+    const s = lucky(500, PASSIVE); // 100%: always
     s.player.hand.push('attack');
     const ev = step(s, { type: 'card', index: 0 });
     expect(ev.find((e) => e.t === 'crit')).toBeDefined();
@@ -633,7 +636,7 @@ describe('luck (DECISIONS #50)', () => {
     expect(s.enemies[0]!.hp).toBe(24);
   });
   it('a bonus turn skips the enemies once per round; the next card lets them act', () => {
-    const s = lucky(100);
+    const s = lucky(500);
     s.player.hand.push('attack', 'attack');
     const ev1 = step(s, { type: 'card', index: 0 });
     expect(ev1.some((e) => e.t === 'bonusTurn')).toBe(true);
@@ -647,10 +650,10 @@ describe('luck (DECISIONS #50)', () => {
     expect(s.round).toBe(2);
   });
   it('no bonus turn with an empty hand, none from holding a card', () => {
-    const s = lucky(100);
+    const s = lucky(500);
     s.player.hand = ['attack'];
     expect(step(s, { type: 'card', index: 0 }).some((e) => e.t === 'bonusTurn')).toBe(false);
-    const h = lucky(100);
+    const h = lucky(500);
     h.player.hand = ['attack', 'defend'];
     expect(step(h, { type: 'hold', index: 0 }).some((e) => e.t === 'bonusTurn')).toBe(false);
   });

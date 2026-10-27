@@ -13,7 +13,7 @@ export interface Stats {
   def: number;
   /** The part of `atk` that comes from gear. Added flat to every hit, never multiplied by a card (DECISIONS #31). */
   gearAtk?: number;
-  /** Luck (DECISIONS #50): luck × 1.2% is the chance of a critical hit and of a bonus turn per card, and it adds to the rare odds of rewards and the shop. */
+  /** Luck (DECISIONS #50, #52): luck × 0.2% is the chance of a critical hit and of a bonus turn per card; luck × 1.2 adds to the rare odds of rewards, the shop and level-ups. */
   luck?: number;
 }
 

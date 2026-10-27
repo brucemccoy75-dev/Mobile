@@ -394,3 +394,11 @@ percent of max HP it costs (1-100; 100 reads "If the target survives, you lose a
 Imported with the designer's export of the same day; the Backfire modifier (100%) was added and
 linked to Death Touch at their request, in the file, as the card's note asked. Pinned by the
 backfire tests in `engine.test.ts` and `data.test.ts`; screenshots in `docs/audit/backfire-2026-10-27/`.
+
+## 52. Crits and bonus turns are 1% at base luck
+
+Designer's call after play: critical hits and lucky extra turns came far too often. At luck × 1.2%
+a base-luck hero rolled 6% per card for each, and a fight is many cards. Now each point of luck
+is 0.2% (`LUCK_PER_POINT`), so base luck 5 is 1% per card for a crit and 1% for a bonus turn. The
+rare-odds part of #50 (luck × 1.2 rare weight, luck × 1.2% on the level-up roll) is unchanged.
+The sim is back within a point of the luck-0 table. Pinned by the luck tests in `engine.test.ts`.

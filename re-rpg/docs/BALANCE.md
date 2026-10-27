@@ -4,6 +4,22 @@ Produced by `npm run sim` with the greedy intent-reading policy (`src/core/sim/p
 
 Loadouts: **fresh** = Attack/Defend only, empty deck. **Set** = the two set tomes in the deck. **gearN** = a full three-slot kit for screen N (`GEAR_KIT` in `src/core/sim/gauntlet.ts`). The sim does not model loot choice, relics or 4-card decks, so these are floors, not expectations.
 
+## Luck odds 2026-10-27 (DECISIONS #52)
+
+Crits and bonus turns are luck × 0.2% per card (was 1.2%): base luck 5 is 1% each. Rare odds unchanged. Warrior gauntlet, 1000 runs, greedy policy:
+
+```
+loadout                        reach boss  beat boss  hp@boss fights rounds  deaths
+warrior fresh                       24.9%       0.0%      5.9   2.62   20.4  adept_necromancer 32%, gatekeeper 25%, boar 25%
+warrior Bulwark                     39.4%       0.0%     10.6   2.84   28.9  gatekeeper 39%, boar 27%, adept_necromancer 22%
+warrior Berserker                   82.0%       0.0%     11.3   3.76   13.6  gatekeeper 82%, boar 8%, adept_necromancer 6%
+warrior Bulwark+gear1               86.0%       0.0%     16.7   3.76   30.5  gatekeeper 86%, boar 9%, adept_necromancer 3%
+warrior Berserker+gear1             99.2%       0.0%     17.9   3.99   13.7  gatekeeper 99%, boar 1%, adept_necromancer 0%
+warrior both sets+gear1             96.3%       0.8%     18.4   3.96   21.2  gatekeeper 96%, boar 2%, adept_necromancer 1%
+```
+
+Back to within a point of the luck-0 table (fresh 25.4%, Bulwark 39.1%, Berserker 81.1%): at 1% luck is a rare treat, not a lever.
+
 ## Cards import 2026-10-27 (Shadow Knight: Minor leech, Leech, Death Touch)
 
 Changed: new cards minorleech (Minor leech, common: 100%, heal 10%, Tiring), leech (Leech, rare, once per fight: 100% to every enemy, drain 40%, Ward 1 + Overextend), deathtoufh (Death Touch, rare, fleeting: 500%, ignores defence, drain 40%, Backfire 100%); new modifier backfire (DECISIONS #51), linked to Death Touch at the designer's request; Shadow Knight holds all three. The warrior gauntlet table is unchanged from the Luck entry below: the sim has no Shadow Knight loadout yet, so none of these cards is played in it.
