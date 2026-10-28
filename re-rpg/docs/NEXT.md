@@ -4,7 +4,7 @@
 
 **State.** Branch `claude/re-rpg-mobile-architecture-t26won`, folder `re-rpg/`, live on GitHub
 Pages at https://brucemccoy75-dev.github.io/Mobile/ (deploys ~70 s after a push; poll
-`origin/gh-pages` for "Deploy re-rpg <sha>"). 234 tests pass (`npm run check`). The game today is:
+`origin/gh-pages` for "Deploy re-rpg <sha>"). 232 tests pass (`npm run check`). The game today is:
 
 - **Node overworld** (DECISIONS #37): a static node network per screen over an authored
   terrain, contents rolled per run, tap a reachable node to travel, swipe to pan. Screen 1 has a
