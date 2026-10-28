@@ -19,7 +19,8 @@ import { StatusChips } from '@game/ui/StatusChips';
 import { CLASS_COLORS, COLORS, FONT, POSTURE_TEXT, STATUS_LABELS, describeIntent, text } from '@game/ui/theme';
 import type { Status } from '@data/types';
 import { floatText, tween, wait } from '@game/ui/tween';
-import { BattleFx } from '@game/fx/battleFx';
+import { BattleFx, type Guard } from '@game/fx/battleFx';
+import { blockSide } from '@game/fx/shapes';
 import { beats } from '@game/playback';
 import { applyWin } from '@game/story';
 import { SHIELD_COLOR, blockColor, type VfxKind } from '@core/vfx';
@@ -613,12 +614,17 @@ export class CombatScene extends Phaser.Scene {
         return;
       }
       case 'damage': {
-        const s = sprite(e.target), p = pos(e.target);
-        await this.castAt(e.target, who, p);
-        if (!e.blocked && (this.cast?.kind ?? 'slash') === 'slash') void this.fx.slash(p, e.amount, e.target === 'player');
+        const s = sprite(e.target), p = pos(e.target), fromRight = e.target === 'player';
+        const kind = this.cast?.kind ?? 'slash';
+        // A block shows the shield that stopped it (#62, #63): Guard white, Ward yellow, Aegis gold. The
+        // slash or spell stops at that shield instead of reaching the body (#66).
+        const guard = e.blocked ? { target: s, color: blockColor(e.kind, this.statusList(e.target, e.target === 'enemy' ? who : undefined).some((x) => x.id === 'aegis')), fromRight } : undefined;
+        const shielded = await this.castAt(e.target, who, p, guard);
+        if (guard && !shielded) {
+          if (kind === 'slash') void this.fx.slashBlocked(s, e.amount, guard.color, fromRight);
+          else this.fx.deflect(s, guard.color, blockSide(kind, fromRight));
+        } else if (!e.blocked && kind === 'slash') void this.fx.slash(p, e.amount, fromRight);
         else if (!e.blocked && e.hit > 1) this.fx.burst(p, 0xffffff, 5, 40, 300, 0.25);
-        // A block shows the shield that stopped it again (#62): Guard white, Ward yellow, Aegis gold.
-        if (e.blocked) this.fx.deflect(s, blockColor(e.kind, this.statusList(e.target, e.target === 'enemy' ? who : undefined).some((x) => x.id === 'aegis')), e.target === 'player');
         if (e.blocked) {
           this.dispGuardHit(e.target, e.kind === 'magic' ? 'ward' : 'guard', who);
           this.syncChips();
@@ -672,8 +678,10 @@ export class CombatScene extends Phaser.Scene {
       case 'statusResisted': {
         const p = pos(e.side);
         // The spell is still seen being cast before the Ward stops it (#62).
-        if (this.cast && this.cast.side !== e.side) await this.castAt(e.side, who, p);
-        if (e.warded) { this.fx.deflect(sprite(e.side), SHIELD_COLOR.ward, e.side === 'player'); this.dispGuardHit(e.side, 'ward', who); this.syncChips(); await floatText(this, p.x, p.y - 30, 'WARDED', COLORS.block, 30, 900); return; }
+        const guard = e.warded ? { target: sprite(e.side), color: SHIELD_COLOR.ward, fromRight: e.side === 'player' } : undefined;
+        const shielded = this.cast && this.cast.side !== e.side ? await this.castAt(e.side, who, p, guard) : false;
+        if (guard && !shielded) this.fx.deflect(guard.target, guard.color, blockSide(this.cast?.kind ?? 'none', guard.fromRight));
+        if (e.warded) { this.dispGuardHit(e.side, 'ward', who); this.syncChips(); await floatText(this, p.x, p.y - 30, 'WARDED', COLORS.block, 30, 900); return; }
         await floatText(this, p.x, p.y - 30, 'resisted', '#c7b3ff', 26, 900);
         return;
       }
@@ -724,18 +732,21 @@ export class CombatScene extends Phaser.Scene {
     }
   }
 
-  /** Play the current move's spell at this target once (#59); a slash or no effect has no travel. */
-  private async castAt(target: 'player' | 'enemy', who: number, to: { x: number; y: number }) {
+  /**
+   * Play the current move's spell at this target once (#59); a slash or no effect has no travel. With a
+   * `guard` the spell stops at the shield (#66); true when the spell raised that shield itself.
+   */
+  private async castAt(target: 'player' | 'enemy', who: number, to: { x: number; y: number }, guard?: Guard): Promise<boolean> {
     const c = this.cast;
-    if (!c || c.side === target || c.kind === 'slash' || c.kind === 'none' || c.kind === 'heal') return;
+    if (!c || c.side === target || c.kind === 'slash' || c.kind === 'none' || c.kind === 'heal') return false;
     const key = `${target}:${target === 'enemy' ? who : 0}`;
-    if (c.done.has(key)) return;
+    if (c.done.has(key)) return false;
     c.done.add(key);
     const from = c.side === 'player' ? { x: this.px + 20, y: this.py - 30 } : { x: this.views[c.who]?.x ?? to.x, y: (this.views[c.who]?.y ?? to.y) - 10 };
     // Just above the target's head, for a cloud or a skull (#62).
     const s = (target === 'player' ? this.playerSprite : this.views[who]?.sprite ?? this.playerSprite) as unknown as { x: number; y: number; displayHeight: number; originY?: number };
     const head = { x: s.x, y: s.y - (s.originY === 1 ? s.displayHeight : s.displayHeight / 2) - 6 };
-    await this.fx.cast(c.kind, from, { x: to.x, y: to.y - 10 }, head);
+    return this.fx.cast(c.kind, from, { x: to.x, y: to.y - 10 }, head, guard);
   }
 
   private async toast(msg: string) {

@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { VfxKind } from '@core/vfx';
 import { tween, wait } from '@game/ui/tween';
-import { skullPoints } from './shapes';
+import { type Body, blockSide, type ShieldSide, shieldArc, skullPoints } from './shapes';
 
 /**
  * Battle effects (DECISIONS #59), drawn with plain images and tweens so they cost nothing between
@@ -12,6 +12,8 @@ const DEPTH = 40;
 /** Mix a colour toward white, for a tint that colours a sprite without drowning it. */
 const lighten = (c: number, t: number) => { const ch = (s: number) => Math.round(((c >> s) & 0xff) + (255 - ((c >> s) & 0xff)) * t); return (ch(16) << 16) | (ch(8) << 8) | ch(0); };
 type Pt = { x: number; y: number };
+/** A blocked hit (#66): who blocked, in what colour, and whether the attacker stands to their right. */
+export type Guard = { target: Body; color: number; fromRight: boolean };
 
 export class BattleFx {
   constructor(private scene: Phaser.Scene) { BattleFx.textures(scene); }
@@ -44,18 +46,7 @@ export class BattleFx {
     const w = Phaser.Math.Clamp(60 + amount * 9, 60, 230), hgt = w * 0.26;
     const g = this.scene.add.graphics({ x: at.x, y: at.y }).setDepth(DEPTH).setRotation(flip ? 0.2 : -0.2);
     // A horizontal oval sliver: the outer arc of the oval and a flatter inner arc, filled grey, with a bright cutting edge.
-    const outer: Pt[] = [], inner: Pt[] = [];
-    for (let i = 0; i <= 28; i++) {
-      const t = Math.PI * (i / 28);
-      outer.push({ x: -Math.cos(t) * w / 2, y: Math.sin(t) * hgt / 2 });
-      inner.push({ x: -Math.cos(t) * w * 0.47, y: Math.sin(t) * hgt * 0.12 });
-    }
-    g.fillStyle(0xb9c0cc, 0.85);
-    g.beginPath(); g.moveTo(outer[0]!.x, outer[0]!.y);
-    for (const p of outer.slice(1)) g.lineTo(p.x, p.y);
-    for (const p of [...inner].reverse()) g.lineTo(p.x, p.y);
-    g.closePath(); g.fillPath();
-    g.lineStyle(2, 0xffffff, 0.9); g.beginPath(); g.moveTo(outer[0]!.x, outer[0]!.y); for (const p of outer.slice(1)) g.lineTo(p.x, p.y); g.strokePath();
+    this.sliver(g, w, hgt);
     g.setScale(0.25, 1);
     this.burst({ x: at.x + (flip ? -w * 0.3 : w * 0.3), y: at.y }, 0xe6ebf2, Math.min(10, 3 + Math.round(amount / 2)), 50, 320, 0.22);
     await tween(this.scene, { targets: g, scaleX: 1, duration: 110, ease: 'Quad.Out' });
@@ -75,28 +66,61 @@ export class BattleFx {
   }
 
   /**
-   * A block (#63): a curved shield snaps up on the side the hit came from, flashes, and is gone in a
-   * quarter second, throwing sparks back toward the attacker.
+   * A block (#63): a curved shield snaps up on the side the hit came from (a dome over the head for a
+   * spell from above, #66), flashes, and is gone in a quarter second, throwing sparks back out.
    */
-  deflect(target: { x: number; y: number; displayWidth?: number; displayHeight?: number; originY?: number }, color: number, fromRight: boolean) {
-    const w = (target.displayWidth ?? 80), h = (target.displayHeight ?? 100);
-    const cy = target.y - (target.originY === 1 ? h / 2 : 0);
-    const sx = target.x + (fromRight ? 1 : -1) * w * 0.42;
-    const g = this.scene.add.graphics({ x: sx, y: cy }).setDepth(DEPTH + 1).setBlendMode(Phaser.BlendModes.ADD);
-    const r = h * 0.48, dir = fromRight ? 1 : -1;
+  deflect(target: Body, color: number, side: ShieldSide) {
+    const { angle, r, apex, centre } = shieldArc(target, side);
+    // Drawn around the apex, so the snap-up grows out from where the hit meets it.
+    const g = this.scene.add.graphics({ x: apex.x, y: apex.y }).setDepth(DEPTH + 1).setBlendMode(Phaser.BlendModes.ADD);
     for (const [lw, al] of [[10, 0.35], [5, 0.9], [2, 1]] as const) {
       g.lineStyle(lw, lw === 2 ? 0xffffff : color, al);
-      g.beginPath(); g.arc(-dir * r * 0.55, 0, r, dir > 0 ? -0.9 : Math.PI - 0.9, dir > 0 ? 0.9 : Math.PI + 0.9); g.strokePath();
+      g.beginPath(); g.arc(centre.x - apex.x, centre.y - apex.y, r, angle - 0.9, angle + 0.9); g.strokePath();
     }
     g.setScale(0.6).setAlpha(0);
     this.scene.tweens.add({ targets: g, scale: 1.05, alpha: 1, duration: 60, ease: 'Quad.Out' });
     this.scene.tweens.add({ targets: g, alpha: 0, scale: 1.12, duration: 160, delay: 90, ease: 'Quad.In', onComplete: () => g.destroy() });
-    this.flash({ x: sx, y: cy }, color);
+    this.flash(apex, color);
+    const along = { x: -Math.sin(angle), y: Math.cos(angle) };
     for (let i = 0; i < 7; i++) {
-      const a = (fromRight ? 0 : Math.PI) + (Math.random() - 0.5) * 1.6, v = 40 + Math.random() * 40;
-      const p = this.scene.add.image(sx, cy + (Math.random() - 0.5) * r, 'fx_spark').setTint(i % 2 ? 0xffffff : color).setRotation(a).setDepth(DEPTH + 1).setBlendMode(Phaser.BlendModes.ADD);
-      this.scene.tweens.add({ targets: p, x: sx + Math.cos(a) * v, y: p.y + Math.sin(a) * v, alpha: 0, duration: 220, ease: 'Quad.Out', onComplete: () => p.destroy() });
+      const a = angle + (Math.random() - 0.5) * 1.6, v = 40 + Math.random() * 40, off = (Math.random() - 0.5) * r;
+      const p = this.scene.add.image(apex.x + along.x * off, apex.y + along.y * off, 'fx_spark').setTint(i % 2 ? 0xffffff : color).setRotation(a).setDepth(DEPTH + 1).setBlendMode(Phaser.BlendModes.ADD);
+      this.scene.tweens.add({ targets: p, x: p.x + Math.cos(a) * v, y: p.y + Math.sin(a) * v, alpha: 0, duration: 220, ease: 'Quad.Out', onComplete: () => p.destroy() });
     }
+  }
+
+  /**
+   * A blocked slash (#66): the blade sweeps in from the attacker's side and stops dead at the
+   * shield, which snaps up as it arrives; the blade then falls away instead of crossing the body.
+   */
+  async slashBlocked(target: Body, amount: number, color: number, fromRight: boolean) {
+    const side: ShieldSide = fromRight ? 'right' : 'left', dir = fromRight ? 1 : -1;
+    const { apex } = shieldArc(target, side);
+    const w = Phaser.Math.Clamp(60 + amount * 9, 60, 230), hgt = w * 0.26;
+    const len = Math.min(w, 110); // how much of the blade shows outside the shield
+    // The blade's outer end sits `len` out from the shield and it grows inward until its tip touches.
+    const g = this.scene.add.graphics({ x: apex.x + dir * len, y: apex.y }).setDepth(DEPTH).setRotation(fromRight ? 0.2 : -0.2);
+    this.sliver(g, w, hgt, -dir * w / 2);
+    g.setScale(0.1, 1);
+    await tween(this.scene, { targets: g, scaleX: len / w, duration: 90, ease: 'Quad.In' });
+    this.deflect(target, color, side);
+    void tween(this.scene, { targets: g, x: g.x + dir * 18, alpha: 0, delay: 50, duration: 180, ease: 'Quad.Out' }).then(() => g.destroy());
+  }
+
+  /** The slash's grey oval sliver with a bright cutting edge, `ox` along from the graphics' origin. */
+  private sliver(g: Phaser.GameObjects.Graphics, w: number, hgt: number, ox = 0) {
+    const outer: Pt[] = [], inner: Pt[] = [];
+    for (let i = 0; i <= 28; i++) {
+      const t = Math.PI * (i / 28);
+      outer.push({ x: ox - Math.cos(t) * w / 2, y: Math.sin(t) * hgt / 2 });
+      inner.push({ x: ox - Math.cos(t) * w * 0.47, y: Math.sin(t) * hgt * 0.12 });
+    }
+    g.fillStyle(0xb9c0cc, 0.85);
+    g.beginPath(); g.moveTo(outer[0]!.x, outer[0]!.y);
+    for (const p of outer.slice(1)) g.lineTo(p.x, p.y);
+    for (const p of [...inner].reverse()) g.lineTo(p.x, p.y);
+    g.closePath(); g.fillPath();
+    g.lineStyle(2, 0xffffff, 0.9); g.beginPath(); g.moveTo(outer[0]!.x, outer[0]!.y); for (const p of outer.slice(1)) g.lineTo(p.x, p.y); g.strokePath();
   }
 
   /** Rising green motes on someone healing. */
@@ -107,16 +131,28 @@ export class BattleFx {
 
   /** The cast for a magic kind, from caster to target; resolves at impact. Physical and none resolve at once. */
   /** `head` is just above the target's head, where a cloud or a skull belongs (#62). */
-  async cast(kind: VfxKind, from: Pt, to: Pt, head: Pt = { x: to.x, y: to.y - 52 }) {
-    if (kind === 'fireball') return this.orb(from, to, 0xff8c42, 0xffd166, 1.9, () => { this.flash(to, 0xffb347); this.burst(to, 0xff8c42, 16, 80); this.burst(to, 0xffe08a, 8, 50); });
-    if (kind === 'frost') return this.orb(from, to, 0x9ad7ff, 0xffffff, 1.4, () => { this.burst(to, 0xbfe9ff, 14, 70); this.shards(to); });
-    if (kind === 'arcane') return this.orb(from, to, 0xb57bff, 0xe0c8ff, 1.5, () => { this.ring(to, 0xb57bff); this.burst(to, 0xc9a2ff, 10, 60); });
-    if (kind === 'lightning') return this.bolt(to);
-    if (kind === 'poison') return this.cloud(head);
-    if (kind === 'curse') return this.skull(head);
+  /**
+   * With a `guard` the hit was blocked (#66): the spell stops at the shield instead of reaching the
+   * body, and the shield snaps up as it arrives. Resolves true when it showed the shield itself.
+   */
+  async cast(kind: VfxKind, from: Pt, to: Pt, head: Pt = { x: to.x, y: to.y - 52 }, guard?: Guard): Promise<boolean> {
+    const side = guard ? blockSide(kind, guard.fromRight) : 'up';
+    const shield = () => { if (guard) this.deflect(guard.target, guard.color, side); };
+    const at = guard ? shieldArc(guard.target, side).apex : to;
+    // Stopped by a shield, the impact is smaller: the shield takes it.
+    const n = guard ? 0.5 : 1;
+    if (kind === 'fireball') await this.orb(from, at, 0xff8c42, 0xffd166, 1.9, () => { this.flash(at, 0xffb347); this.burst(at, 0xff8c42, 16 * n, 80); this.burst(at, 0xffe08a, 8 * n, 50); }, shield);
+    else if (kind === 'frost') await this.orb(from, at, 0x9ad7ff, 0xffffff, 1.4, () => { this.burst(at, 0xbfe9ff, 14 * n, 70); this.shards(at); }, shield);
+    else if (kind === 'arcane') await this.orb(from, at, 0xb57bff, 0xe0c8ff, 1.5, () => { this.ring(at, 0xb57bff); this.burst(at, 0xc9a2ff, 10 * n, 60); }, shield);
+    else if (kind === 'lightning') await this.bolt(at, shield);
+    else if (kind === 'poison') await this.cloud(head, guard && shieldArc(guard.target, 'up').apex.y, shield);
+    else if (kind === 'curse') await this.skull(head, guard && shieldArc(guard.target, 'up').apex.y, shield);
+    else return false;
+    return !!guard;
   }
 
-  private async orb(from: Pt, to: Pt, color: number, trail: number, size: number, impact: () => void) {
+  /** `near` runs just before impact, for a shield to be up when the orb meets it. */
+  private async orb(from: Pt, to: Pt, color: number, trail: number, size: number, impact: () => void, near?: () => void) {
     // The orb keeps its colour (normal blend); only a small core and the trail add light.
     const o = this.scene.add.image(from.x, from.y, 'fx_dot').setTint(color).setScale(size).setDepth(DEPTH);
     const core = this.scene.add.image(from.x, from.y, 'fx_dot').setTint(trail).setScale(size * 0.3).setDepth(DEPTH + 1).setBlendMode(Phaser.BlendModes.ADD);
@@ -128,13 +164,17 @@ export class BattleFx {
         const t = tw.getValue() ?? 0, x = from.x + (to.x - from.x) * t, y = from.y + (to.y - from.y) * t + Math.sin(t * Math.PI) * arc;
         o.setPosition(x, y); core.setPosition(x, y);
         n++; this.burst({ x, y }, trail, 1, 14, 300, size * 0.4);
+        if (near && t >= 0.85) { near(); near = undefined; }
       },
     });
+    near?.();
     o.destroy(); core.destroy();
     impact();
   }
 
-  private async bolt(to: Pt) {
+  /** Lightning is instant, so a shield (`first`) goes up before the strike lands on it. */
+  private async bolt(to: Pt, first?: () => void) {
+    first?.();
     const g = this.scene.add.graphics().setDepth(DEPTH + 2).setBlendMode(Phaser.BlendModes.ADD);
     const draw = () => {
       g.clear();
@@ -151,15 +191,20 @@ export class BattleFx {
     void tween(this.scene, { targets: g, alpha: 0, duration: 160 }).then(() => g.destroy());
   }
 
-  /** A green cloud just above the head, raining down onto it. */
-  private async cloud(head: Pt) {
-    const top = head.y - 22;
+  /**
+   * A green cloud just above the head, raining down onto it. Warded (#66), the cloud sits higher and
+   * the rain stops on a dome at `stopY`, splashing off it.
+   */
+  private async cloud(head: Pt, stopY?: number, shield?: () => void) {
+    const top = stopY === undefined ? head.y - 22 : stopY - 44;
     const puffs = Array.from({ length: 8 }, (_, i) => this.scene.add.image(head.x + (i - 3.5) * 15, top + (i % 2) * 9, 'fx_dot').setTint(0x4f9a3f).setScale(1.7).setAlpha(0).setDepth(DEPTH));
     await tween(this.scene, { targets: puffs, alpha: 0.75, duration: 200 });
     for (let i = 0; i < 16; i++) this.scene.time.delayedCall(i * 35, () => {
       const d = this.scene.add.image(head.x + (Math.random() - 0.5) * 80, top + 10, 'fx_dot').setTint(0x9be27f).setScale(0.18, 0.4).setDepth(DEPTH);
-      this.scene.tweens.add({ targets: d, y: head.y + 46, alpha: 0.2, duration: 360, ease: 'Quad.In', onComplete: () => d.destroy() });
+      if (stopY === undefined) { this.scene.tweens.add({ targets: d, y: head.y + 46, alpha: 0.2, duration: 360, ease: 'Quad.In', onComplete: () => d.destroy() }); return; }
+      this.scene.tweens.add({ targets: d, y: stopY, duration: 200, ease: 'Quad.In', onComplete: () => { this.burst({ x: d.x, y: stopY }, 0x9be27f, 2, 18, 220, 0.14, -12); d.destroy(); } });
     });
+    if (shield) this.scene.time.delayedCall(170, shield);
     await wait(this.scene, 520);
     void tween(this.scene, { targets: puffs, alpha: 0, y: top - 14, duration: 380 }).then(() => puffs.forEach((p) => p.destroy()));
   }
@@ -167,9 +212,10 @@ export class BattleFx {
   /**
    * A curse (#62, #65): purple smoke gathers over the head into the shape of a skull, hangs there a
    * breath, and drifts apart. Made only of soft puffs, so it reads as a haunting, not a sticker.
+   * Warded (#66), it forms higher, lunges down onto a dome at `stopY` and breaks apart against it.
    */
-  private async skull(head: Pt) {
-    const cx = head.x, cy = head.y - 36, k = 1.9;
+  private async skull(head: Pt, stopY?: number, shield?: () => void) {
+    const k = 1.9, cx = head.x, cy = stopY === undefined ? head.y - 36 : stopY - 20 * k - 16;
     const pts = skullPoints(5);
     const glow = this.scene.add.image(cx, cy, 'fx_dot').setTint(0x7a3fbf).setScale(3.4).setAlpha(0).setDepth(DEPTH).setBlendMode(Phaser.BlendModes.ADD);
     this.scene.tweens.add({ targets: glow, alpha: 0.28, duration: 380, yoyo: true, hold: 260, onComplete: () => glow.destroy() });
@@ -185,6 +231,20 @@ export class BattleFx {
     const eyes = [-8, 8].map((ex) => this.scene.add.image(cx + ex * k, cy - 6 * k, 'fx_dot').setTint(0x1a0626).setScale(0.6).setAlpha(0).setDepth(DEPTH + 2));
     this.scene.tweens.add({ targets: eyes, alpha: 0.75, duration: 300, delay: 200, yoyo: true, hold: 300, onComplete: () => eyes.forEach((e) => e.destroy()) });
     await wait(this.scene, 480);
+    if (stopY !== undefined) {
+      // It dives at the head, hits the dome, and the smoke is flung off to the sides.
+      this.scene.tweens.killTweensOf(eyes); eyes.forEach((e) => e.destroy());
+      await tween(this.scene, { targets: puffs.map((q) => q.o), y: '+=16', duration: 110, ease: 'Quad.In' });
+      shield?.();
+      for (const { o, p } of puffs) {
+        const out = p.x === 0 ? (Math.random() - 0.5) * 2 : Math.sign(p.x);
+        this.scene.tweens.add({
+          targets: o, x: o.x + out * (30 + Math.random() * 40), y: o.y - 10 - Math.random() * 30 - (p.y + 26) * 0.3,
+          alpha: 0, scale: o.scale * 1.6, duration: 380 + Math.random() * 160, ease: 'Quad.Out', onComplete: () => o.destroy(),
+        });
+      }
+      return;
+    }
     // It hangs a breath, rising a touch, then comes apart from the top down.
     for (const { o, p } of puffs) {
       this.scene.tweens.add({

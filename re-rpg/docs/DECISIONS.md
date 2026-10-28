@@ -613,3 +613,17 @@ the eye sockets, a faint glow behind; it holds for about half a second and then 
 apart from the top down. No crossbones, no outlines. The shape is a pure point list
 (`src/game/fx/shapes.ts`, `skullPoints`), pinned by `src/game/fxShapes.test.ts` (open eye
 sockets, symmetric, a dome and a jaw). Screenshot in `docs/audit/skull-2026-10-28/smoke-skull.jpg`.
+
+## 66. A blocked hit stops at the shield
+
+Designer's note on #63: the shield looked right, but the slash or spell still went through to the
+body. Now a blocked hit stops where the shield is. A slash sweeps in from the attacker's side, its
+tip stops dead on the shield as it snaps up, and it falls away. A fireball, frost or arcane orb
+flies only as far as the shield and bursts there, smaller. Lightning strikes the shield. Spells
+from overhead meet a dome over the head instead: the poison rain splashes off it, and the curse
+skull forms higher, dives, and is flung apart on it. The spell raises the shield itself, timed to
+its arrival, so there is one shield per block. The geometry (where the shield stands, beside the
+body or over the head, and which spells come from above) is pure (`src/game/fx/shapes.ts`:
+`shieldArc`, `blockSide`) and pinned in `src/game/fxShapes.test.ts`. Checked in the browser
+with a real warded curse and a blocked jab, and each spell fired at a shield; screenshot in
+`docs/audit/blocks-2026-10-28/`.
