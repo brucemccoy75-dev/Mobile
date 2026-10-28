@@ -12,7 +12,7 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['src/core/**/*.test.ts', 'src/data/**/*.test.ts', 'src/save/**/*.test.ts', 'src/game/session.test.ts', 'src/game/tiles.test.ts'],
+    include: ['src/core/**/*.test.ts', 'src/data/**/*.test.ts', 'src/save/**/*.test.ts', 'src/game/*.test.ts'],
     environment: 'node',
   },
 });

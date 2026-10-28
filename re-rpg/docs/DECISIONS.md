@@ -591,3 +591,15 @@ side the hit comes from, in the block's colour, that snaps up in 60 ms, flashes,
 about a quarter second (measured: 263 ms on screen), throwing sparks back toward the attacker. The
 status shield (a status gained) is also quicker: about a third of a second, tint included.
 Screenshot in `docs/audit/shields-2026-10-28/deflect.jpg`.
+
+## 64. Statuses that land together play together
+
+Designer's note: Spirit Boomerang gives its user Exposed and Weak at once, and they played one
+after the other, each label and shield waiting for the last; it slowed battles down. Playback is
+now planned by a pure function (`src/game/playback.ts`, `beats`): a sweep's volley is one beat
+with a lane per enemy (as in #47), and a run of statuses applied together is one beat with a lane
+each, their labels stacked on each target so they do not overlap. Measured: Exposed and Weak start
+3 ms apart and finish together (about 1.1 s for both, was about twice that).
+Also found: `vitest.config.ts` listed `src/game` test files by name, so `story.test.ts` (#61) was
+never run; it passes, and the config now takes every `src/game/*.test.ts`. Pinned by
+`src/game/playback.test.ts`; screenshot in `docs/audit/pacing-2026-10-28/`.

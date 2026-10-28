@@ -20,6 +20,7 @@ import { CLASS_COLORS, COLORS, FONT, POSTURE_TEXT, STATUS_LABELS, describeIntent
 import type { Status } from '@data/types';
 import { floatText, tween, wait } from '@game/ui/tween';
 import { BattleFx } from '@game/fx/battleFx';
+import { beats } from '@game/playback';
 import { applyWin } from '@game/story';
 import { SHIELD_COLOR, blockColor, type VfxKind } from '@core/vfx';
 
@@ -498,19 +499,10 @@ export class CombatScene extends Phaser.Scene {
     this.busy = true;
     this.setInputEnabled(false);
     this.hideInfo();
-    for (let i = 0; i < events.length; ) {
-      const volley = (events[i] as { volley?: number }).volley;
-      if (volley === undefined) { await this.playEvent(events[i]!); i++; continue; }
-      // A sweep's volley (DECISIONS #47) lands on every enemy at once: one sequence per enemy, played together.
-      let j = i;
-      while (j < events.length && (events[j] as { volley?: number }).volley === volley) j++;
-      const bySlot = new Map<number, CombatEvent[]>();
-      for (const e of events.slice(i, j)) {
-        const who = (e as { who?: number }).who ?? 0;
-        bySlot.set(who, [...(bySlot.get(who) ?? []), e]);
-      }
-      await Promise.all([...bySlot.values()].map(async (seq) => { for (const e of seq) await this.playEvent(e); }));
-      i = j;
+    // Beats (DECISIONS #47, #64): a sweep's volley and statuses that land together play at once.
+    for (const beat of beats(events)) {
+      if (beat.lanes.length === 1 && beat.lanes[0]!.length === 1) { const st = beat.lanes[0]![0]!; await this.playEvent(st.e, st.stack); continue; }
+      await Promise.all(beat.lanes.map(async (lane) => { for (const st of lane) await this.playEvent(st.e, st.stack); }));
     }
     this.busy = false;
     if (this.state.outcome === 'ongoing') {
@@ -525,7 +517,8 @@ export class CombatScene extends Phaser.Scene {
     }
   }
 
-  private async playEvent(e: CombatEvent): Promise<void> {
+  /** `stack` lifts a status label above the ones already showing on that target in the same beat (#64). */
+  private async playEvent(e: CombatEvent, stack = 0): Promise<void> {
     const who = (e as { who?: number }).who ?? 0;
     const view = this.views[who] ?? this.views[0]!;
     const sprite = (side: 'player' | 'enemy') => (side === 'player' ? this.playerSprite : view.sprite);
@@ -667,7 +660,7 @@ export class CombatScene extends Phaser.Scene {
         if (e.status === 'guard') { await wait(this, 350); return; }
         const p = pos(e.side);
         const m = STATUS_LABELS[e.status];
-        await floatText(this, p.x, p.y - 110, m.label, m.color, 22, 900);
+        await floatText(this, p.x, p.y - 110 - stack * 28, m.label, m.color, 22, 900);
         return;
       }
       case 'statusExpired':
