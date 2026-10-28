@@ -582,3 +582,12 @@ Designer's notes on #59:
   the red shield.
 Checked in Test Mode against the Adept Necromancer and a Hex Imp; screenshots in
 `docs/audit/shields-2026-10-28/`.
+
+## 63. A block is a quick deflection
+
+Designer's note on #62: the shields should flash much faster, like a shield snapping up to deflect
+the incoming hit. A block (Guard, Ward, Aegis, or a warded curse) now shows a curved shield on the
+side the hit comes from, in the block's colour, that snaps up in 60 ms, flashes, and is gone at
+about a quarter second (measured: 263 ms on screen), throwing sparks back toward the attacker. The
+status shield (a status gained) is also quicker: about a third of a second, tint included.
+Screenshot in `docs/audit/shields-2026-10-28/deflect.jpg`.

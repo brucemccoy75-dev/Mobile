@@ -66,10 +66,36 @@ export class BattleFx {
     const w = (target.displayWidth ?? 80) * 0.9, h = (target.displayHeight ?? 100) * 0.95;
     const cy = target.y - (target.originY === 1 ? h / 2 : 0);
     const aura = this.scene.add.ellipse(target.x, cy, w, h, color, 0.55).setDepth(DEPTH - 1).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0).setScale(0.85);
-    this.scene.tweens.add({ targets: aura, alpha: 0.6, scale: 1.05, duration: 220, yoyo: true, hold: 160, ease: 'Sine.Out', onComplete: () => aura.destroy() });
+    // A quick flash, a third of a second in all (#63).
+    this.scene.tweens.add({ targets: aura, alpha: 0.6, scale: 1.05, duration: 90, yoyo: true, hold: 60, ease: 'Sine.Out', onComplete: () => aura.destroy() });
     const t = target as unknown as { setTint?: (c: number) => void; clearTint?: () => void };
-    if (t.setTint && t.clearTint) { t.setTint(lighten(color, 0.55)); this.scene.time.delayedCall(420, () => t.clearTint!()); }
-    for (let i = 0; i < 6; i++) this.scene.time.delayedCall(i * 40, () => this.burst({ x: target.x + (Math.random() - 0.5) * w * 0.7, y: cy + h * 0.3 }, color, 1, 30, 600, 0.25, -50));
+    if (t.setTint && t.clearTint) { t.setTint(lighten(color, 0.55)); this.scene.time.delayedCall(220, () => t.clearTint!()); }
+    for (let i = 0; i < 4; i++) this.scene.time.delayedCall(i * 25, () => this.burst({ x: target.x + (Math.random() - 0.5) * w * 0.7, y: cy + h * 0.3 }, color, 1, 30, 420, 0.25, -50));
+  }
+
+  /**
+   * A block (#63): a curved shield snaps up on the side the hit came from, flashes, and is gone in a
+   * quarter second, throwing sparks back toward the attacker.
+   */
+  deflect(target: { x: number; y: number; displayWidth?: number; displayHeight?: number; originY?: number }, color: number, fromRight: boolean) {
+    const w = (target.displayWidth ?? 80), h = (target.displayHeight ?? 100);
+    const cy = target.y - (target.originY === 1 ? h / 2 : 0);
+    const sx = target.x + (fromRight ? 1 : -1) * w * 0.42;
+    const g = this.scene.add.graphics({ x: sx, y: cy }).setDepth(DEPTH + 1).setBlendMode(Phaser.BlendModes.ADD);
+    const r = h * 0.48, dir = fromRight ? 1 : -1;
+    for (const [lw, al] of [[10, 0.35], [5, 0.9], [2, 1]] as const) {
+      g.lineStyle(lw, lw === 2 ? 0xffffff : color, al);
+      g.beginPath(); g.arc(-dir * r * 0.55, 0, r, dir > 0 ? -0.9 : Math.PI - 0.9, dir > 0 ? 0.9 : Math.PI + 0.9); g.strokePath();
+    }
+    g.setScale(0.6).setAlpha(0);
+    this.scene.tweens.add({ targets: g, scale: 1.05, alpha: 1, duration: 60, ease: 'Quad.Out' });
+    this.scene.tweens.add({ targets: g, alpha: 0, scale: 1.12, duration: 160, delay: 90, ease: 'Quad.In', onComplete: () => g.destroy() });
+    this.flash({ x: sx, y: cy }, color);
+    for (let i = 0; i < 7; i++) {
+      const a = (fromRight ? 0 : Math.PI) + (Math.random() - 0.5) * 1.6, v = 40 + Math.random() * 40;
+      const p = this.scene.add.image(sx, cy + (Math.random() - 0.5) * r, 'fx_spark').setTint(i % 2 ? 0xffffff : color).setRotation(a).setDepth(DEPTH + 1).setBlendMode(Phaser.BlendModes.ADD);
+      this.scene.tweens.add({ targets: p, x: sx + Math.cos(a) * v, y: p.y + Math.sin(a) * v, alpha: 0, duration: 220, ease: 'Quad.Out', onComplete: () => p.destroy() });
+    }
   }
 
   /** Rising green motes on someone healing. */

@@ -625,7 +625,7 @@ export class CombatScene extends Phaser.Scene {
         if (!e.blocked && (this.cast?.kind ?? 'slash') === 'slash') void this.fx.slash(p, e.amount, e.target === 'player');
         else if (!e.blocked && e.hit > 1) this.fx.burst(p, 0xffffff, 5, 40, 300, 0.25);
         // A block shows the shield that stopped it again (#62): Guard white, Ward yellow, Aegis gold.
-        if (e.blocked) this.fx.glow(s, blockColor(e.kind, this.statusList(e.target, e.target === 'enemy' ? who : undefined).some((x) => x.id === 'aegis')));
+        if (e.blocked) this.fx.deflect(s, blockColor(e.kind, this.statusList(e.target, e.target === 'enemy' ? who : undefined).some((x) => x.id === 'aegis')), e.target === 'player');
         if (e.blocked) {
           this.dispGuardHit(e.target, e.kind === 'magic' ? 'ward' : 'guard', who);
           this.syncChips();
@@ -680,7 +680,7 @@ export class CombatScene extends Phaser.Scene {
         const p = pos(e.side);
         // The spell is still seen being cast before the Ward stops it (#62).
         if (this.cast && this.cast.side !== e.side) await this.castAt(e.side, who, p);
-        if (e.warded) { this.fx.glow(sprite(e.side), SHIELD_COLOR.ward); this.dispGuardHit(e.side, 'ward', who); this.syncChips(); await floatText(this, p.x, p.y - 30, 'WARDED', COLORS.block, 30, 900); return; }
+        if (e.warded) { this.fx.deflect(sprite(e.side), SHIELD_COLOR.ward, e.side === 'player'); this.dispGuardHit(e.side, 'ward', who); this.syncChips(); await floatText(this, p.x, p.y - 30, 'WARDED', COLORS.block, 30, 900); return; }
         await floatText(this, p.x, p.y - 30, 'resisted', '#c7b3ff', 26, 900);
         return;
       }
