@@ -3,6 +3,7 @@ import { getEnemy, getSkill } from '@data/index';
 import { skillWith, type SkillUpgrades } from '@core/run/upgrade';
 import type { Effect, Enemy, EnemyId, Intent, SkillId, Stats, StatusId } from '@data/types';
 import { Rng } from '@core/rng';
+import { vfxForEffects, vfxForSkill } from '@core/vfx';
 import { advanceMoves, pickMove } from './ai';
 import { computeHit, predictDamage } from './damage';
 import { HAND_CAP, dealOne, playCard } from './deck';
@@ -120,7 +121,7 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
     const target = resolveTarget(state, action.target);
     const skill = skillInCombat(state, playCard(state.player, action.index));
     const from = events.length;
-    events.push({ t: 'play', side: 'player', skill: skill.id, name: skill.name });
+    events.push({ t: 'play', side: 'player', skill: skill.id, name: skill.name, vfx: vfxForSkill(skill) });
     if (skill.uses) {
       // Not back into the discard: once-per-fight waits for the next fight, fleeting is gone for good.
       state.player.discard.pop();
@@ -163,7 +164,7 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
     const from = events.length;
     if (!consumeChill(e, events)) {
       const move = e.current;
-      events.push({ t: 'play', side: 'enemy', skill: move.id, name: move.name });
+      events.push({ t: 'play', side: 'enemy', skill: move.id, name: move.name, vfx: vfxForEffects(move.effects) });
       applyEffects(move.effects, e, state.player, roll, events);
     }
     tagWho(events, from, e.slot);

@@ -9,7 +9,7 @@ the file but out of scope and must not change.
 
 | Part | Fields | Meaning |
 |---|---|---|
-| card | id, name, classId (`warrior` or `any`), rarity, uses | identity; `uses` is empty, `fleeting` (destroyed when played) or `once_per_fight` |
+| card | id, name, classId (`warrior` or `any`), rarity, uses, vfx | identity; `uses` is empty, `fleeting` (destroyed when played) or `once_per_fight`; `vfx` optionally names the battle effect (slash, fireball, lightning, frost, poison, arcane, heal, none; DECISIONS #59), unset = chosen from what the card does |
 | card.damage | percent, bonus, hits, type, ignoreDef, drain, targets | `percent` of class attack; `bonus` is flat and added after it (gear adds the same way); `hits` each at that size; `type` physical (Guard blocks) or magic (Ward blocks); `drain` heals that percent of damage dealt; `targets` is `one` (the chosen enemy) or `all` (every living enemy) |
 | card.heal | percent, flat | percent of max HP plus a flat amount |
 | card.modifiers | list of modifier ids | applied in order after damage and heal |

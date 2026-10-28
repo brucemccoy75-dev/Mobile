@@ -498,3 +498,21 @@ No special quest ships: the first one is the designer's. Checked end to end with
 special quest (Boar king, a Boar duo pinned on node 9) in a throwaway build: the third run rolled
 special, offered it and showed the pinned duo; a default run offered Wren's errand. Pinned by
 `session.test.ts` and `world.test.ts`; screenshots in `docs/audit/special-runs-2026-10-28/`.
+
+## 59. Battle effects
+
+The designer asked for a particle system in battle: a slash for hits, a glow for buffs, and spells
+(fireball, lightning, a poison rain cloud, and what the existing cards need).
+- **Which effect is data.** `src/core/vfx` reads it from what a card or enemy move does: a physical
+  hit slashes; magic that burns is a fireball, that chills is frost, that curses is the poison cloud,
+  that ignores defence is lightning, any other magic (and a hex) is an arcane orb; a burn or curse
+  with no hit is the rain cloud (Static Field); a heal raises green motes. A card may name its own
+  (`vfx` in cards.json, "battle effect" in the card editor; unset shows what it would pick). The
+  engine puts the effect on the play event, so enemy moves need no lookup in the scene.
+- **Drawing** (`src/game/fx/battleFx.ts`) is plain images and tweens, no emitter API: short, capped
+  particle counts for phones, and every cast resolves when the hit should land, so the damage number
+  and HP bar follow the impact. The slash is a grey horizontal oval sliver across the target, longer
+  and thicker with the damage. A buff (Guard, Ward, Aegis, Harden, Brace, Scatter) glows blue on
+  whoever gained it, enemy or player. A sweep casts at every target at once (#47).
+Checked in Test Mode at 844×390 with each card kind; screenshots in `docs/audit/battle-fx-2026-10-28/`.
+Pinned by `src/core/vfx/vfx.test.ts` and the play-event test in `engine.test.ts`.

@@ -53,6 +53,8 @@ export interface Skill {
   setId?: SetId;
   rarity: Rarity;
   effects: Effect[];
+  /** The battle effect it shows (DECISIONS #59); unset = read from its effects. */
+  vfx?: import('@core/vfx').VfxKind;
   /** fleeting: the tome is destroyed when played (every special tome, DECISIONS #42). once_per_fight: exhausted when played, back next fight; supported by the engine, used by no card today. */
   uses?: SkillUses;
 }

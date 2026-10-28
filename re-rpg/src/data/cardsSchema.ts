@@ -1,4 +1,5 @@
 import type { ClassId, DamageKind, Effect, Rarity, SetId, Skill, SkillSet, SkillUses, StatusId } from './types';
+import { VFX_KINDS, type VfxKind } from '@core/vfx';
 
 /**
  * The card model (DECISIONS #44): every card is the same record, built in the card editor and
@@ -37,6 +38,8 @@ export interface CardDef {
   damage: CardDamage | null;
   heal: CardHeal | null;
   modifiers: string[];
+  /** The battle effect (DECISIONS #59); absent = chosen from what the card does. */
+  vfx?: VfxKind;
   note?: string;
 }
 /** A status to give, or one of the two removals (DECISIONS #48). */
@@ -175,6 +178,7 @@ export function compileCards(data: CardsData): Compiled {
     const fam = familyOfClassCard.get(c.id);
     if (fam) sk.setId = fam;
     if (c.uses) sk.uses = c.uses;
+    if (c.vfx) sk.vfx = c.vfx;
     return sk;
   });
   const sets: SkillSet[] = data.families.map((f) => ({ id: f.id, classId: f.classId, name: f.name, skills: [...f.cards] }));
@@ -229,6 +233,7 @@ export function validateCards(data: CardsData, shipped?: CardsData): string[] {
     if (!RARITIES.includes(c.rarity)) bad(`${w}: unknown rarity ${c.rarity}`);
     if (c.uses !== null && c.uses !== undefined && !USES.includes(c.uses)) bad(`${w}: uses must be empty, fleeting or once_per_fight`);
     if (!c.damage && !c.heal && !(c.modifiers?.length)) bad(`${w}: needs damage, heal or a modifier`);
+    if (c.vfx !== undefined && !VFX_KINDS.includes(c.vfx)) bad(`${w}: unknown effect ${c.vfx}`);
     if (c.damage) {
       const d = c.damage;
       if (!isInt(d.percent, 0, 500)) bad(`${w}: damage percent must be 0-500`);

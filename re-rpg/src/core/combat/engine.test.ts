@@ -718,3 +718,13 @@ describe('backfire (DECISIONS #51)', () => {
     expect(s.outcome).toBe('ongoing');
   });
 });
+
+describe('battle effects on the play event (DECISIONS #59)', () => {
+  it('a play names the effect the scene draws, for cards and enemy moves', () => {
+    const s = createCombat({ player: { ...WARRIOR, deck: [], basics: [] }, enemy: DUMMY, rng: new Rng(1) });
+    s.player.hand.push('attack');
+    const ev = step(s, { type: 'card', index: 0 });
+    expect(ev.find((e) => e.t === 'play' && e.side === 'player')).toMatchObject({ vfx: 'slash' });
+    expect(ev.find((e) => e.t === 'play' && e.side === 'enemy')).toMatchObject({ vfx: 'slash' });
+  });
+});

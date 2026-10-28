@@ -1,3 +1,4 @@
+import type { VfxKind } from '@core/vfx';
 import type { DamageKind, Effect, Enemy, EnemyId, EnemyMove, Intent, Posture, SkillId, Stats, Status, StatusId } from '@data/types';
 
 export type Side = 'player' | 'enemy';
@@ -72,7 +73,7 @@ export type CombatEvent =
   | { t: 'handOverflow'; discarded: SkillId }
   | { t: 'reshuffle'; count: number }
   | { t: 'intent'; intent: Intent; posture: Posture; predictedDamage: number; moveName: string; who?: number }
-  | { t: 'play'; side: Side; skill: SkillId; name: string; who?: number }
+  | { t: 'play'; side: Side; skill: SkillId; name: string; who?: number; /** The battle effect to draw (DECISIONS #59). */ vfx?: VfxKind }
   | { t: 'hold'; skill: SkillId }
   | { t: 'exhaust'; skill: SkillId }
   | { t: 'consumed'; skill: SkillId }

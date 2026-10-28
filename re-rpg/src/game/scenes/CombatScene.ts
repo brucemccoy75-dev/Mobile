@@ -19,6 +19,8 @@ import { StatusChips } from '@game/ui/StatusChips';
 import { CLASS_COLORS, COLORS, FONT, POSTURE_TEXT, STATUS_LABELS, describeIntent, text } from '@game/ui/theme';
 import type { Status } from '@data/types';
 import { floatText, tween, wait } from '@game/ui/tween';
+import { BattleFx } from '@game/fx/battleFx';
+import { isBuff, type VfxKind } from '@core/vfx';
 
 /**
  * Side-view turn-based combat. Phaser only renders: the engine in core/combat
@@ -48,6 +50,9 @@ export class CombatScene extends Phaser.Scene {
   /** Enemy slot the next card goes to; tap an enemy to change it (DECISIONS #29). */
   private target = 0;
   private busy = false;
+  private fx!: BattleFx;
+  /** The effect of the move being played (DECISIONS #59): cast once per target at its first hit or hostile status. */
+  private cast: { kind: VfxKind; side: 'player' | 'enemy'; who: number; done: Set<string> } | null = null;
 
   private playerSprite!: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image;
   /** One view per enemy slot: sprite, bar, chips and intent panel. */
@@ -80,6 +85,8 @@ export class CombatScene extends Phaser.Scene {
 
   create() {
     this.busy = false;
+    this.fx = new BattleFx(this);
+    this.cast = null;
     this.hand = [];
     this.displayHand = [];
     this.holdMode = false;
@@ -524,6 +531,7 @@ export class CombatScene extends Phaser.Scene {
     const pos = (side: 'player' | 'enemy') => (side === 'player' ? { x: this.px, y: this.py } : { x: view.x, y: view.y });
     switch (e.t) {
       case 'roundStart': {
+        this.cast = null;
         this.roundText.setText(`Round ${e.round}  ·  screen ${this.session.screenIndex + 1}`);
         this.phaseText.setText('YOUR TURN').setColor(COLORS.gold);
         // Belt and braces: every panel reflects this round's intent from the first frame of the round.
@@ -606,10 +614,15 @@ export class CombatScene extends Phaser.Scene {
         void floatText(this, p.x, p.y - 84, e.name, e.side === 'player' ? COLORS.gold : '#ffb4b4', 24, 1300);
         await wait(this, 200);
         await tween(this, { targets: s, x: p.x + 28 * dir, duration: 110, yoyo: true, ease: 'Quad.Out' });
+        this.cast = { kind: e.vfx ?? 'none', side: e.side, who, done: new Set() };
+        if (e.vfx === 'heal') this.fx.heal(p);
         return;
       }
       case 'damage': {
         const s = sprite(e.target), p = pos(e.target);
+        await this.castAt(e.target, who, p);
+        if (!e.blocked && (this.cast?.kind ?? 'slash') === 'slash') void this.fx.slash(p, e.amount, e.target === 'player');
+        else if (!e.blocked && e.hit > 1) this.fx.burst(p, 0xffffff, 5, 40, 300, 0.25);
         if (e.blocked) {
           this.dispGuardHit(e.target, e.kind === 'magic' ? 'ward' : 'guard', who);
           this.syncChips();
@@ -641,6 +654,10 @@ export class CombatScene extends Phaser.Scene {
         return;
       }
       case 'statusApplied': {
+        // A curse, burn, chill or hex cast without a hit still shows its spell (the rain cloud for Static Field).
+        if (this.cast && this.cast.side !== e.side) await this.castAt(e.side, who, pos(e.side));
+        // A buff glows blue on whoever gained it (#59).
+        if (isBuff(e.status)) this.fx.glow(sprite(e.side));
         this.dispUpsert(e.side, { id: e.status, turns: e.turns, magnitude: e.magnitude }, who);
         this.syncChips();
         // Guard is self-evident from the chip and the card name; everything else gets a callout.
@@ -707,6 +724,17 @@ export class CombatScene extends Phaser.Scene {
       case 'end':
         return;
     }
+  }
+
+  /** Play the current move's spell at this target once (#59); a slash or no effect has no travel. */
+  private async castAt(target: 'player' | 'enemy', who: number, to: { x: number; y: number }) {
+    const c = this.cast;
+    if (!c || c.side === target || c.kind === 'slash' || c.kind === 'none' || c.kind === 'heal') return;
+    const key = `${target}:${target === 'enemy' ? who : 0}`;
+    if (c.done.has(key)) return;
+    c.done.add(key);
+    const from = c.side === 'player' ? { x: this.px + 20, y: this.py - 30 } : { x: this.views[c.who]?.x ?? to.x, y: (this.views[c.who]?.y ?? to.y) - 10 };
+    await this.fx.cast(c.kind, from, { x: to.x, y: to.y - 10 });
   }
 
   private async toast(msg: string) {

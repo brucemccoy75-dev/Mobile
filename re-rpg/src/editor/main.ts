@@ -3,11 +3,12 @@
  * card records in cards.json and exports the file. The game never reads the editor's draft;
  * an exported file is imported by the procedure in docs/CARDS.md.
  */
-import { CARDS_DATA, cardText, diffCards, modifierText, validateCards, type CardDef, type CardsData, type ModifierDef } from '@data/index';
+import { CARDS_DATA, cardText, compileCards, diffCards, modifierText, validateCards, type CardDef, type CardsData, type ModifierDef } from '@data/index';
 import { CLASS_IDS, RARITIES, MODIFIER_STATUSES, USES, AMOUNT_STATUSES, HIT_STATUSES, damageEffect, isRemoval } from '@data/cardsSchema';
 import type { StatusId } from '@data/types';
 import { computeHit } from '@core/combat/damage';
 import './editor.css';
+import { VFX_KINDS, vfxForSkill } from '@core/vfx';
 
 const DRAFT_KEY = 'rerpg:cards-draft';
 const SHIPPED: CardsData = JSON.parse(JSON.stringify(CARDS_DATA));
@@ -154,6 +155,7 @@ function cardForm(c: CardDef): HTMLElement {
       h('label', {}, c.rarity === 'basic' ? 'starting deck' : 'family (tree node)', c.rarity === 'basic' ? h('span', { class: 'muted' }, state.data.basics.warrior.includes(c.id) ? `in the warrior's starting deck ×${state.data.basics.warrior.filter((x) => x === c.id).length}` : 'not in the starting deck: add it on the Skill tree tab') : select(fam?.id ?? '', famOptions, (v) => { setFamily(v); render(); })),
       h('label', {}, 'rarity', select(c.rarity, RARITIES.map((r) => [r, r === 'basic' ? 'basic (starting deck only, never drops)' : r]), (v) => { c.rarity = v as CardDef['rarity']; if (v === 'basic') setFamily(''); else state.data.basics.warrior = state.data.basics.warrior.filter((x) => x !== c.id); render(); })),
       h('label', {}, 'uses', select(c.uses ?? '', [['', 'normal tome'], ...USES.map((u) => [u, u === 'fleeting' ? 'fleeting (gone when played)' : 'once per fight'] as [string, string])], (v) => { c.uses = (v || null) as CardDef['uses']; render(); })),
+      h('label', {}, 'battle effect', select(c.vfx ?? '', [['', `automatic (${vfxForSkill(compileCards({ ...state.data, cards: [{ ...c, vfx: undefined }] } as CardsData).skills[0]!)})`], ...VFX_KINDS.map((k) => [k, k] as [string, string])], (v) => { if (v) c.vfx = v as CardDef['vfx']; else delete c.vfx; render(); })),
     ),
     h('h2', {}, 'Damage'),
     h('div', { class: 'chips' }, h('label', {}, h('input', { type: 'checkbox', checked: !!dmg, onchange: (ev: Event) => { c.damage = (ev.target as HTMLInputElement).checked ? { percent: 100, bonus: 0, hits: 1, type: 'physical', ignoreDef: false, drain: 0, targets: 'one' } : null; render(); } }), 'this card deals damage')),
