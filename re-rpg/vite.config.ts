@@ -16,8 +16,8 @@ export default defineConfig({
     chunkSizeWarningLimit: 1600, // phaser is one big vendor chunk by design
     sourcemap: true,
     rollupOptions: {
-      // Two pages: the game and the card editor (DECISIONS #44).
-      input: { main: fileURLToPath(new URL('./index.html', import.meta.url)), editor: fileURLToPath(new URL('./editor.html', import.meta.url)) },
+      // Three pages: the game, the card editor (DECISIONS #44) and the world editor (#55).
+      input: { main: fileURLToPath(new URL('./index.html', import.meta.url)), editor: fileURLToPath(new URL('./editor.html', import.meta.url)), world: fileURLToPath(new URL('./world.html', import.meta.url)) },
       output: {
         manualChunks: (id) => (id.includes('node_modules/phaser') ? 'phaser' : undefined),
       },

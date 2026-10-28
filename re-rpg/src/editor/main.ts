@@ -7,6 +7,7 @@ import { CARDS_DATA, cardText, diffCards, modifierText, validateCards, type Card
 import { CLASS_IDS, RARITIES, MODIFIER_STATUSES, USES, AMOUNT_STATUSES, HIT_STATUSES, damageEffect, isRemoval } from '@data/cardsSchema';
 import type { StatusId } from '@data/types';
 import { computeHit } from '@core/combat/damage';
+import './editor.css';
 
 const DRAFT_KEY = 'rerpg:cards-draft';
 const SHIPPED: CardsData = JSON.parse(JSON.stringify(CARDS_DATA));

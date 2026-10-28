@@ -445,3 +445,21 @@ up 20% of the time; screen 1 first. Built in four phases; this is the first.
   shop, chest or shrine). Ruled slots leave the bag; a ruled shop or shrine replaces the bag's.
   With no rules the screen rolls exactly as before (pinned).
 - Next: the world editor page (Nodes, Dialogue, Enemies), then quests as data, then special runs.
+
+## 56. The world editor page
+
+Phase 2 of #55: `world.html`, reached from the title screen (world editor), edits world.json the
+way the card editor edits cards.json, and shares its look (`src/editor/editor.css`, now one
+stylesheet for both pages). Built and checked at a 390-wide portrait phone first:
+- **Nodes.** The painted screen with a numbered dot per node; on a phone the map keeps a usable
+  scale (a tile about 20 px) and scrolls sideways, and a chip list under it names every node, since
+  some nodes are one tile apart and no dot size separates them at phone width. The first phone
+  check caught both: dots overlapping at the full-width map, and a long dialogue picker widening
+  the whole page; both fixed. Panel: Rolled / Always / Odds (weights with live percentages), a
+  species or a duo (the authored pairs one tap away), the boss's boss, and the node's words.
+- **Dialogue.** Search, then a form per entry: speaker, trigger (with the known triggers offered),
+  portrait, one box per line, "only when" conditions and options with their conditions and effects,
+  each a type picker plus its fields. Entries the game ships or something uses cannot be deleted.
+- **Enemies.** Every entry for the enemy's own trigger with an "everyday" tick, and "+ New everyday
+  line", which makes the entry, ticks it and opens it.
+An export from the editor passes `world:validate` (checked with a file the phone test exported).

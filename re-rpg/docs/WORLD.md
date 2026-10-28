@@ -25,6 +25,24 @@ an `enemy` or a `pair` for its fight, and a `dialogue`. The start, quest and los
 (another boss) and a `dialogue`. A shop or shrine a rule places counts against the run's one of
 each; unruled slots fill from the usual bag.
 
+## The editor
+
+Title screen → **world editor** (`world.html`), phone first. It keeps a draft in the browser and
+never changes the game.
+
+- **Nodes**: pick a screen; the map scrolls sideways on a phone, and the list under it picks any
+  node exactly (some sit a tile apart). A node's panel sets what it is (Rolled, Always a kind, or
+  Odds with a weight per kind and the resulting percentages), who you fight (rolled, one enemy or a
+  duo, with the authored pairs as one-tap chips; the boss picks a boss) and its words (any dialogue
+  entry, with a preview and a jump to edit it). Ruled nodes are gold and listed under the map.
+- **Dialogue**: search, then tap an entry to edit its speaker, trigger, portrait, lines, its
+  "only when" conditions and its options (text, conditions that hide it, effects, the one Skip
+  picks). New, Duplicate, and Delete for an entry nothing uses; shipped entries stay.
+- **Enemies**: each enemy's entries for its own trigger, with a tick for the everyday ones and
+  "+ New everyday line" (it opens the new entry in the Dialogue tab, already ticked).
+- The green line counts changes from shipped; a red box lists rule breaks. **Export world.json**
+  downloads it (the share sheet on iOS).
+
 ## Import procedure (for any model, no judgement calls)
 
 Input: an exported `world.json`. Work in `re-rpg/` on the game branch.
