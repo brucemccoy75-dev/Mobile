@@ -98,7 +98,7 @@ One quest giver per screen, standing a few steps from the entry for now. The que
 - **Hunt**: "kill 2 {enemy}", where the enemy is one that exists on this map. Gold plus a spoils pick.
 - **Escort**: "find {name} and bring them to me". The NPC stands on a far off-road tile; once found they follow, and the threat meter fills 25% faster until you hand them in. Gold plus a spoils pick.
 
-Design intent: the giver voices and lines live in `data/quests.ts` and are the hook for story and lore. Later: givers tied to screens and discoveries, multi-step chains, lore entries unlocked by completions, and quest targets that place themselves on the map.
+Since DECISIONS #57–#58 quests are data in `world.json`, built in the world editor: each names its screen, its giver node, a type (fetch, hunt, escort or rolled), targets, the giver's lines, rewards, conditions and the next quest in a chain. Each run a screen offers one quest whose conditions hold; one run in five is special and offers a screen's special quest, which may pin nodes for that run. Dialogue can see a quest's state and offer one (#61).
 
 ## 8. Death & meta
 
