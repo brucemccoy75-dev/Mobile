@@ -7,6 +7,7 @@ import { gainExp, ghostOn, nudgeRelation, recordWin } from '@core/meta';
 import { WREN_GRUDGE, ghostAppears, ghostDef, wrenBoss } from '@core/variants';
 import { WIN_EXP } from '@data/progression';
 import { openDialogue } from '@game/dialogue';
+import { OverworldFx } from '@game/fx/overworldFx';
 import { artKey } from '@game/art';
 import { Button } from '@game/ui/Button';
 import { CLASS_COLORS, COLORS, FONT, text } from '@game/ui/theme';
@@ -36,6 +37,8 @@ export class OverworldScene extends Phaser.Scene {
   private markers = new Map<string, Phaser.GameObjects.Container>();
   private rings = new Map<string, Phaser.GameObjects.Arc>();
   private ghostSprite: Phaser.GameObjects.Container | null = null;
+  /** Dust, water and birds (DECISIONS #60). */
+  private ambience: OverworldFx | null = null;
   private giverMark: Phaser.GameObjects.Text | null = null;
   private questText!: Phaser.GameObjects.Text;
   private hpText!: Phaser.GameObjects.Text;
@@ -67,6 +70,8 @@ export class OverworldScene extends Phaser.Scene {
     for (const n of m.nodes ?? []) this.drawNode(n);
     this.drawGhost();
     this.drawPlayer();
+    this.ambience = new OverworldFx(this, m, TILE);
+    this.ambience.start();
     this.buildHud();
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.cameras.main.fadeIn(250, 11, 15, 26);
@@ -336,6 +341,7 @@ export class OverworldScene extends Phaser.Scene {
     for (const t of path) {
       const c = this.playerPosFor(t);
       const prev = { x: this.player.x, y: this.player.y };
+      this.ambience?.dust(prev.x, this.player instanceof Phaser.GameObjects.Image ? prev.y - 4 : prev.y + TILE * 0.2);
       if (this.player instanceof Phaser.GameObjects.Image) this.player.setFlipX(c.x < prev.x);
       this.tweens.add({ targets: this.player, scaleY: this.player.scaleY * 0.94, duration: STEP_MS / 2, yoyo: true, ease: 'Sine.InOut' });
       await tween(this, { targets: this.player, x: c.x, y: c.y, duration: STEP_MS, ease: 'Linear' });

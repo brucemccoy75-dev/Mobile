@@ -516,3 +516,15 @@ The designer asked for a particle system in battle: a slash for hits, a glow for
   whoever gained it, enemy or player. A sweep casts at every target at once (#47).
 Checked in Test Mode at 844×390 with each card kind; screenshots in `docs/audit/battle-fx-2026-10-28/`.
 Pinned by `src/core/vfx/vfx.test.ts` and the play-event test in `engine.test.ts`.
+
+## 60. Overworld ambience
+
+Subtle life on the map, meant to be noticed only when looked for (`src/game/fx/overworldFx.ts`):
+a pale dust puff at the hero's feet each step of a walk (above the node plates, below the hero);
+slow spreading rings and the odd glint on water tiles, one every 650 ms somewhere on the screen's
+water; and every 14–28 s a flock of two to four small dark birds that either crosses the view or
+lands on visible grass, hops now and then, and flies off after 5–10 s. Everything is low alpha,
+small and below the nodes; timers belong to the scene (they stop with it), nothing runs per frame,
+and object counts stay in single digits. Checked at 844×390 on screen 1 (screenshots in
+`docs/audit/ambience-2026-10-28/`; the dust was confirmed by counting puffs mid-walk, as it is
+deliberately faint on the road).
