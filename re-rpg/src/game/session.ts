@@ -7,16 +7,16 @@ import { RunRng, newSeed } from '@core/rng';
 import { key, parseScreen, type MapNode, type ScreenMap, type Tile, type TileType } from '@core/map';
 import { SCREEN1 } from '@data/maps/screen1';
 import { SCREEN2 } from '@data/maps/screen2';
-import { nodeRules } from '@data/world';
+import { WORLD, nodeRules } from '@data/world';
 import { DECK_CAP } from '@core/combat';
 import { DUO_CHANCE, PAIRS } from '@data/packs';
 import { TOME_COPY_CAP } from '@data/skills';
 import { computeStats, emptyEquipment, equip as equipItem, equipmentFromIds, equipmentToIds, type Equipment, RUN_VERSION, type RunState } from '@core/run';
-import { createMeta, discoverItem, discoverSkill, rollHeirloomChoices, unlockedSets, type Heirloom, type MetaState } from '@core/meta';
+import { classProgress, createMeta, deathsOn, discoverItem, discoverSkill, nudgeRelation, rollHeirloomChoices, unlockedSets, type Heirloom, type MetaState } from '@core/meta';
 import { LUCK_RARE_WEIGHT, buildPool, rollShopStock, type RewardChoice, type RewardSource, type ShopStock } from '@core/loot';
 import { LEVEL_GOLD, LEVEL_HP, LEVEL_RARE_CHANCE } from '@data/progression';
-import { generateQuest, questReady, type Quest, type QuestOptions } from '@core/quest';
-import { WREN } from '@data/quests';
+import { pickQuestDef, questFromDef, questReady, type Quest, type QuestDef } from '@core/quest';
+import type { DialogueCtx } from '@core/dialogue';
 import { upgradeItem, upgradeSkill, type SkillUpgrades } from '@core/run/upgrade';
 import type { SaveStore } from '@save/SaveStore';
 
@@ -176,7 +176,7 @@ export function applyHeirlooms(s: RunSession, picks: Heirloom[], meta?: MetaStat
   s.heirloomChoices = [];
   // The shop and quest were rolled before the picks; re-roll so they draw from the run's families.
   s.shop = rollShopStock(s.screenIndex, poolCtx(s, meta), s.rng.stream('loot'));
-  s.quests = [...s.quests.filter((q) => !q.id.startsWith(`quest_${s.screenIndex}_`)), generateQuest(s.map, { ...poolCtx(s, meta), screenIndex: s.screenIndex }, s.rng.stream('quest'), s.map.questGiver, s.map.npcSpot, questOptions(s))];
+  rollScreenQuest(s, meta ?? createMeta(), s.screenIndex);
 }
 
 /**
@@ -191,8 +191,18 @@ export function adoptFamily(s: RunSession, setId: SetId): boolean {
   return true;
 }
 
-/** Screen 1's authored giver is Wren, who would never ask you to hunt her rats (DECISIONS #35). */
-const questOptions = (s: RunSession): QuestOptions => (s.map.authored && s.screenIndex === 0 ? { voice: WREN, avoidHunt: ['rat_pack'] } : {});
+/** What a quest's conditions read (the same context dialogue uses, #35). */
+function questCondCtx(s: RunSession, meta: MetaState): DialogueCtx {
+  return { flags: s.flags, relations: meta.relations ?? {}, deathsOnScreen: deathsOn(meta, s.screenIndex), deathsTotal: meta.deaths, lastKiller: meta.lastKiller, level: classProgress(meta, s.classId).level, classId: s.classId, gold: s.gold, fights: s.encountersWon, rng: s.rng.stream('quest') };
+}
+
+/** The quest this screen offers this run, from world.json (DECISIONS #57). Earlier screens' quests stay for the run summary. */
+function rollScreenQuest(s: RunSession, meta: MetaState, index: number): void {
+  const kept = s.quests.filter((q) => !q.id.startsWith(`quest_${index}_`));
+  const def = pickQuestDef(WORLD.quests, index, questCondCtx(s, meta), false);
+  s.quests = def ? [...kept, buildQuest(s, meta, def)] : kept;
+}
+const buildQuest = (s: RunSession, meta: MetaState, def: QuestDef): Quest => questFromDef(def, s.map, { ...poolCtx(s, meta), screenIndex: s.screenIndex }, s.rng.stream('quest'));
 
 /** Loot/quest context for this run: class, families, what is held. */
 export const poolCtx = (s: RunSession, meta?: MetaState) => ({ classId: s.classId, families: s.families, meta: meta ?? createMeta(), deck: s.deck, equipment: s.equipment, luck: s.stats.luck ?? 0 });
@@ -210,21 +220,31 @@ export function startScreen(s: RunSession, index: number, meta?: MetaState): voi
   s.lastClearedNode = null;
   s.bossDefeated = false;
   s.shop = rollShopStock(index, poolCtx(s, meta), s.rng.stream('loot'));
-  // One randomised quest per screen (DECISIONS #19). Earlier screens' quests are kept for the run summary.
-  s.quests = [...s.quests.filter((q) => !q.id.startsWith(`quest_${index}_`)), generateQuest(s.map, { ...poolCtx(s, meta), screenIndex: index }, s.rng.stream('quest'), s.map.questGiver, s.map.npcSpot, questOptions(s))];
+  // One quest per screen (DECISIONS #19), chosen from world.json (#57).
+  rollScreenQuest(s, meta ?? createMeta(), index);
 }
 
-export const currentQuest = (s: RunSession): Quest | undefined => s.quests.find((q) => q.id.startsWith(`quest_${s.screenIndex}_`));
+/** Where this screen's quest is offered and handed in: its giver node, else the start (Wren's camp). */
+export const questGiverNode = (s: RunSession): string | undefined => currentQuest(s)?.giverNode ?? s.map.nodes?.find((n) => n.kind === 'start')?.id;
+
+/** This screen's quest: the latest one, so the next link of a chain takes over once the last is handed in. */
+export const currentQuest = (s: RunSession): Quest | undefined => s.quests.filter((q) => q.id.startsWith(`quest_${s.screenIndex}_`)).at(-1);
 export const isEscorting = (s: RunSession): boolean => s.quests.some((q) => q.status === 'active' && q.escort?.following);
 
 /**
  * Hand a quest in. Fetch: the carried copy is lost and a +1 version takes its
  * place (this run only). Hunt / escort: gold now and an offer the caller opens.
  */
-export function turnInQuest(s: RunSession, q: Quest): { gold: number; offer?: RewardSource; upgraded?: string } {
+export function turnInQuest(s: RunSession, q: Quest, meta?: MetaState): { gold: number; offer?: RewardSource; upgraded?: string } {
   if (!questReady(q, s.deck, s.equipment)) throw new Error('Quest not ready');
   q.status = 'done';
   s.gold += q.reward.gold;
+  // The world editor's extras (DECISIONS #57): a flag, a relation, a card, and the next quest in a chain.
+  if (q.reward.flag) s.flags.add(q.reward.flag);
+  if (q.reward.relation && meta) nudgeRelation(meta, q.reward.relation.name, q.reward.relation.delta);
+  if (q.reward.tome && s.deck.length < DECK_CAP) applyTome(s, getSkill(q.reward.tome));
+  const next = q.then ? WORLD.quests.find((d) => d.id === q.then) : undefined;
+  if (next) { const n = buildQuest(s, meta ?? createMeta(), next); n.id = `${n.id}_${s.quests.length}`; s.quests.push(n); }
   if (q.fetch) {
     if (q.fetch.type === 'tome') {
       s.skillUpgrades[q.fetch.id] = (s.skillUpgrades[q.fetch.id] ?? 0) + 1;

@@ -185,4 +185,30 @@ describe('session', () => {
     expect(applyLevelUp(s, meta, 1, () => 0.30)[0]!.kind).toBe('tome');
     expect(applyLevelUp(s, meta, 1, () => 0.32)[0]!.kind).toBe('gold');
   });
+  it('the screen quest comes from world.json (DECISIONS #57): Wren at the start, with her lines', () => {
+    const s = createSession('warrior', createMeta(), 'WQ-1');
+    const q = currentQuest(s)!;
+    expect([q.defId, q.giverNode, q.giver.name, q.status]).toEqual(['wren_errand', 'node_6', 'Wren', 'offered']);
+    if (q.escort) expect(q.escort.node).toBe('node_17');
+    if (q.hunt) expect(q.hunt.enemyId).not.toBe('rat_pack');
+  });
+
+  it('a hand-in pays the reward\'s flag, relation and card, and offers the next quest in a chain', () => {
+    const meta = createMeta();
+    const s = createSession('warrior', meta, 'WQ-2');
+    const q = currentQuest(s)!;
+    q.kind = 'hunt'; q.fetch = undefined; q.escort = undefined; q.status = 'active';
+    q.hunt = { enemyId: 'boar', name: 'Boar', need: 1, have: 1 };
+    q.reward = { gold: 5, flag: 'wren_paid', relation: { name: 'wren', delta: 2 }, tome: 'shield_bash' };
+    q.then = 'wren_errand';
+    const gold = s.gold;
+    turnInQuest(s, q, meta);
+    expect(s.gold).toBe(gold + 5);
+    expect(s.flags.has('wren_paid')).toBe(true);
+    expect(meta.relations.wren).toBe(2);
+    expect(s.deck).toContain('shield_bash');
+    const next = currentQuest(s)!;
+    expect(next).not.toBe(q);
+    expect([next.defId, next.status]).toEqual(['wren_errand', 'offered']);
+  });
 });

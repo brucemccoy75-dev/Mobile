@@ -4,7 +4,10 @@ import { generateScreen, findPath } from '@core/map';
 import { createMeta } from '@core/meta';
 import { emptyEquipment } from '@core/run/equipment';
 import { getItem, getSkill } from '@data/index';
-import { generateQuest, noteKill, questReady, type QuestContext } from './index';
+import { generateQuest, noteKill, pickQuestDef, questFromDef, questReady, type QuestContext, type QuestDef } from './index';
+import { parseScreen } from '@core/map';
+import { SCREEN1 } from '@data/maps/screen1';
+import type { DialogueCtx } from '@core/dialogue';
 import { upgradeItem, upgradeSkill } from '@core/run/upgrade';
 
 const ctx: QuestContext = { classId: 'warrior', families: ['warrior_tank'], meta: createMeta(), deck: [], equipment: emptyEquipment(), screenIndex: 0 };
@@ -80,5 +83,46 @@ describe('upgrades', () => {
     expect(b.id).toBe('rusty_sword+2'); expect(b.name).toBe('Rusty Sword +2');
     expect(upgradeItem(getItem('heart_amulet')).mods.at(-1)).toEqual({ stat: { maxHp: 3 } });
     expect(upgradeItem(getItem('chain_shirt')).mods.at(-1)).toEqual({ stat: { def: 1 } });
+  });
+});
+
+describe('quests as data (DECISIONS #57)', () => {
+  const screen = parseScreen(SCREEN1, new RunRng('qd').stream('map'), { seed: 'qd', screenIndex: 0 });
+  const voice = { name: 'Pip', title: 'the test', intro: { fetch: 'Bring {target}.', hunt: 'Kill {need} {target}.', escort: 'Find {target}.' }, accept: 'Good.', progress: 'Not yet.', complete: { fetch: 'Ta.', hunt: 'Ta.', escort: 'Ta.' }, decline: 'Fine.' };
+  const base: QuestDef = { id: 'pip', name: 'Pip', screen: 0, giver: 'node_6', type: 'rolled', voice, reward: {} };
+  const dctx = (over: Partial<DialogueCtx> = {}): DialogueCtx => ({ flags: new Set(), relations: {}, deathsOnScreen: 0, deathsTotal: 0, level: 1, classId: 'warrior', gold: 0, fights: 0, rng: new Rng(1), ...over });
+
+  it('a fixed type builds that quest, at the giver node, with the named target and standard rewards', () => {
+    const h = questFromDef({ ...base, type: 'hunt', hunt: { enemy: 'boar', need: 3 } }, screen, ctx, new Rng(1));
+    expect(h).toMatchObject({ id: 'quest_0_pip', defId: 'pip', kind: 'hunt', giverNode: 'node_6', hunt: { enemyId: 'boar', need: 3, have: 0 }, reward: { gold: 25, offer: 'guard' } });
+    expect(h.giver.pos).toEqual(screen.nodes!.find((n) => n.id === 'node_6')!.pos);
+    expect(h.giver.intro).toBe('Kill 3 Boar.');
+    const e = questFromDef({ ...base, type: 'escort', escort: { node: 'node_17', name: 'Ida' } }, screen, ctx, new Rng(1));
+    expect(e).toMatchObject({ kind: 'escort', escort: { name: 'Ida', node: 'node_17', following: false }, reward: { gold: 20, offer: 'chest' } });
+    const f = questFromDef({ ...base, type: 'fetch', fetch: { id: 'shield_bash' }, reward: { gold: 40, flag: 'pip_done', relation: { name: 'pip', delta: 2 } } }, screen, ctx, new Rng(1));
+    expect(f).toMatchObject({ kind: 'fetch', fetch: { type: 'tome', id: 'shield_bash' }, reward: { gold: 40, flag: 'pip_done', relation: { name: 'pip', delta: 2 } } });
+  });
+  it('rolled picks among the three; a hunt never asks for an avoided species', () => {
+    const kinds = new Set<string>();
+    for (let i = 0; i < 60; i++) {
+      const q = questFromDef({ ...base, hunt: { need: 2, avoid: ['rat_pack'] }, escort: { node: 'node_17' } }, screen, ctx, new Rng(i));
+      kinds.add(q.kind);
+      if (q.hunt) expect(q.hunt.enemyId).not.toBe('rat_pack');
+    }
+    expect(kinds).toEqual(new Set(['fetch', 'hunt', 'escort']));
+  });
+  it('a screen offers one quest whose conditions hold, special ones only on a special run', () => {
+    const defs: QuestDef[] = [
+      { ...base, id: 'plain' },
+      { ...base, id: 'after_wren', when: [{ flag: 'wren_met' }] },
+      { ...base, id: 'secret', special: true },
+      { ...base, id: 'other_screen', screen: 1 },
+    ];
+    expect(pickQuestDef(defs, 0, dctx(), false)!.id).toBe('plain');
+    const seen = new Set<string>();
+    for (let i = 0; i < 40; i++) seen.add(pickQuestDef(defs, 0, dctx({ flags: new Set(['wren_met']), rng: new Rng(i) }), false)!.id);
+    expect([...seen].sort()).toEqual(['after_wren', 'plain']);
+    expect(pickQuestDef(defs, 0, dctx(), true)!.id).toBe('secret');
+    expect(pickQuestDef(defs, 2, dctx(), false)).toBeNull();
   });
 });

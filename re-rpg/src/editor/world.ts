@@ -12,14 +12,16 @@ import { RULE_KINDS, type NodeRule, type RuleKind } from '@core/map/types';
 import { CLASSES, ENEMIES, SKILLS } from '@data/index';
 import { PAIRS } from '@data/packs';
 import type { Cond, DEffect, Dialogue, DOption } from '@core/dialogue';
+import type { QuestDef } from '@core/quest';
+import { ITEMS } from '@data/index';
 
 const DRAFT_KEY = 'rerpg:world-draft';
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
 const SHIPPED: WorldData = clone(WORLD);
 
-type Tab = 'nodes' | 'dialogue' | 'enemies';
-interface State { data: WorldData; tab: Tab; screen: number; node: string | null; dlg: string | null; search: string; }
-const state: State = { data: loadDraft(), tab: 'nodes', screen: 0, node: null, dlg: null, search: '' };
+type Tab = 'nodes' | 'quests' | 'dialogue' | 'enemies';
+interface State { data: WorldData; tab: Tab; screen: number; node: string | null; dlg: string | null; quest: string | null; search: string; }
+const state: State = { data: loadDraft(), tab: 'nodes', screen: 0, node: null, dlg: null, quest: null, search: '' };
 
 function loadDraft(): WorldData {
   try { const raw = localStorage.getItem(DRAFT_KEY); if (raw) { const d = JSON.parse(raw) as WorldData; if (d.version === SHIPPED.version && Array.isArray(d.dialogue) && Array.isArray(d.screens)) return d; } } catch { /* fresh */ }
@@ -53,7 +55,7 @@ const field = (label: string, ...control: Child[]): HTMLElement => h('label', {}
 
 // ---------------------------------------------------------------- shared lookups
 
-const GLYPH: Record<string, string> = { E: 'start (Wren)', q: 'quest node (Tam)', n: 'the lost one', B: 'boss', o: 'open slot', x: 'elite', f: 'monster', u: 'unknown', c: 'treasure', s: 'shop', h: 'shrine' };
+const GLYPH: Record<string, string> = { E: 'start camp', q: 'quest node', n: 'lost one\'s node', B: 'boss', o: 'open slot', x: 'elite', f: 'monster', u: 'unknown', c: 'treasure', s: 'shop', h: 'shrine' };
 const GLYPH_DEFAULT: Record<string, string> = {
   E: 'Wren\'s words, then the quest', q: 'Tam\'s words', n: 'the lost one\'s words', B: 'the gate boss and its words',
   o: 'rolled each run: a shop, a shrine, treasure or a fight', x: 'always a duo', f: 'a fight', u: 'a hidden fight', c: 'treasure', s: 'the shop', h: 'a shrine',
@@ -87,9 +89,9 @@ function render() {
     ),
     problems.length ? h('div', { class: 'problems' }, problems.join('\n')) : h('div', { class: 'ok' }, changes.length ? `${changes.length} change${changes.length === 1 ? '' : 's'} from shipped` : 'No changes from the shipped world.'),
     h('div', { class: 'tabs sticky', role: 'tablist' },
-      ...(['nodes', 'dialogue', 'enemies'] as const).map((t) => h('button', { role: 'tab', 'aria-selected': state.tab === t, onclick: () => { state.tab = t; render(); window.scrollTo(0, 0); } }, t === 'nodes' ? 'Nodes' : t === 'dialogue' ? 'Dialogue' : 'Enemies')),
+      ...(['nodes', 'quests', 'dialogue', 'enemies'] as const).map((t) => h('button', { role: 'tab', 'aria-selected': state.tab === t, onclick: () => { state.tab = t; render(); window.scrollTo(0, 0); } }, t === 'nodes' ? 'Nodes' : t === 'quests' ? 'Quests' : t === 'dialogue' ? 'Words' : 'Enemies')),
     ),
-    state.tab === 'nodes' ? nodesTab() : state.tab === 'dialogue' ? dialogueTab() : enemiesTab(),
+    state.tab === 'nodes' ? nodesTab() : state.tab === 'quests' ? questsTab() : state.tab === 'dialogue' ? dialogueTab() : enemiesTab(),
   );
   window.scrollTo(0, scrollY);
 }
@@ -357,6 +359,92 @@ function effectList(list: DEffect[], onChange: (l: DEffect[]) => void): HTMLElem
         h('button', { onclick: () => onChange(list.filter((_, j) => j !== i)), 'aria-label': 'remove effect' }, '✕'));
     }),
     h('button', { onclick: () => onChange([...list, blankEff('fight')]) }, '+ Effect'));
+}
+
+// ---------------------------------------------------------------- quests (DECISIONS #57)
+
+type QKind = 'fetch' | 'hunt' | 'escort';
+const QTYPE_LABEL: Record<QuestDef['type'], string> = { rolled: 'Rolled', fetch: 'Fetch', hunt: 'Hunt', escort: 'Escort' };
+const people = (screen: number) => listSlots(SCREEN_ASCII[screen]!).filter((x) => 'Eqn'.includes(x.glyph));
+const personLabel = (screen: number, id: string) => { const x = people(screen).find((p) => p.id === id); return x ? `${GLYPH[x.glyph]} (${id})` : id; };
+
+function questsTab(): HTMLElement {
+  const el = h('div', {}, h('div', { class: 'muted', style: 'margin:6px 0' }, 'Each run, a screen offers one quest whose "only when" holds (special ones only on special runs). A quest can lead on to the next with "then".'),
+    h('div', { class: 'actions' }, h('button', { class: 'primary', onclick: newQuest }, '+ New quest')));
+  for (const screen of [0, 1]) {
+    el.append(h('h2', {}, `Screen ${screen + 1}`));
+    const qs = (state.data.quests ??= []).filter((q) => q.screen === screen);
+    el.append(h('div', { class: 'list' }, ...qs.map((q) => (state.quest === q.id ? questForm(q) : h('div', { class: 'row', onclick: () => { state.quest = q.id; render(); } },
+      h('div', { class: 'name' }, q.name), h('div', { class: 'muted' }, `${QTYPE_LABEL[q.type]}${q.special ? ' · special' : ''}`),
+      h('div', { class: 'sum' }, `${q.voice.name} at ${personLabel(q.screen, q.giver)}${q.when?.length ? ' · only when ' + q.when.map(condLabel).join(', ') : ''}${q.then ? ` · then ${q.then}` : ''}`))))),
+      qs.length ? '' : h('div', { class: 'muted' }, 'No quest: this screen offers none.'));
+  }
+  return el;
+}
+
+function newQuest() {
+  const wren = SHIPPED.quests[0]!;
+  let id = 'new_quest', i = 2; while (state.data.quests.some((q) => q.id === id)) id = `new_quest_${i++}`;
+  const q: QuestDef = { id, name: 'New quest', screen: state.screen, giver: 'node_6', type: 'hunt', voice: { ...clone(wren.voice), name: 'Someone', title: '' }, hunt: { need: 2 }, reward: {} };
+  state.data.quests.push(q); state.quest = id; render();
+}
+
+function questForm(q: QuestDef): HTMLElement {
+  const shipped = SHIPPED.quests.some((x) => x.id === q.id);
+  const used = (k: QKind) => q.type === k || q.type === 'rolled';
+  const pool = fightersFor(q.screen);
+  const v = q.voice;
+  const line = (label: string, value: string, put: (s: string) => void) => field(label, h('textarea', { rows: 2, onchange: (ev: Event) => { put((ev.target as HTMLTextAreaElement).value); render(); } }, value));
+  const el = h('div', { class: 'form', id: `q-${q.id}` },
+    h('div', { class: 'grid' },
+      field('name', text(q.name, (x) => { q.name = x; render(); })),
+      field('id', text(q.id, (x) => { const id = slug(x); if (id !== q.id && state.data.quests.some((o) => o.id === id)) { alert('That id is taken.'); render(); return; } for (const o of state.data.quests) if (o.then === q.id) o.then = id; q.id = id; state.quest = id; render(); }, { disabled: shipped })),
+      field('screen', select(String(q.screen), [['0', 'Screen 1'], ['1', 'Screen 2']], (x) => { q.screen = Number(x); delete q.then; if (q.hunt?.enemy) delete q.hunt.enemy; render(); })),
+      field('who gives it, where', select(q.giver, people(q.screen).map((p) => [p.id, personLabel(q.screen, p.id)]), (x) => { q.giver = x; render(); })),
+    ),
+    h('h2', {}, 'Type'),
+    seg(q.type, (['rolled', 'fetch', 'hunt', 'escort'] as const).map((t) => [t, QTYPE_LABEL[t]]), (t) => { q.type = t; if (used('escort') && !q.escort?.node) q.escort = { node: people(q.screen).find((p) => p.id !== q.giver)!.id }; render(); }),
+    q.type === 'rolled' ? h('div', { class: 'muted' }, 'Each run picks fetch, hunt or escort; set up all three below.') : null,
+  );
+  if (used('fetch')) el.append(h('h2', {}, 'Fetch: what to bring'), select(q.fetch?.id ?? '', [['', 'Rolled from the run\'s loot'], ...ITEMS.map((i) => [i.id, `item: ${i.name}`] as [string, string]), ...SKILLS.filter((k) => k.rarity !== 'basic').map((k) => [k.id, `card: ${k.name}`] as [string, string])], (x) => { if (x) q.fetch = { id: x }; else delete q.fetch; render(); }));
+  if (used('hunt')) {
+    const hunt = (q.hunt ??= {});
+    el.append(h('h2', {}, 'Hunt: what to kill'),
+      h('div', { class: 'grid' },
+        field('species', select(hunt.enemy ?? '', [['', 'Rolled from this screen'], ...pool.map((e) => [e.id, e.name] as [string, string])], (x) => { if (x) hunt.enemy = x; else delete hunt.enemy; render(); })),
+        field('how many', num(hunt.need ?? 2, (x) => { hunt.need = Math.max(1, Math.min(9, x ?? 2)); render(); }, { min: 1, max: 9 }))),
+      hunt.enemy ? '' : h('div', { class: 'chips' }, h('span', { class: 'muted' }, 'never ask for:'), ...pool.map((e) => h('label', {}, h('input', { type: 'checkbox', checked: (hunt.avoid ?? []).includes(e.id), onchange: (ev: Event) => { const on = (ev.target as HTMLInputElement).checked; hunt.avoid = on ? [...(hunt.avoid ?? []), e.id] : (hunt.avoid ?? []).filter((x) => x !== e.id); if (!hunt.avoid.length) delete hunt.avoid; render(); } }), e.name))));
+  }
+  if (used('escort')) {
+    const esc = (q.escort ??= {});
+    el.append(h('h2', {}, 'Escort: who, and where they wait'), h('div', { class: 'grid' },
+      field('waits at', select(esc.node ?? '', [['', 'choose…'], ...people(q.screen).filter((p) => p.id !== q.giver).map((p) => [p.id, personLabel(q.screen, p.id)] as [string, string])], (x) => { if (x) esc.node = x; else delete esc.node; render(); })),
+      field('their name (blank = rolled)', text(esc.name ?? '', (x) => { if (x.trim()) esc.name = x.trim(); else delete esc.name; render(); }))));
+  }
+  el.append(h('h2', {}, 'The giver\'s lines'), h('div', { class: 'grid' },
+    field('giver name', text(v.name, (x) => { v.name = x; render(); })), field('title', text(v.title, (x) => { v.title = x; render(); }))),
+    h('div', { class: 'muted' }, 'Fill-ins: {target} and {need}.'));
+  for (const k of ['fetch', 'hunt', 'escort'] as const) if (used(k)) el.append(line(`${k}: the offer`, v.intro[k], (x) => { v.intro[k] = x; }), line(`${k}: the thanks`, v.complete[k], (x) => { v.complete[k] = x; }));
+  el.append(line('on accept', v.accept, (x) => { v.accept = x; }), line('not done yet', v.progress, (x) => { v.progress = x; }), line('on decline', v.decline, (x) => { v.decline = x; }));
+  const r = q.reward;
+  el.append(h('h2', {}, 'Reward'), h('div', { class: 'grid' },
+    field('gold (blank = standard)', num(r.gold, (x) => { if (x === undefined) delete r.gold; else r.gold = Math.max(0, Math.min(500, Math.round(x))); render(); }, { min: 0, max: 500 })),
+    field('spoils pick', select(r.offer ?? '', [['', 'standard for the type'], ['none', 'none'], ['kill', 'small (kill)'], ['guard', 'good (guard)'], ['chest', 'chest'], ['boss', 'boss']], (x) => { if (x) r.offer = x as typeof r.offer; else delete r.offer; render(); })),
+    field('card', select(r.tome ?? '', [['', 'none'], ...SKILLS.filter((k) => k.rarity !== 'basic').map((k) => [k.id, k.name] as [string, string])], (x) => { if (x) r.tome = x; else delete r.tome; render(); })),
+    field('sets flag', text(r.flag ?? '', (x) => { const f = slug(x); if (x.trim()) r.flag = f; else delete r.flag; render(); }, { placeholder: 'none' })),
+    field('relation', text(r.relation?.name ?? '', (x) => { if (x.trim()) r.relation = { name: slug(x), delta: r.relation?.delta ?? 1 }; else delete r.relation; render(); }, { placeholder: 'none' })),
+    r.relation ? field('by', num(r.relation.delta, (x) => { r.relation!.delta = x ?? 0; render(); })) : ''),
+    h('div', { class: 'muted' }, 'Standard: fetch 15 gold and the item back +1; hunt 25 gold and a good pick; escort 20 gold and a chest. Doubled on screen 2.'),
+    h('h2', {}, 'Offered only when (none = always)'),
+    condList(q.when ?? [], (w) => { if (w.length) q.when = w; else delete q.when; render(); }),
+    h('h2', {}, 'Runs'),
+    h('div', { class: 'chips' }, h('label', {}, h('input', { type: 'checkbox', checked: !!q.special, onchange: (ev: Event) => { if ((ev.target as HTMLInputElement).checked) q.special = true; else delete q.special; render(); } }), 'special runs only')),
+    field('then offer', select(q.then ?? '', [['', 'nothing'], ...state.data.quests.filter((o) => o.screen === q.screen && o.id !== q.id).map((o) => [o.id, o.name] as [string, string])], (x) => { if (x) q.then = x; else delete q.then; render(); })),
+    h('div', { class: 'actions' },
+      h('button', { class: 'primary', onclick: () => { state.quest = null; render(); } }, 'Done'),
+      h('button', { onclick: () => { const c = clone(q); let id = `${q.id}_copy`, i = 2; while (state.data.quests.some((o) => o.id === id)) id = `${q.id}_copy_${i++}`; c.id = id; c.name += ' (copy)'; state.data.quests.push(c); state.quest = id; render(); } }, 'Duplicate'),
+      shipped ? h('span', { class: 'muted' }, 'A shipped quest stays; make it special or give it a condition to retire it.') : h('button', { class: 'danger', onclick: () => { state.data.quests = state.data.quests.filter((o) => o !== q); for (const o of state.data.quests) if (o.then === q.id) delete o.then; state.quest = null; render(); } }, 'Delete')));
+  return el;
 }
 
 // ---------------------------------------------------------------- enemies

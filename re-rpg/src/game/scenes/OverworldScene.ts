@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { getEnemy, getSkill } from '@data/index';
 import { key, roadBetween, type MapNode, type Tile } from '@core/map';
-import { SCREEN_COUNT, currentNode, currentQuest, getMeta, getSession, getStore, isCleared, isEscorting, isFightNode, nodeById, nodeEncounter, persistMeta, persistRun, reachableNodes, routeTo, setSession, startScreen, treasureGold, type PendingEncounter, type RunSession } from '@game/session';
+import { SCREEN_COUNT, currentNode, currentQuest, questGiverNode, getMeta, getSession, getStore, isCleared, isEscorting, isFightNode, nodeById, nodeEncounter, persistMeta, persistRun, reachableNodes, routeTo, setSession, startScreen, treasureGold, type PendingEncounter, type RunSession } from '@game/session';
 import { noteKill, questProgress, questReady } from '@core/quest';
 import { gainExp, ghostOn, nudgeRelation, recordWin } from '@core/meta';
 import { WREN_GRUDGE, ghostAppears, ghostDef, wrenBoss } from '@core/variants';
@@ -155,21 +155,23 @@ export class OverworldScene extends Phaser.Scene {
     // A dark ground plate under every marker: stills and icons read as tokens on the painting (DECISIONS #39).
     const big = n.kind === 'boss' ? 1.5 : n.kind === 'elite' ? 1.25 : 1;
     cont.add(this.add.ellipse(0, TILE * 0.22, TILE * 1.15 * big, TILE * 0.58 * big, 0x070a12, cleared ? 0.3 : 0.55).setStrokeStyle(2, 0xffffff, cleared ? 0.12 : 0.28));
+    // The quest giver's node carries the !/…/✓ mark (DECISIONS #57; Wren's start node unless the quest says otherwise).
+    const giverHere = questGiverNode(s) === n.id;
+    if (giverHere) {
+      this.giverMark = this.add.text(TILE * 0.45, -26 * K, '', { fontFamily: FONT, fontSize: '24px', color: '#c9a227', fontStyle: 'bold', stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5);
+      cont.add(this.giverMark);
+    }
     switch (n.kind) {
       case 'start': {
         this.prop(cont, 'campfire', 0.4, 14 * K, () => [this.add.circle(0, 0, 10 * K, 0xff8c42)]);
-        if (s.screenIndex === 0 || currentQuest(s)) {
-          cont.add(this.add.rectangle(TILE * 0.45, 2, 20 * K, 30 * K, 0x7a5c3a).setStrokeStyle(2, 0xc9a227));
-          this.giverMark = this.add.text(TILE * 0.45, -26 * K, '', { fontFamily: FONT, fontSize: '24px', color: '#c9a227', fontStyle: 'bold', stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5);
-          cont.add(this.giverMark);
-        }
-        cont.add(this.label(20 * K, currentQuest(s)?.giver.name ?? 'camp', '#e0c060'));
+        if (giverHere || (s.screenIndex === 0 && !currentQuest(s))) cont.add(this.add.rectangle(TILE * 0.45, 2, 20 * K, 30 * K, 0x7a5c3a).setStrokeStyle(2, 0xc9a227));
+        cont.add(this.label(20 * K, giverHere ? currentQuest(s)!.giver.name : 'camp', '#e0c060'));
         break;
       }
       case 'quest': case 'lost': {
         cont.add(this.add.circle(0, -2, 15 * K, cleared ? 0x3a4260 : 0xc9a227).setStrokeStyle(2, 0x000000, 0.6));
         cont.add(this.add.text(0, -2, '?', { fontFamily: FONT, fontSize: `${20 * K}px`, color: cleared ? '#8b93a7' : '#1a1200', fontStyle: 'bold' }).setOrigin(0.5));
-        cont.add(this.label(16 * K, n.kind === 'lost' ? 'a voice' : 'someone', cleared ? '#8b93a7' : '#e0c060'));
+        cont.add(this.label(16 * K, giverHere ? currentQuest(s)!.giver.name : n.kind === 'lost' ? 'a voice' : 'someone', cleared && !giverHere ? '#8b93a7' : '#e0c060'));
         break;
       }
       case 'shop': this.prop(cont, 'tent', 0.5, 14 * K, () => [this.add.rectangle(0, 2, 34 * K, 30 * K, 0x7a3fb9)]); cont.add(this.label(20 * K, 'shop')); break;
@@ -241,7 +243,7 @@ export class OverworldScene extends Phaser.Scene {
     if (!q) { this.questText.setText(''); this.giverMark?.setText('?'); return; }
     const ready = questReady(q, this.session.deck, this.session.equipment);
     this.giverMark?.setText(q.status === 'offered' ? '!' : q.status === 'active' ? (ready ? '✓' : '…') : q.status === 'declined' ? '?' : '');
-    this.questText.setText(q.status === 'active' ? `Quest: ${questProgress(q, this.session.deck, this.session.equipment)}` : q.status === 'offered' ? `${q.giver.name} has work for you, back at the start.` : '');
+    this.questText.setText(q.status === 'active' ? `Quest: ${questProgress(q, this.session.deck, this.session.equipment)}` : q.status === 'offered' ? `${q.giver.name} has work for you.` : '');
   }
 
   private buildHud() {
@@ -360,26 +362,21 @@ export class OverworldScene extends Phaser.Scene {
         const q = currentQuest(s);
         if (s.screenIndex === 0 || n.dialogue) { const r = await openDialogue(this, s, meta, n.dialogue ? `id:${n.dialogue}` : 'giver:wren'); if (r?.notes.length) void persistMeta(this); }
         s.clearedNodes.add(n.id);
-        if (q) { await persistRun(this); this.scene.start('Quest', { questId: q.id }); return; }
+        if (q && questGiverNode(s) === n.id) { await persistRun(this); this.scene.start('Quest', { questId: q.id }); return; }
         await done(); return;
       }
       case 'quest': {
         const r = await openDialogue(this, s, meta, n.dialogue ? `id:${n.dialogue}` : 'node:quest');
         if (r?.notes.length) { void persistMeta(this); void this.toast(r.notes.join('  ·  '), 1800); }
         if (r?.rearmed) { const re = nodeById(s, r.rearmed); this.drawNode(re); this.drawGhost(); }
+        if (await this.questAt(n)) return;
+        this.escortAt(n);
         await done(); return;
       }
       case 'lost': {
-        const q = currentQuest(s);
-        const r = await openDialogue(this, s, meta, n.dialogue ? `id:${n.dialogue}` : 'node:lost');
-        void r;
-        if (q?.escort && q.status === 'active' && !q.escort.following) {
-          q.escort.following = true;
-          const c = this.centre(n.pos);
-          this.follower = this.add.rectangle(c.x - 22 * K, c.y + 6 * K, 18 * K, 26 * K, 0x9fb3c8).setStrokeStyle(2, 0xffffff, 0.6).setDepth(6);
-          this.syncQuestHud();
-          void this.toast(`${q.escort.name} follows you. Back to ${q.giver.name}.`, 2200);
-        }
+        await openDialogue(this, s, meta, n.dialogue ? `id:${n.dialogue}` : 'node:lost');
+        if (await this.questAt(n)) return;
+        this.escortAt(n);
         await done(); return;
       }
       case 'shop': { await this.nodeWords(n); s.clearedNodes.add(n.id); await persistRun(this); this.scene.start('Shop'); return; }
@@ -404,6 +401,28 @@ export class OverworldScene extends Phaser.Scene {
         await this.encounterWithWords(nodeEncounter(s, n), n);
       }
     }
+  }
+
+  /** The escort waits at the quest's node (DECISIONS #57; older quests used the lost one's) and follows from there. */
+  private escortAt(n: MapNode) {
+    const q = currentQuest(this.session);
+    if (!q?.escort || q.status !== 'active' || q.escort.following) return;
+    if ((q.escort.node ?? (n.kind === 'lost' ? n.id : '')) !== n.id) return;
+    q.escort.following = true;
+    const c = this.centre(n.pos);
+    this.follower = this.add.rectangle(c.x - 22 * K, c.y + 6 * K, 18 * K, 26 * K, 0x9fb3c8).setStrokeStyle(2, 0xffffff, 0.6).setDepth(6);
+    this.syncQuestHud();
+    void this.toast(`${q.escort.name} follows you. Back to ${q.giver.name}.`, 2200);
+  }
+
+  /** A quest whose giver stands at this story node (DECISIONS #57) opens its screen. True when it did. */
+  private async questAt(n: MapNode): Promise<boolean> {
+    const q = currentQuest(this.session);
+    if (!q || questGiverNode(this.session) !== n.id) return false;
+    this.session.clearedNodes.add(n.id);
+    await persistRun(this);
+    this.scene.start('Quest', { questId: q.id });
+    return true;
   }
 
   /** A node the designer gave words (DECISIONS #55): they play before its shop, chest or shrine. Fight and walk-on effects mean nothing here. */

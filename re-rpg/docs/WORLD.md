@@ -11,6 +11,20 @@ phone, exports it, and a session imports it by the fixed procedure below.
 | dialogue | id, trigger, speaker, portrait, when, lines, options | one thing someone can say; `trigger` is what asks for it (`pre_fight:boar`, `gate:gatekeeper`, `node:quest`, `giver:wren`, or the `next` of another entry); `when` are conditions; each option has `when` (hides it) and effects |
 | enemies | per enemy id: defaults | the entries it picks from at random when none of its conditional entries holds and its node has no override |
 | screens | per screen, nodes by id: kind, odds, enemy, pair, dialogue | the designer's rules for one node; anything unset is rolled as before |
+| quests | id, name, screen, giver, type, voice, fetch, hunt, escort, reward, when, special, then | a quest a screen can offer (DECISIONS #57): see below |
+
+**Quests.** Each run, each screen offers one quest: one of its quests whose `when` holds (special
+ones only on a special run), picked at random if several qualify. `giver` is the node it is
+offered and handed in at, and `escort.node` where an escort waits: the start camp, the quest node
+or the lost one's node, never a fight, never the same node. `type` is fetch, hunt, escort or
+rolled (one of the three each run). Unset targets roll: a fetch from the run's loot, a hunt from
+this screen's species (minus `avoid`), an escort's name from the usual list. `voice` is the giver's
+name, title and lines (an offer and a thanks per kind, plus accept, progress, decline; `{target}`
+and `{need}` fill in). Unset rewards are the standard ones (fetch 15 gold and the item back +1,
+hunt 25 and a good pick, escort 20 and a chest; doubled on screen 2); `flag`, `relation` and
+`tome` add to them. `then` names a quest on the same screen the giver offers once this one is
+handed in. Tam's re-arm errand is written as dialogue (flags, conditions and the re-arm effect),
+so it is edited on the Words tab.
 
 **Which words play at a fight**, first match wins: a story turn the game forces (the brother a
 quest sent back, Wren at the gate, the ghost when it is on); the node's dialogue override; the
@@ -38,6 +52,9 @@ never changes the game.
 - **Dialogue**: search, then tap an entry to edit its speaker, trigger, portrait, lines, its
   "only when" conditions and its options (text, conditions that hide it, effects, the one Skip
   picks). New, Duplicate, and Delete for an entry nothing uses; shipped entries stay.
+- **Quests**: per screen, tap a quest to edit who gives it and where, its type and targets, the
+  giver's lines (only the ones its type needs), rewards, conditions, special-runs-only and the
+  next quest in its chain. New, Duplicate, and Delete for a quest that did not ship.
 - **Enemies**: each enemy's entries for its own trigger, with a tick for the everyday ones and
   "+ New everyday line" (it opens the new entry in the Dialogue tab, already ticked).
 - The green line counts changes from shipped; a red box lists rule breaks. **Export world.json**

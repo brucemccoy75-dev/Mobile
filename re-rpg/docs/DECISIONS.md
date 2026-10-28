@@ -463,3 +463,23 @@ stylesheet for both pages). Built and checked at a 390-wide portrait phone first
 - **Enemies.** Every entry for the enemy's own trigger with an "everyday" tick, and "+ New everyday
   line", which makes the entry, ticks it and opens it.
 An export from the editor passes `world:validate` (checked with a file the phone test exported).
+
+## 57. Quests are data
+
+Phase 3 of #55. Quests live in world.json beside the dialogue and are built in the editor's Quests
+tab. A quest names its screen, its giver node, a type (fetch, hunt, escort, or rolled: one of the
+three each run), its targets (unset ones roll as before), the giver's lines, rewards (the standard
+ones unless set, plus a flag, a relation and a card), conditions on being offered, special-runs-only,
+and `then`: the quest its giver offers once it is handed in, which is how chains are built. Each run
+a screen offers one quest whose conditions hold, at random among several.
+- Wren's errand (screen 1) and Old Marrow's and Sister Vell's (screen 2) moved in unchanged; the
+  old random generator stays for its tests and the generated-map path, unused by the game.
+- Givers and escorts stand at the story nodes (start camp, quest node, lost one's node), so a
+  quest never sits on a fight; the "!" and the quest screen follow the giver node, and an escort
+  now joins at its own node (it was hard-wired to the lost one's).
+- Tam's re-arm errand stays dialogue: it is already all data (flags, conditions, the re-arm
+  effect) and is edited on the Words tab. A "rematch" quest type can follow if wanted.
+- The world file is version 2; the validator checks givers, escorts, targets per screen, the
+  giver's lines for each kind the type uses, reward ranges, and chains (same screen, no loops).
+Pinned by `quest.test.ts`, `session.test.ts` and `world.test.ts`; screenshots in
+`docs/audit/quests-2026-10-28/`.

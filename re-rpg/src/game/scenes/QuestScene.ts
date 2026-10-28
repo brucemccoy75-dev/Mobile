@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { questProgress, questReady, type Quest } from '@core/quest';
-import { getSession, persistRun, turnInQuest, type RunSession } from '@game/session';
+import { getMeta, getSession, persistMeta, persistRun, turnInQuest, type RunSession } from '@game/session';
 import { Button } from '@game/ui/Button';
 import { COLORS, FONT, text } from '@game/ui/theme';
 
@@ -56,7 +56,8 @@ export class QuestScene extends Phaser.Scene {
   }
 
   private turnIn() {
-    const r = turnInQuest(this.session, this.quest);
+    const r = turnInQuest(this.session, this.quest, getMeta(this));
+    if (this.quest.reward.relation) void persistMeta(this);
     if (r.offer) this.session.pendingOffer = { source: r.offer, gold: 0 };
     void persistRun(this).then(() => this.scene.start(r.offer ? 'Reward' : 'Overworld'));
   }

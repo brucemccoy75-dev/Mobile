@@ -32,4 +32,15 @@ describe('world.json (DECISIONS #55)', () => {
     const b = clone(); b.screens[0]!.nodes[open0[0]!] = { kind: 'shrine' }; b.enemies.boar!.defaults = [];
     expect(diffWorld(WORLD, b)).toEqual(['enemy boar defaults: [boar] -> []', `screen 1 ${open0[0]}: {} -> {"kind":"shrine"}`]);
   });
+  it('quests: the shipped ones are valid, and the validator names a bad giver, escort, target or chain', () => {
+    expect(WORLD.quests.map((q) => q.id)).toEqual(['wren_errand', 'marrow_errand', 'vell_errand']);
+    const a = clone(); a.quests[0]!.giver = open0[0]!;
+    expect(validateWorld(a)).toEqual(['quest wren_errand: the giver must stand at the start, Tam\'s node or the lost one\'s node']);
+    const b = clone(); b.quests[0]!.escort = { node: 'node_6' };
+    expect(validateWorld(b)).toEqual(['quest wren_errand: the escort cannot wait at the giver']);
+    const c = clone(); c.quests[0]!.hunt = { enemy: 'ogre' };
+    expect(validateWorld(c)).toEqual(['quest wren_errand: ogre is not hunted on screen 1']);
+    const d = clone(); d.quests[1]!.then = 'vell_errand'; d.quests[2]!.then = 'marrow_errand';
+    expect(validateWorld(d)).toEqual(['quest marrow_errand: its chain loops', 'quest vell_errand: its chain loops']);
+  });
 });

@@ -4,7 +4,7 @@
 
 **State.** Branch `claude/re-rpg-mobile-architecture-t26won`, folder `re-rpg/`, live on GitHub
 Pages at https://brucemccoy75-dev.github.io/Mobile/ (deploys ~70 s after a push; poll
-`origin/gh-pages` for "Deploy re-rpg <sha>"). 223 tests pass (`npm run check`). The game today is:
+`origin/gh-pages` for "Deploy re-rpg <sha>"). 229 tests pass (`npm run check`). The game today is:
 
 - **Node overworld** (DECISIONS #37): a static node network per screen over an authored
   terrain, contents rolled per run, tap a reachable node to travel, swipe to pan. Screen 1 has a
@@ -29,7 +29,7 @@ vite preview --port 4174 --strictPort &` (start it in its own command; `pkill` i
 command kills the chain) → Playwright at 844×390 with `window.__rerpg` (write a throwaway script
 per check; Test Mode is driven by setting registry `testSetup` and calling `TestMode.fight()`,
 then `Combat.act()` and polling `busy`) → commit with the attribution lines → `git push -u origin
-<branch>` → poll gh-pages. Record decisions in `docs/DECISIONS.md` (next number is 57).
+<branch>` → poll gh-pages. Record decisions in `docs/DECISIONS.md` (next number is 58).
 
 **Cards.** Every card is a record in `src/data/cards.json`; the game compiles it at load. The
 designer edits cards in the in-game card editor (title screen → card editor, `editor.html`) and
@@ -48,7 +48,7 @@ choice? If singles still cost nothing after a node, the next lever is gear max H
 healing (proposed in the #42 review, declined for now). The last two fresh runs reached Wren and
 died there (run log in docs/audit is from before #42; export a new one).
 
-**World and quests (in progress, DECISIONS #55).** `src/data/world.json` holds the dialogue, each enemy's everyday lines (`defaults`) and per-node rules; `docs/WORLD.md` is the model and the import procedure. Phases: (1) the file, defaults and node rules: done; (2) the world editor page (`world.html`, title screen → world editor; Nodes, Dialogue, Enemies), mobile first: done; (3) quests as data with steps, Wren and Tam rebuilt as data, a Quests tab; (4) special runs, 20%. Screen 1 first. Default lines: 10–20 per enemy, written with the designer later.
+**World and quests (in progress, DECISIONS #55).** `src/data/world.json` holds the dialogue, each enemy's everyday lines (`defaults`) and per-node rules; `docs/WORLD.md` is the model and the import procedure. Phases: (1) the file, defaults and node rules: done; (2) the world editor page (`world.html`, title screen → world editor; Nodes, Quests, Words, Enemies), mobile first: done; (3) quests as data (`quests` in world.json: giver node, type, targets, lines, rewards, conditions, chains), Wren and screen 2's givers moved into it: done; (4) special runs, 20%. Screen 1 first. Default lines: 10–20 per enemy, written with the designer later.
 
 **Quests (the other open track).** First cut is GAME_DESIGN §7b and DECISIONS #19: one giver per
 screen, fetch / hunt / escort rolled from the run seed. Code: `src/core/quest/index.ts`
