@@ -414,3 +414,13 @@ is drawn during a bonus turn itself. A smaller deck than 3 still deals what it h
 now the way to cycle a card you do not want. GAME_DESIGN §3 rules 2–3 rewritten to match. The
 sim moves less than a point (its greedy player always plays a card). Pinned by the dealing tests
 in `engine.test.ts`; screenshots in `docs/audit/draw-2026-10-27/`.
+
+## 54. The ghost is switched off, kept for later
+
+Designer's call: the ghost still turned up (one run in ten, #49) and should go for now, with the
+code kept for a special encounter later. `GHOST_ENABLED = false` in `src/core/variants`:
+`ghostAppears` answers no for every run, so there is no marker on the map and no ghost fight.
+Everything else stays as it was and still runs: a death still records its ghost in meta (so a
+future encounter has one to raise), and the ghost's enemy, dialogue, spoils and the one-in-ten
+roll (`ghostAppears(seed, screen, true)`) are untouched. To bring it back, turn the switch on, or
+pass `enabled` from whatever triggers the special encounter. Pinned by `variants.test.ts`.

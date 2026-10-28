@@ -203,7 +203,7 @@ export class OverworldScene extends Phaser.Scene {
     const s = this.session;
     this.ghostSprite?.destroy(); this.ghostSprite = null;
     const ghost = ghostOn(getMeta(this), s.screenIndex);
-    // The ghost walks in on about one run in ten (DECISIONS #49); on the others it stays away.
+    // The ghost is switched off for now (DECISIONS #54); when on, it walks in on about one run in ten (#49).
     if (!ghost || !ghostAppears(s.seed, s.screenIndex) || s.testMode || !ghost.nodeId || s.clearedNodes.has(ghost.nodeId)) return;
     const gc = this.centre(nodeById(s, ghost.nodeId).pos);
     const cont = this.add.container(gc.x + TILE * 0.55, gc.y - TILE * 0.25).setDepth(5);
@@ -419,7 +419,7 @@ export class OverworldScene extends Phaser.Scene {
       e = { ...e, enemyId: 'wren', custom: [wrenBoss(w?.name ?? null, w ? w.mods.reduce((a, m) => a + (m.stat?.atk ?? 0), 0) : 0)] };
       trigger = 'gate:wren';
     }
-    // Your ghost joins the fight it fell in, in the rear partner's place, on the runs it walks in (DECISIONS #49).
+    // Your ghost joins the fight it fell in, in the rear partner's place, on the runs it walks in (DECISIONS #49; off for now, #54).
     const ghost = ghostAppears(s.seed, s.screenIndex) ? ghostOn(meta, s.screenIndex) : undefined;
     if (ghost && !s.testMode && e.kind !== 'boss' && ghost.nodeId === node.id) {
       e = { ...e, extra: undefined, custom: [getEnemy(e.enemyId), ghostDef(ghost)], ghost: true };

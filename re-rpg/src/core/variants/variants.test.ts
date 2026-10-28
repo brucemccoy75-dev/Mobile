@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Rng } from '@core/rng';
 import { createCombat, step } from '@core/combat';
 import { createMeta, ghostOn, layGhost, leaveGhost } from '@core/meta';
-import { GHOST_CHANCE, ghostAppears, ghostDef, ghostSpoils, wrenBoss, type GhostRecord } from './index';
+import { GHOST_CHANCE, GHOST_ENABLED, ghostAppears, ghostDef, ghostSpoils, wrenBoss, type GhostRecord } from './index';
 
 const ghostRec = (deck: string[], strength = 0): GhostRecord => ({ classId: 'warrior', screenIndex: 0, tile: { x: 5, y: 8 }, nodeId: 'node_2', deck, stats: { maxHp: 25, atk: 5, def: 1 }, equipment: { body: null, weapon: 'iron_mace', relic: null }, killer: 'boar', killerName: 'Boar', gold: 80, strength, at: 1 });
 
@@ -43,11 +43,15 @@ describe('boss variants', () => {
     layGhost(meta, 0);
     expect(ghostOn(meta, 0)).toBeUndefined();
   });
-  it('a ghost walks in about one run in ten (DECISIONS #49), fixed per run and screen', () => {
+  it('the ghost is switched off (DECISIONS #54): no run meets it', () => {
+    expect(GHOST_ENABLED).toBe(false);
+    expect(Array.from({ length: 2000 }, (_, i) => ghostAppears(`SEED-${i}`, 0)).some(Boolean)).toBe(false);
+  });
+  it('switched on, a ghost walks in about one run in ten (DECISIONS #49), fixed per run and screen', () => {
     expect(GHOST_CHANCE).toBe(0.1);
-    const seen = Array.from({ length: 2000 }, (_, i) => ghostAppears(`SEED-${i}`, 0)).filter(Boolean).length;
+    const seen = Array.from({ length: 2000 }, (_, i) => ghostAppears(`SEED-${i}`, 0, true)).filter(Boolean).length;
     expect(seen / 2000).toBeGreaterThan(0.08);
     expect(seen / 2000).toBeLessThan(0.12);
-    for (let i = 0; i < 50; i++) expect(ghostAppears(`SEED-${i}`, 1)).toBe(ghostAppears(`SEED-${i}`, 1));
+    for (let i = 0; i < 50; i++) expect(ghostAppears(`SEED-${i}`, 1, true)).toBe(ghostAppears(`SEED-${i}`, 1, true));
   });
 });

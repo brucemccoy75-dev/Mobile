@@ -4,7 +4,7 @@
 
 **State.** Branch `claude/re-rpg-mobile-architecture-t26won`, folder `re-rpg/`, live on GitHub
 Pages at https://brucemccoy75-dev.github.io/Mobile/ (deploys ~70 s after a push; poll
-`origin/gh-pages` for "Deploy re-rpg <sha>"). 213 tests pass (`npm run check`). The game today is:
+`origin/gh-pages` for "Deploy re-rpg <sha>"). 214 tests pass (`npm run check`). The game today is:
 
 - **Node overworld** (DECISIONS #37): a static node network per screen over an authored
   terrain, contents rolled per run, tap a reachable node to travel, swipe to pan. Screen 1 has a
@@ -12,8 +12,8 @@ Pages at https://brucemccoy75-dev.github.io/Mobile/ (deploys ~70 s after a push;
   Dark plates under markers. Dev overlay with `?dev` in the URL.
 - **Dialogue with options** at every node (DECISIONS #35), relations and deaths per screen in
   meta v5, Wren the rat-keeper at the start node, Tam the tinker's re-arm quest, Andre's
-  escalating gate lines, Wren replacing Andre at relation ≤ −2, your ghost at the node you died
-  on, on one run in ten (DECISIONS #36, #49).
+  escalating gate lines, Wren replacing Andre at relation ≤ −2, your ghost (DECISIONS #36) is
+  switched off (`GHOST_ENABLED`, #54) and kept for a special encounter later.
 - **Combat**: every round starts with a hand of 3 (#53), duos, target arrow, sweeps hit every enemy at once (#47), remove guard / remove buffs modifiers run before the hit (#48), fixed enemy rotations, flat gear attack (#31), equipment caps
   (#33), Bind Wound 25% once per fight, shop heal 35%, shrine half (#38, #39). Luck (#50): every class has 5; luck × 0.2% per card is a critical hit (+50%) and a bonus turn (once per round), 1% each at base (#52); luck × 1.2 adds to the rare odds of rewards, the shop and level-ups.
 - **Progression**: EXP levels 1–10 per class; each level is +1 max HP for good and a 25% rare card from the run's families, else 15 gold (#49); the warrior tree (#46) is Bulwark and Berserker (2
@@ -29,7 +29,7 @@ vite preview --port 4174 --strictPort &` (start it in its own command; `pkill` i
 command kills the chain) → Playwright at 844×390 with `window.__rerpg` (write a throwaway script
 per check; Test Mode is driven by setting registry `testSetup` and calling `TestMode.fight()`,
 then `Combat.act()` and polling `busy`) → commit with the attribution lines → `git push -u origin
-<branch>` → poll gh-pages. Record decisions in `docs/DECISIONS.md` (next number is 54).
+<branch>` → poll gh-pages. Record decisions in `docs/DECISIONS.md` (next number is 55).
 
 **Cards.** Every card is a record in `src/data/cards.json`; the game compiles it at load. The
 designer edits cards in the in-game card editor (title screen → card editor, `editor.html`) and

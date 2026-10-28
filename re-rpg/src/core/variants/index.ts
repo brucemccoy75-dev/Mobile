@@ -10,10 +10,17 @@ import { Rng, hashString } from '@core/rng';
  * definitions built at encounter time, so the combat engine never knows the difference.
  */
 
-/** A ghost left on a screen walks in on about one run in ten (DECISIONS #49). */
+/**
+ * The ghost is switched off (DECISIONS #54): deaths are still recorded, but no run meets the ghost.
+ * Kept whole (marker, fight, dialogue, spoils) for a special encounter later: turn this on, or pass
+ * `enabled` from whatever triggers that encounter.
+ */
+export const GHOST_ENABLED = false;
+/** When it is on, a ghost left on a screen walks in on about one run in ten (DECISIONS #49). */
 export const GHOST_CHANCE = 0.1;
 /** Whether this run meets the ghost on this screen: fixed by the run seed, so the marker and the fight agree and a reload keeps it. */
-export const ghostAppears = (seed: string, screenIndex: number): boolean => new Rng(hashString(`${seed}::ghost::${screenIndex}`)).next() < GHOST_CHANCE;
+export const ghostAppears = (seed: string, screenIndex: number, enabled = GHOST_ENABLED): boolean =>
+  enabled && new Rng(hashString(`${seed}::ghost::${screenIndex}`)).next() < GHOST_CHANCE;
 
 /** Wren takes the gate when her standing is this low or lower. */
 export const WREN_GRUDGE = -2;
