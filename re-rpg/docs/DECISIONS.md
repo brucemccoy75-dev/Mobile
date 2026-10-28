@@ -483,3 +483,18 @@ a screen offers one quest whose conditions hold, at random among several.
   giver's lines for each kind the type uses, reward ranges, and chains (same screen, no loops).
 Pinned by `quest.test.ts`, `session.test.ts` and `world.test.ts`; screenshots in
 `docs/audit/quests-2026-10-28/`.
+
+## 58. Special runs
+
+Phase 4 of #55: most runs are the default, and one in five (`specialChance` 0.2 in world.json,
+set on the Quests tab) is special. The roll is made once per run from the seed and kept in the
+save. On a special run each screen offers one of its special quests whose conditions hold, and the
+usual quest when none does, so a special run with nothing written for it plays as a default one.
+A special quest may pin nodes for its run: the same rules as the Nodes tab (kind or odds, species
+or pair, words), applied over the screen's own; the quest is chosen before the map is rolled so
+the pins are in place when the screen opens. Only special quests pin nodes (the Nodes tab is for
+every run). The screen opens with "Something is different on this road today." on a special run.
+No special quest ships: the first one is the designer's. Checked end to end with an editor-made
+special quest (Boar king, a Boar duo pinned on node 9) in a throwaway build: the third run rolled
+special, offered it and showed the pinned duo; a default run offered Wren's errand. Pinned by
+`session.test.ts` and `world.test.ts`; screenshots in `docs/audit/special-runs-2026-10-28/`.

@@ -20,8 +20,8 @@ const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
 const SHIPPED: WorldData = clone(WORLD);
 
 type Tab = 'nodes' | 'quests' | 'dialogue' | 'enemies';
-interface State { data: WorldData; tab: Tab; screen: number; node: string | null; dlg: string | null; quest: string | null; search: string; }
-const state: State = { data: loadDraft(), tab: 'nodes', screen: 0, node: null, dlg: null, quest: null, search: '' };
+interface State { data: WorldData; tab: Tab; screen: number; node: string | null; dlg: string | null; quest: string | null; pin: string | null; search: string; }
+const state: State = { data: loadDraft(), tab: 'nodes', screen: 0, node: null, dlg: null, quest: null, pin: null, search: '' };
 
 function loadDraft(): WorldData {
   try { const raw = localStorage.getItem(DRAFT_KEY); if (raw) { const d = JSON.parse(raw) as WorldData; if (d.version === SHIPPED.version && Array.isArray(d.dialogue) && Array.isArray(d.screens)) return d; } } catch { /* fresh */ }
@@ -99,9 +99,9 @@ function render() {
 // ---------------------------------------------------------------- nodes
 
 const rulesOf = (screen: number): Record<string, NodeRule> => (state.data.screens[screen] ??= { nodes: {} }).nodes;
-function setRule(screen: number, id: string, r: NodeRule) {
+function setRule(rules: Record<string, NodeRule>, id: string, r: NodeRule) {
   const clean = Object.fromEntries(Object.entries(r).filter(([, v]) => v !== undefined)) as NodeRule;
-  if (Object.keys(clean).length) rulesOf(screen)[id] = clean; else delete rulesOf(screen)[id];
+  if (Object.keys(clean).length) rules[id] = clean; else delete rules[id];
   render();
 }
 
@@ -126,7 +126,7 @@ function nodesTab(): HTMLElement {
     h('div', { class: 'muted', style: 'margin:6px 0' }, 'Tap a node on the map (it scrolls sideways) or in the list. Gold has rules; dashed are story nodes and the boss.'),
     h('div', { class: 'mapwrap' }, map),
     h('div', { class: 'nodechips' }, ...slots.map((s) => h('button', { class: rules[s.id] ? 'ruled' : '', 'aria-pressed': state.node === s.id, onclick: () => { state.node = state.node === s.id ? null : s.id; render(); } }, `${s.id.replace('node_', '')} ${SHORT[s.glyph]}`))),
-    sel ? nodePanel(sel) : h('div', { class: 'muted', style: 'margin-top:8px' }, 'No node selected.'),
+    sel ? nodePanel(sel, state.screen, rules, () => { state.node = null; }) : h('div', { class: 'muted', style: 'margin-top:8px' }, 'No node selected.'),
     h('h2', {}, `Rules on screen ${state.screen + 1} (${ruledList.length})`),
     ruledList.length ? h('div', { class: 'list' }, ...ruledList.map((s) => h('div', { class: 'row', onclick: () => { state.node = s.id; render(); } },
       h('div', { class: 'name' }, `${s.id} · ${GLYPH[s.glyph]}`), h('div', {}), h('div', { class: 'sum' }, ruleSummary(rules[s.id]!))))) : h('div', { class: 'muted' }, 'None yet: every node rolls as usual.'),
@@ -150,10 +150,11 @@ function ruleSummary(r: NodeRule): string {
   return bits.join(' · ');
 }
 
-function nodePanel(s: Slot): HTMLElement {
-  const r: NodeRule = { ...(rulesOf(state.screen)[s.id] ?? {}) };
+/** One node's rules, in a screen's own set or a special quest's pins (DECISIONS #58). */
+function nodePanel(s: Slot, screen: number, rules: Record<string, NodeRule>, close: () => void): HTMLElement {
+  const r: NodeRule = { ...(rules[s.id] ?? {}) };
   const content = CONTENT_GLYPHS.includes(s.glyph), boss = s.glyph === 'B';
-  const put = (patch: Partial<NodeRule>) => setRule(state.screen, s.id, { ...r, ...patch });
+  const put = (patch: Partial<NodeRule>) => setRule(rules, s.id, { ...r, ...patch });
   const el = h('div', { class: 'form' },
     h('div', { class: 'name' }, `${s.id} · ${GLYPH[s.glyph]}`),
     h('div', { class: 'muted' }, `Unset: ${GLYPH_DEFAULT[s.glyph]}.`),
@@ -175,12 +176,12 @@ function nodePanel(s: Slot): HTMLElement {
   }
   if (content || boss) {
     const fmode: 'rolled' | 'one' | 'pair' = r.pair ? 'pair' : r.enemy ? 'one' : 'rolled';
-    const pool = boss ? bosses() : fightersFor(state.screen);
+    const pool = boss ? bosses() : fightersFor(screen);
     el.append(h('h2', {}, boss ? 'Who holds the gate' : 'Who you fight (if it is a fight)'),
       seg(fmode, boss ? [['rolled', 'Usual'], ['one', 'Pick']] : [['rolled', 'Rolled'], ['one', 'One enemy'], ['pair', 'A duo']], (m) => {
         if (m === 'rolled') put({ enemy: undefined, pair: undefined });
         if (m === 'one') put({ enemy: r.enemy ?? pool[0]!.id, pair: undefined });
-        if (m === 'pair') put({ enemy: undefined, pair: r.pair ?? (PAIRS[tierOf(state.screen) as 1 | 2][0]!) });
+        if (m === 'pair') put({ enemy: undefined, pair: r.pair ?? (PAIRS[tierOf(screen) as 1 | 2][0]!) });
       }));
     if (r.enemy) el.append(select(r.enemy, pool.map((e) => [e.id, e.name]), (v) => put({ enemy: v })));
     if (r.pair) {
@@ -188,15 +189,15 @@ function nodePanel(s: Slot): HTMLElement {
       el.append(h('div', { class: 'grid' },
         field('front', select(pair[0], pool.map((e) => [e.id, e.name]), (v) => put({ pair: [v, pair[1]] }))),
         field('behind', select(pair[1], pool.map((e) => [e.id, e.name]), (v) => put({ pair: [pair[0], v] })))),
-        h('div', { class: 'chips' }, ...PAIRS[tierOf(state.screen) as 1 | 2].map(([a, b]) => h('button', { onclick: () => put({ pair: [a, b] }) }, `${enemyName(a)} + ${enemyName(b)}`))));
+        h('div', { class: 'chips' }, ...PAIRS[tierOf(screen) as 1 | 2].map(([a, b]) => h('button', { onclick: () => put({ pair: [a, b] }) }, `${enemyName(a)} + ${enemyName(b)}`))));
     }
   }
   el.append(h('h2', {}, 'Words'), dialoguePicker(r.dialogue, (v) => put({ dialogue: v || undefined }), 'Usual words'));
   const d = r.dialogue ? dlgById(r.dialogue) : undefined;
   if (d) el.append(h('div', { class: 'say' }, `${d.speaker}: ${firstLine(d)}`), h('button', { onclick: () => openDialogue(d.id) }, 'Edit these words'));
   el.append(h('div', { class: 'actions' },
-    h('button', { class: 'primary', onclick: () => { state.node = null; render(); } }, 'Done'),
-    Object.keys(r).length ? h('button', { class: 'danger', onclick: () => setRule(state.screen, s.id, {}) }, 'Clear rules') : null));
+    h('button', { class: 'primary', onclick: () => { close(); render(); } }, 'Done'),
+    Object.keys(r).length ? h('button', { class: 'danger', onclick: () => setRule(rules, s.id, {}) }, 'Clear rules') : null));
   return el;
 }
 
@@ -369,7 +370,8 @@ const people = (screen: number) => listSlots(SCREEN_ASCII[screen]!).filter((x) =
 const personLabel = (screen: number, id: string) => { const x = people(screen).find((p) => p.id === id); return x ? `${GLYPH[x.glyph]} (${id})` : id; };
 
 function questsTab(): HTMLElement {
-  const el = h('div', {}, h('div', { class: 'muted', style: 'margin:6px 0' }, 'Each run, a screen offers one quest whose "only when" holds (special ones only on special runs). A quest can lead on to the next with "then".'),
+  const el = h('div', {}, h('div', { class: 'muted', style: 'margin:6px 0' }, 'Each run, a screen offers one quest whose "only when" holds. On a special run it offers its special quest when one qualifies. A quest can lead on to the next with "then".'),
+    h('div', { class: 'kv', style: 'grid-template-columns:1fr auto auto' }, h('span', {}, 'Special runs'), num(Math.round((state.data.specialChance ?? 0) * 100), (v) => { state.data.specialChance = Math.max(0, Math.min(100, v ?? 0)) / 100; render(); }, { min: 0, max: 100, style: 'width:72px' }), h('span', { class: 'muted' }, '% of runs')),
     h('div', { class: 'actions' }, h('button', { class: 'primary', onclick: newQuest }, '+ New quest')));
   for (const screen of [0, 1]) {
     el.append(h('h2', {}, `Screen ${screen + 1}`));
@@ -379,6 +381,19 @@ function questsTab(): HTMLElement {
       h('div', { class: 'sum' }, `${q.voice.name} at ${personLabel(q.screen, q.giver)}${q.when?.length ? ' · only when ' + q.when.map(condLabel).join(', ') : ''}${q.then ? ` · then ${q.then}` : ''}`))))),
       qs.length ? '' : h('div', { class: 'muted' }, 'No quest: this screen offers none.'));
   }
+  return el;
+}
+
+/** The nodes a special quest pins for its run (DECISIONS #58): the same panel as the Nodes tab, on the quest's own rules. */
+function pinsEditor(q: QuestDef): HTMLElement {
+  const slots = listSlots(SCREEN_ASCII[q.screen]!);
+  const pins = (q.nodes ??= {});
+  const sel = slots.find((x) => x.id === state.pin);
+  const el = h('div', { class: 'sub' }, h('div', { class: 'muted' }, 'While this is the screen\'s quest, these nodes are set like this (over the Nodes tab). Tap a node:'),
+    h('div', { class: 'nodechips' }, ...slots.map((x) => h('button', { class: pins[x.id] ? 'ruled' : '', 'aria-pressed': state.pin === x.id, onclick: () => { state.pin = state.pin === x.id ? null : x.id; render(); } }, `${x.id.replace('node_', '')} ${SHORT[x.glyph]}`))),
+    sel ? nodePanel(sel, q.screen, pins, () => { state.pin = null; }) : '',
+    ...Object.entries(pins).map(([id, r]) => h('div', { class: 'say' }, `${id}: ${ruleSummary(r)}`)));
+  if (!Object.keys(pins).length && !sel) delete q.nodes;
   return el;
 }
 
@@ -438,7 +453,8 @@ function questForm(q: QuestDef): HTMLElement {
     h('h2', {}, 'Offered only when (none = always)'),
     condList(q.when ?? [], (w) => { if (w.length) q.when = w; else delete q.when; render(); }),
     h('h2', {}, 'Runs'),
-    h('div', { class: 'chips' }, h('label', {}, h('input', { type: 'checkbox', checked: !!q.special, onchange: (ev: Event) => { if ((ev.target as HTMLInputElement).checked) q.special = true; else delete q.special; render(); } }), 'special runs only')),
+    h('div', { class: 'chips' }, h('label', {}, h('input', { type: 'checkbox', checked: !!q.special, onchange: (ev: Event) => { if ((ev.target as HTMLInputElement).checked) q.special = true; else { delete q.special; delete q.nodes; } render(); } }), 'special runs only')),
+    q.special ? pinsEditor(q) : '',
     field('then offer', select(q.then ?? '', [['', 'nothing'], ...state.data.quests.filter((o) => o.screen === q.screen && o.id !== q.id).map((o) => [o.id, o.name] as [string, string])], (x) => { if (x) q.then = x; else delete q.then; render(); })),
     h('div', { class: 'actions' },
       h('button', { class: 'primary', onclick: () => { state.quest = null; render(); } }, 'Done'),

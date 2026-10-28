@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "specialChance": 0.2,
   "enemies": {
     "boar": {
       "defaults": [

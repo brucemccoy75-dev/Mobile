@@ -43,4 +43,13 @@ describe('world.json (DECISIONS #55)', () => {
     const d = clone(); d.quests[1]!.then = 'vell_errand'; d.quests[2]!.then = 'marrow_errand';
     expect(validateWorld(d)).toEqual(['quest marrow_errand: its chain loops', 'quest vell_errand: its chain loops']);
   });
+  it('special runs: a chance 0-1, and only a special quest pins nodes, by the same node rules', () => {
+    expect(WORLD.specialChance).toBe(0.2);
+    const a = clone(); a.specialChance = 2;
+    expect(validateWorld(a)).toEqual(['specialChance must be 0-1']);
+    const b = clone(); b.quests[0]!.nodes = { [open0[0]!]: { kind: 'shrine' } };
+    expect(validateWorld(b)).toEqual(['quest wren_errand: only a special quest pins nodes']);
+    const c = clone(); c.quests[0]!.special = true; c.quests[0]!.nodes = { [start0]: { kind: 'shop' } };
+    expect(validateWorld(c)).toEqual([`quest wren_errand ${start0}: a story node or the boss keeps its kind`]);
+  });
 });

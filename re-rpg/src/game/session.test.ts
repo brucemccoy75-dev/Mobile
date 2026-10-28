@@ -4,6 +4,7 @@ import { DECK_CAP } from '@core/combat';
 import { createMeta, gainExp, unlockNode } from '@core/meta';
 import { LEVEL_GOLD, adoptFamily, applyHeirlooms, applyLevelUp, baseStatsFor, createSession, currentQuest, deserialize, poolCtx, serialize, spendConsumedTomes, setName, takeChoice, turnInQuest } from './session';
 import { basicsFor } from '@data/skills';
+import { WORLD } from '@data/world';
 import { getSet } from '@data/index';
 import { buildPool } from '@core/loot';
 
@@ -210,5 +211,28 @@ describe('session', () => {
     const next = currentQuest(s)!;
     expect(next).not.toBe(q);
     expect([next.defId, next.status]).toEqual(['wren_errand', 'offered']);
+  });
+  it('one run in five is special (DECISIONS #58), fixed by the seed and kept in the save', () => {
+    const runs = Array.from({ length: 400 }, (_, i) => createSession('warrior', createMeta(), `SP-${i}`));
+    const share = runs.filter((r) => r.special).length / runs.length;
+    expect(share).toBeGreaterThan(0.15);
+    expect(share).toBeLessThan(0.25);
+    const sp = runs.find((r) => r.special)!;
+    expect(deserialize(JSON.parse(JSON.stringify(serialize(sp))), createMeta()).special).toBe(true);
+    // No special quest exists yet, so a special run still offers the screen's usual quest.
+    expect(currentQuest(sp)!.defId).toBe('wren_errand');
+  });
+
+  it('a special run takes the screen\'s special quest, which pins its nodes for that run', () => {
+    const def = { ...JSON.parse(JSON.stringify(WORLD.quests[0]!)), id: 'boar_king', name: 'The boar king', special: true, type: 'hunt', hunt: { enemy: 'boar', need: 1 }, nodes: { node_9: { kind: 'elite', pair: ['boar', 'boar'] } } };
+    WORLD.quests.push(def);
+    try {
+      const runs = Array.from({ length: 60 }, (_, i) => createSession('warrior', createMeta(), `SQ-${i}`));
+      const sp = runs.find((r) => r.special)!, plain = runs.find((r) => !r.special)!;
+      expect(currentQuest(sp)).toMatchObject({ defId: 'boar_king', special: true });
+      const n = sp.map.nodes!.find((x) => x.id === 'node_9')!;
+      expect([n.kind, n.enemyId, n.extra]).toEqual(['elite', 'boar', ['boar']]);
+      expect(currentQuest(plain)!.defId).toBe('wren_errand');
+    } finally { WORLD.quests.pop(); }
   });
 });

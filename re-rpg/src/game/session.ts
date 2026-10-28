@@ -55,6 +55,8 @@ export interface RunSession {
   lastClearedNode: string | null;
   /** Run-scoped story flags set by dialogue options (DECISIONS #35). */
   flags: Set<string>;
+  /** A special run (DECISIONS #58): rolled once at the start; each screen offers its special quest when one qualifies. */
+  special: boolean;
   bossDefeated: boolean;
   encountersWon: number;
   newDiscoveries: string[];
@@ -147,7 +149,7 @@ export function createSession(classId: ClassId, meta: MetaState, seed = newSeed(
     seed, rng, classId, setId, families: unlockedSets(meta, classId), base: { ...base }, stats: { ...base }, hp: base.maxHp, gold: 0,
     deck: [], equipment: emptyEquipment(),
     screenIndex: 0, map: undefined as unknown as ScreenMap, playerPos: { x: 0, y: 0 }, threat: 0,
-    openedPois: new Set(), usedShrines: new Set(), defeatedGuards: new Set(), clearedNodes: new Set(), lastClearedNode: null, flags: new Set(), bossDefeated: false, encountersWon: 0,
+    openedPois: new Set(), usedShrines: new Set(), defeatedGuards: new Set(), clearedNodes: new Set(), lastClearedNode: null, flags: new Set(), special: rng.stream('special').chance(WORLD.specialChance ?? 0), bossDefeated: false, encountersWon: 0,
     newDiscoveries: [], heirloomName: null, shop: { lines: [], healPrice: 0, healPct: 0.5, healUsed: true }, quests: [], skillUpgrades: {}, customItems: [],
     pendingEncounter: null, lastResult: null, pendingOffer: null, heirloomChoices: [],
   };
@@ -176,7 +178,7 @@ export function applyHeirlooms(s: RunSession, picks: Heirloom[], meta?: MetaStat
   s.heirloomChoices = [];
   // The shop and quest were rolled before the picks; re-roll so they draw from the run's families.
   s.shop = rollShopStock(s.screenIndex, poolCtx(s, meta), s.rng.stream('loot'));
-  rollScreenQuest(s, meta ?? createMeta(), s.screenIndex);
+  setScreenQuest(s, meta ?? createMeta(), s.screenIndex, WORLD.quests.find((d) => d.id === currentQuest(s)?.defId) ?? null);
 }
 
 /**
@@ -196,10 +198,14 @@ function questCondCtx(s: RunSession, meta: MetaState): DialogueCtx {
   return { flags: s.flags, relations: meta.relations ?? {}, deathsOnScreen: deathsOn(meta, s.screenIndex), deathsTotal: meta.deaths, lastKiller: meta.lastKiller, level: classProgress(meta, s.classId).level, classId: s.classId, gold: s.gold, fights: s.encountersWon, rng: s.rng.stream('quest') };
 }
 
-/** The quest this screen offers this run, from world.json (DECISIONS #57). Earlier screens' quests stay for the run summary. */
-function rollScreenQuest(s: RunSession, meta: MetaState, index: number): void {
+/** The quest a screen offers this run (DECISIONS #57): its special one on a special run when one qualifies (#58), else a usual one. */
+function pickScreenQuest(s: RunSession, meta: MetaState, index: number): QuestDef | null {
+  const ctx = questCondCtx(s, meta);
+  return (s.special ? pickQuestDef(WORLD.quests, index, ctx, true) : null) ?? pickQuestDef(WORLD.quests, index, ctx, false);
+}
+/** Put this screen's quest in place; earlier screens' quests stay for the run summary. */
+function setScreenQuest(s: RunSession, meta: MetaState, index: number, def: QuestDef | null): void {
   const kept = s.quests.filter((q) => !q.id.startsWith(`quest_${index}_`));
-  const def = pickQuestDef(WORLD.quests, index, questCondCtx(s, meta), false);
   s.quests = def ? [...kept, buildQuest(s, meta, def)] : kept;
 }
 const buildQuest = (s: RunSession, meta: MetaState, def: QuestDef): Quest => questFromDef(def, s.map, { ...poolCtx(s, meta), screenIndex: s.screenIndex }, s.rng.stream('quest'));
@@ -210,7 +216,9 @@ export const poolCtx = (s: RunSession, meta?: MetaState) => ({ classId: s.classI
 /** Generate screen `index`, stock its shop, and put the player at its entry. */
 export function startScreen(s: RunSession, index: number, meta?: MetaState): void {
   s.screenIndex = index;
-  s.map = parseScreen(index === 0 ? SCREEN1 : SCREEN2, s.rng.stream('map'), { seed: s.seed, screenIndex: index, rules: nodeRules(index) });
+  // The quest comes first: a special one pins nodes for this run (DECISIONS #58).
+  const quest = pickScreenQuest(s, meta ?? createMeta(), index);
+  s.map = parseScreen(index === 0 ? SCREEN1 : SCREEN2, s.rng.stream('map'), { seed: s.seed, screenIndex: index, rules: { ...nodeRules(index), ...(quest?.nodes ?? {}) } });
   s.playerPos = { ...s.map.entry };
   s.threat = 0;
   s.openedPois = new Set();
@@ -221,7 +229,7 @@ export function startScreen(s: RunSession, index: number, meta?: MetaState): voi
   s.bossDefeated = false;
   s.shop = rollShopStock(index, poolCtx(s, meta), s.rng.stream('loot'));
   // One quest per screen (DECISIONS #19), chosen from world.json (#57).
-  rollScreenQuest(s, meta ?? createMeta(), index);
+  setScreenQuest(s, meta ?? createMeta(), index, quest);
 }
 
 /** Where this screen's quest is offered and handed in: its giver node, else the start (Wren's camp). */
@@ -390,7 +398,7 @@ export function serialize(s: RunSession): RunState {
     hp: s.hp, gold: s.gold, deck: [...s.deck], equipment: equipmentToIds(s.equipment),
     screenIndex: s.screenIndex, map: s.map, playerPos: { ...s.playerPos }, threat: s.threat,
     openedPois: [...s.openedPois], usedShrines: [...s.usedShrines], defeatedGuards: [...s.defeatedGuards],
-    clearedNodes: [...s.clearedNodes], lastClearedNode: s.lastClearedNode, flags: [...s.flags],
+    clearedNodes: [...s.clearedNodes], lastClearedNode: s.lastClearedNode, flags: [...s.flags], special: s.special,
     bossDefeated: s.bossDefeated, encountersWon: s.encountersWon, newDiscoveries: [...s.newDiscoveries], heirloomName: s.heirloomName,
     shop: JSON.parse(JSON.stringify(s.shop)) as ShopStock,
     quests: JSON.parse(JSON.stringify(s.quests)) as Quest[], skillUpgrades: { ...s.skillUpgrades }, customItems: JSON.parse(JSON.stringify(s.customItems)) as Item[],
@@ -407,7 +415,7 @@ export function deserialize(st: RunState, meta: MetaState): RunSession {
     hp: st.hp, gold: st.gold, deck: [...st.deck], equipment,
     screenIndex: st.screenIndex, map: st.map, playerPos: { ...st.playerPos }, threat: st.threat,
     openedPois: new Set(st.openedPois), usedShrines: new Set(st.usedShrines), defeatedGuards: new Set(st.defeatedGuards),
-    clearedNodes: new Set(st.clearedNodes ?? []), lastClearedNode: st.lastClearedNode ?? null, flags: new Set(st.flags ?? []),
+    clearedNodes: new Set(st.clearedNodes ?? []), lastClearedNode: st.lastClearedNode ?? null, flags: new Set(st.flags ?? []), special: st.special ?? false,
     bossDefeated: st.bossDefeated, encountersWon: st.encountersWon, newDiscoveries: [...st.newDiscoveries], heirloomName: st.heirloomName,
     shop: st.shop, quests: st.quests ?? [], skillUpgrades: st.skillUpgrades ?? {}, customItems: st.customItems ?? [],
     pendingEncounter: null, lastResult: null, pendingOffer: null, heirloomChoices: [],

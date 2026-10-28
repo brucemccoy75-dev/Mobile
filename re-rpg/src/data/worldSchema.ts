@@ -22,6 +22,8 @@ export const WORLD_VERSION = 2;
 
 export interface WorldData {
   version: number;
+  /** The chance a run is special (DECISIONS #58): its screens offer their special quests. */
+  specialChance: number;
   enemies: Record<string, { defaults: string[] }>;
   screens: { nodes: Record<string, NodeRule> }[];
   quests: QuestDef[];
@@ -83,11 +85,22 @@ export function validateWorld(w: WorldData): string[] {
   }
   for (const id of Object.keys(w.enemies ?? {})) if (!ENEMIES.some((e) => e.id === id)) bad(`enemy ${id}: no such enemy`);
   if ((w.screens ?? []).length !== SCREEN_ASCII.length) bad(`screens: expected ${SCREEN_ASCII.length}`);
-  (w.screens ?? []).forEach((sc, i) => {
+  if (typeof w.specialChance !== 'number' || w.specialChance < 0 || w.specialChance > 1) bad('specialChance must be 0-1');
+  (w.screens ?? []).forEach((sc, i) => out.push(...validateRules(i, sc.nodes ?? {}, `screen ${i + 1}`, ids)));
+  out.push(...validateQuests(w));
+  for (const q of w.quests ?? []) if (q.nodes) out.push(...validateRules(q.screen, q.nodes, `quest ${q.id}`, ids));
+  return out;
+}
+
+/** Node rules for one screen, whether the screen's own or a quest's pins (DECISIONS #55, #58). */
+function validateRules(i: number, rules: Record<string, NodeRule>, where: string, ids: Set<string>): string[] {
+  const out: string[] = [];
+  const bad = (s: string) => out.push(s);
+  {
     const slots = listSlots(SCREEN_ASCII[i] ?? '');
     const tier = i === 0 ? 1 : 2;
-    for (const [nid, r] of Object.entries(sc.nodes ?? {})) {
-      const at = `screen ${i + 1} ${nid}`;
+    for (const [nid, r] of Object.entries(rules)) {
+      const at = `${where} ${nid}`;
       const slot = slots.find((s) => s.id === nid);
       if (!slot) { bad(`${at}: no such node`); continue; }
       const content = CONTENT_GLYPHS.includes(slot.glyph), boss = slot.glyph === 'B';
@@ -113,8 +126,7 @@ export function validateWorld(w: WorldData): string[] {
       }
       if (r.dialogue && !ids.has(r.dialogue)) bad(`${at}: no dialogue ${r.dialogue}`);
     }
-  });
-  out.push(...validateQuests(w));
+  }
   return out;
 }
 
@@ -136,6 +148,7 @@ function validateQuests(w: WorldData): string[] {
     const person = (id: string | undefined) => slots.find((x) => x.id === id && PEOPLE_GLYPHS.includes(x.glyph));
     if (!person(q.giver)) bad(`${at}: the giver must stand at the start, Tam's node or the lost one's node`);
     if (!['fetch', 'hunt', 'escort', 'rolled'].includes(q.type)) bad(`${at}: unknown type ${q.type}`);
+    if (q.nodes && !q.special) bad(`${at}: only a special quest pins nodes`);
     const uses = (k: 'fetch' | 'hunt' | 'escort') => q.type === k || q.type === 'rolled';
     if (q.fetch?.id && !known.has(q.fetch.id)) bad(`${at}: unknown item or card ${q.fetch.id}`);
     const tier = q.screen === 0 ? 1 : 2;
@@ -170,6 +183,7 @@ export function diffWorld(a: WorldData, b: WorldData): string[] {
   for (const d of b.dialogue) { const o = old.get(d.id); if (!o) out.push(`new dialogue ${d.id}`); else if (!same(o, d)) out.push(`changed dialogue ${d.id}`); }
   for (const id of old.keys()) if (!b.dialogue.some((d) => d.id === id)) out.push(`removed dialogue ${id}`);
   for (const id of new Set([...Object.keys(a.enemies), ...Object.keys(b.enemies)])) if (!same(a.enemies[id], b.enemies[id])) out.push(`enemy ${id} defaults: [${(a.enemies[id]?.defaults ?? []).join(', ')}] -> [${(b.enemies[id]?.defaults ?? []).join(', ')}]`);
+  if (a.specialChance !== b.specialChance) out.push(`specialChance ${a.specialChance} -> ${b.specialChance}`);
   const oldQ = new Map((a.quests ?? []).map((q) => [q.id, q]));
   for (const q of b.quests ?? []) { const o = oldQ.get(q.id); if (!o) out.push(`new quest ${q.id}`); else if (!same(o, q)) out.push(`changed quest ${q.id}`); }
   for (const id of oldQ.keys()) if (!(b.quests ?? []).some((q) => q.id === id)) out.push(`removed quest ${id}`);

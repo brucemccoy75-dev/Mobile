@@ -2,7 +2,7 @@ import { ITEMS, enemiesOfTier, getEnemy, getItem, getSkill } from '@data/index';
 import { ESCORT_NAMES, GIVERS, type GiverVoice } from '@data/quests';
 import type { ClassId, SetId, SkillId } from '@data/types';
 import type { Rng } from '@core/rng';
-import type { ScreenMap, Tile } from '@core/map';
+import type { NodeRule, ScreenMap, Tile } from '@core/map';
 import { buildPool, type RewardSource } from '@core/loot';
 import type { MetaState } from '@core/meta';
 import { allHold, type Cond, type DialogueCtx } from '@core/dialogue';
@@ -21,6 +21,8 @@ export interface Quest {
   giverNode?: string;
   /** A quest id its giver offers once this one is handed in (a chain). */
   then?: string;
+  /** Built from a special-run quest (DECISIONS #58). */
+  special?: boolean;
   giver: { name: string; title: string; pos: Tile; intro: string; accept: string; progress: string; complete: string; decline: string };
   /** fetch: what to bring. Items must be equipped, tomes must be in the deck; the copy handed over is lost and a +1 version returns. */
   fetch?: { type: 'item' | 'tome'; id: string; name: string };
@@ -53,6 +55,8 @@ export interface QuestDef {
   when?: Cond[];
   special?: boolean;
   then?: string;
+  /** Node rules this quest pins while it is the screen's quest (DECISIONS #58), over the screen's own. */
+  nodes?: Record<string, NodeRule>;
 }
 
 /** The quest a screen offers this run (#57): one of the defs for that screen whose conditions hold; special ones only on a special run. */
@@ -80,7 +84,7 @@ export function questFromDef(def: QuestDef, map: ScreenMap, ctx: QuestContext, r
   if (r.flag) reward.flag = r.flag;
   if (r.relation) reward.relation = { ...r.relation };
   if (r.tome) reward.tome = r.tome;
-  const base = { id: `quest_${ctx.screenIndex}_${def.id}`, kind, status: 'offered' as QuestStatus, defId: def.id, giverNode: def.giver, ...(def.then ? { then: def.then } : {}), reward };
+  const base = { id: `quest_${ctx.screenIndex}_${def.id}`, kind, status: 'offered' as QuestStatus, defId: def.id, giverNode: def.giver, ...(def.then ? { then: def.then } : {}), ...(def.special ? { special: true } : {}), reward };
 
   if (kind === 'fetch') {
     const pool = buildPool({ classId: ctx.classId, families: ctx.families, meta: ctx.meta, deck: ctx.deck, equipment: ctx.equipment });

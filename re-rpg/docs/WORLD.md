@@ -11,7 +11,8 @@ phone, exports it, and a session imports it by the fixed procedure below.
 | dialogue | id, trigger, speaker, portrait, when, lines, options | one thing someone can say; `trigger` is what asks for it (`pre_fight:boar`, `gate:gatekeeper`, `node:quest`, `giver:wren`, or the `next` of another entry); `when` are conditions; each option has `when` (hides it) and effects |
 | enemies | per enemy id: defaults | the entries it picks from at random when none of its conditional entries holds and its node has no override |
 | screens | per screen, nodes by id: kind, odds, enemy, pair, dialogue | the designer's rules for one node; anything unset is rolled as before |
-| quests | id, name, screen, giver, type, voice, fetch, hunt, escort, reward, when, special, then | a quest a screen can offer (DECISIONS #57): see below |
+| specialChance | 0–1 | the share of runs that are special (DECISIONS #58; 0.2) |
+| quests | id, name, screen, giver, type, voice, fetch, hunt, escort, reward, when, special, then, nodes | a quest a screen can offer (DECISIONS #57): see below |
 
 **Quests.** Each run, each screen offers one quest: one of its quests whose `when` holds (special
 ones only on a special run), picked at random if several qualify. `giver` is the node it is
@@ -25,6 +26,13 @@ hunt 25 and a good pick, escort 20 and a chest; doubled on screen 2); `flag`, `r
 `tome` add to them. `then` names a quest on the same screen the giver offers once this one is
 handed in. Tam's re-arm errand is written as dialogue (flags, conditions and the re-arm effect),
 so it is edited on the Words tab.
+
+**Special runs** (DECISIONS #58). Each run rolls once, at the start, whether it is special
+(`specialChance`, kept in the save). On a special run each screen offers one of its `special`
+quests whose conditions hold; with none, the usual quest. A special quest may pin `nodes` (the
+same rules as the Nodes tab, by node id): while it is the screen's quest, those rules replace the
+screen's own for that node. A special run says "Something is different on this road today." as
+the screen opens.
 
 **Which words play at a fight**, first match wins: a story turn the game forces (the brother a
 quest sent back, Wren at the gate, the ghost when it is on); the node's dialogue override; the
@@ -54,7 +62,8 @@ never changes the game.
   picks). New, Duplicate, and Delete for an entry nothing uses; shipped entries stay.
 - **Quests**: per screen, tap a quest to edit who gives it and where, its type and targets, the
   giver's lines (only the ones its type needs), rewards, conditions, special-runs-only and the
-  next quest in its chain. New, Duplicate, and Delete for a quest that did not ship.
+  next quest in its chain; a special quest also pins nodes, with the same panel as the Nodes tab.
+  The tab also sets the share of special runs. New, Duplicate, and Delete for a quest that did not ship.
 - **Enemies**: each enemy's entries for its own trigger, with a tick for the everyday ones and
   "+ New everyday line" (it opens the new entry in the Dialogue tab, already ticked).
 - The green line counts changes from shipped; a red box lists rule breaks. **Export world.json**

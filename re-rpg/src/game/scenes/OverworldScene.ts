@@ -77,6 +77,8 @@ export class OverworldScene extends Phaser.Scene {
     void this.applyLastResult().then(async () => {
       await persistRun(this);
       // The first node is the story node: arriving on the screen is arriving there.
+      // A special run says so as the screen opens (DECISIONS #58).
+      if (fresh && currentQuest(this.session)?.special) void this.toast('Something is different on this road today.', 2400);
       if (fresh) { await wait(this, 350); await this.enterNode(currentNode(this.session)); }
     });
   }

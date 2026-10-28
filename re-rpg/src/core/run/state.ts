@@ -16,6 +16,8 @@ export const RUN_VERSION = 4;
 export interface RunState extends Versioned {
   seed: string;
   rngStates: Record<string, number>;
+  /** A special run (DECISIONS #58); absent in older saves. */
+  special?: boolean;
   classId: ClassId;
   setId: SetId;
   /** The run's card families (heirloom picks, DECISIONS #32). Older saves fall back to [setId]. */
