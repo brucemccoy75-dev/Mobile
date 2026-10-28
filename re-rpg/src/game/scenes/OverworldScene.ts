@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { getEnemy, getSkill } from '@data/index';
-import { key, roadBetween, type MapNode, type Tile } from '@core/map';
+import { SHRINE_HEAL, key, roadBetween, type MapNode, type Tile } from '@core/map';
 import { SCREEN_COUNT, currentNode, currentQuest, questGiverNode, getMeta, getSession, getStore, isCleared, isEscorting, nodeById, nodeEncounter, persistMeta, persistRun, reachableNodes, routeTo, setSession, startScreen, treasureGold, type PendingEncounter, type RunSession } from '@game/session';
 import { questProgress, questReady } from '@core/quest';
 import { gainExp, ghostOn, recordWin } from '@core/meta';
@@ -21,8 +21,6 @@ export const TILE = 72;
 export const devMode = (): boolean => { try { return localStorage.getItem('rerpg:dev') === '1' || location.search.includes('dev'); } catch { return false; } };
 const K = TILE / 48;
 const STEP_MS = 105;
-/** A shrine heals this share of max HP (DECISIONS #39); it used to heal everything. */
-const SHRINE_HEAL = 0.5;
 
 /**
  * The node overworld (DECISIONS #37). The authored terrain is the backdrop; play happens on the

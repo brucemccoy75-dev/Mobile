@@ -1,0 +1,5567 @@
+{
+ "exportedAt": "2026-10-28T11:16:56.646Z",
+ "appVersion": "0.0.1",
+ "summary": [
+  "2026-10-27T02:06 warrior/warrior_dps abandoned: 1 fights won, 3 damage taken, screens 0",
+  "2026-10-27T02:22 warrior/warrior_dps died (Boar): 2 fights won, 28 damage taken, screens 0",
+  "2026-10-27T02:26 warrior/warrior_tank died (Rat Pack): 4 fights won, 29 damage taken, screens 0",
+  "2026-10-27T02:31 warrior/warrior_tank died (Adept Necromancer): 0 fights won, 25 damage taken, screens 0",
+  "2026-10-27T02:33 warrior/warrior_tank died (Your ghost): 0 fights won, 25 damage taken, screens 0",
+  "2026-10-27T02:37 warrior/warrior_dps died (Adept Necromancer): 2 fights won, 51 damage taken, screens 0",
+  "2026-10-27T02:51 warrior/warrior_tank died (Wren, the rat-keeper): 10 fights won, 147 damage taken, screens 0",
+  "2026-10-27T03:37 warrior/warrior_dps died (Boar): 6 fights won, 62 damage taken, screens 0",
+  "2026-10-27T03:54 warrior/warrior_dps died (Rat Pack): 1 fights won, 28 damage taken, screens 0",
+  "2026-10-27T03:57 warrior/warrior_dps died (Hex Imp): 7 fights won, 40 damage taken, screens 0",
+  "2026-10-27T04:03 warrior/warrior_dps died (Your ghost): 0 fights won, 28 damage taken, screens 0",
+  "2026-10-28T01:18 warrior/warrior_dps abandoned: 0 fights won, 0 damage taken, screens 0",
+  "2026-10-28T03:49 warrior/warrior_dps died (Boar): 2 fights won, 40 damage taken, screens 0",
+  "2026-10-28T03:53 warrior/warrior_tank died (Rat Pack): 10 fights won, 60 damage taken, screens 0",
+  "2026-10-28T04:06 warrior/warrior_dps died (Rat Pack): 10 fights won, 70 damage taken, screens 0",
+  "2026-10-28T04:16 warrior/warrior_dps died (Boar): 2 fights won, 46 damage taken, screens 0",
+  "2026-10-28T04:23 warrior/warrior_shadow_knight died (Boar): 4 fights won, 50 damage taken, screens 0",
+  "2026-10-28T04:31 warrior/warrior_dps died (Boar): 0 fights won, 29 damage taken, screens 0",
+  "2026-10-28T04:33 warrior/warrior_shadow_knight died (Hex Imp): 3 fights won, 35 damage taken, screens 0",
+  "2026-10-28T04:37 warrior/warrior_shadow_knight ongoing: 3 fights won, 61 damage taken, screens 0"
+ ],
+ "version": 1,
+ "runs": [
+  {
+   "appVersion": "0.0.1",
+   "seed": "FROST-LYNX-3642",
+   "classId": "warrior",
+   "setId": "warrior_dps",
+   "families": [
+    "warrior_dps"
+   ],
+   "level": 4,
+   "legacy": {
+    "atk": 0,
+    "def": 0,
+    "maxHp": 0
+   },
+   "start": {
+    "deck": [
+     "spiritboomerang",
+     "mighty_blow"
+    ],
+    "equipment": {
+     "body": null,
+     "weapon": null,
+     "relic": null
+    },
+    "stats": {
+     "maxHp": 25,
+     "atk": 4,
+     "def": 1
+    }
+   },
+   "startedAt": 1793066782640,
+   "version": 1,
+   "outcome": "abandoned",
+   "screensCleared": 0,
+   "fights": [
+    {
+     "at": 1793066853923,
+     "screen": 1,
+     "enemyId": "hex_imp",
+     "enemies": [
+      "hex_imp"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 25,
+     "hpAfter": 22,
+     "rounds": 6,
+     "dealt": 11,
+     "taken": 3,
+     "blocked": 1,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "attack": 4,
+      "defend": 1,
+      "spiritboomerang": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "spiritboomerang",
+      "mighty_blow"
+     ],
+     "equipment": {
+      "body": null,
+      "weapon": null,
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 25,
+      "atk": 4,
+      "def": 1
+     },
+     "gold": 0
+    }
+   ],
+   "rewards": [
+    {
+     "at": 1793066864221,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "leather_jerkin",
+      "heart_amulet"
+     ],
+     "picked": "heart_amulet",
+     "gold": 4
+    }
+   ],
+   "shop": []
+  },
+  {
+   "appVersion": "0.0.1",
+   "seed": "AMBER-ELK-2171",
+   "classId": "warrior",
+   "setId": "warrior_dps",
+   "families": [],
+   "level": 1,
+   "legacy": {
+    "atk": 0,
+    "def": 0,
+    "maxHp": 0
+   },
+   "start": {
+    "deck": [],
+    "equipment": {
+     "body": null,
+     "weapon": null,
+     "relic": null
+    },
+    "stats": {
+     "maxHp": 25,
+     "atk": 4,
+     "def": 1
+    }
+   },
+   "startedAt": 1793067739010,
+   "version": 1,
+   "outcome": "died",
+   "screensCleared": 0,
+   "fights": [
+    {
+     "at": 1793067846439,
+     "screen": 1,
+     "enemyId": "shell_beetle",
+     "enemies": [
+      "shell_beetle"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 28,
+     "hpAfter": 25,
+     "rounds": 8,
+     "dealt": 10,
+     "taken": 3,
+     "blocked": 4,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "defend": 4,
+      "attack": 3,
+      "bellow": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [],
+     "equipment": {
+      "body": "padded_vest",
+      "weapon": null,
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 28,
+      "atk": 4,
+      "def": 1,
+      "gearAtk": 0
+     },
+     "gold": 20
+    },
+    {
+     "at": 1793067907835,
+     "screen": 1,
+     "enemyId": "adept_necromancer",
+     "enemies": [
+      "adept_necromancer"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 25,
+     "hpAfter": 13,
+     "rounds": 6,
+     "dealt": 13,
+     "taken": 12,
+     "blocked": 1,
+     "counters": 0,
+     "dotTaken": 4,
+     "healed": 0,
+     "cards": {
+      "attack": 2,
+      "bellow": 2,
+      "ward": 2
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [],
+     "equipment": {
+      "body": "padded_vest",
+      "weapon": "rusty_sword",
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 28,
+      "atk": 5,
+      "def": 1,
+      "gearAtk": 1
+     },
+     "gold": 28
+    },
+    {
+     "at": 1793067976301,
+     "screen": 1,
+     "enemyId": "boar",
+     "enemies": [
+      "boar",
+      "hex_imp"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 13,
+     "hpAfter": 0,
+     "rounds": 3,
+     "dealt": 9,
+     "taken": 13,
+     "blocked": 1,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "bellow": 1,
+      "defend": 1,
+      "attack": 1
+     },
+     "holds": 0,
+     "outcome": "lost",
+     "deck": [],
+     "equipment": {
+      "body": "padded_vest",
+      "weapon": "rusty_sword",
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 28,
+      "atk": 5,
+      "def": 1,
+      "gearAtk": 1
+     },
+     "gold": 42
+    }
+   ],
+   "rewards": [
+    {
+     "at": 1793067754527,
+     "screen": 1,
+     "source": "chest",
+     "offered": [
+      "bloodstone",
+      "padded_vest",
+      "rusty_sword"
+     ],
+     "picked": "padded_vest",
+     "gold": 20
+    },
+    {
+     "at": 1793067851865,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "rusty_sword",
+      "leather_jerkin"
+     ],
+     "picked": "rusty_sword",
+     "gold": 8
+    },
+    {
+     "at": 1793067915949,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "tower_shield",
+      "leather_jerkin"
+     ],
+     "sold": "tower_shield",
+     "gold": 14
+    }
+   ],
+   "shop": [],
+   "endedAt": 1793067979759,
+   "diedTo": "Boar"
+  },
+  {
+   "appVersion": "0.0.1",
+   "seed": "FROST-MOTH-5731",
+   "classId": "warrior",
+   "setId": "warrior_tank",
+   "families": [],
+   "level": 1,
+   "legacy": {
+    "atk": 0,
+    "def": 0,
+    "maxHp": 0
+   },
+   "start": {
+    "deck": [],
+    "equipment": {
+     "body": null,
+     "weapon": null,
+     "relic": null
+    },
+    "stats": {
+     "maxHp": 25,
+     "atk": 4,
+     "def": 1
+    }
+   },
+   "startedAt": 1793067984867,
+   "version": 1,
+   "outcome": "died",
+   "screensCleared": 0,
+   "fights": [
+    {
+     "at": 1793068038031,
+     "screen": 1,
+     "enemyId": "hex_imp",
+     "enemies": [
+      "hex_imp"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 25,
+     "hpAfter": 25,
+     "rounds": 7,
+     "dealt": 11,
+     "taken": 0,
+     "blocked": 3,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "ward": 1,
+      "defend": 3,
+      "attack": 3
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [],
+     "equipment": {
+      "body": null,
+      "weapon": null,
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 25,
+      "atk": 4,
+      "def": 1
+     },
+     "gold": 0
+    },
+    {
+     "at": 1793068095977,
+     "screen": 1,
+     "enemyId": "hex_imp",
+     "enemies": [
+      "hex_imp"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 29,
+     "hpAfter": 29,
+     "rounds": 6,
+     "dealt": 11,
+     "taken": 0,
+     "blocked": 2,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "ward": 1,
+      "defend": 2,
+      "attack": 3
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [],
+     "equipment": {
+      "body": null,
+      "weapon": "broad_axe",
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 29,
+      "atk": 5,
+      "def": 0,
+      "gearAtk": 1
+     },
+     "gold": 8
+    },
+    {
+     "at": 1793068145804,
+     "screen": 1,
+     "enemyId": "adept_necromancer",
+     "enemies": [
+      "adept_necromancer"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 29,
+     "hpAfter": 17,
+     "rounds": 5,
+     "dealt": 13,
+     "taken": 12,
+     "blocked": 1,
+     "counters": 0,
+     "dotTaken": 4,
+     "healed": 0,
+     "cards": {
+      "attack": 2,
+      "bellow": 2,
+      "ward": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [],
+     "equipment": {
+      "body": "leather_jerkin",
+      "weapon": "broad_axe",
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 29,
+      "atk": 5,
+      "def": 1,
+      "gearAtk": 1
+     },
+     "gold": 14
+    },
+    {
+     "at": 1793068218737,
+     "screen": 1,
+     "enemyId": "boar",
+     "enemies": [
+      "boar"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 17,
+     "hpAfter": 8,
+     "rounds": 7,
+     "dealt": 12,
+     "taken": 9,
+     "blocked": 3,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "defend": 3,
+      "attack": 2,
+      "ward": 1,
+      "bellow": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [],
+     "equipment": {
+      "body": "leather_jerkin",
+      "weapon": "broad_axe",
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 29,
+      "atk": 5,
+      "def": 1,
+      "gearAtk": 1
+     },
+     "gold": 25
+    },
+    {
+     "at": 1793068286134,
+     "screen": 1,
+     "enemyId": "rat_pack",
+     "enemies": [
+      "rat_pack",
+      "hex_imp"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 8,
+     "hpAfter": 0,
+     "rounds": 4,
+     "dealt": 12,
+     "taken": 8,
+     "blocked": 1,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "attack": 2,
+      "defend": 1,
+      "bellow": 1
+     },
+     "holds": 0,
+     "outcome": "lost",
+     "deck": [],
+     "equipment": {
+      "body": "leather_jerkin",
+      "weapon": "iron_mace",
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 28,
+      "atk": 5,
+      "def": 2,
+      "gearAtk": 1
+     },
+     "gold": 61
+    }
+   ],
+   "rewards": [
+    {
+     "at": 1793068046026,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "heart_amulet",
+      "broad_axe"
+     ],
+     "picked": "broad_axe",
+     "gold": 8
+    },
+    {
+     "at": 1793068100772,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "tower_shield",
+      "leather_jerkin"
+     ],
+     "picked": "leather_jerkin",
+     "gold": 6
+    },
+    {
+     "at": 1793068158185,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "rusty_sword",
+      "bloodstone"
+     ],
+     "sold": "rusty_sword",
+     "gold": 11
+    },
+    {
+     "at": 1793068228836,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "chain_shirt",
+      "iron_mace"
+     ],
+     "picked": "iron_mace",
+     "replaced": "broad_axe",
+     "gold": 6
+    }
+   ],
+   "shop": [],
+   "endedAt": 1793068288185,
+   "diedTo": "Rat Pack"
+  },
+  {
+   "appVersion": "0.0.1",
+   "seed": "SILVER-ASP-4761",
+   "classId": "warrior",
+   "setId": "warrior_tank",
+   "families": [],
+   "level": 2,
+   "legacy": {
+    "atk": 0,
+    "def": 0,
+    "maxHp": 0
+   },
+   "start": {
+    "deck": [],
+    "equipment": {
+     "body": null,
+     "weapon": null,
+     "relic": null
+    },
+    "stats": {
+     "maxHp": 25,
+     "atk": 4,
+     "def": 1
+    }
+   },
+   "startedAt": 1793068305607,
+   "version": 1,
+   "outcome": "died",
+   "screensCleared": 0,
+   "fights": [
+    {
+     "at": 1793068389342,
+     "screen": 1,
+     "enemyId": "adept_necromancer",
+     "enemies": [
+      "adept_necromancer"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 25,
+     "hpAfter": 0,
+     "rounds": 7,
+     "dealt": 10,
+     "taken": 25,
+     "blocked": 2,
+     "counters": 0,
+     "dotTaken": 6,
+     "healed": 0,
+     "cards": {
+      "defend": 2,
+      "ward": 1,
+      "bellow": 2,
+      "attack": 2
+     },
+     "holds": 0,
+     "outcome": "lost",
+     "deck": [],
+     "equipment": {
+      "body": null,
+      "weapon": null,
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 25,
+      "atk": 4,
+      "def": 1
+     },
+     "gold": 0
+    }
+   ],
+   "rewards": [],
+   "shop": [],
+   "endedAt": 1793068390512,
+   "diedTo": "Adept Necromancer"
+  },
+  {
+   "appVersion": "0.0.1",
+   "seed": "SILVER-ASP-5761",
+   "classId": "warrior",
+   "setId": "warrior_tank",
+   "families": [],
+   "level": 2,
+   "legacy": {
+    "atk": 0,
+    "def": 0,
+    "maxHp": 0
+   },
+   "start": {
+    "deck": [],
+    "equipment": {
+     "body": null,
+     "weapon": null,
+     "relic": null
+    },
+    "stats": {
+     "maxHp": 25,
+     "atk": 4,
+     "def": 1
+    }
+   },
+   "startedAt": 1793068393786,
+   "version": 1,
+   "outcome": "died",
+   "screensCleared": 0,
+   "fights": [
+    {
+     "at": 1793068621220,
+     "screen": 1,
+     "enemyId": "hex_imp",
+     "enemies": [
+      "hex_imp"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 25,
+     "hpAfter": 0,
+     "rounds": 33,
+     "dealt": 14,
+     "taken": 25,
+     "blocked": 12,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "attack": 12,
+      "bellow": 7,
+      "defend": 12,
+      "ward": 2
+     },
+     "holds": 0,
+     "outcome": "lost",
+     "deck": [],
+     "equipment": {
+      "body": null,
+      "weapon": null,
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 25,
+      "atk": 4,
+      "def": 1
+     },
+     "gold": 0
+    }
+   ],
+   "rewards": [],
+   "shop": [],
+   "endedAt": 1793068622692,
+   "diedTo": "Your ghost"
+  },
+  {
+   "appVersion": "0.0.1",
+   "seed": "RUNE-ELK-1994",
+   "classId": "warrior",
+   "setId": "warrior_dps",
+   "families": [],
+   "level": 2,
+   "legacy": {
+    "atk": 0,
+    "def": 0,
+    "maxHp": 0
+   },
+   "start": {
+    "deck": [],
+    "equipment": {
+     "body": null,
+     "weapon": null,
+     "relic": null
+    },
+    "stats": {
+     "maxHp": 25,
+     "atk": 4,
+     "def": 1
+    }
+   },
+   "startedAt": 1793068628454,
+   "version": 1,
+   "outcome": "died",
+   "screensCleared": 0,
+   "fights": [
+    {
+     "at": 1793069322718,
+     "screen": 1,
+     "enemyId": "shell_beetle",
+     "enemies": [
+      "shell_beetle"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 25,
+     "hpAfter": 22,
+     "rounds": 6,
+     "dealt": 10,
+     "taken": 3,
+     "blocked": 2,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "attack": 4,
+      "defend": 2
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [],
+     "equipment": {
+      "body": null,
+      "weapon": null,
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 25,
+      "atk": 4,
+      "def": 1,
+      "gearAtk": 0
+     },
+     "gold": 0
+    },
+    {
+     "at": 1793069395099,
+     "screen": 1,
+     "enemyId": "rat_pack",
+     "enemies": [
+      "rat_pack"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 30,
+     "hpAfter": 9,
+     "rounds": 7,
+     "dealt": 12,
+     "taken": 21,
+     "blocked": 4,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "defend": 4,
+      "attack": 3
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [],
+     "equipment": {
+      "body": "berserker_hide",
+      "weapon": null,
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 33,
+      "atk": 4,
+      "def": 0,
+      "gearAtk": 0
+     },
+     "gold": 7
+    },
+    {
+     "at": 1793069509259,
+     "screen": 1,
+     "enemyId": "adept_necromancer",
+     "enemies": [
+      "adept_necromancer"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 27,
+     "hpAfter": 0,
+     "rounds": 7,
+     "dealt": 9,
+     "taken": 27,
+     "blocked": 0,
+     "counters": 0,
+     "dotTaken": 3,
+     "healed": 0,
+     "cards": {
+      "ward": 1,
+      "attack": 2,
+      "bellow": 1,
+      "defend": 3
+     },
+     "holds": 0,
+     "outcome": "lost",
+     "deck": [
+      "final_stand",
+      "stand_firm"
+     ],
+     "equipment": {
+      "body": "berserker_hide",
+      "weapon": null,
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 34,
+      "atk": 4,
+      "def": 0,
+      "gearAtk": 0
+     },
+     "gold": 77
+    }
+   ],
+   "rewards": [
+    {
+     "at": 1793069333182,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "heart_amulet",
+      "berserker_hide"
+     ],
+     "picked": "berserker_hide",
+     "gold": 7
+    },
+    {
+     "at": 1793069413048,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "final_stand",
+      "bloodstone"
+     ],
+     "picked": "final_stand",
+     "gold": 5
+    },
+    {
+     "at": 1793069423467,
+     "screen": 1,
+     "source": "chest",
+     "offered": [
+      "stand_firm",
+      "shield_bash",
+      "padded_vest"
+     ],
+     "picked": "stand_firm",
+     "gold": 20
+    }
+   ],
+   "shop": [],
+   "endedAt": 1793069510376,
+   "diedTo": "Adept Necromancer"
+  },
+  {
+   "appVersion": "0.0.1",
+   "seed": "VALE-LYNX-1055",
+   "classId": "warrior",
+   "setId": "warrior_tank",
+   "families": [
+    "warrior_tank"
+   ],
+   "level": 3,
+   "legacy": {
+    "atk": 0,
+    "def": 0,
+    "maxHp": 0
+   },
+   "start": {
+    "deck": [
+     "bind_wound",
+     "healboomerang"
+    ],
+    "equipment": {
+     "body": null,
+     "weapon": null,
+     "relic": null
+    },
+    "stats": {
+     "maxHp": 27,
+     "atk": 4,
+     "def": 1
+    }
+   },
+   "startedAt": 1793069518595,
+   "version": 1,
+   "outcome": "died",
+   "screensCleared": 0,
+   "fights": [
+    {
+     "at": 1793069596778,
+     "screen": 1,
+     "enemyId": "rat_pack",
+     "enemies": [
+      "rat_pack"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 27,
+     "hpAfter": 27,
+     "rounds": 7,
+     "dealt": 12,
+     "taken": 8,
+     "blocked": 1,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 8,
+     "cards": {
+      "defend": 1,
+      "bellow": 1,
+      "healboomerang": 1,
+      "attack": 3,
+      "bind_wound": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "bind_wound",
+      "healboomerang"
+     ],
+     "equipment": {
+      "body": null,
+      "weapon": null,
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 27,
+      "atk": 4,
+      "def": 1
+     },
+     "gold": 0
+    },
+    {
+     "at": 1793069648372,
+     "screen": 1,
+     "enemyId": "hex_imp",
+     "enemies": [
+      "hex_imp"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 27,
+     "hpAfter": 27,
+     "rounds": 5,
+     "dealt": 11,
+     "taken": 6,
+     "blocked": 1,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 6,
+     "cards": {
+      "attack": 2,
+      "bind_wound": 1,
+      "defend": 1,
+      "healboomerang": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "bind_wound",
+      "healboomerang",
+      "shield_bash"
+     ],
+     "equipment": {
+      "body": null,
+      "weapon": null,
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 27,
+      "atk": 4,
+      "def": 1
+     },
+     "gold": 6
+    },
+    {
+     "at": 1793069760798,
+     "screen": 1,
+     "enemyId": "hex_imp",
+     "enemies": [
+      "hex_imp"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 32,
+     "hpAfter": 32,
+     "rounds": 9,
+     "dealt": 11,
+     "taken": 0,
+     "blocked": 4,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "attack": 2,
+      "defend": 2,
+      "ward": 1,
+      "bellow": 1,
+      "shield_bash": 2,
+      "healboomerang": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "bind_wound",
+      "healboomerang",
+      "shield_bash",
+      "shield_bash"
+     ],
+     "equipment": {
+      "body": null,
+      "weapon": null,
+      "relic": "heart_amulet"
+     },
+     "stats": {
+      "maxHp": 32,
+      "atk": 4,
+      "def": 1,
+      "gearAtk": 0
+     },
+     "gold": 28
+    },
+    {
+     "at": 1793069899479,
+     "screen": 1,
+     "enemyId": "adept_necromancer",
+     "enemies": [
+      "adept_necromancer",
+      "boar"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 35,
+     "hpAfter": 26,
+     "rounds": 10,
+     "dealt": 27,
+     "taken": 24,
+     "blocked": 5,
+     "counters": 0,
+     "dotTaken": 5,
+     "healed": 15,
+     "cards": {
+      "shield_bash": 2,
+      "attack": 2,
+      "defend": 2,
+      "healboomerang": 1,
+      "bellow": 1,
+      "ward": 1,
+      "bind_wound": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "bind_wound",
+      "healboomerang",
+      "shield_bash",
+      "shield_bash"
+     ],
+     "equipment": {
+      "body": null,
+      "weapon": "iron_mace",
+      "relic": "heart_amulet"
+     },
+     "stats": {
+      "maxHp": 35,
+      "atk": 5,
+      "def": 1,
+      "gearAtk": 1
+     },
+     "gold": 54
+    },
+    {
+     "at": 1793069959212,
+     "screen": 1,
+     "enemyId": "adept_necromancer",
+     "enemies": [
+      "adept_necromancer"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 26,
+     "hpAfter": 16,
+     "rounds": 5,
+     "dealt": 13,
+     "taken": 12,
+     "blocked": 1,
+     "counters": 0,
+     "dotTaken": 4,
+     "healed": 2,
+     "cards": {
+      "attack": 2,
+      "shield_bash": 1,
+      "ward": 1,
+      "healboomerang": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "bind_wound",
+      "healboomerang",
+      "shield_bash",
+      "shield_bash"
+     ],
+     "equipment": {
+      "body": null,
+      "weapon": "iron_mace",
+      "relic": "heart_amulet"
+     },
+     "stats": {
+      "maxHp": 35,
+      "atk": 5,
+      "def": 1,
+      "gearAtk": 1
+     },
+     "gold": 71
+    },
+    {
+     "at": 1793070009686,
+     "screen": 1,
+     "enemyId": "hex_imp",
+     "enemies": [
+      "hex_imp"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 19,
+     "hpAfter": 26,
+     "rounds": 3,
+     "dealt": 11,
+     "taken": 6,
+     "blocked": 0,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 13,
+     "cards": {
+      "bind_wound": 1,
+      "attack": 1,
+      "healboomerang": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "bind_wound",
+      "healboomerang",
+      "shield_bash",
+      "shield_bash"
+     ],
+     "equipment": {
+      "body": "padded_vest",
+      "weapon": "iron_mace",
+      "relic": "heart_amulet"
+     },
+     "stats": {
+      "maxHp": 38,
+      "atk": 5,
+      "def": 1,
+      "gearAtk": 1
+     },
+     "gold": 79
+    },
+    {
+     "at": 1793070153786,
+     "screen": 1,
+     "enemyId": "shell_beetle",
+     "enemies": [
+      "shell_beetle",
+      "rat_pack"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 27,
+     "hpAfter": 23,
+     "rounds": 13,
+     "dealt": 22,
+     "taken": 15,
+     "blocked": 5,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 11,
+     "cards": {
+      "defend": 2,
+      "bellow": 2,
+      "attack": 3,
+      "bind_wound": 1,
+      "shield_bash": 4,
+      "healboomerang": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "bind_wound",
+      "healboomerang",
+      "shield_bash",
+      "shield_bash"
+     ],
+     "equipment": {
+      "body": "chain_shirt",
+      "weapon": "iron_mace",
+      "relic": "heart_amulet"
+     },
+     "stats": {
+      "maxHp": 39,
+      "atk": 5,
+      "def": 2,
+      "gearAtk": 1
+     },
+     "gold": 102
+    },
+    {
+     "at": 1793070273703,
+     "screen": 1,
+     "enemyId": "rat_pack",
+     "enemies": [
+      "rat_pack",
+      "hex_imp"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 39,
+     "hpAfter": 28,
+     "rounds": 9,
+     "dealt": 23,
+     "taken": 24,
+     "blocked": 3,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 13,
+     "cards": {
+      "warding_blast": 1,
+      "attack": 2,
+      "healboomerang": 1,
+      "defend": 1,
+      "shield_bash": 2,
+      "bind_wound": 1,
+      "bellow": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "bind_wound",
+      "healboomerang",
+      "shield_bash",
+      "shield_bash",
+      "warding_blast"
+     ],
+     "equipment": {
+      "body": "chain_shirt",
+      "weapon": "iron_mace",
+      "relic": "heart_amulet"
+     },
+     "stats": {
+      "maxHp": 39,
+      "atk": 5,
+      "def": 2,
+      "gearAtk": 1
+     },
+     "gold": 112
+    },
+    {
+     "at": 1793070355972,
+     "screen": 1,
+     "enemyId": "hex_imp",
+     "enemies": [
+      "hex_imp"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 28,
+     "hpAfter": 26,
+     "rounds": 6,
+     "dealt": 11,
+     "taken": 2,
+     "blocked": 1,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "ward": 1,
+      "bellow": 1,
+      "shield_bash": 1,
+      "defend": 1,
+      "warding_blast": 1,
+      "attack": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "bind_wound",
+      "healboomerang",
+      "shield_bash",
+      "shield_bash",
+      "warding_blast",
+      "bind_wound"
+     ],
+     "equipment": {
+      "body": "chain_shirt",
+      "weapon": "iron_mace",
+      "relic": "glass_idol"
+     },
+     "stats": {
+      "maxHp": 28,
+      "atk": 6,
+      "def": 3,
+      "gearAtk": 2
+     },
+     "gold": 145
+    },
+    {
+     "at": 1793070409329,
+     "screen": 1,
+     "enemyId": "rat_pack",
+     "enemies": [
+      "rat_pack"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 26,
+     "hpAfter": 22,
+     "rounds": 5,
+     "dealt": 12,
+     "taken": 4,
+     "blocked": 4,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "shield_bash": 2,
+      "defend": 2,
+      "attack": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "bind_wound",
+      "healboomerang",
+      "shield_bash",
+      "shield_bash",
+      "warding_blast",
+      "bind_wound",
+      "warding_blast"
+     ],
+     "equipment": {
+      "body": "chain_shirt",
+      "weapon": "iron_mace",
+      "relic": "glass_idol"
+     },
+     "stats": {
+      "maxHp": 28,
+      "atk": 6,
+      "def": 3,
+      "gearAtk": 2
+     },
+     "gold": 149
+    },
+    {
+     "at": 1793070700595,
+     "screen": 1,
+     "enemyId": "wren",
+     "enemies": [
+      "wren"
+     ],
+     "kind": "boss",
+     "tile": "arena",
+     "hpBefore": 28,
+     "hpAfter": 0,
+     "rounds": 23,
+     "dealt": 36,
+     "taken": 46,
+     "blocked": 13,
+     "counters": 1,
+     "dotTaken": 0,
+     "healed": 18,
+     "cards": {
+      "defend": 4,
+      "attack": 5,
+      "shield_bash": 5,
+      "warding_blast": 3,
+      "bind_wound": 2,
+      "bellow": 2,
+      "final_stand": 1,
+      "healboomerang": 1
+     },
+     "holds": 0,
+     "outcome": "lost",
+     "deck": [
+      "bind_wound",
+      "healboomerang",
+      "shield_bash",
+      "shield_bash",
+      "warding_blast",
+      "bind_wound",
+      "warding_blast",
+      "final_stand"
+     ],
+     "equipment": {
+      "body": "chain_shirt",
+      "weapon": "iron_mace",
+      "relic": "glass_idol"
+     },
+     "stats": {
+      "maxHp": 28,
+      "atk": 6,
+      "def": 3,
+      "gearAtk": 2
+     },
+     "gold": 182
+    }
+   ],
+   "rewards": [
+    {
+     "at": 1793069600857,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "shield_bash",
+      "heart_amulet"
+     ],
+     "picked": "shield_bash",
+     "gold": 6
+    },
+    {
+     "at": 1793069652302,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "leather_jerkin",
+      "heart_amulet"
+     ],
+     "picked": "heart_amulet",
+     "gold": 5
+    },
+    {
+     "at": 1793069679641,
+     "screen": 1,
+     "source": "chest",
+     "offered": [
+      "shield_bash",
+      "stand_firm",
+      "final_stand"
+     ],
+     "picked": "shield_bash",
+     "gold": 17
+    },
+    {
+     "at": 1793069771128,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "tortoise_charm",
+      "tower_shield"
+     ],
+     "picked": "tower_shield",
+     "gold": 6
+    },
+    {
+     "at": 1793069782198,
+     "screen": 1,
+     "source": "chest",
+     "offered": [
+      "bind_wound",
+      "berserker_hide",
+      "iron_mace"
+     ],
+     "picked": "iron_mace",
+     "replaced": "tower_shield",
+     "gold": 20
+    },
+    {
+     "at": 1793069904192,
+     "screen": 1,
+     "source": "guard",
+     "offered": [
+      "tower_shield",
+      "rusty_sword"
+     ],
+     "sold": "tower_shield",
+     "gold": 17
+    },
+    {
+     "at": 1793069967722,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "padded_vest",
+      "bloodstone"
+     ],
+     "picked": "padded_vest",
+     "gold": 8
+    },
+    {
+     "at": 1793070028120,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "chain_shirt",
+      "rusty_sword"
+     ],
+     "picked": "chain_shirt",
+     "replaced": "padded_vest",
+     "gold": 8
+    },
+    {
+     "at": 1793070156781,
+     "screen": 1,
+     "source": "guard",
+     "offered": [
+      "warding_blast",
+      "tower_shield"
+     ],
+     "picked": "warding_blast",
+     "gold": 10
+    },
+    {
+     "at": 1793070282184,
+     "screen": 1,
+     "source": "guard",
+     "offered": [
+      "plate_harness",
+      "glass_idol"
+     ],
+     "picked": "glass_idol",
+     "replaced": "heart_amulet",
+     "gold": 14
+    },
+    {
+     "at": 1793070291835,
+     "screen": 1,
+     "source": "chest",
+     "offered": [
+      "final_stand",
+      "plate_harness",
+      "bind_wound"
+     ],
+     "picked": "bind_wound",
+     "gold": 19
+    },
+    {
+     "at": 1793070362134,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "final_stand",
+      "warding_blast"
+     ],
+     "picked": "warding_blast",
+     "gold": 4
+    },
+    {
+     "at": 1793070423361,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "final_stand",
+      "stand_firm"
+     ],
+     "picked": "final_stand",
+     "gold": 6
+    },
+    {
+     "at": 1793070440781,
+     "screen": 1,
+     "source": "guard",
+     "offered": [
+      "tower_shield",
+      "padded_vest"
+     ],
+     "sold": "padded_vest",
+     "gold": 5
+    }
+   ],
+   "shop": [
+    {
+     "at": 1793070456353,
+     "screen": 1,
+     "bought": "heal",
+     "price": 30
+    }
+   ],
+   "endedAt": 1793070701533,
+   "diedTo": "Wren, the rat-keeper"
+  },
+  {
+   "appVersion": "0.0.1",
+   "seed": "AMBER-CROW-7810",
+   "classId": "warrior",
+   "setId": "warrior_dps",
+   "families": [],
+   "level": 1,
+   "legacy": {
+    "atk": 0,
+    "def": 0,
+    "maxHp": 0
+   },
+   "start": {
+    "deck": [],
+    "equipment": {
+     "body": null,
+     "weapon": null,
+     "relic": null
+    },
+    "stats": {
+     "maxHp": 25,
+     "atk": 4,
+     "def": 1,
+     "luck": 5
+    }
+   },
+   "startedAt": 1793072256812,
+   "version": 1,
+   "outcome": "died",
+   "screensCleared": 0,
+   "fights": [
+    {
+     "at": 1793072389148,
+     "screen": 1,
+     "enemyId": "boar",
+     "enemies": [
+      "boar"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 25,
+     "hpAfter": 21,
+     "rounds": 5,
+     "dealt": 12,
+     "taken": 4,
+     "blocked": 2,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "defend": 2,
+      "attack": 3,
+      "ward": 1
+     },
+     "holds": 1,
+     "outcome": "won",
+     "deck": [],
+     "equipment": {
+      "body": null,
+      "weapon": null,
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 25,
+      "atk": 4,
+      "def": 1,
+      "luck": 5
+     },
+     "gold": 0
+    },
+    {
+     "at": 1793072605408,
+     "screen": 1,
+     "enemyId": "adept_necromancer",
+     "enemies": [
+      "adept_necromancer",
+      "boar"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 21,
+     "hpAfter": 1,
+     "rounds": 9,
+     "dealt": 25,
+     "taken": 20,
+     "blocked": 3,
+     "counters": 0,
+     "dotTaken": 4,
+     "healed": 0,
+     "cards": {
+      "bellow": 2,
+      "attack": 4,
+      "defend": 4,
+      "ward": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [],
+     "equipment": {
+      "body": null,
+      "weapon": "rusty_sword",
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 25,
+      "atk": 5,
+      "def": 1,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 4
+    },
+    {
+     "at": 1793072655447,
+     "screen": 1,
+     "enemyId": "shell_beetle",
+     "enemies": [
+      "shell_beetle"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 20,
+     "hpAfter": 18,
+     "rounds": 5,
+     "dealt": 10,
+     "taken": 2,
+     "blocked": 2,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "attack": 2,
+      "defend": 2,
+      "bellow": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [],
+     "equipment": {
+      "body": "chain_shirt",
+      "weapon": "rusty_sword",
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 29,
+      "atk": 5,
+      "def": 2,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 30
+    },
+    {
+     "at": 1793072698991,
+     "screen": 1,
+     "enemyId": "adept_necromancer",
+     "enemies": [
+      "adept_necromancer"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 19,
+     "hpAfter": 17,
+     "rounds": 3,
+     "dealt": 11,
+     "taken": 2,
+     "blocked": 1,
+     "counters": 0,
+     "dotTaken": 2,
+     "healed": 0,
+     "cards": {
+      "attack": 2,
+      "ward": 1,
+      "bellow": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [],
+     "equipment": {
+      "body": "chain_shirt",
+      "weapon": "rusty_sword",
+      "relic": "tortoise_charm"
+     },
+     "stats": {
+      "maxHp": 30,
+      "atk": 5,
+      "def": 3,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 36
+    },
+    {
+     "at": 1793072819747,
+     "screen": 1,
+     "enemyId": "boar",
+     "enemies": [
+      "boar",
+      "hex_imp"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 21,
+     "hpAfter": 6,
+     "rounds": 11,
+     "dealt": 23,
+     "taken": 15,
+     "blocked": 4,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "bellow": 3,
+      "defend": 4,
+      "attack": 5,
+      "ward": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [],
+     "equipment": {
+      "body": "chain_shirt",
+      "weapon": "rusty_sword",
+      "relic": "heart_amulet"
+     },
+     "stats": {
+      "maxHp": 34,
+      "atk": 5,
+      "def": 2,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 44
+    },
+    {
+     "at": 1793073068087,
+     "screen": 1,
+     "enemyId": "rat_pack",
+     "enemies": [
+      "rat_pack",
+      "hex_imp"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 19,
+     "hpAfter": 7,
+     "rounds": 8,
+     "dealt": 23,
+     "taken": 12,
+     "blocked": 2,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "attack": 4,
+      "defend": 2,
+      "bellow": 2,
+      "ward": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [],
+     "equipment": {
+      "body": "chain_shirt",
+      "weapon": "rusty_sword",
+      "relic": "heart_amulet"
+     },
+     "stats": {
+      "maxHp": 35,
+      "atk": 5,
+      "def": 2,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 49
+    },
+    {
+     "at": 1793073154154,
+     "screen": 1,
+     "enemyId": "boar",
+     "enemies": [
+      "boar",
+      "hex_imp"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 7,
+     "hpAfter": 0,
+     "rounds": 4,
+     "dealt": 12,
+     "taken": 7,
+     "blocked": 2,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "defend": 2,
+      "spiritboomerang": 1,
+      "ward": 1,
+      "exposing_strike": 1
+     },
+     "holds": 0,
+     "outcome": "lost",
+     "deck": [
+      "spiritboomerang",
+      "last_strike",
+      "exposing_strike"
+     ],
+     "equipment": {
+      "body": "chain_shirt",
+      "weapon": "rusty_sword",
+      "relic": "heart_amulet"
+     },
+     "stats": {
+      "maxHp": 35,
+      "atk": 5,
+      "def": 2,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 126
+    }
+   ],
+   "rewards": [
+    {
+     "at": 1793072396560,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "rusty_sword",
+      "padded_vest"
+     ],
+     "picked": "rusty_sword",
+     "gold": 4
+    },
+    {
+     "at": 1793072611615,
+     "screen": 1,
+     "source": "guard",
+     "offered": [
+      "leather_jerkin",
+      "chain_shirt"
+     ],
+     "picked": "chain_shirt",
+     "gold": 11
+    },
+    {
+     "at": 1793072668943,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "tortoise_charm",
+      "iron_mace"
+     ],
+     "picked": "tortoise_charm",
+     "gold": 6
+    },
+    {
+     "at": 1793072709518,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "padded_vest",
+      "heart_amulet"
+     ],
+     "picked": "heart_amulet",
+     "replaced": "tortoise_charm",
+     "gold": 8
+    },
+    {
+     "at": 1793072842913,
+     "screen": 1,
+     "source": "guard",
+     "offered": [
+      "leather_jerkin",
+      "broad_axe"
+     ],
+     "sold": "broad_axe",
+     "gold": 23
+    },
+    {
+     "at": 1793073070997,
+     "screen": 1,
+     "source": "guard",
+     "offered": [
+      "spiritboomerang",
+      "leather_jerkin"
+     ],
+     "picked": "spiritboomerang",
+     "gold": 14
+    },
+    {
+     "at": 1793073077247,
+     "screen": 1,
+     "source": "chest",
+     "offered": [
+      "padded_vest",
+      "tortoise_charm",
+      "last_strike"
+     ],
+     "picked": "last_strike",
+     "gold": 14
+    },
+    {
+     "at": 1793073094933,
+     "screen": 1,
+     "source": "chest",
+     "offered": [
+      "berserker_hide",
+      "broad_axe",
+      "exposing_strike"
+     ],
+     "picked": "exposing_strike",
+     "gold": 19
+    }
+   ],
+   "shop": [
+    {
+     "at": 1793072859866,
+     "screen": 1,
+     "bought": "heal",
+     "price": 30
+    }
+   ],
+   "endedAt": 1793073155318,
+   "diedTo": "Boar"
+  },
+  {
+   "appVersion": "0.0.1",
+   "seed": "IRON-OWL-6006",
+   "classId": "warrior",
+   "setId": "warrior_dps",
+   "families": [
+    "warrior_dps"
+   ],
+   "level": 3,
+   "legacy": {
+    "atk": 0,
+    "def": 0,
+    "maxHp": 0
+   },
+   "start": {
+    "deck": [
+     "spiritboomerang",
+     "mighty_blow"
+    ],
+    "equipment": {
+     "body": null,
+     "weapon": null,
+     "relic": null
+    },
+    "stats": {
+     "maxHp": 27,
+     "atk": 4,
+     "def": 1,
+     "luck": 5
+    }
+   },
+   "startedAt": 1793073245453,
+   "version": 1,
+   "outcome": "died",
+   "screensCleared": 0,
+   "fights": [
+    {
+     "at": 1793073319545,
+     "screen": 1,
+     "enemyId": "rat_pack",
+     "enemies": [
+      "rat_pack"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 27,
+     "hpAfter": 19,
+     "rounds": 7,
+     "dealt": 12,
+     "taken": 8,
+     "blocked": 2,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "spiritboomerang": 1,
+      "defend": 2,
+      "attack": 3,
+      "bellow": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "spiritboomerang",
+      "mighty_blow"
+     ],
+     "equipment": {
+      "body": null,
+      "weapon": null,
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 27,
+      "atk": 4,
+      "def": 1,
+      "luck": 5
+     },
+     "gold": 0
+    },
+    {
+     "at": 1793073422397,
+     "screen": 1,
+     "enemyId": "shell_beetle",
+     "enemies": [
+      "shell_beetle",
+      "rat_pack"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 20,
+     "hpAfter": 0,
+     "rounds": 9,
+     "dealt": 21,
+     "taken": 20,
+     "blocked": 2,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "bellow": 1,
+      "attack": 4,
+      "spiritboomerang": 1,
+      "defend": 2,
+      "mighty_blow": 1
+     },
+     "holds": 0,
+     "outcome": "lost",
+     "deck": [
+      "spiritboomerang",
+      "mighty_blow"
+     ],
+     "equipment": {
+      "body": null,
+      "weapon": null,
+      "relic": "tortoise_charm"
+     },
+     "stats": {
+      "maxHp": 28,
+      "atk": 4,
+      "def": 2,
+      "luck": 5,
+      "gearAtk": 0
+     },
+     "gold": 6
+    }
+   ],
+   "rewards": [
+    {
+     "at": 1793073323599,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "heart_amulet",
+      "tortoise_charm"
+     ],
+     "picked": "tortoise_charm",
+     "gold": 6
+    }
+   ],
+   "shop": [],
+   "endedAt": 1793073424020,
+   "diedTo": "Rat Pack"
+  },
+  {
+   "appVersion": "0.0.1",
+   "seed": "GLOOM-HART-6358",
+   "classId": "warrior",
+   "setId": "warrior_dps",
+   "families": [
+    "warrior_dps"
+   ],
+   "level": 3,
+   "legacy": {
+    "atk": 0,
+    "def": 0,
+    "maxHp": 0
+   },
+   "start": {
+    "deck": [
+     "mighty_blow",
+     "broadsword"
+    ],
+    "equipment": {
+     "body": null,
+     "weapon": null,
+     "relic": null
+    },
+    "stats": {
+     "maxHp": 27,
+     "atk": 4,
+     "def": 1,
+     "luck": 5
+    }
+   },
+   "startedAt": 1793073433278,
+   "version": 1,
+   "outcome": "died",
+   "screensCleared": 0,
+   "fights": [
+    {
+     "at": 1793073453651,
+     "screen": 1,
+     "enemyId": "boar",
+     "enemies": [
+      "boar"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 27,
+     "hpAfter": 19,
+     "rounds": 2,
+     "dealt": 12,
+     "taken": 8,
+     "blocked": 0,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "broadsword": 1,
+      "attack": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "mighty_blow",
+      "broadsword"
+     ],
+     "equipment": {
+      "body": null,
+      "weapon": null,
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 27,
+      "atk": 4,
+      "def": 1,
+      "luck": 5
+     },
+     "gold": 0
+    },
+    {
+     "at": 1793073487775,
+     "screen": 1,
+     "enemyId": "adept_necromancer",
+     "enemies": [
+      "adept_necromancer"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 19,
+     "hpAfter": 18,
+     "rounds": 2,
+     "dealt": 11,
+     "taken": 1,
+     "blocked": 0,
+     "counters": 0,
+     "dotTaken": 1,
+     "healed": 0,
+     "cards": {
+      "attack": 1,
+      "mighty_blow": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "mighty_blow",
+      "broadsword",
+      "spiritboomerang"
+     ],
+     "equipment": {
+      "body": null,
+      "weapon": null,
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 27,
+      "atk": 4,
+      "def": 1,
+      "luck": 5
+     },
+     "gold": 7
+    },
+    {
+     "at": 1793073511997,
+     "screen": 1,
+     "enemyId": "adept_necromancer",
+     "enemies": [
+      "adept_necromancer"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 18,
+     "hpAfter": 17,
+     "rounds": 2,
+     "dealt": 11,
+     "taken": 1,
+     "blocked": 0,
+     "counters": 0,
+     "dotTaken": 1,
+     "healed": 0,
+     "cards": {
+      "broadsword": 1,
+      "attack": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "broadsword",
+      "spiritboomerang"
+     ],
+     "equipment": {
+      "body": "leather_jerkin",
+      "weapon": null,
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 27,
+      "atk": 4,
+      "def": 2,
+      "luck": 5,
+      "gearAtk": 0
+     },
+     "gold": 15
+    },
+    {
+     "at": 1793073570893,
+     "screen": 1,
+     "enemyId": "shell_beetle",
+     "enemies": [
+      "shell_beetle"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 18,
+     "hpAfter": 14,
+     "rounds": 4,
+     "dealt": 10,
+     "taken": 4,
+     "blocked": 1,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "spiritboomerang": 1,
+      "defend": 1,
+      "attack": 1,
+      "broadsword": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "broadsword",
+      "spiritboomerang"
+     ],
+     "equipment": {
+      "body": "leather_jerkin",
+      "weapon": null,
+      "relic": "bloodstone"
+     },
+     "stats": {
+      "maxHp": 25,
+      "atk": 5,
+      "def": 2,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 34
+    },
+    {
+     "at": 1793073638425,
+     "screen": 1,
+     "enemyId": "shell_beetle",
+     "enemies": [
+      "shell_beetle",
+      "rat_pack"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 14,
+     "hpAfter": 4,
+     "rounds": 5,
+     "dealt": 22,
+     "taken": 10,
+     "blocked": 0,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "spiritboomerang": 1,
+      "bellow": 1,
+      "mighty_blow": 1,
+      "attack": 1,
+      "broadsword": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "broadsword",
+      "spiritboomerang",
+      "mighty_blow"
+     ],
+     "equipment": {
+      "body": "leather_jerkin",
+      "weapon": null,
+      "relic": "bloodstone"
+     },
+     "stats": {
+      "maxHp": 25,
+      "atk": 5,
+      "def": 2,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 41
+    },
+    {
+     "at": 1793073698690,
+     "screen": 1,
+     "enemyId": "adept_necromancer",
+     "enemies": [
+      "adept_necromancer"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 16,
+     "hpAfter": 15,
+     "rounds": 2,
+     "dealt": 11,
+     "taken": 1,
+     "blocked": 0,
+     "counters": 0,
+     "dotTaken": 1,
+     "healed": 0,
+     "cards": {
+      "broadsword": 1,
+      "spiritboomerang": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "broadsword",
+      "spiritboomerang",
+      "mighty_blow",
+      "exposing_strike"
+     ],
+     "equipment": {
+      "body": "berserker_hide",
+      "weapon": "broad_axe",
+      "relic": "bloodstone"
+     },
+     "stats": {
+      "maxHp": 37,
+      "atk": 6,
+      "def": 0,
+      "luck": 5,
+      "gearAtk": 2
+     },
+     "gold": 105
+    },
+    {
+     "at": 1793073728580,
+     "screen": 1,
+     "enemyId": "hex_imp",
+     "enemies": [
+      "hex_imp"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 15,
+     "hpAfter": 15,
+     "rounds": 2,
+     "dealt": 11,
+     "taken": 0,
+     "blocked": 0,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "exposing_strike": 1,
+      "bellow": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "broadsword",
+      "spiritboomerang",
+      "mighty_blow",
+      "exposing_strike"
+     ],
+     "equipment": {
+      "body": "berserker_hide",
+      "weapon": "broad_axe",
+      "relic": "bloodstone"
+     },
+     "stats": {
+      "maxHp": 37,
+      "atk": 6,
+      "def": 0,
+      "luck": 5,
+      "gearAtk": 2
+     },
+     "gold": 120
+    },
+    {
+     "at": 1793073798361,
+     "screen": 1,
+     "enemyId": "boar",
+     "enemies": [
+      "boar",
+      "hex_imp"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 15,
+     "hpAfter": 0,
+     "rounds": 4,
+     "dealt": 21,
+     "taken": 15,
+     "blocked": 0,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "attack": 2,
+      "exposing_strike": 1,
+      "spiritboomerang": 1
+     },
+     "holds": 0,
+     "outcome": "lost",
+     "deck": [
+      "broadsword",
+      "spiritboomerang",
+      "mighty_blow",
+      "exposing_strike"
+     ],
+     "equipment": {
+      "body": "berserker_hide",
+      "weapon": "broad_axe",
+      "relic": "bloodstone"
+     },
+     "stats": {
+      "maxHp": 37,
+      "atk": 6,
+      "def": 0,
+      "luck": 5,
+      "gearAtk": 2
+     },
+     "gold": 167
+    }
+   ],
+   "rewards": [
+    {
+     "at": 1793073456814,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "spiritboomerang",
+      "rusty_sword"
+     ],
+     "picked": "spiritboomerang",
+     "gold": 7
+    },
+    {
+     "at": 1793073491452,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "leather_jerkin",
+      "padded_vest"
+     ],
+     "picked": "leather_jerkin",
+     "gold": 8
+    },
+    {
+     "at": 1793073532029,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "tower_shield",
+      "bloodstone"
+     ],
+     "picked": "bloodstone",
+     "gold": 4
+    },
+    {
+     "at": 1793073574771,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "spiritboomerang",
+      "mighty_blow"
+     ],
+     "picked": "mighty_blow",
+     "gold": 7
+    },
+    {
+     "at": 1793073641754,
+     "screen": 1,
+     "source": "guard",
+     "offered": [
+      "broad_axe",
+      "iron_mace"
+     ],
+     "picked": "broad_axe",
+     "gold": 14
+    },
+    {
+     "at": 1793073655575,
+     "screen": 1,
+     "source": "chest",
+     "offered": [
+      "iron_mace",
+      "berserker_hide",
+      "chain_shirt"
+     ],
+     "picked": "berserker_hide",
+     "replaced": "leather_jerkin",
+     "gold": 15
+    },
+    {
+     "at": 1793073663324,
+     "screen": 1,
+     "source": "chest",
+     "offered": [
+      "mighty_blow",
+      "rusty_sword",
+      "tower_shield"
+     ],
+     "picked": "mighty_blow",
+     "gold": 16
+    },
+    {
+     "at": 1793073677062,
+     "screen": 1,
+     "source": "chest",
+     "offered": [
+      "chain_shirt",
+      "leather_jerkin",
+      "exposing_strike"
+     ],
+     "picked": "exposing_strike",
+     "gold": 19
+    },
+    {
+     "at": 1793073710186,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "chain_shirt",
+      "padded_vest"
+     ],
+     "sold": "chain_shirt",
+     "gold": 15
+    },
+    {
+     "at": 1793073740059,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "tortoise_charm",
+      "padded_vest"
+     ],
+     "sold": "tortoise_charm",
+     "gold": 17
+    }
+   ],
+   "shop": [],
+   "endedAt": 1793073799561,
+   "diedTo": "Hex Imp"
+  },
+  {
+   "appVersion": "0.0.1",
+   "seed": "IRON-BOAR-7259",
+   "classId": "warrior",
+   "setId": "warrior_dps",
+   "families": [
+    "warrior_dps"
+   ],
+   "level": 4,
+   "legacy": {
+    "atk": 0,
+    "def": 0,
+    "maxHp": 0
+   },
+   "start": {
+    "deck": [
+     "mighty_blow",
+     "spiritboomerang"
+    ],
+    "equipment": {
+     "body": null,
+     "weapon": null,
+     "relic": null
+    },
+    "stats": {
+     "maxHp": 28,
+     "atk": 4,
+     "def": 1,
+     "luck": 5
+    }
+   },
+   "startedAt": 1793073808044,
+   "version": 1,
+   "outcome": "died",
+   "screensCleared": 0,
+   "fights": [
+    {
+     "at": 1793150306032,
+     "screen": 1,
+     "enemyId": "adept_necromancer",
+     "enemies": [
+      "adept_necromancer"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 28,
+     "hpAfter": 0,
+     "rounds": 5,
+     "dealt": 13,
+     "taken": 28,
+     "blocked": 2,
+     "counters": 0,
+     "dotTaken": 4,
+     "healed": 0,
+     "cards": {
+      "attack": 2,
+      "ward": 1,
+      "defend": 1,
+      "mighty_blow": 1
+     },
+     "holds": 0,
+     "outcome": "lost",
+     "deck": [
+      "mighty_blow",
+      "spiritboomerang"
+     ],
+     "equipment": {
+      "body": null,
+      "weapon": null,
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 28,
+      "atk": 4,
+      "def": 1,
+      "luck": 5,
+      "gearAtk": 0
+     },
+     "gold": 0
+    }
+   ],
+   "rewards": [],
+   "shop": [],
+   "endedAt": 1793150307750,
+   "diedTo": "Your ghost"
+  },
+  {
+   "appVersion": "0.0.1",
+   "seed": "SILVER-TOAD-8591",
+   "classId": "warrior",
+   "setId": "warrior_dps",
+   "families": [
+    "warrior_dps"
+   ],
+   "level": 4,
+   "legacy": {
+    "atk": 0,
+    "def": 0,
+    "maxHp": 0
+   },
+   "start": {
+    "deck": [
+     "mighty_blow",
+     "last_strike"
+    ],
+    "equipment": {
+     "body": null,
+     "weapon": null,
+     "relic": null
+    },
+    "stats": {
+     "maxHp": 28,
+     "atk": 4,
+     "def": 1,
+     "luck": 5
+    }
+   },
+   "startedAt": 1793150314714,
+   "version": 1,
+   "outcome": "abandoned",
+   "screensCleared": 0,
+   "fights": [],
+   "rewards": [],
+   "shop": []
+  },
+  {
+   "appVersion": "0.0.1",
+   "seed": "VALE-HAWK-7131",
+   "classId": "warrior",
+   "setId": "warrior_dps",
+   "families": [],
+   "level": 1,
+   "legacy": {
+    "atk": 0,
+    "def": 0,
+    "maxHp": 0
+   },
+   "start": {
+    "deck": [],
+    "equipment": {
+     "body": null,
+     "weapon": null,
+     "relic": null
+    },
+    "stats": {
+     "maxHp": 25,
+     "atk": 4,
+     "def": 1,
+     "luck": 5
+    }
+   },
+   "startedAt": 1793159372428,
+   "version": 1,
+   "outcome": "died",
+   "screensCleared": 0,
+   "fights": [
+    {
+     "at": 1793159447138,
+     "screen": 1,
+     "enemyId": "adept_necromancer",
+     "enemies": [
+      "adept_necromancer"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 29,
+     "hpAfter": 20,
+     "rounds": 4,
+     "dealt": 11,
+     "taken": 9,
+     "blocked": 1,
+     "counters": 0,
+     "dotTaken": 3,
+     "healed": 0,
+     "cards": {
+      "attack": 2,
+      "ward": 1,
+      "bellow": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [],
+     "equipment": {
+      "body": null,
+      "weapon": "broad_axe",
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 29,
+      "atk": 5,
+      "def": 0,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 14
+    },
+    {
+     "at": 1793159527483,
+     "screen": 1,
+     "enemyId": "boar",
+     "enemies": [
+      "boar"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 31,
+     "hpAfter": 27,
+     "rounds": 5,
+     "dealt": 12,
+     "taken": 4,
+     "blocked": 2,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "attack": 3,
+      "defend": 2
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [],
+     "equipment": {
+      "body": "plate_harness",
+      "weapon": "broad_axe",
+      "relic": "heart_amulet"
+     },
+     "stats": {
+      "maxHp": 40,
+      "atk": 5,
+      "def": 1,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 32
+    },
+    {
+     "at": 1793159592701,
+     "screen": 1,
+     "enemyId": "adept_necromancer",
+     "enemies": [
+      "adept_necromancer",
+      "boar"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 27,
+     "hpAfter": 0,
+     "rounds": 4,
+     "dealt": 14,
+     "taken": 27,
+     "blocked": 1,
+     "counters": 0,
+     "dotTaken": 3,
+     "healed": 0,
+     "cards": {
+      "bellow": 1,
+      "attack": 2,
+      "ward": 1
+     },
+     "holds": 0,
+     "outcome": "lost",
+     "deck": [],
+     "equipment": {
+      "body": "plate_harness",
+      "weapon": "broad_axe",
+      "relic": "heart_amulet"
+     },
+     "stats": {
+      "maxHp": 40,
+      "atk": 5,
+      "def": 1,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 45
+    }
+   ],
+   "rewards": [
+    {
+     "at": 1793159402471,
+     "screen": 1,
+     "source": "chest",
+     "offered": [
+      "bloodstone",
+      "broad_axe",
+      "rusty_sword"
+     ],
+     "picked": "broad_axe",
+     "gold": 14
+    },
+    {
+     "at": 1793159453130,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "heart_amulet",
+      "rusty_sword"
+     ],
+     "picked": "heart_amulet",
+     "gold": 4
+    },
+    {
+     "at": 1793159480303,
+     "screen": 1,
+     "source": "chest",
+     "offered": [
+      "tower_shield",
+      "chain_shirt",
+      "plate_harness"
+     ],
+     "picked": "plate_harness",
+     "gold": 14
+    },
+    {
+     "at": 1793159533481,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "padded_vest",
+      "tortoise_charm"
+     ],
+     "sold": "tortoise_charm",
+     "gold": 13
+    }
+   ],
+   "shop": [],
+   "endedAt": 1793159594332,
+   "diedTo": "Boar"
+  },
+  {
+   "appVersion": "0.0.1",
+   "seed": "MOSS-CROW-7536",
+   "classId": "warrior",
+   "setId": "warrior_tank",
+   "families": [],
+   "level": 1,
+   "legacy": {
+    "atk": 0,
+    "def": 0,
+    "maxHp": 0
+   },
+   "start": {
+    "deck": [],
+    "equipment": {
+     "body": null,
+     "weapon": null,
+     "relic": null
+    },
+    "stats": {
+     "maxHp": 25,
+     "atk": 4,
+     "def": 1,
+     "luck": 5
+    }
+   },
+   "startedAt": 1793159598164,
+   "version": 1,
+   "outcome": "died",
+   "screensCleared": 0,
+   "fights": [
+    {
+     "at": 1793159653463,
+     "screen": 1,
+     "enemyId": "adept_necromancer",
+     "enemies": [
+      "adept_necromancer"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 25,
+     "hpAfter": 13,
+     "rounds": 5,
+     "dealt": 13,
+     "taken": 12,
+     "blocked": 1,
+     "counters": 0,
+     "dotTaken": 4,
+     "healed": 0,
+     "cards": {
+      "attack": 3,
+      "bellow": 1,
+      "ward": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [],
+     "equipment": {
+      "body": null,
+      "weapon": null,
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 25,
+      "atk": 4,
+      "def": 1,
+      "luck": 5
+     },
+     "gold": 0
+    },
+    {
+     "at": 1793159718211,
+     "screen": 1,
+     "enemyId": "hex_imp",
+     "enemies": [
+      "hex_imp"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 14,
+     "hpAfter": 14,
+     "rounds": 5,
+     "dealt": 11,
+     "taken": 0,
+     "blocked": 2,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "attack": 2,
+      "defend": 2,
+      "bellow": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [],
+     "equipment": {
+      "body": null,
+      "weapon": null,
+      "relic": "glass_idol"
+     },
+     "stats": {
+      "maxHp": 20,
+      "atk": 5,
+      "def": 2,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 22
+    },
+    {
+     "at": 1793159770105,
+     "screen": 1,
+     "enemyId": "hex_imp",
+     "enemies": [
+      "hex_imp"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 14,
+     "hpAfter": 14,
+     "rounds": 5,
+     "dealt": 11,
+     "taken": 0,
+     "blocked": 2,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "attack": 2,
+      "defend": 2,
+      "bellow": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [],
+     "equipment": {
+      "body": "leather_jerkin",
+      "weapon": null,
+      "relic": "glass_idol"
+     },
+     "stats": {
+      "maxHp": 20,
+      "atk": 5,
+      "def": 3,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 26
+    },
+    {
+     "at": 1793159807414,
+     "screen": 1,
+     "enemyId": "rat_pack",
+     "enemies": [
+      "rat_pack"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 17,
+     "hpAfter": 14,
+     "rounds": 2,
+     "dealt": 12,
+     "taken": 3,
+     "blocked": 0,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "attack": 2
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [],
+     "equipment": {
+      "body": "chain_shirt",
+      "weapon": "rusty_sword",
+      "relic": "glass_idol"
+     },
+     "stats": {
+      "maxHp": 23,
+      "atk": 6,
+      "def": 3,
+      "luck": 5,
+      "gearAtk": 2
+     },
+     "gold": 48
+    },
+    {
+     "at": 1793160002647,
+     "screen": 1,
+     "enemyId": "adept_necromancer",
+     "enemies": [
+      "adept_necromancer",
+      "boar"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 25,
+     "hpAfter": 10,
+     "rounds": 8,
+     "dealt": 24,
+     "taken": 15,
+     "blocked": 3,
+     "counters": 0,
+     "dotTaken": 4,
+     "healed": 0,
+     "cards": {
+      "bellow": 1,
+      "attack": 4,
+      "defend": 3
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [],
+     "equipment": {
+      "body": "chain_shirt",
+      "weapon": "tower_shield",
+      "relic": "glass_idol"
+     },
+     "stats": {
+      "maxHp": 25,
+      "atk": 5,
+      "def": 4,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 53
+    },
+    {
+     "at": 1793160129353,
+     "screen": 1,
+     "enemyId": "rat_pack",
+     "enemies": [
+      "rat_pack",
+      "hex_imp"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 16,
+     "hpAfter": 8,
+     "rounds": 8,
+     "dealt": 23,
+     "taken": 8,
+     "blocked": 2,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "broadsword": 1,
+      "attack": 3,
+      "ward": 1,
+      "defend": 2,
+      "bellow": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "broadsword"
+     ],
+     "equipment": {
+      "body": "berserker_hide",
+      "weapon": "tower_shield",
+      "relic": "glass_idol"
+     },
+     "stats": {
+      "maxHp": 31,
+      "atk": 5,
+      "def": 2,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 137
+    },
+    {
+     "at": 1793160170576,
+     "screen": 1,
+     "enemyId": "hex_imp",
+     "enemies": [
+      "hex_imp"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 19,
+     "hpAfter": 19,
+     "rounds": 4,
+     "dealt": 11,
+     "taken": 0,
+     "blocked": 1,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "bellow": 1,
+      "defend": 1,
+      "attack": 1,
+      "broadsword": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "broadsword"
+     ],
+     "equipment": {
+      "body": "berserker_hide",
+      "weapon": "tower_shield",
+      "relic": "glass_idol"
+     },
+     "stats": {
+      "maxHp": 31,
+      "atk": 5,
+      "def": 2,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 126
+    },
+    {
+     "at": 1793160234794,
+     "screen": 1,
+     "enemyId": "shell_beetle",
+     "enemies": [
+      "shell_beetle"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 19,
+     "hpAfter": 19,
+     "rounds": 4,
+     "dealt": 10,
+     "taken": 0,
+     "blocked": 2,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "defend": 2,
+      "broadsword": 1,
+      "spiritboomerang": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "broadsword",
+      "spiritboomerang"
+     ],
+     "equipment": {
+      "body": "berserker_hide",
+      "weapon": "tower_shield",
+      "relic": "glass_idol"
+     },
+     "stats": {
+      "maxHp": 31,
+      "atk": 5,
+      "def": 2,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 132
+    },
+    {
+     "at": 1793160265250,
+     "screen": 1,
+     "enemyId": "adept_necromancer",
+     "enemies": [
+      "adept_necromancer"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 19,
+     "hpAfter": 18,
+     "rounds": 2,
+     "dealt": 11,
+     "taken": 1,
+     "blocked": 0,
+     "counters": 0,
+     "dotTaken": 1,
+     "healed": 0,
+     "cards": {
+      "mighty_blow": 1,
+      "attack": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "broadsword",
+      "spiritboomerang",
+      "broadsword",
+      "mighty_blow"
+     ],
+     "equipment": {
+      "body": "berserker_hide",
+      "weapon": "tower_shield",
+      "relic": "glass_idol"
+     },
+     "stats": {
+      "maxHp": 31,
+      "atk": 5,
+      "def": 2,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 156
+    },
+    {
+     "at": 1793160310008,
+     "screen": 1,
+     "enemyId": "shell_beetle",
+     "enemies": [
+      "shell_beetle"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 20,
+     "hpAfter": 16,
+     "rounds": 3,
+     "dealt": 10,
+     "taken": 4,
+     "blocked": 0,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "attack": 2,
+      "exposing_strike": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "broadsword",
+      "spiritboomerang",
+      "broadsword",
+      "exposing_strike"
+     ],
+     "equipment": {
+      "body": "berserker_hide",
+      "weapon": "broad_axe",
+      "relic": "glass_idol"
+     },
+     "stats": {
+      "maxHp": 33,
+      "atk": 6,
+      "def": 0,
+      "luck": 5,
+      "gearAtk": 2
+     },
+     "gold": 177
+    },
+    {
+     "at": 1793160365170,
+     "screen": 1,
+     "enemyId": "shell_beetle",
+     "enemies": [
+      "shell_beetle",
+      "rat_pack"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 17,
+     "hpAfter": 0,
+     "rounds": 3,
+     "dealt": 14,
+     "taken": 17,
+     "blocked": 1,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "defend": 1,
+      "spiritboomerang": 1,
+      "broadsword": 1
+     },
+     "holds": 0,
+     "outcome": "lost",
+     "deck": [
+      "broadsword",
+      "spiritboomerang",
+      "broadsword",
+      "exposing_strike",
+      "mighty_blow"
+     ],
+     "equipment": {
+      "body": "berserker_hide",
+      "weapon": "broad_axe",
+      "relic": "glass_idol"
+     },
+     "stats": {
+      "maxHp": 34,
+      "atk": 6,
+      "def": 0,
+      "luck": 5,
+      "gearAtk": 2
+     },
+     "gold": 187
+    }
+   ],
+   "rewards": [
+    {
+     "at": 1793159671527,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "padded_vest",
+      "glass_idol"
+     ],
+     "picked": "glass_idol",
+     "gold": 7
+    },
+    {
+     "at": 1793159725690,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "heart_amulet",
+      "leather_jerkin"
+     ],
+     "picked": "leather_jerkin",
+     "gold": 4
+    },
+    {
+     "at": 1793159774534,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "padded_vest",
+      "rusty_sword"
+     ],
+     "picked": "rusty_sword",
+     "gold": 4
+    },
+    {
+     "at": 1793159786405,
+     "screen": 1,
+     "source": "chest",
+     "offered": [
+      "heart_amulet",
+      "tortoise_charm",
+      "chain_shirt"
+     ],
+     "picked": "chain_shirt",
+     "replaced": "leather_jerkin",
+     "gold": 18
+    },
+    {
+     "at": 1793159817128,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "leather_jerkin",
+      "tower_shield"
+     ],
+     "picked": "tower_shield",
+     "replaced": "rusty_sword",
+     "gold": 5
+    },
+    {
+     "at": 1793160015757,
+     "screen": 1,
+     "source": "guard",
+     "offered": [
+      "broadsword",
+      "broad_axe"
+     ],
+     "picked": "broadsword",
+     "gold": 14
+    },
+    {
+     "at": 1793160037294,
+     "screen": 1,
+     "source": "guard",
+     "offered": [
+      "heart_amulet",
+      "berserker_hide"
+     ],
+     "picked": "berserker_hide",
+     "replaced": "chain_shirt",
+     "gold": 0
+    },
+    {
+     "at": 1793160132714,
+     "screen": 1,
+     "source": "guard",
+     "offered": [
+      "leather_jerkin",
+      "chain_shirt"
+     ],
+     "sold": "chain_shirt",
+     "gold": 19
+    },
+    {
+     "at": 1793160172706,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "spiritboomerang",
+      "exposing_strike"
+     ],
+     "picked": "spiritboomerang",
+     "gold": 6
+    },
+    {
+     "at": 1793160240888,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "leather_jerkin",
+      "broadsword"
+     ],
+     "picked": "broadsword",
+     "gold": 6
+    },
+    {
+     "at": 1793160245655,
+     "screen": 1,
+     "source": "chest",
+     "offered": [
+      "spiritboomerang",
+      "mighty_blow",
+      "exposing_strike"
+     ],
+     "picked": "mighty_blow",
+     "gold": 18
+    },
+    {
+     "at": 1793160268760,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "plate_harness",
+      "exposing_strike"
+     ],
+     "picked": "exposing_strike",
+     "gold": 6
+    },
+    {
+     "at": 1793160279595,
+     "screen": 1,
+     "source": "chest",
+     "offered": [
+      "chain_shirt",
+      "broad_axe",
+      "exposing_strike"
+     ],
+     "picked": "broad_axe",
+     "replaced": "tower_shield",
+     "gold": 15
+    },
+    {
+     "at": 1793160321355,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "chain_shirt",
+      "rusty_sword"
+     ],
+     "sold": "rusty_sword",
+     "gold": 10
+    }
+   ],
+   "shop": [
+    {
+     "at": 1793160136531,
+     "screen": 1,
+     "bought": "heal",
+     "price": 30
+    }
+   ],
+   "endedAt": 1793160366220,
+   "diedTo": "Rat Pack"
+  },
+  {
+   "appVersion": "0.0.1",
+   "seed": "MOSS-BOAR-4898",
+   "classId": "warrior",
+   "setId": "warrior_dps",
+   "families": [
+    "warrior_dps"
+   ],
+   "level": 4,
+   "legacy": {
+    "atk": 0,
+    "def": 0,
+    "maxHp": 0
+   },
+   "start": {
+    "deck": [
+     "exposing_strike",
+     "mighty_blow"
+    ],
+    "equipment": {
+     "body": null,
+     "weapon": null,
+     "relic": null
+    },
+    "stats": {
+     "maxHp": 28,
+     "atk": 4,
+     "def": 1,
+     "luck": 5
+    }
+   },
+   "startedAt": 1793160381189,
+   "version": 1,
+   "outcome": "died",
+   "screensCleared": 0,
+   "fights": [
+    {
+     "at": 1793160423883,
+     "screen": 1,
+     "enemyId": "boar",
+     "enemies": [
+      "boar"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 28,
+     "hpAfter": 28,
+     "rounds": 3,
+     "dealt": 12,
+     "taken": 0,
+     "blocked": 1,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "defend": 1,
+      "exposing_strike": 1,
+      "mighty_blow": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "exposing_strike",
+      "mighty_blow"
+     ],
+     "equipment": {
+      "body": null,
+      "weapon": null,
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 28,
+      "atk": 4,
+      "def": 1,
+      "luck": 5
+     },
+     "gold": 0
+    },
+    {
+     "at": 1793160467612,
+     "screen": 1,
+     "enemyId": "boar",
+     "enemies": [
+      "boar"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 28,
+     "hpAfter": 24,
+     "rounds": 5,
+     "dealt": 12,
+     "taken": 4,
+     "blocked": 2,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "defend": 2,
+      "exposing_strike": 1,
+      "attack": 2
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "exposing_strike"
+     ],
+     "equipment": {
+      "body": null,
+      "weapon": "rusty_sword",
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 28,
+      "atk": 5,
+      "def": 1,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 7
+    },
+    {
+     "at": 1793160496800,
+     "screen": 1,
+     "enemyId": "adept_necromancer",
+     "enemies": [
+      "adept_necromancer"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 24,
+     "hpAfter": 23,
+     "rounds": 2,
+     "dealt": 11,
+     "taken": 1,
+     "blocked": 0,
+     "counters": 0,
+     "dotTaken": 1,
+     "healed": 0,
+     "cards": {
+      "exposing_strike": 1,
+      "attack": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "exposing_strike",
+      "last_strike"
+     ],
+     "equipment": {
+      "body": null,
+      "weapon": "rusty_sword",
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 28,
+      "atk": 5,
+      "def": 1,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 14
+    },
+    {
+     "at": 1793160537327,
+     "screen": 1,
+     "enemyId": "boar",
+     "enemies": [
+      "boar"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 27,
+     "hpAfter": 22,
+     "rounds": 3,
+     "dealt": 12,
+     "taken": 5,
+     "blocked": 0,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "exposing_strike": 1,
+      "bellow": 1,
+      "attack": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "exposing_strike",
+      "last_strike",
+      "spiritboomerang"
+     ],
+     "equipment": {
+      "body": null,
+      "weapon": "broad_axe",
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 32,
+      "atk": 5,
+      "def": 0,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 39
+    },
+    {
+     "at": 1793160616927,
+     "screen": 1,
+     "enemyId": "adept_necromancer",
+     "enemies": [
+      "adept_necromancer",
+      "boar"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 25,
+     "hpAfter": 16,
+     "rounds": 4,
+     "dealt": 23,
+     "taken": 9,
+     "blocked": 1,
+     "counters": 0,
+     "dotTaken": 3,
+     "healed": 0,
+     "cards": {
+      "last_strike": 1,
+      "ward": 1,
+      "exposing_strike": 1,
+      "spiritboomerang": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "exposing_strike",
+      "last_strike",
+      "spiritboomerang",
+      "mighty_blow",
+      "exposing_strike"
+     ],
+     "equipment": {
+      "body": "padded_vest",
+      "weapon": "broad_axe",
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 35,
+      "atk": 5,
+      "def": 0,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 80
+    },
+    {
+     "at": 1793160659668,
+     "screen": 1,
+     "enemyId": "adept_necromancer",
+     "enemies": [
+      "adept_necromancer"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 16,
+     "hpAfter": 10,
+     "rounds": 3,
+     "dealt": 13,
+     "taken": 6,
+     "blocked": 0,
+     "counters": 0,
+     "dotTaken": 2,
+     "healed": 0,
+     "cards": {
+      "attack": 2,
+      "spiritboomerang": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "exposing_strike",
+      "spiritboomerang",
+      "mighty_blow",
+      "exposing_strike",
+      "last_strike"
+     ],
+     "equipment": {
+      "body": "padded_vest",
+      "weapon": "broad_axe",
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 35,
+      "atk": 5,
+      "def": 0,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 92
+    },
+    {
+     "at": 1793160686874,
+     "screen": 1,
+     "enemyId": "shell_beetle",
+     "enemies": [
+      "shell_beetle"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 28,
+     "hpAfter": 25,
+     "rounds": 2,
+     "dealt": 10,
+     "taken": 3,
+     "blocked": 0,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "exposing_strike": 1,
+      "attack": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "exposing_strike",
+      "spiritboomerang",
+      "mighty_blow",
+      "exposing_strike",
+      "last_strike"
+     ],
+     "equipment": {
+      "body": "chain_shirt",
+      "weapon": "broad_axe",
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 35,
+      "atk": 5,
+      "def": 1,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 96
+    },
+    {
+     "at": 1793160757559,
+     "screen": 1,
+     "enemyId": "shell_beetle",
+     "enemies": [
+      "shell_beetle",
+      "rat_pack"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 25,
+     "hpAfter": 9,
+     "rounds": 5,
+     "dealt": 22,
+     "taken": 16,
+     "blocked": 1,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "spiritboomerang": 1,
+      "exposing_strike": 1,
+      "mighty_blow": 1,
+      "defend": 1,
+      "broadsword": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "exposing_strike",
+      "spiritboomerang",
+      "mighty_blow",
+      "exposing_strike",
+      "last_strike",
+      "broadsword"
+     ],
+     "equipment": {
+      "body": "chain_shirt",
+      "weapon": "broad_axe",
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 35,
+      "atk": 5,
+      "def": 1,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 100
+    },
+    {
+     "at": 1793160826950,
+     "screen": 1,
+     "enemyId": "shell_beetle",
+     "enemies": [
+      "shell_beetle"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 23,
+     "hpAfter": 20,
+     "rounds": 2,
+     "dealt": 10,
+     "taken": 3,
+     "blocked": 0,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "exposing_strike": 1,
+      "spiritboomerang": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "exposing_strike",
+      "spiritboomerang",
+      "exposing_strike",
+      "last_strike",
+      "broadsword",
+      "minorleech",
+      "mighty_blow"
+     ],
+     "equipment": {
+      "body": "chain_shirt",
+      "weapon": "broad_axe",
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 36,
+      "atk": 5,
+      "def": 1,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 27
+    },
+    {
+     "at": 1793160916450,
+     "screen": 1,
+     "enemyId": "boar",
+     "enemies": [
+      "boar",
+      "hex_imp"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 20,
+     "hpAfter": 13,
+     "rounds": 6,
+     "dealt": 23,
+     "taken": 10,
+     "blocked": 1,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 3,
+     "cards": {
+      "exposing_strike": 1,
+      "broadsword": 1,
+      "spiritboomerang": 1,
+      "defend": 1,
+      "minorleech": 1,
+      "attack": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "exposing_strike",
+      "spiritboomerang",
+      "exposing_strike",
+      "last_strike",
+      "broadsword",
+      "minorleech",
+      "mighty_blow"
+     ],
+     "equipment": {
+      "body": "chain_shirt",
+      "weapon": "broad_axe",
+      "relic": "bloodstone"
+     },
+     "stats": {
+      "maxHp": 33,
+      "atk": 6,
+      "def": 1,
+      "luck": 5,
+      "gearAtk": 2
+     },
+     "gold": 34
+    },
+    {
+     "at": 1793160968371,
+     "screen": 1,
+     "enemyId": "shell_beetle",
+     "enemies": [
+      "shell_beetle",
+      "rat_pack"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 13,
+     "hpAfter": 0,
+     "rounds": 2,
+     "dealt": 14,
+     "taken": 13,
+     "blocked": 0,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "spiritboomerang": 1,
+      "attack": 1
+     },
+     "holds": 0,
+     "outcome": "lost",
+     "deck": [
+      "exposing_strike",
+      "spiritboomerang",
+      "exposing_strike",
+      "last_strike",
+      "broadsword",
+      "minorleech",
+      "mighty_blow",
+      "broadsword"
+     ],
+     "equipment": {
+      "body": "chain_shirt",
+      "weapon": "broad_axe",
+      "relic": "bloodstone"
+     },
+     "stats": {
+      "maxHp": 33,
+      "atk": 6,
+      "def": 1,
+      "luck": 5,
+      "gearAtk": 2
+     },
+     "gold": 42
+    }
+   ],
+   "rewards": [
+    {
+     "at": 1793160426496,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "rusty_sword",
+      "last_strike"
+     ],
+     "picked": "rusty_sword",
+     "gold": 7
+    },
+    {
+     "at": 1793160472358,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "tower_shield",
+      "last_strike"
+     ],
+     "picked": "last_strike",
+     "gold": 7
+    },
+    {
+     "at": 1793160499462,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "iron_mace",
+      "spiritboomerang"
+     ],
+     "picked": "spiritboomerang",
+     "gold": 5
+    },
+    {
+     "at": 1793160509813,
+     "screen": 1,
+     "source": "chest",
+     "offered": [
+      "broad_axe",
+      "exposing_strike",
+      "heart_amulet"
+     ],
+     "picked": "broad_axe",
+     "replaced": "rusty_sword",
+     "gold": 20
+    },
+    {
+     "at": 1793160541771,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "tortoise_charm",
+      "padded_vest"
+     ],
+     "picked": "padded_vest",
+     "gold": 7
+    },
+    {
+     "at": 1793160554022,
+     "screen": 1,
+     "source": "chest",
+     "offered": [
+      "last_strike",
+      "leather_jerkin",
+      "mighty_blow"
+     ],
+     "picked": "mighty_blow",
+     "gold": 16
+    },
+    {
+     "at": 1793160565080,
+     "screen": 1,
+     "source": "chest",
+     "offered": [
+      "tower_shield",
+      "exposing_strike",
+      "last_strike"
+     ],
+     "picked": "exposing_strike",
+     "gold": 18
+    },
+    {
+     "at": 1793160622156,
+     "screen": 1,
+     "source": "guard",
+     "offered": [
+      "tower_shield",
+      "last_strike"
+     ],
+     "picked": "last_strike",
+     "gold": 12
+    },
+    {
+     "at": 1793160665000,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "tower_shield",
+      "chain_shirt"
+     ],
+     "picked": "chain_shirt",
+     "replaced": "padded_vest",
+     "gold": 4
+    },
+    {
+     "at": 1793160690270,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "broadsword",
+      "rusty_sword"
+     ],
+     "picked": "broadsword",
+     "gold": 4
+    },
+    {
+     "at": 1793160769807,
+     "screen": 1,
+     "source": "guard",
+     "offered": [
+      "minorleech",
+      "leather_jerkin"
+     ],
+     "picked": "minorleech",
+     "gold": 12
+    },
+    {
+     "at": 1793160836097,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "rusty_sword",
+      "bloodstone"
+     ],
+     "picked": "bloodstone",
+     "gold": 7
+    },
+    {
+     "at": 1793160919549,
+     "screen": 1,
+     "source": "guard",
+     "offered": [
+      "broadsword",
+      "tortoise_charm"
+     ],
+     "picked": "broadsword",
+     "gold": 8
+    }
+   ],
+   "shop": [
+    {
+     "at": 1793160775726,
+     "screen": 1,
+     "bought": "heal",
+     "price": 30
+    },
+    {
+     "at": 1793160796586,
+     "screen": 1,
+     "bought": "mighty_blow",
+     "price": 70
+    }
+   ],
+   "endedAt": 1793160969398,
+   "diedTo": "Rat Pack"
+  },
+  {
+   "appVersion": "0.0.1",
+   "seed": "FROST-BOAR-8114",
+   "classId": "warrior",
+   "setId": "warrior_dps",
+   "families": [
+    "warrior_dps",
+    "warrior_shadow_knight"
+   ],
+   "level": 5,
+   "legacy": {
+    "atk": 0,
+    "def": 0,
+    "maxHp": 0
+   },
+   "start": {
+    "deck": [
+     "spiritboomerang",
+     "leech"
+    ],
+    "equipment": {
+     "body": null,
+     "weapon": null,
+     "relic": null
+    },
+    "stats": {
+     "maxHp": 29,
+     "atk": 4,
+     "def": 1,
+     "luck": 5
+    }
+   },
+   "startedAt": 1793160980785,
+   "version": 1,
+   "outcome": "died",
+   "screensCleared": 0,
+   "fights": [
+    {
+     "at": 1793161132555,
+     "screen": 1,
+     "enemyId": "boar",
+     "enemies": [
+      "boar"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 29,
+     "hpAfter": 22,
+     "rounds": 6,
+     "dealt": 12,
+     "taken": 8,
+     "blocked": 2,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 1,
+     "cards": {
+      "defend": 2,
+      "attack": 2,
+      "spiritboomerang": 1,
+      "leech": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "spiritboomerang",
+      "leech"
+     ],
+     "equipment": {
+      "body": null,
+      "weapon": null,
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 29,
+      "atk": 4,
+      "def": 1,
+      "luck": 5,
+      "gearAtk": 0
+     },
+     "gold": 0
+    },
+    {
+     "at": 1793161247261,
+     "screen": 1,
+     "enemyId": "boar",
+     "enemies": [
+      "boar"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 22,
+     "hpAfter": 22,
+     "rounds": 6,
+     "dealt": 12,
+     "taken": 4,
+     "blocked": 2,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 4,
+     "cards": {
+      "minorleech": 1,
+      "attack": 2,
+      "defend": 2,
+      "leech": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "spiritboomerang",
+      "leech",
+      "minorleech"
+     ],
+     "equipment": {
+      "body": null,
+      "weapon": null,
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 29,
+      "atk": 4,
+      "def": 1,
+      "luck": 5,
+      "gearAtk": 0
+     },
+     "gold": 6
+    },
+    {
+     "at": 1793161359352,
+     "screen": 1,
+     "enemyId": "boar",
+     "enemies": [
+      "boar",
+      "hex_imp"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 27,
+     "hpAfter": 0,
+     "rounds": 7,
+     "dealt": 18,
+     "taken": 34,
+     "blocked": 2,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 7,
+     "cards": {
+      "defend": 2,
+      "leech": 1,
+      "attack": 1,
+      "spiritboomerang": 1,
+      "minorleech": 1,
+      "bellow": 1
+     },
+     "holds": 0,
+     "outcome": "lost",
+     "deck": [
+      "spiritboomerang",
+      "leech",
+      "minorleech"
+     ],
+     "equipment": {
+      "body": null,
+      "weapon": null,
+      "relic": "heart_amulet"
+     },
+     "stats": {
+      "maxHp": 34,
+      "atk": 4,
+      "def": 1,
+      "luck": 5,
+      "gearAtk": 0
+     },
+     "gold": 10
+    }
+   ],
+   "rewards": [
+    {
+     "at": 1793161135126,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "minorleech",
+      "iron_mace"
+     ],
+     "picked": "minorleech",
+     "gold": 6
+    },
+    {
+     "at": 1793161254106,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "heart_amulet",
+      "leather_jerkin"
+     ],
+     "picked": "heart_amulet",
+     "gold": 4
+    }
+   ],
+   "shop": [],
+   "endedAt": 1793161360450,
+   "diedTo": "Boar"
+  },
+  {
+   "appVersion": "0.0.1",
+   "seed": "EMBER-CROW-6212",
+   "classId": "warrior",
+   "setId": "warrior_shadow_knight",
+   "families": [
+    "warrior_shadow_knight",
+    "warrior_dps"
+   ],
+   "level": 5,
+   "legacy": {
+    "atk": 0,
+    "def": 0,
+    "maxHp": 0
+   },
+   "start": {
+    "deck": [
+     "leech",
+     "broadsword"
+    ],
+    "equipment": {
+     "body": null,
+     "weapon": null,
+     "relic": null
+    },
+    "stats": {
+     "maxHp": 29,
+     "atk": 4,
+     "def": 1,
+     "luck": 5
+    }
+   },
+   "startedAt": 1793161439455,
+   "version": 1,
+   "outcome": "died",
+   "screensCleared": 0,
+   "fights": [
+    {
+     "at": 1793161479411,
+     "screen": 1,
+     "enemyId": "boar",
+     "enemies": [
+      "boar"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 33,
+     "hpAfter": 30,
+     "rounds": 3,
+     "dealt": 12,
+     "taken": 5,
+     "blocked": 0,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 2,
+     "cards": {
+      "attack": 1,
+      "leech": 1,
+      "bellow": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "leech",
+      "broadsword"
+     ],
+     "equipment": {
+      "body": null,
+      "weapon": "broad_axe",
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 33,
+      "atk": 5,
+      "def": 0,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 16
+    },
+    {
+     "at": 1793161552955,
+     "screen": 1,
+     "enemyId": "adept_necromancer",
+     "enemies": [
+      "adept_necromancer"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 33,
+     "hpAfter": 25,
+     "rounds": 4,
+     "dealt": 11,
+     "taken": 8,
+     "blocked": 1,
+     "counters": 0,
+     "dotTaken": 3,
+     "healed": 0,
+     "cards": {
+      "attack": 2,
+      "ward": 1,
+      "bellow": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "leech",
+      "broadsword",
+      "minorleech"
+     ],
+     "equipment": {
+      "body": "chain_shirt",
+      "weapon": "broad_axe",
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 36,
+      "atk": 5,
+      "def": 1,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 38
+    },
+    {
+     "at": 1793161611094,
+     "screen": 1,
+     "enemyId": "boar",
+     "enemies": [
+      "boar"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 25,
+     "hpAfter": 7,
+     "rounds": 5,
+     "dealt": 12,
+     "taken": 24,
+     "blocked": 1,
+     "counters": 1,
+     "dotTaken": 0,
+     "healed": 6,
+     "cards": {
+      "defend": 1,
+      "leech": 1,
+      "spiritboomerang": 1,
+      "minorleech": 1,
+      "broadsword": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "leech",
+      "broadsword",
+      "minorleech",
+      "spiritboomerang"
+     ],
+     "equipment": {
+      "body": "chain_shirt",
+      "weapon": "broad_axe",
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 36,
+      "atk": 5,
+      "def": 1,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 44
+    },
+    {
+     "at": 1793161646670,
+     "screen": 1,
+     "enemyId": "shell_beetle",
+     "enemies": [
+      "shell_beetle"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 7,
+     "hpAfter": 4,
+     "rounds": 2,
+     "dealt": 10,
+     "taken": 3,
+     "blocked": 0,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "attack": 2
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "leech",
+      "broadsword",
+      "minorleech",
+      "spiritboomerang"
+     ],
+     "equipment": {
+      "body": "chain_shirt",
+      "weapon": "broad_axe",
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 36,
+      "atk": 5,
+      "def": 1,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 57
+    },
+    {
+     "at": 1793161707132,
+     "screen": 1,
+     "enemyId": "boar",
+     "enemies": [
+      "boar"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 5,
+     "hpAfter": 0,
+     "rounds": 3,
+     "dealt": 7,
+     "taken": 10,
+     "blocked": 1,
+     "counters": 1,
+     "dotTaken": 0,
+     "healed": 5,
+     "cards": {
+      "defend": 1,
+      "minorleech": 1,
+      "leech": 1
+     },
+     "holds": 0,
+     "outcome": "lost",
+     "deck": [
+      "leech",
+      "broadsword",
+      "minorleech",
+      "spiritboomerang"
+     ],
+     "equipment": {
+      "body": "chain_shirt",
+      "weapon": "broad_axe",
+      "relic": "tortoise_charm"
+     },
+     "stats": {
+      "maxHp": 37,
+      "atk": 5,
+      "def": 2,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 63
+    }
+   ],
+   "rewards": [
+    {
+     "at": 1793161447802,
+     "screen": 1,
+     "source": "chest",
+     "offered": [
+      "last_strike",
+      "broadsword",
+      "broad_axe"
+     ],
+     "picked": "broad_axe",
+     "gold": 16
+    },
+    {
+     "at": 1793161483259,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "bloodstone",
+      "minorleech"
+     ],
+     "picked": "minorleech",
+     "gold": 7
+    },
+    {
+     "at": 1793161494328,
+     "screen": 1,
+     "source": "chest",
+     "offered": [
+      "iron_mace",
+      "chain_shirt",
+      "padded_vest"
+     ],
+     "picked": "chain_shirt",
+     "gold": 15
+    },
+    {
+     "at": 1793161555442,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "spiritboomerang",
+      "last_strike"
+     ],
+     "picked": "spiritboomerang",
+     "gold": 6
+    },
+    {
+     "at": 1793161618324,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "iron_mace",
+      "tower_shield"
+     ],
+     "sold": "iron_mace",
+     "gold": 13
+    },
+    {
+     "at": 1793161654114,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "berserker_hide",
+      "tortoise_charm"
+     ],
+     "picked": "tortoise_charm",
+     "gold": 6
+    }
+   ],
+   "shop": [],
+   "endedAt": 1793161708192,
+   "diedTo": "Boar"
+  },
+  {
+   "appVersion": "0.0.1",
+   "seed": "VALE-ELK-7887",
+   "classId": "warrior",
+   "setId": "warrior_dps",
+   "families": [
+    "warrior_dps",
+    "warrior_shadow_knight"
+   ],
+   "level": 5,
+   "legacy": {
+    "atk": 0,
+    "def": 0,
+    "maxHp": 0
+   },
+   "start": {
+    "deck": [
+     "spiritboomerang",
+     "leech"
+    ],
+    "equipment": {
+     "body": null,
+     "weapon": null,
+     "relic": null
+    },
+    "stats": {
+     "maxHp": 29,
+     "atk": 4,
+     "def": 1,
+     "luck": 5
+    }
+   },
+   "startedAt": 1793161880877,
+   "version": 1,
+   "outcome": "died",
+   "screensCleared": 0,
+   "fights": [
+    {
+     "at": 1793162014181,
+     "screen": 1,
+     "enemyId": "adept_necromancer",
+     "enemies": [
+      "adept_necromancer",
+      "boar"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 29,
+     "hpAfter": 0,
+     "rounds": 3,
+     "dealt": 8,
+     "taken": 29,
+     "blocked": 1,
+     "counters": 1,
+     "dotTaken": 2,
+     "healed": 0,
+     "cards": {
+      "attack": 1,
+      "ward": 1,
+      "spiritboomerang": 1
+     },
+     "holds": 0,
+     "outcome": "lost",
+     "deck": [
+      "spiritboomerang",
+      "leech"
+     ],
+     "equipment": {
+      "body": null,
+      "weapon": null,
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 29,
+      "atk": 4,
+      "def": 1,
+      "luck": 5
+     },
+     "gold": 0
+    }
+   ],
+   "rewards": [],
+   "shop": [],
+   "endedAt": 1793162015315,
+   "diedTo": "Boar"
+  },
+  {
+   "appVersion": "0.0.1",
+   "seed": "THORN-MOTH-2125",
+   "classId": "warrior",
+   "setId": "warrior_shadow_knight",
+   "families": [
+    "warrior_shadow_knight",
+    "warrior_dps"
+   ],
+   "level": 5,
+   "legacy": {
+    "atk": 0,
+    "def": 0,
+    "maxHp": 0
+   },
+   "start": {
+    "deck": [
+     "deathtoufh",
+     "mighty_blow"
+    ],
+    "equipment": {
+     "body": null,
+     "weapon": null,
+     "relic": null
+    },
+    "stats": {
+     "maxHp": 29,
+     "atk": 4,
+     "def": 1,
+     "luck": 5
+    }
+   },
+   "startedAt": 1793162024735,
+   "version": 1,
+   "outcome": "died",
+   "screensCleared": 0,
+   "fights": [
+    {
+     "at": 1793162060714,
+     "screen": 1,
+     "enemyId": "shell_beetle",
+     "enemies": [
+      "shell_beetle"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 29,
+     "hpAfter": 29,
+     "rounds": 4,
+     "dealt": 10,
+     "taken": 0,
+     "blocked": 2,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "defend": 2,
+      "attack": 1,
+      "deathtoufh": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "deathtoufh",
+      "mighty_blow"
+     ],
+     "equipment": {
+      "body": null,
+      "weapon": null,
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 29,
+      "atk": 4,
+      "def": 1,
+      "luck": 5
+     },
+     "gold": 0
+    },
+    {
+     "at": 1793162121658,
+     "screen": 1,
+     "enemyId": "adept_necromancer",
+     "enemies": [
+      "adept_necromancer"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 29,
+     "hpAfter": 21,
+     "rounds": 5,
+     "dealt": 13,
+     "taken": 8,
+     "blocked": 0,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "ward": 1,
+      "attack": 2,
+      "bellow": 1,
+      "mighty_blow": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "mighty_blow"
+     ],
+     "equipment": {
+      "body": "leather_jerkin",
+      "weapon": null,
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 29,
+      "atk": 4,
+      "def": 2,
+      "luck": 5,
+      "gearAtk": 0
+     },
+     "gold": 6
+    },
+    {
+     "at": 1793162176106,
+     "screen": 1,
+     "enemyId": "adept_necromancer",
+     "enemies": [
+      "adept_necromancer"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 24,
+     "hpAfter": 14,
+     "rounds": 5,
+     "dealt": 12,
+     "taken": 10,
+     "blocked": 1,
+     "counters": 0,
+     "dotTaken": 4,
+     "healed": 0,
+     "cards": {
+      "attack": 2,
+      "ward": 1,
+      "defend": 1,
+      "bellow": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [],
+     "equipment": {
+      "body": "leather_jerkin",
+      "weapon": "iron_mace",
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 32,
+      "atk": 5,
+      "def": 2,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 10
+    },
+    {
+     "at": 1793162261175,
+     "screen": 1,
+     "enemyId": "boar",
+     "enemies": [
+      "boar",
+      "hex_imp"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 17,
+     "hpAfter": 0,
+     "rounds": 6,
+     "dealt": 11,
+     "taken": 17,
+     "blocked": 3,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 0,
+     "cards": {
+      "bellow": 1,
+      "defend": 3,
+      "attack": 2
+     },
+     "holds": 0,
+     "outcome": "lost",
+     "deck": [],
+     "equipment": {
+      "body": "padded_vest",
+      "weapon": "iron_mace",
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 35,
+      "atk": 5,
+      "def": 1,
+      "luck": 5,
+      "gearAtk": 1
+     },
+     "gold": 14
+    }
+   ],
+   "rewards": [
+    {
+     "at": 1793162065559,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "leather_jerkin",
+      "exposing_strike"
+     ],
+     "picked": "leather_jerkin",
+     "gold": 6
+    },
+    {
+     "at": 1793162124638,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "iron_mace",
+      "heart_amulet"
+     ],
+     "picked": "iron_mace",
+     "gold": 4
+    },
+    {
+     "at": 1793162185752,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "padded_vest",
+      "exposing_strike"
+     ],
+     "picked": "padded_vest",
+     "replaced": "leather_jerkin",
+     "gold": 4
+    }
+   ],
+   "shop": [],
+   "endedAt": 1793162262423,
+   "diedTo": "Hex Imp"
+  },
+  {
+   "appVersion": "0.0.1",
+   "seed": "IRON-OWL-1058",
+   "classId": "warrior",
+   "setId": "warrior_shadow_knight",
+   "families": [
+    "warrior_shadow_knight",
+    "warrior_dps"
+   ],
+   "level": 5,
+   "legacy": {
+    "atk": 0,
+    "def": 0,
+    "maxHp": 0
+   },
+   "start": {
+    "deck": [
+     "leech",
+     "spiritboomerang"
+    ],
+    "equipment": {
+     "body": null,
+     "weapon": null,
+     "relic": null
+    },
+    "stats": {
+     "maxHp": 29,
+     "atk": 4,
+     "def": 1,
+     "luck": 5
+    }
+   },
+   "startedAt": 1793162272726,
+   "version": 1,
+   "outcome": "ongoing",
+   "screensCleared": 0,
+   "fights": [
+    {
+     "at": 1793162350178,
+     "screen": 1,
+     "enemyId": "adept_necromancer",
+     "enemies": [
+      "adept_necromancer"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 29,
+     "hpAfter": 22,
+     "rounds": 6,
+     "dealt": 13,
+     "taken": 8,
+     "blocked": 2,
+     "counters": 0,
+     "dotTaken": 5,
+     "healed": 1,
+     "cards": {
+      "spiritboomerang": 1,
+      "attack": 2,
+      "ward": 1,
+      "leech": 1,
+      "bellow": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "leech",
+      "spiritboomerang"
+     ],
+     "equipment": {
+      "body": null,
+      "weapon": null,
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 29,
+      "atk": 4,
+      "def": 1,
+      "luck": 5
+     },
+     "gold": 0
+    },
+    {
+     "at": 1793162419923,
+     "screen": 1,
+     "enemyId": "rat_pack",
+     "enemies": [
+      "rat_pack"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 22,
+     "hpAfter": 5,
+     "rounds": 7,
+     "dealt": 12,
+     "taken": 19,
+     "blocked": 2,
+     "counters": 0,
+     "dotTaken": 0,
+     "healed": 2,
+     "cards": {
+      "defend": 2,
+      "spiritboomerang": 1,
+      "bellow": 1,
+      "attack": 2,
+      "leech": 1
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "leech",
+      "spiritboomerang",
+      "spiritboomerang"
+     ],
+     "equipment": {
+      "body": null,
+      "weapon": null,
+      "relic": null
+     },
+     "stats": {
+      "maxHp": 29,
+      "atk": 4,
+      "def": 1,
+      "luck": 5
+     },
+     "gold": 8
+    },
+    {
+     "at": 1793162487123,
+     "screen": 1,
+     "enemyId": "adept_necromancer",
+     "enemies": [
+      "adept_necromancer"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 27,
+     "hpAfter": 17,
+     "rounds": 6,
+     "dealt": 14,
+     "taken": 12,
+     "blocked": 1,
+     "counters": 0,
+     "dotTaken": 1,
+     "healed": 2,
+     "cards": {
+      "leech": 1,
+      "spiritboomerang": 1,
+      "bellow": 1,
+      "ward": 1,
+      "attack": 2
+     },
+     "holds": 0,
+     "outcome": "won",
+     "deck": [
+      "leech",
+      "spiritboomerang",
+      "spiritboomerang"
+     ],
+     "equipment": {
+      "body": null,
+      "weapon": null,
+      "relic": "heart_amulet"
+     },
+     "stats": {
+      "maxHp": 34,
+      "atk": 4,
+      "def": 1,
+      "luck": 5,
+      "gearAtk": 0
+     },
+     "gold": 12
+    },
+    {
+     "at": 1793162582898,
+     "screen": 1,
+     "enemyId": "adept_necromancer",
+     "enemies": [
+      "adept_necromancer",
+      "boar"
+     ],
+     "kind": "node",
+     "tile": "road",
+     "hpBefore": 17,
+     "hpAfter": 0,
+     "rounds": 6,
+     "dealt": 16,
+     "taken": 22,
+     "blocked": 3,
+     "counters": 1,
+     "dotTaken": 4,
+     "healed": 5,
+     "cards": {
+      "defend": 2,
+      "minorleech": 1,
+      "ward": 1,
+      "leech": 1,
+      "spiritboomerang": 1
+     },
+     "holds": 0,
+     "outcome": "lost",
+     "deck": [
+      "leech",
+      "spiritboomerang",
+      "spiritboomerang",
+      "minorleech"
+     ],
+     "equipment": {
+      "body": null,
+      "weapon": null,
+      "relic": "heart_amulet"
+     },
+     "stats": {
+      "maxHp": 34,
+      "atk": 4,
+      "def": 1,
+      "luck": 5,
+      "gearAtk": 0
+     },
+     "gold": 18
+    }
+   ],
+   "rewards": [
+    {
+     "at": 1793162353608,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "leather_jerkin",
+      "spiritboomerang"
+     ],
+     "picked": "spiritboomerang",
+     "gold": 8
+    },
+    {
+     "at": 1793162423772,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "heart_amulet",
+      "broadsword"
+     ],
+     "picked": "heart_amulet",
+     "gold": 4
+    },
+    {
+     "at": 1793162493652,
+     "screen": 1,
+     "source": "kill",
+     "offered": [
+      "leather_jerkin",
+      "minorleech"
+     ],
+     "picked": "minorleech",
+     "gold": 6
+    }
+   ],
+   "shop": []
+  }
+ ]
+}

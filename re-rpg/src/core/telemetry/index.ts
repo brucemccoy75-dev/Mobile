@@ -113,3 +113,61 @@ export function describeRuns(log: TelemetryLog): string[] {
     return `${new Date(r.startedAt).toISOString().slice(0, 16)} ${r.classId}/${r.setId} ${r.outcome}${r.diedTo ? ` (${r.diedTo})` : ''}: ${won} fights won, ${taken} damage taken, screens ${r.screensCleared}`;
   });
 }
+
+/**
+ * A run log read the way the simulator reports (DECISIONS #67), so the two can be laid side by
+ * side: finished runs only (died or won), bucketed by heirloom families ("fresh" when none).
+ * `name` turns a family id into its display name.
+ */
+export interface RunSummary {
+  label: string;
+  families: string[];
+  runs: number;
+  levels: number[];
+  reachBossPct: number;
+  beatBossPct: number;
+  avgHpAtBoss: number;
+  avgFightsWon: number;
+  avgRoundsPerFight: number;
+  /** Share of fights that had two or more enemies, and share of deaths that came in one. */
+  duoFightPct: number;
+  duoDeathPct: number;
+  /** HP regained between one fight's end and the next fight's start (shrines, heals, level-ups). */
+  medianRegen: number;
+  /** Deaths by the fight's enemies joined with "+". */
+  deaths: Record<string, number>;
+}
+
+const median = (xs: number[]) => { if (!xs.length) return 0; const s = [...xs].sort((a, b) => a - b), m = s.length >> 1; return s.length % 2 ? s[m]! : (s[m - 1]! + s[m]!) / 2; };
+
+export function summarizeRuns(log: TelemetryLog, name: (familyId: string) => string = (id) => id): RunSummary[] {
+  const buckets = new Map<string, RunRecord[]>();
+  for (const r of log.runs) {
+    if (r.outcome !== 'died' && r.outcome !== 'won') continue;
+    const key = [...(r.families ?? [])].sort().join(',');
+    buckets.set(key, [...(buckets.get(key) ?? []), r]);
+  }
+  return [...buckets.entries()].map(([key, runs]) => {
+    const families = key ? key.split(',') : [];
+    const fights = runs.flatMap((r) => r.fights);
+    const enemies = (f: FightRecord) => f.enemies ?? [f.enemyId];
+    const bossFights = runs.map((r) => r.fights.find((f) => f.kind === 'boss')).filter((f): f is FightRecord => !!f);
+    const lost = fights.filter((f) => f.outcome === 'lost');
+    const regen = runs.flatMap((r) => r.fights.slice(1).map((f, i) => f.hpBefore - r.fights[i]!.hpAfter));
+    const deaths: Record<string, number> = {};
+    for (const f of lost) { const k = enemies(f).join('+'); deaths[k] = (deaths[k] ?? 0) + 1; }
+    return {
+      label: families.length ? families.map(name).join('+') : 'fresh',
+      families, runs: runs.length, levels: runs.map((r) => r.level ?? 1),
+      reachBossPct: (100 * bossFights.length) / runs.length,
+      beatBossPct: (100 * bossFights.filter((f) => f.outcome === 'won').length) / runs.length,
+      avgHpAtBoss: bossFights.length ? bossFights.reduce((s, f) => s + f.hpBefore, 0) / bossFights.length : 0,
+      avgFightsWon: fights.filter((f) => f.outcome === 'won').length / runs.length,
+      avgRoundsPerFight: fights.length ? fights.reduce((s, f) => s + f.rounds, 0) / fights.length : 0,
+      duoFightPct: fights.length ? (100 * fights.filter((f) => enemies(f).length > 1).length) / fights.length : 0,
+      duoDeathPct: lost.length ? (100 * lost.filter((f) => enemies(f).length > 1).length) / lost.length : 0,
+      medianRegen: median(regen),
+      deaths,
+    };
+  }).sort((a, b) => a.families.length - b.families.length || a.label.localeCompare(b.label));
+}

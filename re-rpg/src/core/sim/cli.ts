@@ -3,12 +3,14 @@ import { basicsFor } from '@data/skills';
 //   npm run sim                       all classes, screen 1 gauntlet, 1000 runs each
 //   npm run sim -- --runs 5000 --class warrior --fights 4 --tier 1 --boss gatekeeper
 //   npm run sim -- --duel boar        one-on-one win rates against a single enemy
+//   npm run sim -- --screen --class warrior   the screen-1 mirror (DECISIONS #67): real map, duos, shrine, Wren
 import { CLASSES, getEnemy } from '@data/index';
 import type { ClassId } from '@data/types';
 import { RunRng } from '@core/rng';
 import { createCombat } from '@core/combat';
 import { greedy } from './policy';
 import { runFight, runGauntlet, standardLoadouts, summarize, withMods, type Summary } from './gauntlet';
+import { runScreen, screenLoadouts, type Gate, type Route } from './screen';
 
 const args = process.argv.slice(2);
 const opt = (name: string, def: string) => {
@@ -24,8 +26,24 @@ const duel = opt('duel', '');
 const classes = (classFilter ? [classFilter] : CLASSES.map((c) => c.id)) as ClassId[];
 
 const pct = (n: number) => `${n.toFixed(1).padStart(5)}%`;
+const screen = args.includes('--screen');
 
-if (duel) {
+if (screen) {
+  const gate = opt('boss', 'wren') as Gate;
+  console.log(`\nScreen-1 mirror: the real map per seed (duos, shrine), two heirlooms, gate = ${gate}, ${runs} runs per loadout, greedy policy\n`);
+  for (const classId of classes) {
+    for (const route of ['clear', 'short'] as Route[]) {
+      console.log(`${(route === 'clear' ? 'full clear' : 'shortest road').padEnd(30)} ${'reach boss'.padStart(10)} ${'beat boss'.padStart(10)} ${'hp@boss'.padStart(8)} ${'fights'.padStart(6)} ${'rounds'.padStart(6)}  deaths`);
+      for (const lo of screenLoadouts(classId)) {
+        const results = Array.from({ length: runs }, (_, i) => runScreen({ loadout: lo, route, boss: gate, policy: greedy, seed: `mirror-${i}` }));
+        const s = summarize(lo.label, results);
+        const deaths = Object.entries(s.deaths).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${k} ${((100 * v) / runs).toFixed(0)}%`).join(', ');
+        console.log(`${s.label.padEnd(30)} ${pct(s.reachBossPct).padStart(10)} ${pct(s.beatBossPct).padStart(10)} ${s.avgHpAtBoss.toFixed(1).padStart(8)} ${s.avgFightsWon.toFixed(2).padStart(6)} ${s.avgRounds.toFixed(1).padStart(6)}  ${deaths}`);
+      }
+      console.log('');
+    }
+  }
+} else if (duel) {
   const enemy = getEnemy(duel);
   console.log(`\nDuel vs ${enemy.name} (${runs} fights each)\n`);
   for (const classId of classes) {

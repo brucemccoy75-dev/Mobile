@@ -4,7 +4,7 @@
 
 **State.** Branch `claude/re-rpg-mobile-architecture-t26won`, folder `re-rpg/`, live on GitHub
 Pages at https://brucemccoy75-dev.github.io/Mobile/ (deploys ~70 s after a push; poll
-`origin/gh-pages` for "Deploy re-rpg <sha>"). 258 tests pass (`npm run check`: typecheck,
+`origin/gh-pages` for "Deploy re-rpg <sha>"). 263 tests pass (`npm run check`: typecheck,
 cards:validate, world:validate, tests, build). The game today is:
 
 - **Node overworld** (DECISIONS #37): a static node network per screen over an authored terrain,
@@ -37,7 +37,20 @@ own command → Playwright at 844×390 (the game) or 390×844 (the editors) with
 (Test Mode: set registry `testSetup`, call `TestMode.fight()`, then `Combat.act()` and poll
 `busy`; to answer a dialogue from a script, `scene('Dialogue').choose(d, option)`) → commit with
 the attribution lines → `git push -u origin <branch>` → poll gh-pages. Record decisions in
-`docs/DECISIONS.md` (next number is 67). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
+`docs/DECISIONS.md` (next number is 68). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
+
+**Run logs** (`docs/PLAYTESTS.md`, DECISIONS #67). When the designer sends a run log, always:
+1. save it in `docs/playtests/`;
+2. run `npm run playtest -- <log>` (real runs next to the screen-1 mirror: how often each reaches
+   and beats the boss);
+3. run `npm run sim -- --screen --class warrior` and `npm run sim -- --class warrior`;
+4. write it up as the next "Phone test N" at the top of `docs/BALANCE.md`;
+5. recommend, and change nothing without the designer.
+
+Latest: **Phone test 8** (2026-10-28):
+- fresh and Berserker runs reach Wren 0% (mirror 0%);
+- 63–75% of deaths come in duos;
+- levels shorten fights but don't add wins.
 
 **Scope.** Only the warrior is being balanced. Wizard and shaman cards, families and trees are
 frozen by the validator until the warrior is done.
@@ -47,10 +60,13 @@ frozen by the validator until the warrior is done.
 1. **Story with the designer.** Write each enemy's everyday lines (10–20 each, by personality;
    the designer wants to do this together), the first special-run quest, and lines for Tam's node
    on screen 2 (it is quiet there since #61).
-2. **Card balance** through editor imports: fill Paladin and Weaponmaster; give the sim a Shadow
-   Knight loadout (`src/core/sim`); watch a fresh run: does a no-family warrior die before the
-   boss, does a one-family warrior reach it, is holding a fleeting Mighty Blow for the boss a
-   choice? Next lever if singles cost nothing: gear max HP no longer heals (declined so far).
+2. **Pacing and balance** from Phone test 8 (BALANCE.md), with the designer:
+   - what a full clear should cost (a camp near the gate, duos shown on the map as a choice, a shop
+     that turns gold into HP: all world data);
+   - growth within a run against growth across runs;
+   - fill Paladin and Weaponmaster through editor imports.
+
+   Sim: model loot and the shop in the screen mirror, so it predicts a run instead of flooring it.
 3. **Remaining hard-coded story → data** (from the #61 review):
    - Wren at the gate (`OverworldScene` encounter, `WREN_GRUDGE`) as `screens[i].gate: [{when, boss, trigger}]`.
    - Her boss-win payoff (`CombatScene`: +9 relation, `wren_beaten`) as an on-kill hook for a

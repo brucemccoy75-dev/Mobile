@@ -1,8 +1,89 @@
-# Re-RPG — Balance Baseline (after phone test 3)
+# Re-RPG — Balance Baseline
 
-Produced by `npm run sim` with the greedy intent-reading policy (`src/core/sim/policy.ts`). Re-run after any numbers change and replace the tables. Gauntlet = 4 random fights of the screen's tier, HP carried over, no healing between fights, then the boss.
+Newest first. Run logs are read with the procedure in `docs/PLAYTESTS.md` (`npm run playtest`, then both sim tables). Produced by `npm run sim` with the greedy intent-reading policy (`src/core/sim/policy.ts`). Re-run after any numbers change and replace the tables. Gauntlet = 4 random fights of the screen's tier, HP carried over, no healing between fights, then the boss.
 
 Loadouts: **fresh** = Attack/Defend only, empty deck. **Set** = the two set tomes in the deck. **gearN** = a full three-slot kit for screen N (`GEAR_KIT` in `src/core/sim/gauntlet.ts`). The sim does not model loot choice, relics or 4-card decks, so these are floors, not expectations.
+
+## Phone test 8 (run log 2026-10-28)
+
+Procedure: `docs/PLAYTESTS.md`. Log: `docs/playtests/2026-10-28-runs.json` (20 warrior runs over
+two evenings, 17 finished, all on screen 1; two deaths were to the ghost, since switched off).
+
+`npm run playtest -- docs/playtests/2026-10-28-runs.json` (gate Wren, 1000 mirror runs a row):
+
+```
+group                          n lvl |       reach boss |        beat boss |       fights won |   deaths in duos
+                                     | real  clear short | real  clear short | real  clear short | real  clear short
+fresh                          8   1 |    0%    0%    0% |    0%    0%    0% |   3.3   2.2   1.9 |   63%   50%   67%
+Berserker                      4   4 |    0%    0%    5% |    0%    0%    0% |   4.5   3.1   2.5 |   75%   58%   75%
+Bulwark                        1   3 |  100%    0%    2% |    0%    0%    0% |  10.0   2.5   2.1 |    0%   51%   68%
+Berserker+Shadow Knight        4   5 |    0%    0%    9% |    0%    0%    0% |   2.3   3.4   2.6 |   75%   63%   76%
+```
+
+`npm run sim -- --screen --class warrior` (the mirror for every loadout, level 1):
+
+```
+full clear                     reach boss  beat boss  hp@boss fights rounds  deaths
+warrior fresh                        0.0%       0.0%      0.0   2.17   18.7  adept_necromancer 24%, adept_necromancer+boar 15%, boar 14%
+warrior Bulwark                      0.0%       0.0%      0.0   2.33   22.5  adept_necromancer 22%, adept_necromancer+boar 16%, boar 15%
+warrior Berserker                    0.0%       0.0%      0.0   2.88   16.4  adept_necromancer+boar 17%, adept_necromancer 16%, boar 15%
+warrior Shadow Knight                0.2%       0.0%      5.0   3.30   22.8  adept_necromancer+boar 21%, boar+hex_imp 19%, shell_beetle+rat_pack 15%
+warrior Berserker+Bulwark            0.0%       0.0%      0.0   2.60   19.5  adept_necromancer 19%, adept_necromancer+boar 17%, boar 14%
+warrior Shadow Knight+Bulwark        0.0%       0.0%      0.0   2.65   22.4  adept_necromancer+boar 18%, adept_necromancer 18%, boar 17%
+warrior Berserker+Shadow Knight       0.0%       0.0%      0.0   3.06   18.9  adept_necromancer+boar 18%, boar 15%, boar+hex_imp 15%
+
+shortest road                  reach boss  beat boss  hp@boss fights rounds  deaths
+warrior fresh                        0.3%       0.0%      2.0   1.90   17.0  adept_necromancer+boar 19%, rat_pack+hex_imp 16%, shell_beetle+rat_pack 16%
+warrior Bulwark                      1.4%       0.0%      7.5   1.97   20.0  adept_necromancer+boar 19%, rat_pack+hex_imp 16%, shell_beetle+rat_pack 16%
+warrior Berserker                    2.7%       0.0%      7.3   2.35   14.2  adept_necromancer+boar 20%, shell_beetle+rat_pack 18%, boar+hex_imp 18%
+warrior Shadow Knight                6.6%       0.0%      7.7   2.49   18.7  adept_necromancer+boar 24%, boar+hex_imp 22%, shell_beetle+rat_pack 17%
+warrior Berserker+Bulwark            3.5%       0.0%      6.7   2.17   17.4  adept_necromancer+boar 19%, boar+hex_imp 17%, rat_pack+hex_imp 16%
+warrior Shadow Knight+Bulwark        3.8%       0.0%      6.6   2.19   19.7  adept_necromancer+boar 21%, boar+hex_imp 18%, rat_pack+hex_imp 16%
+warrior Berserker+Shadow Knight       4.2%       0.0%      8.1   2.41   16.1  adept_necromancer+boar 22%, boar+hex_imp 19%, shell_beetle+rat_pack 19%
+```
+
+`npm run sim -- --class warrior` (four-fight gauntlet): unchanged from the Hand of 3 table below
+(fresh 25.6% reach, Bulwark 39.9%, Berserker 81.8%, both sets+gear1 beat Andre 0.6%).
+
+Reading:
+- **Mirror and real runs agree on the wall.** Fresh and Berserker reach Wren 0% in both on a full
+  clear, and most deaths come in duos in both (real 63–75%, mirror 50–63%) although duos are
+  under a third of fights (29% real).
+- **Real runs win more fights than the mirror**: fresh 3.3 against 2.2, and the one Bulwark run
+  that reached Wren won 10 against 2.5. The mirror has only its two heirlooms; real runs pick up
+  gear and cards on the way and buy heals. The Bulwark run took 2 Shield Bash, 2 Warding Blast,
+  Bind Wound, Final Stand, a mace, a chain shirt and a relic, and healed 68 before the gate. So in
+  the mirror, as in play, what gets a run through screen 1 is loot, not the families it opens with.
+- **The four-fight gauntlet overstates a run by about 80 points** (Berserker 82% against 0% real).
+  It has four fights against about ten, no duos, no Wren, and the whole family in hand. It stays
+  as the historic floor for a deck; the mirror is the run comparison from now on.
+- **Levels make fights shorter, not safer.**
+  - Rounds per fight: 6.3 fresh against 3.7 Berserker.
+  - Damage taken per round rose with level: alone 0.9 at L1 to 1.9 at L5; in duos 2.9 to 5.3.
+  - Fights won did not rise: fresh 3.3, Berserker (L4) 4.5, Berserker+Shadow Knight (L5) 2.3.
+  - In the mirror the opening families move fights won by about one at most (2.2 to 3.4).
+  - Attack and once-per-fight cards crowd Defend and Ward out of a 3-card hand, and nothing comes
+    back between fights to repay a faster kill.
+- **Attrition**: HP regained between fights, median 0–2. A full clear is about 10 fights on one HP
+  bar plus one shrine.
+- **Gold is idle**: long runs died holding 126–187 gold; three Heals and one Mighty Blow were all
+  that was bought.
+- **Little dice in a fight**: damage dealt is exactly the enemy's HP every fight, four of the five
+  screen-1 enemies run fixed sequences, and luck's 1% crits and bonus turns are rarely seen.
+- **Against the Targets**:
+  - "Fresh runs should almost never reach Boss 1" ✅ (real 0 of 8, mirror 0–0.3%).
+  - "A run that found both set tomes should reach Boss 1 often" ❌ (1 of 9 family runs; mirror
+    0% on a full clear).
+  - "Set + kit should beat Boss 1 most of the time": one attempt, lost with Wren at 10 of 46.
+- **Caveats**: 17 finished runs. Every level-5 run was a Shadow Knight build, so "L5" may be that
+  family rather than levels. The mirror is a floor (no loot or shop, greedy play).
+
+Open questions for the designer (nothing changed):
+- What should a full clear cost? A shrine or camp near the gate, duos visible on the map as a
+  choice, and a shop that turns gold into HP are all world data (node rules).
+- Should growth come within a run (loot) more than across runs (levels)? Today a level-1 run and a
+  level-5 run end in about the same place.
+- Sim: model loot and the shop in the mirror so it can predict a run, not only floor it.
 
 ## Hand of 3 every round 2026-10-27 (DECISIONS #53)
 

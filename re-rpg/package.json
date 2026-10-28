@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run cards:validate && npm run world:validate && npm run test && npm run build",
     "sim": "tsx --tsconfig tsconfig.json src/core/sim/cli.ts",
+    "playtest": "tsx --tsconfig tsconfig.json scripts/playtest.ts",
     "cards:validate": "tsx --tsconfig tsconfig.json scripts/cards-validate.ts",
     "world:validate": "tsx --tsconfig tsconfig.json scripts/world-validate.ts"
   },

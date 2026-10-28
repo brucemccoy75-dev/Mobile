@@ -14,9 +14,12 @@ Read, in this order, before doing anything:
    quests, special runs), the story vocabulary (conditions and effects), the world editor and the
    import procedure.
 3. `re-rpg/docs/CARDS.md`: the card model, the card editor and the import procedure.
-4. `re-rpg/docs/DECISIONS.md` entries #55 to #61 (the world and quest editor, battle effects,
-   ambience, and the story-in-data review). The whole file is the history of why things are the
-   way they are; look up any older number you meet.
+4. `re-rpg/docs/PLAYTESTS.md`: what to do with every run log I send (save it, `npm run playtest`
+   against the screen-1 mirror, both sim tables, a "Phone test N" write-up in BALANCE.md). The
+   latest reading is the top section of `re-rpg/docs/BALANCE.md`.
+5. `re-rpg/docs/DECISIONS.md` entries #55 to #67 (the world and quest editor, battle effects,
+   ambience, the story-in-data review, blocks, and the run-log procedure). The whole file is the
+   history of why things are the way they are; look up any older number you meet.
 
 Ground rules:
 - I design on my phone. Cards are edited in the card editor and story in the world editor; I send
@@ -24,6 +27,9 @@ Ground rules:
   or WORLD.md, stopping on any validator problem. Never hand-edit card numbers or story in
   TypeScript. A new mechanic or story capability is an engine change with tests first, then a
   schema field, an editor control and a validator rule.
+- When I send a run log, follow `docs/PLAYTESTS.md` every time. Run the simulator, and compare
+  how often it reaches and beats the boss with how often I did. Write the result as the next
+  "Phone test" in BALANCE.md. Recommend changes; make them only when I say so.
 - Only the warrior is being balanced; wizard and shaman data are frozen by the validator.
 - Every change: `npm run check` green, commit with the attribution lines the session gives you,
   `git push -u origin claude/re-rpg-mobile-architecture-t26won`, then poll `origin/gh-pages` until

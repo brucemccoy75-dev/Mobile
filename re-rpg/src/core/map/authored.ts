@@ -41,6 +41,9 @@ export function listSlots(ascii: string): Slot[] {
 }
 
 /** What the open slots become, by count. The rest are monsters. */
+/** A shrine heals this share of max HP, once (DECISIONS #39); the simulator uses it too (#67). */
+export const SHRINE_HEAL = 0.5;
+
 export const BAG = { shop: 1, shrine: 1, treasurePerSlot: 0.25, unknownShare: 0.4, unknownDuoChance: 0.35 } as const;
 
 export function parseScreen(ascii: string, rng: Rng, opts: AuthoredOptions): ScreenMap {

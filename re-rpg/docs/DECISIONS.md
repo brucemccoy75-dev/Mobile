@@ -627,3 +627,29 @@ body or over the head, and which spells come from above) is pure (`src/game/fx/s
 `shieldArc`, `blockSide`) and pinned in `src/game/fxShapes.test.ts`. Checked in the browser
 with a real warded curse and a blocked jab, and each spell fired at a shield; screenshot in
 `docs/audit/blocks-2026-10-28/`.
+
+## 67. Every run log is read against the simulator
+
+Designer's note: earlier sessions ran the simulator on every run log and compared how often it
+reached the boss with how often the designer did. That feedback was useful, but the method only
+lived in conversations: no doc said what to do with a log, and the logs were not kept. Now it is
+a fixed procedure (`docs/PLAYTESTS.md`), named in NEXT.md and the handoff prompt so every session
+follows it:
+- save the log in `docs/playtests/`;
+- run `npm run playtest -- <log>` and both sim tables;
+- write a "Phone test N" section in BALANCE.md;
+- recommend, and change nothing without the designer.
+
+The comparison needed a sim that plays a run, so there is now a **screen mirror**
+(`src/core/sim/screen.ts`, `npm run sim -- --screen`). It plays the authored screen rolled from
+the seed with the designer's node rules (duos, unknowns, shrine), opens with two heirlooms drawn
+the way a run draws them, saves the shrine for when it is needed, and ends at the gate as the
+designer meets it (Wren). It has two routes, full clear and shortest road.
+
+`npm run playtest` groups finished runs by heirloom families (`summarizeRuns` in
+`src/core/telemetry`) and prints each group next to the mirror at its median level. The
+four-fight gauntlet stays as the historic floor: on the first log it put Berserker at 82% to the
+boss against 0% real, while the mirror said 0%. The shrine's heal moved to `SHRINE_HEAL` in
+`src/core/map` so the scene and the mirror share it. Pinned by `src/core/sim/screen.test.ts` and
+the run-log summary test in `src/core/telemetry/telemetry.test.ts`. First reading: BALANCE.md,
+Phone test 8.
