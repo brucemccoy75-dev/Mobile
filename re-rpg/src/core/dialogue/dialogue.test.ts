@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { Rng } from '@core/rng';
 import { DIALOGUE } from '@data/dialogue';
 import { ENEMIES, getSkill } from '@data/index';
-import { defaultOption, pickDialogue, resolve, visibleOptions, type DialogueCtx } from './index';
+import { defaultOption, holds, pickDialogue, resolve, visibleOptions, type DialogueCtx } from './index';
 
-const ctx = (over: Partial<DialogueCtx> = {}): DialogueCtx => ({ flags: new Set(), relations: {}, deathsOnScreen: 0, deathsTotal: 0, level: 1, classId: 'warrior', gold: 10, fights: 0, rng: new Rng(1), ...over });
+const ctx = (over: Partial<DialogueCtx> = {}): DialogueCtx => ({ flags: new Set(), relations: {}, deathsOnScreen: 0, deathsTotal: 0, level: 1, classId: 'warrior', gold: 10, fights: 0, rng: new Rng(1), screen: 0, ...over });
 
 describe('dialogue data', () => {
   it('every enemy and both gates have a pre-fight entry that always matches', () => {
@@ -23,7 +23,7 @@ describe('dialogue data', () => {
     expect(pickDialogue(DIALOGUE, 'node:quest', ctx({ fights: 2, flags: new Set(['tinker_quest', 'tinker_fight_won']) }))!.id).toBe('tinker_reward');
     expect(pickDialogue(DIALOGUE, 'node:lost', ctx())).not.toBeNull();
     expect(pickDialogue(DIALOGUE, 'giver:wren', ctx({ fights: 1, flags: new Set(['wren_met']) }))!.id).toBe('wren_after_fight');
-    expect(resolve(pickDialogue(DIALOGUE, 'node:quest', ctx({ fights: 1 }))!.options[0]!.effects).rearm).toBe(true);
+    expect(resolve(pickDialogue(DIALOGUE, 'node:quest', ctx({ fights: 1 }))!.options[0]!.effects).rearm).not.toBeNull();
   });
   it('every next target exists, every option ends in fight, skip or next, and named tomes exist', () => {
     const ids = new Set(DIALOGUE.map((d) => d.trigger));
@@ -81,5 +81,35 @@ describe('default dialogue (DECISIONS #55)', () => {
     expect(pickDialogue(E, 'pre_fight:pig', ctx({ rng: r }), ['pig_b'])!.id).toBe('pig_b');
     expect(r.getState()).toBe(before);
     expect(pickDialogue(E, 'pre_fight:pig', ctx())!.id).toBe('pig_a');
+  });
+});
+
+describe('story vocabulary (DECISIONS #61)', () => {
+  const full = (over: Partial<DialogueCtx> = {}): DialogueCtx => ctx({ screen: 0, quests: { wren_errand: 'active' }, has: (id) => id === 'shield_bash', special: false, memory: new Set(['met_andre_once']), ...over });
+  it('screen, quest status, has, special and remembered flags', () => {
+    expect(holds({ screen: 0 }, full())).toBe(true);
+    expect(holds({ screen: 1 }, full())).toBe(false);
+    expect(holds({ quest: 'wren_errand', is: 'active' }, full())).toBe(true);
+    expect(holds({ quest: 'wren_errand', is: 'done' }, full())).toBe(false);
+    expect(holds({ quest: 'other', is: 'none' }, full())).toBe(true);
+    expect(holds({ has: 'shield_bash' }, full())).toBe(true);
+    expect(holds({ has: 'broadsword' }, full())).toBe(false);
+    expect(holds({ special: true }, full({ special: true }))).toBe(true);
+    expect(holds({ remembered: 'met_andre_once' }, full())).toBe(true);
+    expect(holds({ remembered: 'met_andre_once', is: false }, full())).toBe(false);
+  });
+  it('not and any combine conditions', () => {
+    expect(holds({ not: { screen: 1 } }, full())).toBe(true);
+    expect(holds({ any: [{ screen: 1 }, { has: 'shield_bash' }] }, full())).toBe(true);
+    expect(holds({ any: [{ screen: 1 }, { special: true }] }, full())).toBe(false);
+  });
+  it('a missing context field never holds (older callers)', () => {
+    expect(holds({ screen: 0 }, ctx({ screen: undefined }))).toBe(false);
+  });
+  it('new effects fold into the resolution: remember, offer a quest, a note, a re-arm with its own trigger and win flag', () => {
+    const r = resolve([{ remember: 'saw_the_king' }, { quest: 'boar_king' }, { note: 'The road goes quiet.' }, { rearm: { trigger: 'pre_fight:brother', winFlag: 'tinker_fight_won' } }]);
+    expect(r).toMatchObject({ remember: ['saw_the_king'], quests: ['boar_king'], notes: ['The road goes quiet.'], rearm: { trigger: 'pre_fight:brother', winFlag: 'tinker_fight_won' } });
+    expect(resolve([{ rearm: true }]).rearm).toEqual({});
+    expect(resolve([]).rearm).toBeNull();
   });
 });

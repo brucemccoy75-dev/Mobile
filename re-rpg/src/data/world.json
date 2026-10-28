@@ -25,6 +25,43 @@
     "rat_pack": {
       "defaults": [
         "rats"
+      ],
+      "onKill": [
+        {
+          "when": [
+            {
+              "screen": 0
+            },
+            {
+              "flag": "rats_promise"
+            }
+          ],
+          "effects": [
+            {
+              "relation": "wren",
+              "delta": -2
+            },
+            {
+              "note": "Somewhere, Wren feels it. She will not forget."
+            }
+          ]
+        },
+        {
+          "when": [
+            {
+              "screen": 0
+            }
+          ],
+          "effects": [
+            {
+              "relation": "wren",
+              "delta": -1
+            },
+            {
+              "note": "Somewhere, Wren feels it."
+            }
+          ]
+        }
       ]
     },
     "ogre": {
@@ -389,6 +426,9 @@
       "speaker": "Tam the tinker",
       "when": [
         {
+          "screen": 0
+        },
+        {
           "flag": "tinker_done"
         }
       ],
@@ -408,6 +448,9 @@
       "trigger": "node:quest",
       "speaker": "Tam the tinker",
       "when": [
+        {
+          "screen": 0
+        },
         {
           "flag": "tinker_quest"
         },
@@ -440,6 +483,9 @@
       "speaker": "Tam the tinker",
       "when": [
         {
+          "screen": 0
+        },
+        {
           "flag": "tinker_quest"
         }
       ],
@@ -460,6 +506,9 @@
       "speaker": "Tam the tinker",
       "when": [
         {
+          "screen": 0
+        },
+        {
           "fights": {
             "min": 1
           }
@@ -478,7 +527,10 @@
               "flag": "tinker_quest"
             },
             {
-              "rearm": true
+              "rearm": {
+                "trigger": "pre_fight:brother",
+                "winFlag": "tinker_fight_won"
+              }
             },
             {
               "next": "tinker_where"
@@ -523,6 +575,11 @@
         {
           "text": "Later, then.",
           "effects": []
+        }
+      ],
+      "when": [
+        {
+          "screen": 0
         }
       ]
     },

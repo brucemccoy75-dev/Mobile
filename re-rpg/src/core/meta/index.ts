@@ -31,6 +31,8 @@ export interface MetaState {
   lastKiller?: string;
   /** Your last death on each screen, waiting there as a ghost (DECISIONS #36). Keyed by screen index. */
   ghosts: Record<string, GhostRecord>;
+  /** Story flags remembered across runs (the `remember` effect, DECISIONS #61). */
+  memory: string[];
 }
 
 export interface ClassProgress {
@@ -43,7 +45,7 @@ export interface ClassProgress {
 export type LegacyChoice = 'atk' | 'def' | 'maxHp';
 export const LEGACY_GRANT: Record<LegacyChoice, number> = { atk: 1, def: 1, maxHp: 5 };
 
-export const createMeta = (): MetaState => ({ version: META_VERSION, updatedAt: Date.now(), deaths: 0, wins: 0, bestScreen: 0, discoveredSkills: [], discoveredItems: [], winsByClass: {}, legacy: { atk: 0, def: 0, maxHp: 0 }, legacyUnspent: 0, progress: {}, relations: {}, deathsByScreen: [], ghosts: {} });
+export const createMeta = (): MetaState => ({ version: META_VERSION, updatedAt: Date.now(), deaths: 0, wins: 0, bestScreen: 0, discoveredSkills: [], discoveredItems: [], winsByClass: {}, legacy: { atk: 0, def: 0, maxHp: 0 }, legacyUnspent: 0, progress: {}, relations: {}, deathsByScreen: [], ghosts: {}, memory: [] });
 
 /** Bring an older saved meta up to date; returns null if it cannot be read. */
 export function migrateMeta(raw: unknown): MetaState | null {
@@ -68,6 +70,7 @@ export function migrateMeta(raw: unknown): MetaState | null {
     deathsByScreen: m.deathsByScreen ?? [],
     lastKiller: m.lastKiller,
     ghosts: m.ghosts ?? {},
+    memory: m.memory ?? [],
   };
   return out;
 }
@@ -224,6 +227,8 @@ export function mergeMeta(a: MetaState, b: MetaState): MetaState {
     deathsByScreen: Array.from({ length: Math.max(a.deathsByScreen?.length ?? 0, b.deathsByScreen?.length ?? 0) }, (_, i) => Math.max(a.deathsByScreen?.[i] ?? 0, b.deathsByScreen?.[i] ?? 0)),
     lastKiller: (a.updatedAt >= b.updatedAt ? a : b).lastKiller,
     ghosts: { ...((a.updatedAt >= b.updatedAt ? b : a).ghosts ?? {}), ...((a.updatedAt >= b.updatedAt ? a : b).ghosts ?? {}) },
+    // What the world remembers only grows.
+    memory: [...new Set([...(a.memory ?? []), ...(b.memory ?? [])])],
   };
 }
 

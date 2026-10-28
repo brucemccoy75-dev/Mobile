@@ -107,7 +107,6 @@ export function questFromDef(def: QuestDef, map: ScreenMap, ctx: QuestContext, r
   return { ...base, giver: giver(name), escort: { name, pos: at(def.escort?.node, map.npcSpot), following: false, ...(def.escort?.node ? { node: def.escort.node } : {}) } };
 }
 
-export const ESCORT_THREAT_MULT = 1.25;
 
 export interface QuestContext {
   classId: ClassId;

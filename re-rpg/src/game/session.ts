@@ -1,7 +1,7 @@
 // The live run object the scenes share, plus (de)serialisation to the
 // RunState that SaveStore persists. Pure rules live in core/run, core/loot, core/meta.
 import type Phaser from 'phaser';
-import { enemiesOfTier, familyOf, getClass, getSet, getSkill } from '@data/index';
+import { familyOf, getClass, getSet, getSkill } from '@data/index';
 import type { ClassId, Enemy, EnemyId, Item, SetId, Skill, SkillId, Stats } from '@data/types';
 import { RunRng, newSeed } from '@core/rng';
 import { key, parseScreen, type MapNode, type ScreenMap, type Tile, type TileType } from '@core/map';
@@ -9,14 +9,14 @@ import { SCREEN1 } from '@data/maps/screen1';
 import { SCREEN2 } from '@data/maps/screen2';
 import { WORLD, nodeRules } from '@data/world';
 import { DECK_CAP } from '@core/combat';
-import { DUO_CHANCE, PAIRS } from '@data/packs';
+import { PAIRS } from '@data/packs';
 import { TOME_COPY_CAP } from '@data/skills';
 import { computeStats, emptyEquipment, equip as equipItem, equipmentFromIds, equipmentToIds, type Equipment, RUN_VERSION, type RunState } from '@core/run';
 import { classProgress, createMeta, deathsOn, discoverItem, discoverSkill, nudgeRelation, rollHeirloomChoices, unlockedSets, type Heirloom, type MetaState } from '@core/meta';
 import { LUCK_RARE_WEIGHT, buildPool, rollShopStock, type RewardChoice, type RewardSource, type ShopStock } from '@core/loot';
 import { LEVEL_GOLD, LEVEL_HP, LEVEL_RARE_CHANCE } from '@data/progression';
 import { pickQuestDef, questFromDef, questReady, type Quest, type QuestDef } from '@core/quest';
-import type { DialogueCtx } from '@core/dialogue';
+import type { DialogueCtx, QuestState, Rearm } from '@core/dialogue';
 import { upgradeItem, upgradeSkill, type SkillUpgrades } from '@core/run/upgrade';
 import type { SaveStore } from '@save/SaveStore';
 
@@ -25,7 +25,7 @@ export const SCREEN_COUNT = 2;
 export type EncounterKind = 'random' | 'guard' | 'boss' | 'node';
 /** `tile` is where the fight started; the combat backdrop is chosen from it (docs/ART.md). */
 export interface PendingEncounter { kind: EncounterKind; enemyId: EnemyId; guardId?: string; /** Authored map node (kind 'node'). */ nodeId?: string; tile?: TileType; /** Further enemies behind the first (duos, DECISIONS #29). */ extra?: EnemyId[]; /** Full definitions when the fight holds enemies that are not in the roster (a ghost, a boss variant; DECISIONS #36). Front first; overrides enemyId/extra for the engine. */ custom?: Enemy[]; /** Set when your ghost is in this fight. */ ghost?: boolean; }
-export interface CombatResult { encounter: PendingEncounter; won: boolean; }
+export interface CombatResult { encounter: PendingEncounter; won: boolean; /** What the win already changed (applied in combat, DECISIONS #61); the map only shows it. */ report?: import('@game/story').WinReport; }
 export interface PendingOffer { source: RewardSource; gold?: number; }
 
 export interface RunSession {
@@ -193,14 +193,35 @@ export function adoptFamily(s: RunSession, setId: SetId): boolean {
   return true;
 }
 
-/** What a quest's conditions read (the same context dialogue uses, #35). */
-function questCondCtx(s: RunSession, meta: MetaState): DialogueCtx {
-  return { flags: s.flags, relations: meta.relations ?? {}, deathsOnScreen: deathsOn(meta, s.screenIndex), deathsTotal: meta.deaths, lastKiller: meta.lastKiller, level: classProgress(meta, s.classId).level, classId: s.classId, gold: s.gold, fights: s.encountersWon, rng: s.rng.stream('quest') };
+/**
+ * What every story condition reads, for dialogue and quests alike (DECISIONS #35, #61): run flags,
+ * relations and deaths, level, class, gold, fights, the screen, each world.json quest's state, what
+ * is held, whether the run is special, and what the world remembers across runs.
+ */
+export function storyCtx(s: RunSession, meta: MetaState): DialogueCtx {
+  const quests: Record<string, QuestState> = {};
+  for (const q of s.quests) if (q.defId && q.id.startsWith(`quest_${s.screenIndex}_`)) quests[q.defId] = q.status === 'active' && questReady(q, s.deck, s.equipment) ? 'ready' : q.status;
+  return {
+    flags: s.flags, relations: meta.relations ?? {}, deathsOnScreen: deathsOn(meta, s.screenIndex), deathsTotal: meta.deaths, lastKiller: meta.lastKiller,
+    level: classProgress(meta, s.classId).level, classId: s.classId, gold: s.gold, fights: s.encountersWon, rng: s.rng.stream('quest'),
+    screen: s.screenIndex, quests, has: (id) => s.deck.includes(id) || Object.values(s.equipment).some((i) => i?.id === id || i?.id?.startsWith(`${id}+`)),
+    special: s.special, memory: new Set(meta.memory ?? []),
+  };
+}
+
+/** Offer a world.json quest on this screen now (the dialogue `quest` effect, #61). False when it belongs to another screen. */
+export function offerQuest(s: RunSession, meta: MetaState, id: string): Quest | null {
+  const def = WORLD.quests.find((d) => d.id === id);
+  if (!def || def.screen !== s.screenIndex) return null;
+  const q = buildQuest(s, meta, def);
+  q.id = `${q.id}_${s.quests.length}`;
+  s.quests.push(q);
+  return q;
 }
 
 /** The quest a screen offers this run (DECISIONS #57): its special one on a special run when one qualifies (#58), else a usual one. */
 function pickScreenQuest(s: RunSession, meta: MetaState, index: number): QuestDef | null {
-  const ctx = questCondCtx(s, meta);
+  const ctx = storyCtx(s, meta);
   return (s.special ? pickQuestDef(WORLD.quests, index, ctx, true) : null) ?? pickQuestDef(WORLD.quests, index, ctx, false);
 }
 /** Put this screen's quest in place; earlier screens' quests stay for the run summary. */
@@ -307,8 +328,8 @@ export function nodeEncounter(s: RunSession, node: MapNode): PendingEncounter {
   return { kind: 'node', enemyId: node.enemyId!, nodeId: node.id, extra: node.extra ? [...node.extra] : undefined };
 }
 
-/** A quest sends you back: the last cleared monster node gets a fresh fight, one head bigger than before. */
-export function rearmLastFight(s: RunSession): MapNode | null {
+/** A quest sends you back: the last cleared monster node gets a fresh fight, one head bigger than before, with its own words and win flag (#61). */
+export function rearmLastFight(s: RunSession, rearm: Rearm = {}): MapNode | null {
   const id = s.lastClearedNode;
   if (!id) return null;
   const n = nodeById(s, id);
@@ -320,6 +341,7 @@ export function rearmLastFight(s: RunSession): MapNode | null {
     n.enemyId = pair[0]; n.extra = [pair[1]];
   }
   s.flags.add('rearmed');
+  n.rearm = { ...rearm };
   return n;
 }
 
@@ -327,18 +349,6 @@ export function rearmLastFight(s: RunSession): MapNode | null {
 export function treasureGold(s: RunSession, node: MapNode): number {
   const hops = routeTo(s, node.id)?.length ?? 2;
   return 10 + (4 + Math.min(hops, 6) * 2) * (s.screenIndex + 1) + s.rng.stream('loot').int(0, 6);
-}
-export const randomEnemy = (s: RunSession): EnemyId => s.rng.stream('encounter').pick(enemiesOfTier(screenTier(s))).id;
-
-/** A wild encounter: a single enemy, or one of the screen's authored pairs (DECISIONS #29). */
-export function rollEncounter(s: RunSession): PendingEncounter {
-  const rng = s.rng.stream('encounter');
-  const tier = screenTier(s);
-  if (rng.chance(DUO_CHANCE[s.screenIndex] ?? DUO_CHANCE[DUO_CHANCE.length - 1]!)) {
-    const [front, rear] = rng.pick(PAIRS[tier]);
-    return { kind: 'random', enemyId: front, extra: [rear] };
-  }
-  return { kind: 'random', enemyId: rng.pick(enemiesOfTier(tier)).id };
 }
 
 // ---------------------------------------------------------------- taking rewards

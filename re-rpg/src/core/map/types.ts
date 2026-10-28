@@ -39,6 +39,8 @@ export interface MapNode {
   seen?: boolean;
   /** A dialogue id that replaces the node's usual words (world editor, DECISIONS #55). */
   dialogue?: string;
+  /** Set while a quest has re-armed this node: the words that greet you and a flag set when you win it (DECISIONS #61). */
+  rearm?: { trigger?: string; winFlag?: string };
 }
 
 /** Kinds a designer may put on a content slot (world editor, DECISIONS #55). */

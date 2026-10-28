@@ -9,7 +9,7 @@ phone, exports it, and a session imports it by the fixed procedure below.
 | Part | Fields | Meaning |
 |---|---|---|
 | dialogue | id, trigger, speaker, portrait, when, lines, options | one thing someone can say; `trigger` is what asks for it (`pre_fight:boar`, `gate:gatekeeper`, `node:quest`, `giver:wren`, or the `next` of another entry); `when` are conditions; each option has `when` (hides it) and effects |
-| enemies | per enemy id: defaults | the entries it picks from at random when none of its conditional entries holds and its node has no override |
+| enemies | per enemy id: defaults, onKill | `defaults`: the entries it picks from at random when none of its conditional entries holds and its node has no override; `onKill`: story when one is killed (below) |
 | screens | per screen, nodes by id: kind, odds, enemy, pair, dialogue | the designer's rules for one node; anything unset is rolled as before |
 | specialChance | 0–1 | the share of runs that are special (DECISIONS #58; 0.2) |
 | quests | id, name, screen, giver, type, voice, fetch, hunt, escort, reward, when, special, then, nodes | a quest a screen can offer (DECISIONS #57): see below |
@@ -46,6 +46,42 @@ an `enemy` or a `pair` for its fight, and a `dialogue`. The start, quest and los
 `dialogue` only (it replaces Wren's, Tam's or the lost one's words). The boss takes an `enemy`
 (another boss) and a `dialogue`. A shop or shrine a rule places counts against the run's one of
 each; unruled slots fill from the usual bag.
+
+## Conditions and effects (the story vocabulary)
+
+Every "only when" (dialogue entries, options, quests, on-kill hooks) uses these; all must hold.
+
+| Condition | Holds when |
+|---|---|
+| flag (is) | a run flag is set (or not) |
+| remembered (is) | a flag the world remembers across runs is set (or not) |
+| relation min/max | a named relation (wren, gerald, imp, andre, tinker, …) is in range |
+| deaths screen/total min/max | deaths on this screen or in total are in range |
+| killedBy | the last killing blow was this species |
+| level min/max, gold min, fights min/max | the class level, gold held, fights won this run |
+| class | the hero's class |
+| screen | this happens on that screen (0 = screen 1) |
+| quest is | a world.json quest this run is none, offered, active, ready (can be handed in), done or declined |
+| has | a card in the deck or an item worn |
+| special | this is (or is not) a special run |
+| chance | a percent roll |
+| not / any | the inner condition fails / at least one inner condition holds |
+
+| Effect | Does |
+|---|---|
+| fight / skip / next | start the fight / walk on / lead on to the entry answering that trigger |
+| flag (on/off) | set or clear a run flag |
+| remember | remember a flag across runs |
+| relation delta | move a relation |
+| gold, hp | add or take gold or HP |
+| tome | give a card (or a random one from the run's families) |
+| quest | offer a world.json quest on this screen now, at its giver |
+| note | show a line as a toast |
+| rearm (trigger, win flag) | send the last cleared fight back bigger; the node greets you with that trigger and sets the win flag when you win it there |
+
+**On-kill hooks.** `enemies[id].onKill` is a list of `{when, effects}`; when one of that enemy is
+killed, the first entry whose conditions hold runs its effects (Wren's rats live here). Wins are
+applied the moment the fight is won, before any save.
 
 ## The editor
 

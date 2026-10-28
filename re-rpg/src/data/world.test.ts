@@ -53,3 +53,18 @@ describe('world.json (DECISIONS #55)', () => {
     expect(validateWorld(c)).toEqual([`quest wren_errand ${start0}: a story node or the boss keeps its kind`]);
   });
 });
+
+describe('the validator reads conditions and effects (DECISIONS #61)', () => {
+  it('names unknown condition or effect shapes, unknown quests and cards, and an entry with no always-shown option', () => {
+    const a = clone(); a.dialogue.find((d) => d.id === 'boar')!.when = [{ mood: 'grumpy' } as never];
+    expect(validateWorld(a)).toEqual(['dialogue boar: unknown condition {"mood":"grumpy"}']);
+    const b = clone(); b.dialogue.find((d) => d.id === 'boar')!.when = [{ any: [{ quest: 'nope', is: 'done' }, { has: 'nothing_like_it' }] }];
+    expect(validateWorld(b)).toEqual(['dialogue boar: condition names no quest nope', 'dialogue boar: condition names no card or item nothing_like_it']);
+    const c = clone(); c.dialogue.find((d) => d.id === 'beetle')!.options[0]!.effects.push({ bogus: 1 } as never);
+    expect(validateWorld(c)).toEqual(['dialogue beetle option "Fight.": unknown effect {"bogus":1}']);
+    const d = clone(); for (const o of d.dialogue.find((x) => x.id === 'beetle')!.options) o.when = [{ gold: { min: 99 } }];
+    expect(validateWorld(d)).toEqual(['dialogue beetle: needs an option with no conditions, so there is always a choice']);
+    const e = clone(); e.enemies.rat_pack!.onKill![0]!.effects.push({ quest: 'no_such' });
+    expect(validateWorld(e)).toEqual(['enemy rat_pack on kill: no quest no_such']);
+  });
+});

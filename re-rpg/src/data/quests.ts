@@ -48,22 +48,4 @@ export const GIVERS: GiverVoice[] = [
   },
 ];
 
-/** Screen 1's fixed giver on the authored map (DECISIONS #35). Her dialogue is in data/dialogue.ts. */
-export const WREN: GiverVoice = {
-  name: 'Wren', title: 'the rat-keeper',
-  intro: {
-    fetch: 'The rats took my {target}. They take things. If you find one, bring it here and I will make it better than it was. I keep what you bring. So do they.',
-    hunt: 'The {target} have been at my rats. Put down {need} of them and I will pay. In coin. Not in rats.',
-    escort: '{target} went past the warren and has not come back. The rats say they are alive. Bring them here.',
-  },
-  accept: 'Good. Mind the rats on the way.',
-  progress: 'Not done. I would know. They would tell me.',
-  complete: {
-    fetch: 'There. Better than it was. Do not ask what it cost. It cost rats.',
-    hunt: 'The rats will sleep tonight. Take this.',
-    escort: 'Alive, then. The rats were right. They usually are. Take this.',
-  },
-  decline: 'Then go. Mind the rats.',
-};
-
 export const ESCORT_NAMES = ['Pell the forager', 'Tam the tinker', 'Ida the mapmaker', 'Brann the pilgrim'];

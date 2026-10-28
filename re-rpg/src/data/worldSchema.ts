@@ -1,4 +1,4 @@
-import type { Dialogue } from '@core/dialogue';
+import type { Cond, DEffect, Dialogue } from '@core/dialogue';
 import type { QuestDef } from '@core/quest';
 import { CONTENT_GLYPHS, listSlots } from '@core/map/authored';
 import { RULE_KINDS, type NodeRule } from '@core/map/types';
@@ -24,7 +24,7 @@ export interface WorldData {
   version: number;
   /** The chance a run is special (DECISIONS #58): its screens offer their special quests. */
   specialChance: number;
-  enemies: Record<string, { defaults: string[] }>;
+  enemies: Record<string, { defaults: string[]; /** Story when one is killed (DECISIONS #61): the first entry whose conditions hold. */ onKill?: { when?: Cond[]; effects: DEffect[] }[] }>;
   screens: { nodes: Record<string, NodeRule> }[];
   quests: QuestDef[];
   dialogue: Dialogue[];
@@ -40,7 +40,7 @@ export const SCREEN_ASCII = [SCREEN1, SCREEN2];
 export const enemyTrigger = (id: string): string => (ENEMIES.find((e) => e.id === id)?.archetype === 'boss' ? `gate:${id}` : `pre_fight:${id}`);
 
 /** Triggers the game asks for by name and must answer (Wren may say nothing, so giver:wren is not here). */
-export const STORY_TRIGGERS = ['node:quest', 'node:lost', 'pre_fight:brother', 'gate:wren', 'pre_fight:ghost'];
+export const STORY_TRIGGERS = ['node:lost', 'gate:wren', 'pre_fight:ghost'];
 
 const isId = (s: unknown) => typeof s === 'string' && /^[a-z][a-z0-9_]*$/.test(s);
 
@@ -62,17 +62,28 @@ export function validateWorld(w: WorldData): string[] {
   }
   const triggers = new Set((w.dialogue ?? []).map((d) => d.trigger));
   const skillIds = new Set(SKILLS.map((k) => k.id));
+  const vocab = { quests: new Set((w.quests ?? []).map((q) => q.id)), held: new Set([...SKILLS.map((k) => k.id), ...ITEMS.map((i) => i.id)]) };
+  for (const d of w.dialogue ?? []) {
+    out.push(...checkConds(d.when, `dialogue ${d.id}`, vocab));
+    for (const o of d.options ?? []) out.push(...checkConds(o.when, `dialogue ${d.id}`, vocab));
+    // A box with every option hidden has no buttons and nothing for Skip (#61).
+    if (d.options?.length && d.options.every((o) => o.when?.length)) bad(`dialogue ${d.id}: needs an option with no conditions, so there is always a choice`);
+  }
+  for (const [eid, e] of Object.entries(w.enemies ?? {})) for (const h of e.onKill ?? []) {
+    out.push(...checkConds(h.when, `enemy ${eid} on kill`, vocab));
+    for (const ef of h.effects ?? []) out.push(...checkEffect(ef, `enemy ${eid} on kill`, vocab, triggers, skillIds));
+  }
+  for (const q of w.quests ?? []) out.push(...checkConds(q.when, `quest ${q.id}`, vocab));
   for (const d of w.dialogue ?? []) for (const o of d.options ?? []) {
     const at = `dialogue ${d.id} option "${o.text}"`;
     if (!o.text?.trim()) bad(`dialogue ${d.id}: an option has no text`);
-    for (const e of o.effects ?? []) {
-      if ('next' in e && !triggers.has(e.next)) bad(`${at}: next "${e.next}" answers no entry`);
-      if ('tome' in e && e.tome !== 'random' && !skillIds.has(e.tome)) bad(`${at}: unknown card ${e.tome}`);
-    }
+    for (const e of o.effects ?? []) out.push(...checkEffect(e, at, vocab, triggers, skillIds));
     if (!(o.effects ?? []).some((e) => 'fight' in e || 'skip' in e || 'next' in e) && (d.trigger.startsWith('pre_fight:') || d.trigger.startsWith('gate:'))) bad(`${at}: a pre-fight option must fight, walk on or lead on`);
   }
   const always = (trig: string) => (w.dialogue ?? []).some((d) => d.trigger === trig && !(d.when?.length));
-  for (const t of STORY_TRIGGERS) if (!always(t)) bad(`trigger ${t}: needs an entry with no conditions`);
+  // The game asks for these by name; a re-arm names its own greeting (#61), which must always answer too.
+  const rearmTriggers = (w.dialogue ?? []).flatMap((d) => d.options.flatMap((o) => o.effects.flatMap((e) => ('rearm' in e && e.rearm !== true && e.rearm.trigger ? [e.rearm.trigger] : []))));
+  for (const t of new Set([...STORY_TRIGGERS, ...rearmTriggers])) if (!always(t)) bad(`trigger ${t}: needs an entry with no conditions`);
   for (const e of ENEMIES) {
     const trig = enemyTrigger(e.id);
     const defs = w.enemies?.[e.id]?.defaults ?? [];
@@ -130,6 +141,34 @@ function validateRules(i: number, rules: Record<string, NodeRule>, where: string
   return out;
 }
 
+type Vocab = { quests: Set<string>; held: Set<string> };
+const COND_KEYS = ['flag', 'relation', 'deaths', 'killedBy', 'level', 'gold', 'fights', 'class', 'chance', 'screen', 'quest', 'has', 'special', 'remembered', 'not', 'any'];
+const EFFECT_KEYS = ['flag', 'relation', 'gold', 'hp', 'tome', 'rearm', 'fight', 'skip', 'next', 'remember', 'quest', 'note'];
+
+/** Every condition has a known shape (an unknown one would silently never hold) and names things that exist (#61). */
+function checkConds(conds: Cond[] | undefined, at: string, v: Vocab): string[] {
+  const out: string[] = [];
+  const walk = (c: Cond) => {
+    const key = COND_KEYS.find((k) => k in c);
+    if (!key) { out.push(`${at}: unknown condition ${JSON.stringify(c)}`); return; }
+    if ('not' in c) walk(c.not);
+    else if ('any' in c) c.any.forEach(walk);
+    else if ('quest' in c && !v.quests.has(c.quest)) out.push(`${at}: condition names no quest ${c.quest}`);
+    else if ('has' in c && !v.held.has(c.has)) out.push(`${at}: condition names no card or item ${c.has}`);
+  };
+  (conds ?? []).forEach(walk);
+  return out;
+}
+
+function checkEffect(e: DEffect, at: string, v: Vocab, triggers: Set<string>, skillIds: Set<string>): string[] {
+  const out: string[] = [];
+  if (!EFFECT_KEYS.some((k) => k in e)) return [`${at}: unknown effect ${JSON.stringify(e)}`];
+  if ('next' in e && !triggers.has(e.next)) out.push(`${at}: next "${e.next}" answers no entry`);
+  if ('tome' in e && e.tome !== 'random' && !skillIds.has(e.tome)) out.push(`${at}: unknown card ${e.tome}`);
+  if ('quest' in e && !v.quests.has(e.quest)) out.push(`${at}: no quest ${e.quest}`);
+  return out;
+}
+
 function validateQuests(w: WorldData): string[] {
   const out: string[] = [];
   const bad = (s: string) => out.push(s);
@@ -182,7 +221,10 @@ export function diffWorld(a: WorldData, b: WorldData): string[] {
   const old = new Map(a.dialogue.map((d) => [d.id, d]));
   for (const d of b.dialogue) { const o = old.get(d.id); if (!o) out.push(`new dialogue ${d.id}`); else if (!same(o, d)) out.push(`changed dialogue ${d.id}`); }
   for (const id of old.keys()) if (!b.dialogue.some((d) => d.id === id)) out.push(`removed dialogue ${id}`);
-  for (const id of new Set([...Object.keys(a.enemies), ...Object.keys(b.enemies)])) if (!same(a.enemies[id], b.enemies[id])) out.push(`enemy ${id} defaults: [${(a.enemies[id]?.defaults ?? []).join(', ')}] -> [${(b.enemies[id]?.defaults ?? []).join(', ')}]`);
+  for (const id of new Set([...Object.keys(a.enemies), ...Object.keys(b.enemies)])) {
+    if (!same(a.enemies[id]?.defaults, b.enemies[id]?.defaults)) out.push(`enemy ${id} defaults: [${(a.enemies[id]?.defaults ?? []).join(', ')}] -> [${(b.enemies[id]?.defaults ?? []).join(', ')}]`);
+    if (!same(a.enemies[id]?.onKill, b.enemies[id]?.onKill)) out.push(`enemy ${id} on-kill story changed`);
+  }
   if (a.specialChance !== b.specialChance) out.push(`specialChance ${a.specialChance} -> ${b.specialChance}`);
   const oldQ = new Map((a.quests ?? []).map((q) => [q.id, q]));
   for (const q of b.quests ?? []) { const o = oldQ.get(q.id); if (!o) out.push(`new quest ${q.id}`); else if (!same(o, q)) out.push(`changed quest ${q.id}`); }

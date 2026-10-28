@@ -62,3 +62,8 @@ textarea { width: 100%; resize: vertical; }
 .form > select, .form .sub > select { width: 100%; }
 .form, .sub, .grid > label, .kv > * { min-width: 0; }
 .kv > span.muted:last-child { width: 40px; text-align: right; }
+/* A condition or effect: its type and ✕ on one line, its fields full width below (phone width, #61). */
+.rowedit { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: start; }
+.rowedit > .chips, .rowedit > .list { grid-column: 1 / -1; }
+.rowedit > .chips:empty { display: none; }
+.rowedit .chips input:not([type=checkbox]), .rowedit .chips select { flex: 1 1 120px; width: auto !important; }

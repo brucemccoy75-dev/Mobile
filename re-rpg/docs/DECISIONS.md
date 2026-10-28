@@ -528,3 +528,40 @@ small and below the nodes; timers belong to the scene (they stop with it), nothi
 and object counts stay in single digits. Checked at 844×390 on screen 1 (screenshots in
 `docs/audit/ambience-2026-10-28/`; the dust was confirmed by counting puffs mid-walk, as it is
 deliberately faint on the road).
+
+## 61. Story in data: a review, two bugs, and a bigger vocabulary
+
+An end-of-day review for flexibility of story and dialogue (a read-only pass over the codebase,
+each finding checked against the code before acting). What changed:
+- **Bug: a won fight could be lost.** The map applied a win (node cleared, hunt progress, Wren's
+  rat penalty, the boss beaten) only when it reappeared, but the combat and spoils screens saved the
+  run first, and the win itself was not saved; closing the app on the spoils screen lost the clear
+  and allowed the fight again. Now `applyWin` (`src/game/story.ts`) applies everything the moment
+  the fight is won, before any save; the map only shows it, in one toast.
+- **Bug: Tam's reward could pay for the wrong fight.** `tinker_fight_won` was set by any node win
+  once a fight had been re-armed (and carried to screen 2). The re-arm effect now carries its own
+  greeting and win flag (`{rearm: {trigger, winFlag}}`) onto the node, which pays only there; Tam's
+  entry in world.json uses it. Tam's five entries also gained `{screen: 0}` (screen 2's quest node
+  replayed his screen-1 lines); his node is quiet on screen 2 until something is written for it.
+- **On-kill hooks are data.** `enemies[id].onKill` runs story when one is killed; Wren's rat
+  penalty moved there from TypeScript (same numbers; the toast now names the relation change).
+- **Vocabulary for writers** (`src/core/dialogue`): conditions `screen`, `quest` (none / offered /
+  active / ready / done / declined), `has` (card or item), `special`, `remembered`, `not`, `any`;
+  effects `remember` (a flag kept across runs, in meta), `quest` (offer a world.json quest now),
+  `note` (a toast), and the re-arm payload above. One context builder (`storyCtx`) serves dialogue
+  and quests (there were two copies). A node's dialogue override now respects its "only when" and
+  falls back to the usual words.
+- **Validator** checks every condition's and effect's shape (an unknown one used to never hold,
+  silently), the quests and cards they name, every entry having an option with no conditions (else
+  the box had no buttons), quest conditions, and on-kill hooks; a greeting a re-arm names must
+  always answer.
+- **Editor**: the new conditions and effects (with nested NOT / ANY), on-kill hooks on the Enemies
+  tab, condition and effect rows laid out for a phone (type and ✕ on a line, fields below), and the
+  Words search redraws only its list after a short pause (it rebuilt the page on every key, which
+  flickered the phone keyboard). Quest pins now count as uses of a dialogue entry.
+- Dead code removed: `WREN` (moved to world.json in #57), `randomEnemy`, `rollEncounter`,
+  `ESCORT_THREAT_MULT`. Deferred (see NEXT.md): the old generated-map path and generator, Wren at
+  the gate and her boss-win payoff as data, the start node's words per screen, node labels, one
+  variable set for every dialogue, and the world editor's full re-render on each change.
+Pinned by `src/game/story.test.ts`, the vocabulary tests in `dialogue.test.ts` and the validator
+tests in `world.test.ts`; screenshots in `docs/audit/story-2026-10-28/`.

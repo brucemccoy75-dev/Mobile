@@ -11,7 +11,7 @@ import { CONTENT_GLYPHS, listSlots, type Slot } from '@core/map/authored';
 import { RULE_KINDS, type NodeRule, type RuleKind } from '@core/map/types';
 import { CLASSES, ENEMIES, SKILLS } from '@data/index';
 import { PAIRS } from '@data/packs';
-import type { Cond, DEffect, Dialogue, DOption } from '@core/dialogue';
+import { QUEST_STATES, type Cond, type DEffect, type Dialogue, type DOption, type QuestState } from '@core/dialogue';
 import type { QuestDef } from '@core/quest';
 import { ITEMS } from '@data/index';
 
@@ -215,14 +215,20 @@ function dialoguePicker(value: string | undefined, onChange: (v: string) => void
 function openDialogue(id: string) { state.tab = 'dialogue'; state.dlg = id; state.search = ''; render(); document.getElementById(`d-${id}`)?.scrollIntoView({ block: 'start' }); }
 
 function dialogueTab(): HTMLElement {
-  const q = state.search.toLowerCase();
-  const list = state.data.dialogue.filter((d) => !q || [d.id, d.speaker, d.trigger, ...d.lines].some((x) => x.toLowerCase().includes(q)));
+  const listBox = h('div', {});
+  // Typing only redraws the list, after a short pause (#61): no page rebuild, no keyboard flicker on a phone.
+  let timer = 0;
+  const fillList = () => {
+    const q = state.search.toLowerCase();
+    const list = state.data.dialogue.filter((d) => !q || [d.id, d.speaker, d.trigger, ...d.lines].some((x) => x.toLowerCase().includes(q)));
+    listBox.replaceChildren(h('div', { class: 'list' }, ...list.map((d) => (state.dlg === d.id ? dialogueForm(d) : dialogueRow(d)))), list.length ? '' : h('div', { class: 'muted' }, 'Nothing matches.'));
+  };
+  fillList();
   return h('div', {},
     h('div', { class: 'bar' },
-      h('input', { type: 'search', placeholder: 'Search words, speakers, triggers', value: state.search, style: 'flex:1', oninput: (ev: Event) => { state.search = (ev.target as HTMLInputElement).value; render(); (document.querySelector('input[type=search]') as HTMLInputElement | null)?.focus(); } }),
+      h('input', { type: 'search', placeholder: 'Search words, speakers, triggers', value: state.search, style: 'flex:1', oninput: (ev: Event) => { state.search = (ev.target as HTMLInputElement).value; clearTimeout(timer); timer = window.setTimeout(fillList, 180); } }),
       h('button', { class: 'primary', onclick: () => { const d = newEntry('new_line', 'new_line', 'Someone'); openDialogue(d.id); } }, '+ New')),
-    h('div', { class: 'list' }, ...list.map((d) => (state.dlg === d.id ? dialogueForm(d) : dialogueRow(d)))),
-    list.length ? null : h('div', { class: 'muted' }, 'Nothing matches.'),
+    listBox,
   );
 }
 
@@ -243,6 +249,7 @@ function newEntry(id: string, trigger: string, speaker: string, portrait?: strin
 function referencesTo(id: string): string[] {
   const out: string[] = [];
   for (const [eid, e] of Object.entries(state.data.enemies)) if (e.defaults.includes(id)) out.push(`${enemyName(eid)}'s defaults`);
+  for (const q of state.data.quests ?? []) for (const [nid, r] of Object.entries(q.nodes ?? {})) if (r.dialogue === id) out.push(`quest ${q.id} pin ${nid}`);
   state.data.screens.forEach((sc, i) => { for (const [nid, r] of Object.entries(sc.nodes)) if (r.dialogue === id) out.push(`screen ${i + 1} ${nid}`); });
   return out;
 }
@@ -293,10 +300,30 @@ function optionForm(d: Dialogue, o: DOption, i: number): HTMLElement {
 
 // ---- conditions
 
-type CondType = 'flag' | 'relation' | 'deaths' | 'killedBy' | 'level' | 'gold' | 'fights' | 'class' | 'chance';
-const COND_TYPES: [CondType, string][] = [['flag', 'a flag'], ['relation', 'a relation'], ['deaths', 'deaths'], ['killedBy', 'last killed by'], ['level', 'level'], ['gold', 'gold'], ['fights', 'fights won'], ['class', 'class'], ['chance', 'chance']];
-const condType = (c: Cond): CondType => Object.keys(c)[0] as CondType;
-const blankCond = (t: CondType): Cond => (t === 'flag' ? { flag: 'some_flag' } : t === 'relation' ? { relation: 'wren', min: 1 } : t === 'deaths' ? { deaths: 'screen', min: 1 } : t === 'killedBy' ? { killedBy: 'boar' } : t === 'level' ? { level: { min: 2 } } : t === 'gold' ? { gold: { min: 5 } } : t === 'fights' ? { fights: { min: 1 } } : t === 'class' ? { class: 'warrior' } : { chance: 0.5 });
+type CondType = 'flag' | 'relation' | 'deaths' | 'killedBy' | 'level' | 'gold' | 'fights' | 'class' | 'chance' | 'screen' | 'quest' | 'has' | 'special' | 'remembered' | 'not' | 'any';
+const COND_TYPES: [CondType, string][] = [['flag', 'a flag'], ['relation', 'a relation'], ['deaths', 'deaths'], ['killedBy', 'last killed by'], ['level', 'level'], ['gold', 'gold'], ['fights', 'fights won'], ['class', 'class'], ['chance', 'chance'],
+  ['screen', 'screen'], ['quest', 'a quest is'], ['has', 'holds a card or item'], ['special', 'special run'], ['remembered', 'remembered (across runs)'], ['not', 'NOT …'], ['any', 'ANY of …']];
+const condType = (c: Cond): CondType => (COND_TYPES.map(([k]) => k).find((k) => k in c) ?? 'flag');
+const blankCond = (t: CondType): Cond => {
+  switch (t) {
+    case 'flag': return { flag: 'some_flag' };
+    case 'relation': return { relation: 'wren', min: 1 };
+    case 'deaths': return { deaths: 'screen', min: 1 };
+    case 'killedBy': return { killedBy: 'boar' };
+    case 'level': return { level: { min: 2 } };
+    case 'gold': return { gold: { min: 5 } };
+    case 'fights': return { fights: { min: 1 } };
+    case 'class': return { class: 'warrior' };
+    case 'chance': return { chance: 0.5 };
+    case 'screen': return { screen: 0 };
+    case 'quest': return { quest: state.data.quests[0]?.id ?? 'wren_errand', is: 'active' };
+    case 'has': return { has: 'shield_bash' };
+    case 'special': return { special: true };
+    case 'remembered': return { remembered: 'some_memory' };
+    case 'not': return { not: { flag: 'some_flag' } };
+    case 'any': return { any: [{ flag: 'some_flag' }, { screen: 0 }] };
+  }
+};
 const range = (r: { min?: number; max?: number }) => `${r.min !== undefined ? `≥${r.min}` : ''}${r.min !== undefined && r.max !== undefined ? ' ' : ''}${r.max !== undefined ? `≤${r.max}` : ''}`;
 function condLabel(c: Cond): string {
   if ('flag' in c) return `${c.is === false ? 'not ' : ''}${c.flag}`;
@@ -307,16 +334,23 @@ function condLabel(c: Cond): string {
   if ('gold' in c) return `gold ≥${c.gold.min ?? 0}`;
   if ('fights' in c) return `fights ${range(c.fights)}`;
   if ('class' in c) return c.class;
+  if ('screen' in c) return `screen ${c.screen + 1}`;
+  if ('quest' in c) return `quest ${c.quest} ${c.is}`;
+  if ('has' in c) return `holds ${c.has}`;
+  if ('special' in c) return c.special ? 'special run' : 'not a special run';
+  if ('remembered' in c) return `${c.is === false ? 'not ' : ''}remembered ${c.remembered}`;
+  if ('not' in c) return `not (${condLabel(c.not)})`;
+  if ('any' in c) return `any of (${c.any.map(condLabel).join(' / ')})`;
   return `${Math.round(c.chance * 100)}% chance`;
 }
 
 function condList(list: Cond[], onChange: (l: Cond[]) => void): HTMLElement {
   const set = (i: number, c: Cond) => { const l = [...list]; l[i] = c; onChange(l); };
   return h('div', { class: 'list' },
-    ...list.map((c, i) => h('div', { class: 'kv', style: 'grid-template-columns:auto 1fr auto' },
+    ...list.map((c, i) => h('div', { class: 'rowedit' },
       select(condType(c), COND_TYPES, (t) => set(i, blankCond(t as CondType))),
-      condFields(c, (n) => set(i, n)),
-      h('button', { onclick: () => onChange(list.filter((_, j) => j !== i)), 'aria-label': 'remove condition' }, '✕'))),
+      h('button', { onclick: () => onChange(list.filter((_, j) => j !== i)), 'aria-label': 'remove condition' }, '✕'),
+      condFields(c, (n) => set(i, n)))),
     h('button', { onclick: () => onChange([...list, blankCond('flag')]) }, '+ Condition'));
 }
 
@@ -332,16 +366,24 @@ function condFields(c: Cond, set: (c: Cond) => void): HTMLElement {
   else if ('gold' in c) box.append(num(c.gold.min, (v) => set({ gold: { min: v } }), { placeholder: 'min', style: 'width:68px' }));
   else if ('fights' in c) box.append(...minmax(c.fights, (r) => set({ fights: r })));
   else if ('class' in c) box.append(select(c.class, CLASSES.map((k) => [k.id, k.name]), (v) => set({ class: v as typeof c.class })));
+  else if ('screen' in c) box.append(select(String(c.screen), [['0', 'screen 1'], ['1', 'screen 2']], (v) => set({ screen: Number(v) })));
+  else if ('quest' in c) box.append(select(c.quest, state.data.quests.map((q) => [q.id, q.name]), (v) => set({ ...c, quest: v })), select(c.is, QUEST_STATES.map((q) => [q, q]), (v) => set({ ...c, is: v as QuestState })));
+  else if ('has' in c) box.append(select(c.has, [...SKILLS.filter((k) => k.rarity !== 'basic').map((k) => [k.id, `card: ${k.name}`] as [string, string]), ...ITEMS.map((i) => [i.id, `item: ${i.name}`] as [string, string])], (v) => set({ has: v })));
+  else if ('special' in c) box.append(select(c.special ? 'yes' : 'no', [['yes', 'yes'], ['no', 'no']], (v) => set({ special: v === 'yes' })));
+  else if ('remembered' in c) box.append(text(c.remembered, (v) => set({ ...c, remembered: slug(v) }), { style: 'width:130px' }), select(c.is === false ? 'no' : 'yes', [['yes', 'is remembered'], ['no', 'is not']], (v) => set(v === 'no' ? { remembered: c.remembered, is: false } : { remembered: c.remembered })));
+  else if ('not' in c) box.append(condList([c.not], (l) => set({ not: l[0] ?? { flag: 'some_flag' } })));
+  else if ('any' in c) box.append(condList(c.any, (l) => set({ any: l })));
   else box.append(num(Math.round(c.chance * 100), (v) => set({ chance: Math.max(1, Math.min(100, v ?? 50)) / 100 }), { style: 'width:68px' }), h('span', { class: 'muted' }, '%'));
   return box;
 }
 
 // ---- effects
 
-type EffType = 'fight' | 'skip' | 'next' | 'flag' | 'relation' | 'gold' | 'hp' | 'tome' | 'rearm';
-const EFF_TYPES: [EffType, string][] = [['fight', 'start the fight'], ['skip', 'walk on'], ['next', 'lead on to'], ['flag', 'set a flag'], ['relation', 'move a relation'], ['gold', 'gold'], ['hp', 'HP'], ['tome', 'give a card'], ['rearm', 're-arm last fight']];
+type EffType = 'fight' | 'skip' | 'next' | 'flag' | 'relation' | 'gold' | 'hp' | 'tome' | 'rearm' | 'remember' | 'quest' | 'note';
+const EFF_TYPES: [EffType, string][] = [['fight', 'start the fight'], ['skip', 'walk on'], ['next', 'lead on to'], ['flag', 'set a flag'], ['relation', 'move a relation'], ['gold', 'gold'], ['hp', 'HP'], ['tome', 'give a card'], ['rearm', 're-arm last fight'],
+  ['remember', 'remember (across runs)'], ['quest', 'offer a quest'], ['note', 'show a note']];
 const effType = (e: DEffect): EffType => Object.keys(e)[0] as EffType;
-const blankEff = (t: EffType): DEffect => (t === 'fight' ? { fight: true } : t === 'skip' ? { skip: true } : t === 'next' ? { next: state.data.dialogue[0]!.trigger } : t === 'flag' ? { flag: 'some_flag' } : t === 'relation' ? { relation: 'wren', delta: 1 } : t === 'gold' ? { gold: 5 } : t === 'hp' ? { hp: -2 } : t === 'tome' ? { tome: 'random' } : { rearm: true });
+const blankEff = (t: EffType): DEffect => (t === 'fight' ? { fight: true } : t === 'skip' ? { skip: true } : t === 'next' ? { next: state.data.dialogue[0]!.trigger } : t === 'flag' ? { flag: 'some_flag' } : t === 'relation' ? { relation: 'wren', delta: 1 } : t === 'gold' ? { gold: 5 } : t === 'hp' ? { hp: -2 } : t === 'tome' ? { tome: 'random' } : t === 'remember' ? { remember: 'some_memory' } : t === 'quest' ? { quest: state.data.quests[0]?.id ?? 'wren_errand' } : t === 'note' ? { note: 'Something stirs.' } : { rearm: true });
 
 function effectList(list: DEffect[], onChange: (l: DEffect[]) => void): HTMLElement {
   const set = (i: number, e: DEffect) => { const l = [...list]; l[i] = e; onChange(l); };
@@ -354,10 +396,14 @@ function effectList(list: DEffect[], onChange: (l: DEffect[]) => void): HTMLElem
       else if ('relation' in e) box.append(text(e.relation, (v) => set(i, { ...e, relation: slug(v) }), { style: 'width:100px' }), num(e.delta, (v) => set(i, { ...e, delta: v ?? 0 }), { style: 'width:68px' }));
       else if ('gold' in e) box.append(num(e.gold, (v) => set(i, { gold: v ?? 0 }), { style: 'width:80px' }));
       else if ('hp' in e) box.append(num(e.hp, (v) => set(i, { hp: v ?? 0 }), { style: 'width:80px' }));
+      else if ('remember' in e) box.append(text(e.remember, (v) => set(i, { remember: slug(v) }), { style: 'width:150px' }));
+      else if ('quest' in e) box.append(select(e.quest, state.data.quests.map((q) => [q.id, q.name]), (v) => set(i, { quest: v })));
+      else if ('note' in e) box.append(text(e.note, (v) => set(i, { note: v }), { style: 'width:200px' }));
+      else if ('rearm' in e) { const r = e.rearm === true ? {} : e.rearm; box.append(text(r.trigger ?? '', (v) => set(i, { rearm: { ...r, trigger: v.trim() || undefined } }), { placeholder: 'greeting trigger', list: 'triggers', style: 'width:150px' }), text(r.winFlag ?? '', (v) => set(i, { rearm: { ...r, winFlag: v.trim() ? slug(v) : undefined } }), { placeholder: 'flag on win', style: 'width:120px' })); }
       else if ('tome' in e) box.append(select(e.tome, [['random', 'random from the run'], ...SKILLS.filter((k) => k.rarity !== 'basic').map((k) => [k.id, k.name] as [string, string])], (v) => set(i, { tome: v })));
-      return h('div', { class: 'kv', style: 'grid-template-columns:auto 1fr auto' },
-        select(effType(e), EFF_TYPES, (t) => set(i, blankEff(t as EffType))), box,
-        h('button', { onclick: () => onChange(list.filter((_, j) => j !== i)), 'aria-label': 'remove effect' }, '✕'));
+      return h('div', { class: 'rowedit' },
+        select(effType(e), EFF_TYPES, (t) => set(i, blankEff(t as EffType))),
+        h('button', { onclick: () => onChange(list.filter((_, j) => j !== i)), 'aria-label': 'remove effect' }, '✕'), box);
     }),
     h('button', { onclick: () => onChange([...list, blankEff('fight')]) }, '+ Effect'));
 }
@@ -481,6 +527,13 @@ function enemiesTab(): HTMLElement {
           h('div', { class: 'say' }, `${d.when?.length ? `[only when ${d.when.map(condLabel).join(', ')}] ` : ''}${firstLine(d)}`),
           h('button', { onclick: () => openDialogue(d.id) }, 'Edit'))),
         h('button', { onclick: () => { const d = newEntry(`${e.id}_line`, trig, e.name, `enemy_${e.id}`); ent.defaults.push(d.id); openDialogue(d.id); } }, '+ New everyday line'),
+        h('h2', {}, 'When one is killed'),
+        h('div', { class: 'muted' }, 'The first entry whose conditions hold runs its effects (relations, flags, notes, quests…).'),
+        ...(ent.onKill ?? []).map((k, i) => h('div', { class: 'sub' },
+          h('div', { class: 'muted' }, 'Only when:'), condList(k.when ?? [], (w) => { if (w.length) k.when = w; else delete k.when; render(); }),
+          h('div', { class: 'muted' }, 'Does:'), effectList(k.effects, (ef) => { k.effects = ef; render(); }),
+          h('button', { class: 'danger', onclick: () => { ent.onKill!.splice(i, 1); if (!ent.onKill!.length) delete ent.onKill; render(); } }, 'Remove'))),
+        h('button', { onclick: () => { (ent.onKill ??= []).push({ effects: [{ note: `${e.name} falls.` }] }); render(); } }, '+ On kill'),
       ));
     }
     el.append(list);

@@ -18,7 +18,23 @@ export type Cond =
   | { gold: { min?: number } }
   | { fights: { min?: number; max?: number } }
   | { class: ClassId }
-  | { chance: number };
+  | { chance: number }
+  // The story vocabulary (DECISIONS #61):
+  /** The screen this happens on (0 = screen 1). */
+  | { screen: number }
+  /** A world.json quest's state this run: none (never offered), offered, active, ready (can be handed in), done, declined. */
+  | { quest: string; is: QuestState }
+  /** A card in the deck or an item worn. */
+  | { has: string }
+  /** This run is (or is not) a special run (DECISIONS #58). */
+  | { special: boolean }
+  /** A flag remembered across runs (set by the `remember` effect). */
+  | { remembered: string; is?: boolean }
+  | { not: Cond }
+  | { any: Cond[] };
+
+export type QuestState = 'none' | 'offered' | 'active' | 'ready' | 'done' | 'declined';
+export const QUEST_STATES: QuestState[] = ['none', 'offered', 'active', 'ready', 'done', 'declined'];
 
 export type DEffect =
   | { flag: string; value?: boolean }
@@ -26,8 +42,17 @@ export type DEffect =
   | { gold: number }
   | { hp: number }
   | { tome: SkillId | 'random' }
-  /** Re-arm the last cleared monster node with a bigger fight (a quest sends you back). */
-  | { rearm: true }
+  /**
+   * Re-arm the last cleared monster node with a bigger fight (a quest sends you back). The node may
+   * name the words that greet you there and a flag set when you win it (DECISIONS #61).
+   */
+  | { rearm: true | Rearm }
+  /** Remember a flag across runs (DECISIONS #61). */
+  | { remember: string }
+  /** Offer a world.json quest now, at its giver (DECISIONS #61). */
+  | { quest: string }
+  /** A line shown as a toast. */
+  | { note: string }
   | { fight: true }
   | { skip: true }
   | { next: string };
@@ -52,6 +77,8 @@ export interface Dialogue {
   options: DOption[];
 }
 
+export interface Rearm { trigger?: string; winFlag?: string; }
+
 export interface DialogueCtx {
   flags: Set<string>;
   relations: Record<string, number>;
@@ -64,9 +91,22 @@ export interface DialogueCtx {
   /** Fights won this run. */
   fights: number;
   rng: Rng;
+  // The story vocabulary (DECISIONS #61); optional so older callers still build a context.
+  screen?: number;
+  quests?: Record<string, QuestState>;
+  has?: (id: string) => boolean;
+  special?: boolean;
+  memory?: Set<string>;
 }
 
 export function holds(c: Cond, ctx: DialogueCtx): boolean {
+  if ('not' in c) return !holds(c.not, ctx);
+  if ('any' in c) return c.any.some((x) => holds(x, ctx));
+  if ('quest' in c) return ctx.quests !== undefined && (ctx.quests[c.quest] ?? 'none') === c.is;
+  if ('remembered' in c) return ctx.memory !== undefined && ctx.memory.has(c.remembered) === (c.is ?? true);
+  if ('screen' in c) return ctx.screen === c.screen;
+  if ('has' in c) return !!ctx.has?.(c.has);
+  if ('special' in c) return ctx.special !== undefined && ctx.special === c.special;
   if ('flag' in c) return ctx.flags.has(c.flag) === (c.is ?? true);
   if ('relation' in c) { const v = ctx.relations[c.relation] ?? 0; return (c.min === undefined || v >= c.min) && (c.max === undefined || v <= c.max); }
   if ('deaths' in c) { const v = c.deaths === 'screen' ? ctx.deathsOnScreen : ctx.deathsTotal; return (c.min === undefined || v >= c.min) && (c.max === undefined || v <= c.max); }
@@ -106,21 +146,28 @@ export interface Resolution {
   gold: number;
   hp: number;
   tomes: (SkillId | 'random')[];
-  rearm: boolean;
+  /** A re-arm and what its node says and sets, or null. */
+  rearm: Rearm | null;
+  remember: string[];
+  quests: string[];
+  notes: string[];
   fight: boolean;
   skip: boolean;
   next?: string;
 }
 
 export function resolve(effects: DEffect[]): Resolution {
-  const r: Resolution = { flags: [], relations: [], gold: 0, hp: 0, tomes: [], rearm: false, fight: false, skip: false };
+  const r: Resolution = { flags: [], relations: [], gold: 0, hp: 0, tomes: [], rearm: null, remember: [], quests: [], notes: [], fight: false, skip: false };
   for (const e of effects) {
     if ('flag' in e) r.flags.push({ flag: e.flag, value: e.value ?? true });
     else if ('relation' in e) r.relations.push(e);
     else if ('gold' in e) r.gold += e.gold;
     else if ('hp' in e) r.hp += e.hp;
     else if ('tome' in e) r.tomes.push(e.tome);
-    else if ('rearm' in e) r.rearm = true;
+    else if ('rearm' in e) r.rearm = e.rearm === true ? {} : { ...e.rearm };
+    else if ('remember' in e) r.remember.push(e.remember);
+    else if ('quest' in e) r.quests.push(e.quest);
+    else if ('note' in e) r.notes.push(e.note);
     else if ('fight' in e) r.fight = true;
     else if ('skip' in e) r.skip = true;
     else if ('next' in e) r.next = e.next;

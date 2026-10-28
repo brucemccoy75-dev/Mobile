@@ -1,12 +1,12 @@
 import Phaser from 'phaser';
 import { getEnemy, getSkill } from '@data/index';
 import { key, roadBetween, type MapNode, type Tile } from '@core/map';
-import { SCREEN_COUNT, currentNode, currentQuest, questGiverNode, getMeta, getSession, getStore, isCleared, isEscorting, isFightNode, nodeById, nodeEncounter, persistMeta, persistRun, reachableNodes, routeTo, setSession, startScreen, treasureGold, type PendingEncounter, type RunSession } from '@game/session';
-import { noteKill, questProgress, questReady } from '@core/quest';
-import { gainExp, ghostOn, nudgeRelation, recordWin } from '@core/meta';
+import { SCREEN_COUNT, currentNode, currentQuest, questGiverNode, getMeta, getSession, getStore, isCleared, isEscorting, nodeById, nodeEncounter, persistMeta, persistRun, reachableNodes, routeTo, setSession, startScreen, treasureGold, type PendingEncounter, type RunSession } from '@game/session';
+import { questProgress, questReady } from '@core/quest';
+import { gainExp, ghostOn, recordWin } from '@core/meta';
 import { WREN_GRUDGE, ghostAppears, ghostDef, wrenBoss } from '@core/variants';
 import { WIN_EXP } from '@data/progression';
-import { openDialogue } from '@game/dialogue';
+import { nodeTrigger, openDialogue } from '@game/dialogue';
 import { OverworldFx } from '@game/fx/overworldFx';
 import { artKey } from '@game/art';
 import { Button } from '@game/ui/Button';
@@ -368,13 +368,13 @@ export class OverworldScene extends Phaser.Scene {
     switch (n.kind) {
       case 'start': {
         const q = currentQuest(s);
-        if (s.screenIndex === 0 || n.dialogue) { const r = await openDialogue(this, s, meta, n.dialogue ? `id:${n.dialogue}` : 'giver:wren'); if (r?.notes.length) void persistMeta(this); }
+        if (s.screenIndex === 0 || n.dialogue) { const r = await openDialogue(this, s, meta, nodeTrigger(n, s.screenIndex === 0 ? 'giver:wren' : 'none', s, meta)); if (r?.notes.length) void persistMeta(this); }
         s.clearedNodes.add(n.id);
         if (q && questGiverNode(s) === n.id) { await persistRun(this); this.scene.start('Quest', { questId: q.id }); return; }
         await done(); return;
       }
       case 'quest': {
-        const r = await openDialogue(this, s, meta, n.dialogue ? `id:${n.dialogue}` : 'node:quest');
+        const r = await openDialogue(this, s, meta, nodeTrigger(n, 'node:quest', s, meta));
         if (r?.notes.length) { void persistMeta(this); void this.toast(r.notes.join('  ·  '), 1800); }
         if (r?.rearmed) { const re = nodeById(s, r.rearmed); this.drawNode(re); this.drawGhost(); }
         if (await this.questAt(n)) return;
@@ -382,7 +382,7 @@ export class OverworldScene extends Phaser.Scene {
         await done(); return;
       }
       case 'lost': {
-        await openDialogue(this, s, meta, n.dialogue ? `id:${n.dialogue}` : 'node:lost');
+        await openDialogue(this, s, meta, nodeTrigger(n, 'node:lost', s, meta));
         if (await this.questAt(n)) return;
         this.escortAt(n);
         await done(); return;
@@ -447,10 +447,10 @@ export class OverworldScene extends Phaser.Scene {
   private async encounterWithWords(e: PendingEncounter, node: MapNode) {
     const s = this.session, meta = getMeta(this);
     let trigger = e.kind === 'boss' ? `gate:${e.enemyId}` : `pre_fight:${e.enemyId}`;
-    // The designer's words for this node (DECISIONS #55); the story turns below still take precedence.
-    if (node.dialogue) trigger = `id:${node.dialogue}`;
-    // A clearing a quest re-armed: the brother, whatever the species.
-    if (e.kind === 'node' && s.flags.has('rearmed') && s.flags.has('tinker_quest') && !s.flags.has('tinker_fight_won') && node.id === s.lastClearedNode) trigger = 'pre_fight:brother';
+    // The designer's words for this node (DECISIONS #55) when their conditions hold; the story turns below still take precedence.
+    trigger = nodeTrigger(node, trigger, s, meta);
+    // A clearing a quest re-armed greets you with the words the quest named (the brother, #61).
+    if (e.kind === 'node' && node.rearm?.trigger) trigger = node.rearm.trigger;
     // Wren takes Andre's place at the gate when the rats have been avenged enough (DECISIONS #36).
     if (e.kind === 'boss' && s.screenIndex === 0 && (meta.relations.wren ?? 0) <= WREN_GRUDGE && !s.testMode) {
       const w = s.equipment.weapon;
@@ -490,31 +490,16 @@ export class OverworldScene extends Phaser.Scene {
     if (!r) return;
     s.lastResult = null;
     if (!r.won) return; // death is handled in the combat scene
-    const killed = r.encounter.custom ? r.encounter.custom.map((d) => d.id) : [r.encounter.enemyId, ...(r.encounter.extra ?? [])];
-    // Wren's rats (DECISIONS #35): every pack killed on her screen costs standing, double if you promised.
-    const rats = killed.filter((id) => id === 'rat_pack').length;
-    if (rats && s.screenIndex === 0) {
-      const v = nudgeRelation(getMeta(this), 'wren', -rats * (s.flags.has('rats_promise') ? 2 : 1));
-      void persistMeta(this);
-      void this.toast(v <= -2 ? 'Somewhere, Wren feels it. She will not forget.' : 'Somewhere, Wren feels it.', 2000);
-    }
-    if (killed.map((id) => noteKill(s.quests, id)).some(Boolean)) {
-      const q = currentQuest(s);
-      if (q?.hunt) void this.toast(`Hunt: ${q.hunt.name} ${Math.min(q.hunt.have, q.hunt.need)} / ${q.hunt.need}${q.hunt.have >= q.hunt.need ? ' — return to ' + q.giver.name : ''}`, 2200);
-      this.syncQuestHud();
-    }
-    if (r.encounter.kind === 'node' && r.encounter.nodeId) {
-      const n = nodeById(s, r.encounter.nodeId);
-      s.clearedNodes.add(n.id);
-      if (isFightNode(n)) s.lastClearedNode = n.id;
-      if (s.flags.has('rearmed') && s.flags.has('tinker_quest') && !s.flags.has('tinker_fight_won')) s.flags.add('tinker_fight_won');
-      this.drawNode(n);
+    // The win was applied in combat (DECISIONS #61); here it is only shown.
+    const rep = r.report ?? { notes: [], boss: r.encounter.kind === 'boss' };
+    // One toast carries everything the win said, so no line hides another.
+    const said = [...(rep.cleared ? ['The clearing is yours.'] : []), ...rep.notes, ...(rep.hunt ? [rep.hunt] : [])];
+    if (said.length) void this.toast(said.join('  ·  '), 1600 + 700 * said.length);
+    if (rep.hunt) this.syncQuestHud();
+    if (rep.cleared) {
+      this.drawNode(nodeById(s, rep.cleared));
       this.drawGhost();
-      void this.toast('The clearing is yours.');
-    } else if (r.encounter.kind === 'boss') {
-      s.bossDefeated = true;
-      if (r.encounter.nodeId) s.clearedNodes.add(r.encounter.nodeId);
-      s.hp = s.stats.maxHp;
+    } else if (rep.boss) {
       const bn = (s.map.nodes ?? []).find((n) => n.kind === 'boss');
       if (bn) this.drawNode(bn);
       this.syncHud();

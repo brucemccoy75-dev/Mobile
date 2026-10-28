@@ -20,6 +20,7 @@ import { CLASS_COLORS, COLORS, FONT, POSTURE_TEXT, STATUS_LABELS, describeIntent
 import type { Status } from '@data/types';
 import { floatText, tween, wait } from '@game/ui/tween';
 import { BattleFx } from '@game/fx/battleFx';
+import { applyWin } from '@game/story';
 import { isBuff, type VfxKind } from '@core/vfx';
 
 /**
@@ -804,7 +805,10 @@ export class CombatScene extends Phaser.Scene {
         this.levelUpFanfare(gained.to, gained.points, rewards.map((r) => (r.kind === 'tome' ? getSkill(r.id).name : `${r.amount} gold`)));
       }
       this.session.encountersWon += 1;
-      this.session.lastResult = { encounter: this.encounter, won: true };
+      // The win changes the run now, before any save (DECISIONS #61); the map only shows it.
+      const report = applyWin(this.session, getMeta(this), this.encounter);
+      void persistMeta(this); void persistRun(this);
+      this.session.lastResult = { encounter: this.encounter, won: true, report };
       this.session.pendingEncounter = null;
       let extra = spent.length ? `  Spent: ${spent.join(', ')}.` : '';
       if (this.encounter.ghost) {
