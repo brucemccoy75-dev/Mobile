@@ -17,8 +17,9 @@ cards:validate, world:validate, tests, build). The game today is:
   Sister Vell gives screen 2's. Your ghost is switched off (`GHOST_ENABLED`, #54), kept for later.
 - **Combat**: a hand of 3 every round (#53), duos, sweeps hit every enemy at once (#47), remove
   guard / remove buffs (#48), backfire (#51), luck: crits and bonus turns 1% each at base (#50,
-  #52). Battle effects (#59): slash, buff glow, fireball, lightning, frost, poison cloud, arcane,
-  heal, chosen from what a card does (or named per card in the card editor).
+  #52). Battle effects (#59, #62): slash, a coloured shield per status (and again on a block), fireball,
+  lightning, frost, poison cloud over the head, curse skull, arcane, heal, chosen from what a card
+  does (or named per card in the card editor).
 - **Progression**: levels 1–10 per class, +1 max HP per level and a rare card or gold (#49);
   warrior tree Bulwark, Berserker → Paladin, Shadow Knight → Weaponmaster (#46); Shadow Knight
   holds Minor leech, Leech, Death Touch; Paladin and Weaponmaster are empty. Nothing drops without
@@ -36,7 +37,7 @@ own command → Playwright at 844×390 (the game) or 390×844 (the editors) with
 (Test Mode: set registry `testSetup`, call `TestMode.fight()`, then `Combat.act()` and poll
 `busy`; to answer a dialogue from a script, `scene('Dialogue').choose(d, option)`) → commit with
 the attribution lines → `git push -u origin <branch>` → poll gh-pages. Record decisions in
-`docs/DECISIONS.md` (next number is 62). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
+`docs/DECISIONS.md` (next number is 63). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
 
 **Scope.** Only the warrior is being balanced. Wizard and shaman cards, families and trees are
 frozen by the validator until the warrior is done.

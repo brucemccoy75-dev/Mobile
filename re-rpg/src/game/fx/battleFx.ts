@@ -8,6 +8,8 @@ import { tween, wait } from '@game/ui/tween';
  * capped in particle count for phones, and resolves its promise when the hit should land.
  */
 const DEPTH = 40;
+/** Mix a colour toward white, for a tint that colours a sprite without drowning it. */
+const lighten = (c: number, t: number) => { const ch = (s: number) => Math.round(((c >> s) & 0xff) + (255 - ((c >> s) & 0xff)) * t); return (ch(16) << 16) | (ch(8) << 8) | ch(0); };
 type Pt = { x: number; y: number };
 
 export class BattleFx {
@@ -59,14 +61,14 @@ export class BattleFx {
     void tween(this.scene, { targets: g, alpha: 0, duration: 260, ease: 'Quad.In' }).then(() => g.destroy());
   }
 
-  /** A blue glow on whoever gained a buff (Guard, Ward, Aegis, Harden, Brace, Scatter). */
+  /** A shield on someone, in the colour of what they gained or what blocked (DECISIONS #59, #62). */
   glow(target: Phaser.GameObjects.GameObject & { x: number; y: number; displayWidth?: number; displayHeight?: number; originY?: number }, color = 0x6cc6ff) {
     const w = (target.displayWidth ?? 80) * 0.9, h = (target.displayHeight ?? 100) * 0.95;
     const cy = target.y - (target.originY === 1 ? h / 2 : 0);
     const aura = this.scene.add.ellipse(target.x, cy, w, h, color, 0.55).setDepth(DEPTH - 1).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0).setScale(0.85);
     this.scene.tweens.add({ targets: aura, alpha: 0.6, scale: 1.05, duration: 220, yoyo: true, hold: 160, ease: 'Sine.Out', onComplete: () => aura.destroy() });
     const t = target as unknown as { setTint?: (c: number) => void; clearTint?: () => void };
-    if (t.setTint && t.clearTint) { t.setTint(0xbfe6ff); this.scene.time.delayedCall(420, () => t.clearTint!()); }
+    if (t.setTint && t.clearTint) { t.setTint(lighten(color, 0.55)); this.scene.time.delayedCall(420, () => t.clearTint!()); }
     for (let i = 0; i < 6; i++) this.scene.time.delayedCall(i * 40, () => this.burst({ x: target.x + (Math.random() - 0.5) * w * 0.7, y: cy + h * 0.3 }, color, 1, 30, 600, 0.25, -50));
   }
 
@@ -77,12 +79,14 @@ export class BattleFx {
   }
 
   /** The cast for a magic kind, from caster to target; resolves at impact. Physical and none resolve at once. */
-  async cast(kind: VfxKind, from: Pt, to: Pt) {
+  /** `head` is just above the target's head, where a cloud or a skull belongs (#62). */
+  async cast(kind: VfxKind, from: Pt, to: Pt, head: Pt = { x: to.x, y: to.y - 52 }) {
     if (kind === 'fireball') return this.orb(from, to, 0xff8c42, 0xffd166, 1.9, () => { this.flash(to, 0xffb347); this.burst(to, 0xff8c42, 16, 80); this.burst(to, 0xffe08a, 8, 50); });
     if (kind === 'frost') return this.orb(from, to, 0x9ad7ff, 0xffffff, 1.4, () => { this.burst(to, 0xbfe9ff, 14, 70); this.shards(to); });
     if (kind === 'arcane') return this.orb(from, to, 0xb57bff, 0xe0c8ff, 1.5, () => { this.ring(to, 0xb57bff); this.burst(to, 0xc9a2ff, 10, 60); });
     if (kind === 'lightning') return this.bolt(to);
-    if (kind === 'poison') return this.cloud(to);
+    if (kind === 'poison') return this.cloud(head);
+    if (kind === 'curse') return this.skull(head);
   }
 
   private async orb(from: Pt, to: Pt, color: number, trail: number, size: number, impact: () => void) {
@@ -120,16 +124,39 @@ export class BattleFx {
     void tween(this.scene, { targets: g, alpha: 0, duration: 160 }).then(() => g.destroy());
   }
 
-  private async cloud(to: Pt) {
-    const top = to.y - 52;
-    const puffs = Array.from({ length: 8 }, (_, i) => this.scene.add.image(to.x + (i - 3.5) * 15, top + (i % 2) * 9, 'fx_dot').setTint(0x4f9a3f).setScale(1.7).setAlpha(0).setDepth(DEPTH));
+  /** A green cloud just above the head, raining down onto it. */
+  private async cloud(head: Pt) {
+    const top = head.y - 22;
+    const puffs = Array.from({ length: 8 }, (_, i) => this.scene.add.image(head.x + (i - 3.5) * 15, top + (i % 2) * 9, 'fx_dot').setTint(0x4f9a3f).setScale(1.7).setAlpha(0).setDepth(DEPTH));
     await tween(this.scene, { targets: puffs, alpha: 0.75, duration: 200 });
     for (let i = 0; i < 16; i++) this.scene.time.delayedCall(i * 35, () => {
-      const d = this.scene.add.image(to.x + (Math.random() - 0.5) * 80, top + 10, 'fx_dot').setTint(0x9be27f).setScale(0.18, 0.4).setDepth(DEPTH);
-      this.scene.tweens.add({ targets: d, y: to.y + 10, alpha: 0.2, duration: 360, ease: 'Quad.In', onComplete: () => d.destroy() });
+      const d = this.scene.add.image(head.x + (Math.random() - 0.5) * 80, top + 10, 'fx_dot').setTint(0x9be27f).setScale(0.18, 0.4).setDepth(DEPTH);
+      this.scene.tweens.add({ targets: d, y: head.y + 46, alpha: 0.2, duration: 360, ease: 'Quad.In', onComplete: () => d.destroy() });
     });
     await wait(this.scene, 520);
     void tween(this.scene, { targets: puffs, alpha: 0, y: top - 14, duration: 380 }).then(() => puffs.forEach((p) => p.destroy()));
+  }
+
+  /** A purple skull and crossbones that grows over the head, glows, and fades upward (a curse, #62). */
+  private async skull(head: Pt) {
+    const c = this.scene.add.container(head.x, head.y - 18).setDepth(DEPTH + 1).setScale(0.2).setAlpha(0);
+    const g = this.scene.add.graphics();
+    const bone = 0xd9b8ff, dark = 0x2a0f3d;
+    for (const rot of [0.7, -0.7]) {
+      g.save(); g.translateCanvas(0, 14); g.rotateCanvas(rot);
+      g.fillStyle(bone, 1); g.fillRoundedRect(-30, -4, 60, 8, 4);
+      for (const ex of [-30, 30]) { g.fillCircle(ex, -4, 5); g.fillCircle(ex, 4, 5); }
+      g.restore();
+    }
+    g.fillStyle(bone, 1); g.fillCircle(0, -8, 20); g.fillRoundedRect(-12, 4, 24, 14, 4);
+    g.fillStyle(dark, 1); g.fillCircle(-7, -9, 6); g.fillCircle(7, -9, 6);
+    g.fillTriangle(0, -2, -3, 4, 3, 4);
+    for (const tx of [-7, 0, 7]) g.fillRect(tx - 1.5, 10, 3, 7);
+    const aura = this.scene.add.image(0, 0, 'fx_dot').setTint(0xb06bff).setScale(3.2).setAlpha(0.55).setBlendMode(Phaser.BlendModes.ADD);
+    c.add([aura, g]);
+    await tween(this.scene, { targets: c, scale: 1.15, alpha: 1, duration: 420, ease: 'Back.Out' });
+    this.burst(head, 0xb06bff, 10, 50, 500, 0.3);
+    void tween(this.scene, { targets: c, scale: 1.35, alpha: 0, y: c.y - 24, duration: 520, delay: 260, ease: 'Quad.In' }).then(() => c.destroy());
   }
 
   private flash(at: Pt, color: number) {

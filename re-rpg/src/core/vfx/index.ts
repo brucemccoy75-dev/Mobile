@@ -9,17 +9,29 @@ import type { Effect, Skill, StatusId } from '@data/types';
  *   fireball   a burning orb with a trail, then a burst (magic that burns)
  *   lightning  a bolt from above and a white flash (magic that ignores defence)
  *   frost      a cold shard and an icy burst (magic that chills)
- *   poison     a green cloud over the target that rains (burn or curse over time)
+ *   poison     a green cloud over the target's head that rains (a burn over time)
+ *   curse      a purple skull and crossbones that grows over the target's head (a curse, #62)
  *   arcane     a violet orb (any other magic, hexes)
  *   heal       rising green motes on the caster
  *   none       nothing beyond the usual (blocks and buffs glow on their own)
  */
-export const VFX_KINDS = ['slash', 'fireball', 'lightning', 'frost', 'poison', 'arcane', 'heal', 'none'] as const;
+export const VFX_KINDS = ['slash', 'fireball', 'lightning', 'frost', 'poison', 'curse', 'arcane', 'heal', 'none'] as const;
 export type VfxKind = (typeof VFX_KINDS)[number];
 
 const BUFFS: ReadonlySet<StatusId> = new Set(['guard', 'ward', 'aegis', 'harden', 'brace', 'scatter']);
-/** A status that helps its holder: applying one glows blue on them. */
+/** A status that helps its holder. */
 export const isBuff = (s: StatusId): boolean => BUFFS.has(s);
+
+/**
+ * The shield that flashes on whoever gains a status, and again when a block stops a hit
+ * (DECISIONS #62): one colour per status, so a glance says what happened.
+ */
+export const SHIELD_COLOR: Record<StatusId, number> = {
+  guard: 0xf2f6ff, ward: 0xffd84a, aegis: 0xfff0b0, harden: 0x9fb0c8, brace: 0xff9f68, scatter: 0x8ff0b0,
+  weak: 0xff4d4d, curse: 0xb06bff, exposed: 0xff7a1a, burn: 0xff3d00, chill: 0x7fd4ff, stun: 0xffc0f0,
+};
+/** The shield a blocked hit shows: Aegis if it was up, else Ward for magic and Guard for a blow. */
+export const blockColor = (kind: 'physical' | 'magic', aegis: boolean): number => (aegis ? SHIELD_COLOR.aegis : kind === 'magic' ? SHIELD_COLOR.ward : SHIELD_COLOR.guard);
 
 export function vfxForEffects(effects: Effect[]): VfxKind {
   const hostile = (s: StatusId) => effects.some((e) => e.type === 'status' && e.target === 'enemy' && e.status === s);
@@ -28,11 +40,12 @@ export function vfxForEffects(effects: Effect[]): VfxKind {
     if (dmg.kind !== 'magic') return 'slash';
     if (hostile('burn')) return 'fireball';
     if (hostile('chill')) return 'frost';
-    if (hostile('curse')) return 'poison';
+    if (hostile('curse')) return 'curse';
     if (dmg.ignoreDef) return 'lightning';
     return 'arcane';
   }
-  if (hostile('burn') || hostile('curse')) return 'poison';
+  if (hostile('curse')) return 'curse';
+  if (hostile('burn')) return 'poison';
   if (hostile('chill')) return 'frost';
   if (effects.some((e) => e.type === 'status' && e.target === 'enemy' && e.kind === 'magic')) return 'arcane';
   if (effects.some((e) => e.type === 'heal')) return 'heal';

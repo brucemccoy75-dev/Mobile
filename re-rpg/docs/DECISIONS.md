@@ -565,3 +565,20 @@ each finding checked against the code before acting). What changed:
   variable set for every dialogue, and the world editor's full re-render on each change.
 Pinned by `src/game/story.test.ts`, the vocabulary tests in `dialogue.test.ts` and the validator
 tests in `world.test.ts`; screenshots in `docs/audit/story-2026-10-28/`.
+
+## 62. Coloured shields, the curse skull, the cloud over the head
+
+Designer's notes on #59:
+- **Every status flashes its own coloured shield** on whoever gains it, buff or not, and a block
+  shows the shield that stopped the hit again: Guard white (as before), Ward yellow, Aegis pale
+  gold, Weak red, Curse purple, Exposed orange, Burn red-orange, Chill ice blue, Harden steel,
+  Brace amber, Scatter mint, Recovering pink (`SHIELD_COLOR` in `src/core/vfx`, one colour each,
+  pinned). The sprite takes a soft tint of the same colour for the moment. A curse the Ward stops is
+  still seen cast, then the yellow shield.
+- **The poison cloud** sits just above the target's head and rains onto it (it was at mid-body).
+- **A curse is a new effect, `curse`**: a purple skull and crossbones that grows over the head,
+  glows and fades upward (the Adept Necromancer's curse). The poison cloud stays for a burn with no
+  hit (Static Field). The Hex Imp's move named "Curse" applies Weak, so it stays an arcane orb with
+  the red shield.
+Checked in Test Mode against the Adept Necromancer and a Hex Imp; screenshots in
+`docs/audit/shields-2026-10-28/`.

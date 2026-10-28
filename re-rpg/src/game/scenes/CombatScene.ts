@@ -21,7 +21,7 @@ import type { Status } from '@data/types';
 import { floatText, tween, wait } from '@game/ui/tween';
 import { BattleFx } from '@game/fx/battleFx';
 import { applyWin } from '@game/story';
-import { isBuff, type VfxKind } from '@core/vfx';
+import { SHIELD_COLOR, blockColor, type VfxKind } from '@core/vfx';
 
 /**
  * Side-view turn-based combat. Phaser only renders: the engine in core/combat
@@ -624,6 +624,8 @@ export class CombatScene extends Phaser.Scene {
         await this.castAt(e.target, who, p);
         if (!e.blocked && (this.cast?.kind ?? 'slash') === 'slash') void this.fx.slash(p, e.amount, e.target === 'player');
         else if (!e.blocked && e.hit > 1) this.fx.burst(p, 0xffffff, 5, 40, 300, 0.25);
+        // A block shows the shield that stopped it again (#62): Guard white, Ward yellow, Aegis gold.
+        if (e.blocked) this.fx.glow(s, blockColor(e.kind, this.statusList(e.target, e.target === 'enemy' ? who : undefined).some((x) => x.id === 'aegis')));
         if (e.blocked) {
           this.dispGuardHit(e.target, e.kind === 'magic' ? 'ward' : 'guard', who);
           this.syncChips();
@@ -657,8 +659,8 @@ export class CombatScene extends Phaser.Scene {
       case 'statusApplied': {
         // A curse, burn, chill or hex cast without a hit still shows its spell (the rain cloud for Static Field).
         if (this.cast && this.cast.side !== e.side) await this.castAt(e.side, who, pos(e.side));
-        // A buff glows blue on whoever gained it (#59).
-        if (isBuff(e.status)) this.fx.glow(sprite(e.side));
+        // Every status flashes its own coloured shield on whoever gained it (#59, #62).
+        this.fx.glow(sprite(e.side), SHIELD_COLOR[e.status]);
         this.dispUpsert(e.side, { id: e.status, turns: e.turns, magnitude: e.magnitude }, who);
         this.syncChips();
         // Guard is self-evident from the chip and the card name; everything else gets a callout.
@@ -676,7 +678,9 @@ export class CombatScene extends Phaser.Scene {
         return;
       case 'statusResisted': {
         const p = pos(e.side);
-        if (e.warded) { this.dispGuardHit(e.side, 'ward', who); this.syncChips(); await floatText(this, p.x, p.y - 30, 'WARDED', COLORS.block, 30, 900); return; }
+        // The spell is still seen being cast before the Ward stops it (#62).
+        if (this.cast && this.cast.side !== e.side) await this.castAt(e.side, who, p);
+        if (e.warded) { this.fx.glow(sprite(e.side), SHIELD_COLOR.ward); this.dispGuardHit(e.side, 'ward', who); this.syncChips(); await floatText(this, p.x, p.y - 30, 'WARDED', COLORS.block, 30, 900); return; }
         await floatText(this, p.x, p.y - 30, 'resisted', '#c7b3ff', 26, 900);
         return;
       }
@@ -735,7 +739,10 @@ export class CombatScene extends Phaser.Scene {
     if (c.done.has(key)) return;
     c.done.add(key);
     const from = c.side === 'player' ? { x: this.px + 20, y: this.py - 30 } : { x: this.views[c.who]?.x ?? to.x, y: (this.views[c.who]?.y ?? to.y) - 10 };
-    await this.fx.cast(c.kind, from, { x: to.x, y: to.y - 10 });
+    // Just above the target's head, for a cloud or a skull (#62).
+    const s = (target === 'player' ? this.playerSprite : this.views[who]?.sprite ?? this.playerSprite) as unknown as { x: number; y: number; displayHeight: number; originY?: number };
+    const head = { x: s.x, y: s.y - (s.originY === 1 ? s.displayHeight : s.displayHeight / 2) - 6 };
+    await this.fx.cast(c.kind, from, { x: to.x, y: to.y - 10 }, head);
   }
 
   private async toast(msg: string) {

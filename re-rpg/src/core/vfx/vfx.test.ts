@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getSkill, getEnemy } from '@data/index';
-import { VFX_KINDS, vfxForEffects, vfxForSkill, isBuff } from './index';
+import { SHIELD_COLOR, VFX_KINDS, blockColor, vfxForEffects, vfxForSkill, isBuff } from './index';
 
 describe('battle effects (DECISIONS #59)', () => {
   it('cards pick their effect from what they do', () => {
@@ -27,5 +27,20 @@ describe('battle effects (DECISIONS #59)', () => {
   it('guard, ward, aegis, harden, brace and scatter are buffs that glow', () => {
     for (const s of ['guard', 'ward', 'aegis', 'harden', 'brace', 'scatter'] as const) expect(isBuff(s)).toBe(true);
     for (const s of ['burn', 'weak', 'exposed', 'curse', 'chill', 'stun'] as const) expect(isBuff(s)).toBe(false);
+  });
+  it('a curse is the skull (DECISIONS #62); a burn with no hit is still the rain cloud', () => {
+    const moves = (id: string) => { const t = getEnemy(id).table; return t.kind === 'sequence' ? t.moves : []; };
+    expect(moves('adept_necromancer').map((m) => vfxForEffects(m.effects))).toContain('curse');
+    expect(vfxForSkill(getSkill('static_field'))).toBe('poison');
+  });
+  it('every status has its own shield colour: guard white, ward yellow, weak red, curse purple', () => {
+    expect(SHIELD_COLOR.guard).toBe(0xf2f6ff);
+    expect(SHIELD_COLOR.ward).toBe(0xffd84a);
+    expect(SHIELD_COLOR.weak).toBe(0xff4d4d);
+    expect(SHIELD_COLOR.curse).toBe(0xb06bff);
+    expect(new Set(Object.values(SHIELD_COLOR)).size).toBe(Object.keys(SHIELD_COLOR).length);
+    expect(blockColor('physical', false)).toBe(SHIELD_COLOR.guard);
+    expect(blockColor('magic', false)).toBe(SHIELD_COLOR.ward);
+    expect(blockColor('magic', true)).toBe(SHIELD_COLOR.aegis);
   });
 });
