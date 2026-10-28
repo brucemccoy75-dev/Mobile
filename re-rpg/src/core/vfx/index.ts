@@ -10,7 +10,7 @@ import type { Effect, Skill, StatusId } from '@data/types';
  *   lightning  a bolt from above and a white flash (magic that ignores defence)
  *   frost      a cold shard and an icy burst (magic that chills)
  *   poison     a green cloud over the target's head that rains (a burn over time)
- *   curse      a purple skull and crossbones that grows over the target's head (a curse, #62)
+ *   curse      purple smoke that gathers into a skull over the target's head and drifts apart (a curse, #62, #65)
  *   arcane     a violet orb (any other magic, hexes)
  *   heal       rising green motes on the caster
  *   none       nothing beyond the usual (blocks and buffs glow on their own)

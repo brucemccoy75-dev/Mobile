@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { VfxKind } from '@core/vfx';
 import { tween, wait } from '@game/ui/tween';
+import { skullPoints } from './shapes';
 
 /**
  * Battle effects (DECISIONS #59), drawn with plain images and tweens so they cost nothing between
@@ -163,26 +164,35 @@ export class BattleFx {
     void tween(this.scene, { targets: puffs, alpha: 0, y: top - 14, duration: 380 }).then(() => puffs.forEach((p) => p.destroy()));
   }
 
-  /** A purple skull and crossbones that grows over the head, glows, and fades upward (a curse, #62). */
+  /**
+   * A curse (#62, #65): purple smoke gathers over the head into the shape of a skull, hangs there a
+   * breath, and drifts apart. Made only of soft puffs, so it reads as a haunting, not a sticker.
+   */
   private async skull(head: Pt) {
-    const c = this.scene.add.container(head.x, head.y - 18).setDepth(DEPTH + 1).setScale(0.2).setAlpha(0);
-    const g = this.scene.add.graphics();
-    const bone = 0xd9b8ff, dark = 0x2a0f3d;
-    for (const rot of [0.7, -0.7]) {
-      g.save(); g.translateCanvas(0, 14); g.rotateCanvas(rot);
-      g.fillStyle(bone, 1); g.fillRoundedRect(-30, -4, 60, 8, 4);
-      for (const ex of [-30, 30]) { g.fillCircle(ex, -4, 5); g.fillCircle(ex, 4, 5); }
-      g.restore();
+    const cx = head.x, cy = head.y - 36, k = 1.9;
+    const pts = skullPoints(5);
+    const glow = this.scene.add.image(cx, cy, 'fx_dot').setTint(0x7a3fbf).setScale(3.4).setAlpha(0).setDepth(DEPTH).setBlendMode(Phaser.BlendModes.ADD);
+    this.scene.tweens.add({ targets: glow, alpha: 0.28, duration: 380, yoyo: true, hold: 260, onComplete: () => glow.destroy() });
+    const puffs = pts.map((p) => {
+      const a = Math.random() * Math.PI * 2, r = 50 + Math.random() * 40;
+      const shade = Math.random() < 0.5 ? 0xb07ae8 : 0x8a4fd0;
+      const o = this.scene.add.image(cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.7 + 10, 'fx_dot').setTint(shade).setScale(0.22).setAlpha(0).setDepth(DEPTH + 1);
+      // Soft, overlapping, a little off the grid: smoke, not a dot matrix.
+      this.scene.tweens.add({ targets: o, x: cx + p.x * k + (Math.random() - 0.5) * 4, y: cy + p.y * k + (Math.random() - 0.5) * 4, alpha: 0.32 + Math.random() * 0.12, scale: 0.44 + Math.random() * 0.12, duration: 360 + Math.random() * 120, ease: 'Sine.Out' });
+      return { o, p };
+    });
+    // A faint dark smudge in each socket, so the eyes read against a busy background.
+    const eyes = [-8, 8].map((ex) => this.scene.add.image(cx + ex * k, cy - 6 * k, 'fx_dot').setTint(0x1a0626).setScale(0.6).setAlpha(0).setDepth(DEPTH + 2));
+    this.scene.tweens.add({ targets: eyes, alpha: 0.75, duration: 300, delay: 200, yoyo: true, hold: 300, onComplete: () => eyes.forEach((e) => e.destroy()) });
+    await wait(this.scene, 480);
+    // It hangs a breath, rising a touch, then comes apart from the top down.
+    for (const { o, p } of puffs) {
+      this.scene.tweens.add({
+        targets: o, y: o.y - 18 - Math.random() * 16 + (p.y + 26) * 0.1, x: o.x + p.x * 0.6 + (Math.random() - 0.5) * 18,
+        alpha: 0, scale: o.scale * 1.8, duration: 520 + Math.random() * 200, delay: 140 + (p.y + 26) * 3, ease: 'Sine.In',
+        onComplete: () => o.destroy(),
+      });
     }
-    g.fillStyle(bone, 1); g.fillCircle(0, -8, 20); g.fillRoundedRect(-12, 4, 24, 14, 4);
-    g.fillStyle(dark, 1); g.fillCircle(-7, -9, 6); g.fillCircle(7, -9, 6);
-    g.fillTriangle(0, -2, -3, 4, 3, 4);
-    for (const tx of [-7, 0, 7]) g.fillRect(tx - 1.5, 10, 3, 7);
-    const aura = this.scene.add.image(0, 0, 'fx_dot').setTint(0xb06bff).setScale(3.2).setAlpha(0.55).setBlendMode(Phaser.BlendModes.ADD);
-    c.add([aura, g]);
-    await tween(this.scene, { targets: c, scale: 1.15, alpha: 1, duration: 420, ease: 'Back.Out' });
-    this.burst(head, 0xb06bff, 10, 50, 500, 0.3);
-    void tween(this.scene, { targets: c, scale: 1.35, alpha: 0, y: c.y - 24, duration: 520, delay: 260, ease: 'Quad.In' }).then(() => c.destroy());
   }
 
   private flash(at: Pt, color: number) {

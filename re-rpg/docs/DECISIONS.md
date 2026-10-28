@@ -603,3 +603,13 @@ each, their labels stacked on each target so they do not overlap. Measured: Expo
 Also found: `vitest.config.ts` listed `src/game` test files by name, so `story.test.ts` (#61) was
 never run; it passes, and the config now takes every `src/game/*.test.ts`. Pinned by
 `src/game/playback.test.ts`; screenshot in `docs/audit/pacing-2026-10-28/`.
+
+## 65. The curse skull is smoke
+
+Designer's note on #62: the drawn skull and crossbones looked cheesy. Until there is art for it
+(an image could replace it later), the curse is now only smoke: about fifty soft purple puffs
+drift in from a loose ring and gather into a skull shape over the target's head, dark smudges for
+the eye sockets, a faint glow behind; it holds for about half a second and then drifts up and
+apart from the top down. No crossbones, no outlines. The shape is a pure point list
+(`src/game/fx/shapes.ts`, `skullPoints`), pinned by `src/game/fxShapes.test.ts` (open eye
+sockets, symmetric, a dome and a jaw). Screenshot in `docs/audit/skull-2026-10-28/smoke-skull.jpg`.
