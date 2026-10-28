@@ -81,8 +81,15 @@ export function holds(c: Cond, ctx: DialogueCtx): boolean {
 
 export const allHold = (conds: Cond[] | undefined, ctx: DialogueCtx): boolean => (conds ?? []).every((c) => holds(c, ctx));
 
-/** The first entry for `trigger` whose conditions hold, or null. */
-export function pickDialogue(entries: Dialogue[], trigger: string, ctx: DialogueCtx): Dialogue | null {
+/**
+ * The words for `trigger` (DECISIONS #35, #55): a conditional entry that holds wins (the boar that
+ * remembers the apple); otherwise one of `defaults` (the speaker's everyday lines) at random, drawing
+ * from the stream only when there is a choice; otherwise the first entry that holds; else null.
+ */
+export function pickDialogue(entries: Dialogue[], trigger: string, ctx: DialogueCtx, defaults: string[] = []): Dialogue | null {
+  for (const d of entries) if (d.trigger === trigger && d.when?.length && !defaults.includes(d.id) && allHold(d.when, ctx)) return d;
+  const pool = defaults.map((id) => entries.find((d) => d.id === id)).filter((d): d is Dialogue => !!d && allHold(d.when, ctx));
+  if (pool.length) return pool.length === 1 ? pool[0]! : ctx.rng.pick(pool);
   for (const d of entries) if (d.trigger === trigger && allHold(d.when, ctx)) return d;
   return null;
 }

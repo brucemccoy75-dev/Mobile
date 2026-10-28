@@ -1,9 +1,10 @@
 import type Phaser from 'phaser';
 import { DIALOGUE } from '@data/dialogue';
+import { defaultsFor } from '@data/world';
 import { getSkill } from '@data/index';
 import { buildPool } from '@core/loot';
 import { classProgress, deathsOn, nudgeRelation, type MetaState } from '@core/meta';
-import { pickDialogue, resolve, type Dialogue, type DialogueCtx, type DOption } from '@core/dialogue';
+import { byId, pickDialogue, resolve, type Dialogue, type DialogueCtx, type DOption } from '@core/dialogue';
 import { DECK_CAP } from '@core/combat';
 import { applyTome, poolCtx, rearmLastFight, type RunSession } from '@game/session';
 
@@ -18,7 +19,9 @@ export function dialogueCtx(s: RunSession, meta: MetaState): DialogueCtx {
 /** Dialogue is skippable once this screen has been beaten before (the user's rule). */
 export const canSkipDialogue = (s: RunSession, meta: MetaState): boolean => meta.bestScreen > s.screenIndex;
 
-export const findDialogue = (trigger: string, s: RunSession, meta: MetaState): Dialogue | null => pickDialogue(DIALOGUE, trigger, dialogueCtx(s, meta));
+/** The words for a trigger (an enemy's defaults included, #55), or `id:<dialogue id>` for a node's override. */
+export const findDialogue = (trigger: string, s: RunSession, meta: MetaState): Dialogue | null =>
+  trigger.startsWith('id:') ? byId(DIALOGUE, trigger.slice(3)) : pickDialogue(DIALOGUE, trigger, dialogueCtx(s, meta), defaultsFor(trigger));
 
 export interface Applied { fight: boolean; skip: boolean; next?: string; notes: string[]; rearmed?: string; }
 

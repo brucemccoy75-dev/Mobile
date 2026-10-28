@@ -424,3 +424,24 @@ Everything else stays as it was and still runs: a death still records its ghost 
 future encounter has one to raise), and the ghost's enemy, dialogue, spoils and the one-in-ten
 roll (`ghostAppears(seed, screen, true)`) are untouched. To bring it back, turn the switch on, or
 pass `enabled` from whatever triggers the special encounter. Pinned by `variants.test.ts`.
+
+## 55. The world file: dialogue, everyday lines and node rules
+
+The designer asked for a world and quest editor like the card editor, phone first: pick what each
+node can be, pin spots at set odds, override a node's words, and give every enemy a list of
+everyday lines so a run with nothing special going on still talks. Answers to the plan: the boss
+stays at its spot; no new nodes (the layout is traced from the painting); all the writing moves
+into data; each enemy will get 10–20 default lines, written together later; a special run comes
+up 20% of the time; screen 1 first. Built in four phases; this is the first.
+- **`src/data/world.json`** holds the dialogue library (moved out of TypeScript unchanged), each
+  enemy's `defaults` (today one each: its existing always-on line), and per-screen node rules.
+  `docs/WORLD.md` is its model and import procedure; `npm run world:validate` is the gate and runs
+  in `npm run check`.
+- **Everyday lines.** At a fight the enemy's conditional entries still win when they hold; when
+  none does, it picks one of its defaults at random (drawing from the run's stream only when there
+  is a choice, so a single default changes nothing).
+- **Node rules** by node id: a fixed kind or weighted odds per run, a species or a pair, a boss for
+  the boss node, and a dialogue override (also on the start, quest and lost nodes, and before a
+  shop, chest or shrine). Ruled slots leave the bag; a ruled shop or shrine replaces the bag's.
+  With no rules the screen rolls exactly as before (pinned).
+- Next: the world editor page (Nodes, Dialogue, Enemies), then quests as data, then special runs.

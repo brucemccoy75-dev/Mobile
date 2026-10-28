@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { RunRng } from '@core/rng';
 import { SCREEN1 } from '@data/maps/screen1';
 import { SCREEN2 } from '@data/maps/screen2';
-import { parseScreen, renderAscii, roadBetween } from './authored';
+import { listSlots, parseScreen, renderAscii, roadBetween } from './authored';
+import type { NodeRule } from './types';
 import { validate } from './generate';
 
 const parse = (seed: string, i: 0 | 1) => parseScreen(i === 0 ? SCREEN1 : SCREEN2, new RunRng(seed).stream('map'), { seed, screenIndex: i });
@@ -77,5 +78,40 @@ describe('authored node screens', () => {
 
   it('rejects a layout without a start', () => {
     expect(() => parseScreen(SCREEN1.replace('E', '='), new RunRng('x').stream('map'), { seed: 'x', screenIndex: 0 })).toThrow(/needs E/);
+  });
+});
+
+describe('node rules (world editor, DECISIONS #55)', () => {
+  const slots = listSlots(SCREEN1);
+  const open = slots.filter((s) => s.glyph === 'o').map((s) => s.id);
+  const ruled = (seed: string, rules: Record<string, NodeRule>) => parseScreen(SCREEN1, new RunRng(seed).stream('map'), { seed, screenIndex: 0, rules });
+  it('slots are listed in node id order and match the parsed nodes', () => {
+    const m = parse('ids', 0);
+    expect(slots.map((s) => [s.id, s.pos])).toEqual(m.nodes!.map((n) => [n.id, n.pos]));
+  });
+  it('no rules rolls exactly as before', () => {
+    expect(ruled('same', {}).nodes).toEqual(parse('same', 0).nodes);
+  });
+  it('a fixed kind always holds, and a fixed shop replaces the bag\'s shop', () => {
+    for (const seed of ['a', 'b', 'c', 'd']) {
+      const m = ruled(seed, { [open[0]!]: { kind: 'shop' }, [open[1]!]: { kind: 'monster', enemy: 'boar', dialogue: 'boar' } });
+      expect(m.nodes!.find((n) => n.id === open[0])!.kind).toBe('shop');
+      expect(m.nodes!.filter((n) => n.kind === 'shop')).toHaveLength(1);
+      const b = m.nodes!.find((n) => n.id === open[1])!;
+      expect([b.kind, b.enemyId, b.dialogue]).toEqual(['monster', 'boar', 'boar']);
+    }
+  });
+  it('odds roll per run from the weights; a pair makes a duo; the boss takes a named boss', () => {
+    const seen = new Set<string>();
+    for (let i = 0; i < 60; i++) {
+      const m = ruled(`odds-${i}`, { [open[2]!]: { odds: { treasure: 1, shrine: 1 } }, [open[3]!]: { kind: 'unknown', pair: ['rat_pack', 'hex_imp'] }, [slots.find((s) => s.glyph === 'B')!.id]: { enemy: 'warden' } });
+      const n = m.nodes!.find((x) => x.id === open[2])!;
+      expect(['treasure', 'shrine']).toContain(n.kind);
+      seen.add(n.kind);
+      const d = m.nodes!.find((x) => x.id === open[3])!;
+      expect([d.enemyId, d.extra]).toEqual(['rat_pack', ['hex_imp']]);
+      expect(m.nodes!.find((x) => x.kind === 'boss')!.enemyId).toBe('warden');
+    }
+    expect(seen.size).toBe(2);
   });
 });

@@ -62,3 +62,24 @@ describe('dialogue selection', () => {
     expect(r.relations).toEqual([{ relation: 'wren', delta: -1 }]);
   });
 });
+
+describe('default dialogue (DECISIONS #55)', () => {
+  const E = [
+    { id: 'pig_angry', trigger: 'pre_fight:pig', speaker: 'Pig', when: [{ flag: 'angry' }], lines: ['Angry.'], options: [{ text: 'Fight.', effects: [{ fight: true as const }] }] },
+    { id: 'pig_a', trigger: 'pre_fight:pig', speaker: 'Pig', lines: ['A.'], options: [{ text: 'Fight.', effects: [{ fight: true as const }] }] },
+    { id: 'pig_b', trigger: 'pre_fight:pig', speaker: 'Pig', lines: ['B.'], options: [{ text: 'Fight.', effects: [{ fight: true as const }] }] },
+    { id: 'pig_c', trigger: 'pre_fight:pig', speaker: 'Pig', lines: ['C.'], options: [{ text: 'Fight.', effects: [{ fight: true as const }] }] },
+  ];
+  it('a matching conditional entry wins; otherwise one of the defaults at random', () => {
+    expect(pickDialogue(E, 'pre_fight:pig', ctx({ flags: new Set(['angry']) }), ['pig_a', 'pig_b', 'pig_c'])!.id).toBe('pig_angry');
+    const seen = new Set<string>();
+    for (let i = 0; i < 60; i++) seen.add(pickDialogue(E, 'pre_fight:pig', ctx({ rng: new Rng(i) }), ['pig_a', 'pig_b', 'pig_c'])!.id);
+    expect([...seen].sort()).toEqual(['pig_a', 'pig_b', 'pig_c']);
+  });
+  it('one default draws nothing from the stream; no defaults falls back to the first that holds', () => {
+    const r = new Rng(5), before = r.getState();
+    expect(pickDialogue(E, 'pre_fight:pig', ctx({ rng: r }), ['pig_b'])!.id).toBe('pig_b');
+    expect(r.getState()).toBe(before);
+    expect(pickDialogue(E, 'pre_fight:pig', ctx())!.id).toBe('pig_a');
+  });
+});

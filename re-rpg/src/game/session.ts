@@ -7,6 +7,7 @@ import { RunRng, newSeed } from '@core/rng';
 import { key, parseScreen, type MapNode, type ScreenMap, type Tile, type TileType } from '@core/map';
 import { SCREEN1 } from '@data/maps/screen1';
 import { SCREEN2 } from '@data/maps/screen2';
+import { nodeRules } from '@data/world';
 import { DECK_CAP } from '@core/combat';
 import { DUO_CHANCE, PAIRS } from '@data/packs';
 import { TOME_COPY_CAP } from '@data/skills';
@@ -199,7 +200,7 @@ export const poolCtx = (s: RunSession, meta?: MetaState) => ({ classId: s.classI
 /** Generate screen `index`, stock its shop, and put the player at its entry. */
 export function startScreen(s: RunSession, index: number, meta?: MetaState): void {
   s.screenIndex = index;
-  s.map = parseScreen(index === 0 ? SCREEN1 : SCREEN2, s.rng.stream('map'), { seed: s.seed, screenIndex: index });
+  s.map = parseScreen(index === 0 ? SCREEN1 : SCREEN2, s.rng.stream('map'), { seed: s.seed, screenIndex: index, rules: nodeRules(index) });
   s.playerPos = { ...s.map.entry };
   s.threat = 0;
   s.openedPois = new Set();

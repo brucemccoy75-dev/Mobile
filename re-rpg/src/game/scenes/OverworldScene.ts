@@ -358,20 +358,20 @@ export class OverworldScene extends Phaser.Scene {
     switch (n.kind) {
       case 'start': {
         const q = currentQuest(s);
-        if (s.screenIndex === 0) { const r = await openDialogue(this, s, meta, 'giver:wren'); if (r?.notes.length) void persistMeta(this); }
+        if (s.screenIndex === 0 || n.dialogue) { const r = await openDialogue(this, s, meta, n.dialogue ? `id:${n.dialogue}` : 'giver:wren'); if (r?.notes.length) void persistMeta(this); }
         s.clearedNodes.add(n.id);
         if (q) { await persistRun(this); this.scene.start('Quest', { questId: q.id }); return; }
         await done(); return;
       }
       case 'quest': {
-        const r = await openDialogue(this, s, meta, 'node:quest');
+        const r = await openDialogue(this, s, meta, n.dialogue ? `id:${n.dialogue}` : 'node:quest');
         if (r?.notes.length) { void persistMeta(this); void this.toast(r.notes.join('  ·  '), 1800); }
         if (r?.rearmed) { const re = nodeById(s, r.rearmed); this.drawNode(re); this.drawGhost(); }
         await done(); return;
       }
       case 'lost': {
         const q = currentQuest(s);
-        const r = await openDialogue(this, s, meta, 'node:lost');
+        const r = await openDialogue(this, s, meta, n.dialogue ? `id:${n.dialogue}` : 'node:lost');
         void r;
         if (q?.escort && q.status === 'active' && !q.escort.following) {
           q.escort.following = true;
@@ -382,9 +382,10 @@ export class OverworldScene extends Phaser.Scene {
         }
         await done(); return;
       }
-      case 'shop': { s.clearedNodes.add(n.id); await persistRun(this); this.scene.start('Shop'); return; }
+      case 'shop': { await this.nodeWords(n); s.clearedNodes.add(n.id); await persistRun(this); this.scene.start('Shop'); return; }
       case 'treasure': {
         if (isCleared(s, n)) { this.locked = false; this.syncRings(); return; }
+        await this.nodeWords(n);
         s.clearedNodes.add(n.id);
         this.drawNode(n);
         s.pendingOffer = { source: 'chest', gold: treasureGold(s, n) };
@@ -392,6 +393,7 @@ export class OverworldScene extends Phaser.Scene {
       }
       case 'shrine': {
         if (isCleared(s, n)) { void this.toast('The shrine is dark now.', 900); this.locked = false; this.syncRings(); return; }
+        await this.nodeWords(n);
         s.hp = Math.min(s.stats.maxHp, s.hp + Math.round(s.stats.maxHp * SHRINE_HEAL));
         void this.toast('Shrine: half your wounds close. It fades.');
         await done(); return;
@@ -404,6 +406,13 @@ export class OverworldScene extends Phaser.Scene {
     }
   }
 
+  /** A node the designer gave words (DECISIONS #55): they play before its shop, chest or shrine. Fight and walk-on effects mean nothing here. */
+  private async nodeWords(n: MapNode) {
+    if (!n.dialogue) return;
+    const r = await openDialogue(this, this.session, getMeta(this), `id:${n.dialogue}`);
+    if (r?.notes.length) { void persistMeta(this); void this.toast(r.notes.join('  ·  '), 1800); this.syncHud(); }
+  }
+
   /**
    * Every fight opens with words (DECISIONS #35): the species' dialogue, or the gate's. An option may
    * end it without a fight, in which case the clearing is simply yours.
@@ -411,6 +420,8 @@ export class OverworldScene extends Phaser.Scene {
   private async encounterWithWords(e: PendingEncounter, node: MapNode) {
     const s = this.session, meta = getMeta(this);
     let trigger = e.kind === 'boss' ? `gate:${e.enemyId}` : `pre_fight:${e.enemyId}`;
+    // The designer's words for this node (DECISIONS #55); the story turns below still take precedence.
+    if (node.dialogue) trigger = `id:${node.dialogue}`;
     // A clearing a quest re-armed: the brother, whatever the species.
     if (e.kind === 'node' && s.flags.has('rearmed') && s.flags.has('tinker_quest') && !s.flags.has('tinker_fight_won') && node.id === s.lastClearedNode) trigger = 'pre_fight:brother';
     // Wren takes Andre's place at the gate when the rats have been avenged enough (DECISIONS #36).

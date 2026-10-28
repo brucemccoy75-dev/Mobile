@@ -37,6 +37,26 @@ export interface MapNode {
   extra?: EnemyId[];
   /** True once the slot's species was revealed (unknown monsters) or the node was ever entered. */
   seen?: boolean;
+  /** A dialogue id that replaces the node's usual words (world editor, DECISIONS #55). */
+  dialogue?: string;
+}
+
+/** Kinds a designer may put on a content slot (world editor, DECISIONS #55). */
+export const RULE_KINDS = ['monster', 'unknown', 'elite', 'treasure', 'shop', 'shrine'] as const;
+export type RuleKind = (typeof RULE_KINDS)[number];
+
+/**
+ * A designer's rule for one node (world.json, DECISIONS #55). Unset fields keep the rolled
+ * default. `kind` fixes what the slot is; `odds` rolls it per run from weights instead. `enemy`
+ * names the species and `pair` makes it a duo (fight slots; a boss slot takes a boss). `dialogue`
+ * replaces the node's usual words.
+ */
+export interface NodeRule {
+  kind?: RuleKind;
+  odds?: Partial<Record<RuleKind, number>>;
+  enemy?: EnemyId;
+  pair?: [EnemyId, EnemyId];
+  dialogue?: string;
 }
 
 export interface ScreenMap {

@@ -4,7 +4,7 @@ import type { EnemyId } from '@data/types';
 import type { Rng } from '@core/rng';
 import { costField } from './pathfind';
 import { validate } from './generate';
-import { TILE_COST, key, type MapNode, type NodeKind, type ScreenMap, type Tile, type TileType } from './types';
+import { TILE_COST, key, type MapNode, type NodeKind, type NodeRule, type RuleKind, type ScreenMap, type Tile, type TileType } from './types';
 
 /**
  * Hand-authored screens (DECISIONS #37): the terrain and the node network are a fixed ASCII grid,
@@ -22,7 +22,23 @@ const TERRAIN: Record<string, TileType> = { '.': 'grass', '#': 'forest', '=': 'r
 const SLOT: Record<string, NodeKind | 'open'> = { E: 'start', B: 'boss', o: 'open', x: 'elite', q: 'quest', n: 'lost', f: 'monster', u: 'unknown', c: 'treasure', s: 'shop', h: 'shrine' };
 const DIRS4 = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
 
-export interface AuthoredOptions { seed: string; screenIndex: number; }
+export interface AuthoredOptions { seed: string; screenIndex: number; /** Designer rules by node id (world.json, DECISIONS #55). */ rules?: Record<string, NodeRule>; }
+
+/** Glyphs whose slot takes a kind rule: everything but the story nodes and the boss. */
+export const CONTENT_GLYPHS = 'oxfucsh';
+export interface Slot { id: string; glyph: string; pos: Tile; }
+
+/** The node slots of a screen, in id order (node_0 is the first slot reading left to right, top to bottom). Fixed for a given layout. */
+export function listSlots(ascii: string): Slot[] {
+  const rows = ascii.split('\n').map((r) => r.trimEnd()).filter((r) => r.length > 0);
+  const W = Math.max(...rows.map((r) => r.length));
+  const out: Slot[] = [];
+  for (let y = 0; y < rows.length; y++) for (let x = 0; x < W; x++) {
+    const ch = rows[y]![x] ?? '^';
+    if (ch in SLOT) out.push({ id: `node_${out.length}`, glyph: ch, pos: { x, y } });
+  }
+  return out;
+}
 
 /** What the open slots become, by count. The rest are monsters. */
 export const BAG = { shop: 1, shrine: 1, treasurePerSlot: 0.25, unknownShare: 0.4, unknownDuoChance: 0.35 } as const;
@@ -69,10 +85,20 @@ export function parseScreen(ascii: string, rng: Rng, opts: AuthoredOptions): Scr
     }
   }
 
-  // Open slots: the bag. Dead ends (one link) get the non-fight types first.
-  const open = slots.map((s, i) => (s.ch === 'o' ? nodes[i]! : null)).filter((n): n is MapNode => !!n);
+  // Designer rules first (DECISIONS #55): a fixed kind, or one rolled from weights. A ruled slot leaves the bag.
+  const rules = opts.rules ?? {};
+  for (const n of nodes) {
+    const r = rules[n.id];
+    if (!r) continue;
+    if (r.kind) n.kind = r.kind;
+    else if (r.odds) n.kind = rng.weighted(Object.entries(r.odds) as [RuleKind, number][], ([, w]) => w)[0];
+    if (r.dialogue) n.dialogue = r.dialogue;
+  }
+  // Open slots: the bag. Dead ends (one link) get the non-fight types first. A shop or shrine a rule placed counts against the bag's.
+  const open = slots.map((s, i) => (s.ch === 'o' && !rules[nodes[i]!.id]?.kind && !rules[nodes[i]!.id]?.odds ? nodes[i]! : null)).filter((n): n is MapNode => !!n);
   const treasures = Math.max(1, Math.round(open.length * BAG.treasurePerSlot));
-  const bag: NodeKind[] = [...Array<NodeKind>(BAG.shop).fill('shop'), ...Array<NodeKind>(BAG.shrine).fill('shrine'), ...Array<NodeKind>(treasures).fill('treasure')];
+  const placed = (k: NodeKind) => nodes.filter((n) => rules[n.id] && n.kind === k).length;
+  const bag: NodeKind[] = [...Array<NodeKind>(Math.max(0, BAG.shop - placed('shop'))).fill('shop'), ...Array<NodeKind>(Math.max(0, BAG.shrine - placed('shrine'))).fill('shrine'), ...Array<NodeKind>(treasures).fill('treasure')];
   const monsters = Math.max(0, open.length - bag.length);
   const unknowns = Math.round(monsters * BAG.unknownShare);
   const fightBag: NodeKind[] = [...Array<NodeKind>(unknowns).fill('unknown'), ...Array<NodeKind>(monsters - unknowns).fill('monster')];
@@ -80,8 +106,11 @@ export function parseScreen(ascii: string, rng: Rng, opts: AuthoredOptions): Scr
   const deadEnds = rng.shuffle(open.filter((n) => n.links.length <= 1)), inner = rng.shuffle(open.filter((n) => n.links.length > 1));
   for (const n of [...deadEnds, ...inner]) n.kind = calm.shift() ?? fights.shift() ?? 'monster';
 
-  // Species. Elites are always a pair; unknowns sometimes are, which is their risk.
+  // Species. Elites are always a pair; unknowns sometimes are, which is their risk. A rule's species or pair wins.
   for (const n of nodes) {
+    const r = rules[n.id];
+    if (r?.pair && (n.kind === 'monster' || n.kind === 'unknown' || n.kind === 'elite')) { n.enemyId = r.pair[0]; n.extra = [r.pair[1]]; continue; }
+    if (r?.enemy && (n.kind === 'monster' || n.kind === 'unknown' || n.kind === 'boss')) { n.enemyId = r.enemy; continue; }
     if (n.kind === 'monster') n.enemyId = rng.pick(roster);
     else if (n.kind === 'unknown') { n.enemyId = rng.pick(roster); if (rng.chance(BAG.unknownDuoChance)) { const [a, b] = rng.pick(PAIRS[tier]); n.enemyId = a; n.extra = [b]; } }
     else if (n.kind === 'elite') { const [a, b] = rng.pick(PAIRS[tier]); n.enemyId = a; n.extra = [b]; }
