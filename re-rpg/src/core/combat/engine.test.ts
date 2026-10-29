@@ -43,7 +43,7 @@ describe('rounds and dealing', () => {
     expect(ev.some((e) => e.t === 'handOverflow')).toBe(false);
   });
 
-  it('draws back up to 3: one after a normal turn, two after a bonus turn', () => {
+  it('draws back up to 3 after every card: at the round start, and at once when the turn goes on (#70)', () => {
     const deck = ['attack', 'attack', 'attack', 'attack', 'attack', 'attack', 'attack', 'attack'];
     const s = createCombat({ player: { stats: { ...WARRIOR.stats, luck: 0 }, deck, basics: [] }, enemy: PASSIVE, rng: new Rng(1) });
     const ev1 = step(s, { type: 'card', index: 0 });
@@ -52,11 +52,11 @@ describe('rounds and dealing', () => {
     s.player.stats.luck = 500; // the next card always earns a bonus turn
     const ev2 = step(s, { type: 'card', index: 0 });
     expect(ev2.some((e) => e.t === 'bonusTurn')).toBe(true);
-    expect(ev2.filter((e) => e.t === 'deal')).toHaveLength(0); // no draw inside the round
-    expect(s.player.hand).toHaveLength(2);
+    expect(ev2.filter((e) => e.t === 'deal')).toHaveLength(1); // the bonus card is chosen from a full hand
+    expect(s.player.hand).toHaveLength(3);
     s.player.stats.luck = 0;
     const ev3 = step(s, { type: 'card', index: 0 });
-    expect(ev3.filter((e) => e.t === 'deal')).toHaveLength(2);
+    expect(ev3.filter((e) => e.t === 'deal')).toHaveLength(1);
     expect(s.player.hand).toHaveLength(3);
   });
 
@@ -531,6 +531,9 @@ describe('duos (two enemies)', () => {
     expect(s.enemy).toBe(s.enemies[0]);
     expect(s.log.filter((e) => e.t === 'intent').map((e) => (e as { who?: number }).who)).toEqual([0, 1]);
     const hp = s.player.hp;
+    // Two enemies, two plays (#68), and the held card is drawn straight back (#70): hold twice, then they act.
+    step(s, { type: 'hold', index: 0 });
+    expect(s.log.some((e) => e.t === 'damage' && e.target === 'player')).toBe(false);
     step(s, { type: 'hold', index: 0 });
     const hits = s.log.filter((e) => e.t === 'damage' && e.target === 'player');
     expect(hits).toHaveLength(2);
@@ -748,13 +751,13 @@ describe('one play per living enemy (DECISIONS #68)', () => {
     const ev1 = step(s, { type: 'card', index: 0, target: 0 });
     expect(enemyActed(ev1)).toBe(false);
     expect(ev1.some((e) => e.t === 'plays' && e.left === 1)).toBe(true);
-    expect(ev1.filter((e) => e.t === 'deal')).toHaveLength(0); // the hand only refills at the round start
-    expect(s.player.hand).toHaveLength(2);
+    expect(ev1.filter((e) => e.t === 'deal')).toHaveLength(1); // refilled before the second card (#70)
+    expect(s.player.hand).toHaveLength(3);
     const ev2 = step(s, { type: 'card', index: 0, target: 1 });
     expect(ev2.filter((e) => e.t === 'play' && e.side === 'enemy')).toHaveLength(2);
     expect(s.round).toBe(2);
     expect(s.playsLeft).toBe(2);
-    expect(s.player.hand).toHaveLength(3); // the hand stays 3: two drawn
+    expect(s.player.hand).toHaveLength(3); // the hand is 3 again at the round start
   });
 
   it('plays are set at the start of the turn: killing one with the first card keeps the second', () => {
@@ -776,8 +779,8 @@ describe('one play per living enemy (DECISIONS #68)', () => {
     expect(s.playsLeft).toBe(1);
   });
 
-  it('an empty hand ends the turn with plays unused', () => {
-    const s = duo(['attack']);
+  it('a hand that cannot be refilled ends the turn with plays unused', () => {
+    const s = duo(['mighty_blow']); // fleeting: spent, so nothing is left to draw
     expect(s.player.hand).toHaveLength(1);
     expect(enemyActed(step(s, { type: 'card', index: 0, target: 0 }))).toBe(true);
   });

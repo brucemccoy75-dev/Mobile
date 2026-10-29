@@ -4,6 +4,40 @@ Newest first. Run logs are read with the procedure in `docs/PLAYTESTS.md` (`npm 
 
 Loadouts: **fresh** = Attack/Defend only, empty deck. **Set** = the two set tomes in the deck. **gearN** = a full three-slot kit for screen N (`GEAR_KIT` in `src/core/sim/gauntlet.ts`). The sim does not model loot choice, relics or 4-card decks, so these are floors, not expectations.
 
+## Three cards before every card 2026-10-29 (DECISIONS #70)
+
+The hand refills to 3 after every card that leaves the turn going on (duo turns, bonus turns).
+
+`npm run sim -- --screen --class warrior --runs 1000`:
+
+```
+full clear                     reach boss  beat boss  hp@boss fights rounds  deaths
+warrior fresh                        0.0%       0.0%      0.0   2.57   21.3  adept_necromancer 29%, boar 19%, rat_pack 11%
+warrior Bulwark                      0.2%       0.0%      3.5   2.56   23.8  adept_necromancer 31%, boar 20%, rat_pack 11%
+warrior Berserker                    0.1%       0.0%      9.0   2.84   20.5  adept_necromancer 28%, boar 20%, adept_necromancer+boar 12%
+warrior Shadow Knight                3.1%       0.0%      8.1   4.46   29.8  boar 22%, adept_necromancer+boar 16%, boar+hex_imp 14%
+warrior Berserker+Bulwark            0.1%       0.0%      6.0   2.81   22.9  adept_necromancer 29%, boar 18%, rat_pack 12%
+warrior Shadow Knight+Bulwark        0.4%       0.0%      6.3   3.10   25.3  adept_necromancer 27%, boar 21%, rat_pack 11%
+warrior Berserker+Shadow Knight       0.9%       0.0%     10.0   3.30   22.9  adept_necromancer 25%, boar 16%, adept_necromancer+boar 13%
+
+shortest road                  reach boss  beat boss  hp@boss fights rounds  deaths
+warrior fresh                        6.9%       0.0%      6.1   2.27   19.6  adept_necromancer 17%, adept_necromancer+boar 15%, boar 13%
+warrior Bulwark                     10.7%       0.0%      8.0   2.24   21.9  adept_necromancer 19%, adept_necromancer+boar 14%, boar 12%
+warrior Berserker                   17.1%       0.0%      9.5   2.44   18.7  adept_necromancer 18%, wren 17%, adept_necromancer+boar 13%
+warrior Shadow Knight               42.4%       0.0%      9.5   3.23   23.7  wren 42%, boar+hex_imp 15%, adept_necromancer+boar 14%
+warrior Berserker+Bulwark           13.0%       0.0%      9.3   2.36   20.3  adept_necromancer 19%, adept_necromancer+boar 16%, wren 13%
+warrior Shadow Knight+Bulwark       17.6%       0.0%      8.0   2.57   22.4  wren 18%, adept_necromancer+boar 17%, adept_necromancer 14%
+warrior Berserker+Shadow Knight     23.8%       0.0%     10.3   2.63   19.8  wren 24%, adept_necromancer+boar 15%, adept_necromancer 14%
+```
+
+`npm run sim -- --class warrior --runs 1000` (single fights; only bonus turns change): within a
+point of the table below (fresh 26.3%, Bulwark 31.2%, Berserker 57.0%, both sets+gear1 beat
+Andre 0.4%).
+
+Reading: against #69's mirror, the shortest road gains 1–6 points everywhere, Shadow Knight most
+(36.5% to 42.4%). The full clear barely moves (0–3.1%): the ten-fight attrition (Phone test 8) is
+still the wall.
+
 ## Cards import 2026-10-29 (DECISIONS #69: Desperation, Utility Knife, Lunch Break, Blackjack, Trickster)
 
 New cards desperation and utility_knife (Bulwark), lunch_break, blackjack and trickster

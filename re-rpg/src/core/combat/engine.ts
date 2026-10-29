@@ -183,7 +183,11 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
   }
 
   // One play per enemy alive when the turn began (DECISIONS #68), so a kill keeps the rest: the
-  // enemies wait until the plays are used or the hand is empty. Nothing ticks inside a turn.
+  // enemies wait until the plays are used or the hand is empty. Nothing ticks inside a turn, but the
+  // hand is back to 3 before every card (#70).
+  if (action.type !== 'skip' && !events.some((e) => e.t === 'stunned') && state.playsLeft > 0) {
+    for (let i = 0; i < HAND_CAP && state.player.hand.length < HAND_CAP; i++) dealOne(state.player, (a) => rng.shuffle(a), events);
+  }
   if (action.type !== 'skip' && !events.some((e) => e.t === 'stunned') && state.playsLeft > 0 && state.player.hand.length > 0) {
     events.push({ t: 'plays', left: state.playsLeft });
     return finish(state, rng, events);
@@ -236,7 +240,7 @@ function startRound(state: CombatState, rng: Rng, events: CombatEvent[]): void {
     const { intent, predictedDamage, moveName } = currentIntent(state, e.slot);
     events.push({ t: 'intent', intent, posture: e.next.posture, predictedDamage, moveName, who: e.slot });
   }
-  // Every round starts with a full hand (DECISIONS #53): draw whatever is missing, two after a bonus turn, none if nothing was played.
+  // Every round starts with a full hand (DECISIONS #53): draw whatever is missing, none if nothing was played (inside a turn the hand refills after each card, #70).
   const deals = Math.max(0, HAND_CAP - state.player.hand.length);
   for (let i = 0; i < deals; i++) dealOne(state.player, (a) => rng.shuffle(a), events);
   state.playsLeft = Math.max(1, livingEnemies(state).length);

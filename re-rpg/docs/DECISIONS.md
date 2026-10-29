@@ -729,3 +729,15 @@ Pinned by the "synergy card mechanics" tests in `engine.test.ts` and the branchi
 shipped-card tests in `data.test.ts`. The family lists in the loot, meta and session tests were
 updated to the new families. Sim and reading: BALANCE.md, Cards import 2026-10-29. Screenshots
 in `docs/audit/synergy-2026-10-29/`.
+
+## 70. Three cards before every card
+
+Designer's note on #68: against a duo the second card was chosen from the two left after the
+first. Now the hand refills to 3 after every card that leaves the turn going on: the second (and
+third) card of a duo or trio turn, a bonus turn (#50), a Hold, and Trickster's extra card (#69).
+So every card is chosen from three. The round start still refills as before (#53). Supersedes
+#68's "the hand stays 3" and the old "two after a bonus turn". A turn ends early only when the
+hand cannot be refilled (the deck and discard are both empty). The four engine tests that pinned
+the old draws now pin the new ones. Measured with the screen mirror (BALANCE.md): the shortest
+road reaches Wren 1–6 points more often (Shadow Knight 36.5% to 42.4%); a full clear is unchanged.
+Screenshot in `docs/audit/refill-2026-10-29/`.
