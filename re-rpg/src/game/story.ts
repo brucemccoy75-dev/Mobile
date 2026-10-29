@@ -1,7 +1,7 @@
 import type { MetaState } from '@core/meta';
 import { allHold, type DEffect } from '@core/dialogue';
 import { noteKill } from '@core/quest';
-import { WORLD } from '@data/world';
+import { STORY, WORLD } from '@data/world';
 import { applyOption } from '@game/dialogue';
 import { currentQuest, isFightNode, nodeById, storyCtx, type PendingEncounter, type RunSession } from '@game/session';
 
@@ -17,7 +17,7 @@ export interface WinReport { notes: string[]; cleared?: string; boss: boolean; h
 export function applyWin(s: RunSession, meta: MetaState, enc: PendingEncounter): WinReport {
   const report: WinReport = { notes: [], boss: false };
   const killed = enc.custom ? enc.custom.map((d) => d.id) : [enc.enemyId, ...(enc.extra ?? [])];
-  for (const id of killed) {
+  for (const id of STORY.enabled ? killed : []) {
     const hook = (WORLD.enemies[id]?.onKill ?? []).find((h) => allHold(h.when, storyCtx(s, meta)));
     if (hook) report.notes.push(...applyEffects(s, meta, hook.effects));
   }

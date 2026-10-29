@@ -1,5 +1,10 @@
 # World: the map rules, the dialogue and the import procedure
 
+> **Switched off for now** (DECISIONS #72): `STORY.enabled` in `src/data/world.ts` is `false`
+> while the designer balances. The game reads only the node rules (placement) from this file:
+> no quests, no dialogue, no on-kill hooks, no Wren, and Knight Andre always at the gate. The editor and the file work as
+> described below; set the switch to `true` to bring it back.
+
 Everything the world editor edits is one file, `src/data/world.json` (DECISIONS #55). The game
 reads it at load. Like the cards (docs/CARDS.md), the designer edits it in the editor on the
 phone, exports it, and a session imports it by the fixed procedure below.

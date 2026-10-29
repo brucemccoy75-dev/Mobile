@@ -1,6 +1,6 @@
 // Read a run log against the simulator (DECISIONS #67; procedure in docs/PLAYTESTS.md).
 //   npm run playtest -- docs/playtests/2026-10-28-runs.json
-//   npm run playtest -- <log.json> --runs 2000 --boss gatekeeper
+//   npm run playtest -- <log.json> --runs 2000 --boss wren   (for logs from when Wren held the gate)
 // For each group of finished runs (by heirloom families) it prints what really happened, then
 // the screen mirror for the same families at the group's median level, full clear and shortest
 // road, so "how often does the sim reach the boss" sits next to "how often did you".
@@ -17,7 +17,7 @@ const opt = (name: string, def: string) => { const i = args.indexOf(`--${name}`)
 const file = args.find((a) => !a.startsWith('--') && !/^\d+$/.test(a) && a !== opt('boss', ''));
 if (!file) { console.error('usage: npm run playtest -- <run-log.json> [--runs 1000] [--boss wren|gatekeeper]'); process.exit(1); }
 const runs = Number(opt('runs', '1000'));
-const boss = opt('boss', 'wren') as Gate;
+const boss = opt('boss', 'gatekeeper') as Gate; // Knight Andre while the story is off (#72)
 
 const log = JSON.parse(readFileSync(file, 'utf8')) as TelemetryLog;
 const classes = [...new Set(log.runs.map((r) => r.classId))];
@@ -28,7 +28,7 @@ const top = (deaths: Record<string, number>, n: number) => Object.entries(deaths
 
 const finished = log.runs.filter((r) => r.outcome === 'died' || r.outcome === 'won').length;
 console.log(`\n${file}: ${log.runs.length} runs, ${finished} finished (abandoned and ongoing runs are left out)`);
-console.log(`Sim: screen mirror, ${runs} runs per row, greedy policy, gate = ${boss}; real runs never meet Andre once Wren holds a grudge.\n`);
+console.log(`Sim: screen mirror, ${runs} runs per row, greedy policy, gate = ${boss}. Logs from before 2026-10-29 may have met Wren there (--boss wren).\n`);
 
 for (const classId of classes) {
   const groups = summarizeRuns({ ...log, runs: log.runs.filter((r) => r.classId === classId) }, name);

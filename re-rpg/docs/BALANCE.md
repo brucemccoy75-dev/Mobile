@@ -4,6 +4,37 @@ Newest first. Run logs are read with the procedure in `docs/PLAYTESTS.md` (`npm 
 
 Loadouts: **fresh** = Attack/Defend only, empty deck. **Set** = the two set tomes in the deck. **gearN** = a full three-slot kit for screen N (`GEAR_KIT` in `src/core/sim/gauntlet.ts`). The sim does not model loot choice, relics or 4-card decks, so these are floors, not expectations.
 
+## Story off, Knight Andre at the gate 2026-10-29 (DECISIONS #72)
+
+The baseline to balance against: no quests, no dialogue, Knight Andre (52 HP) always at the gate.
+`npm run sim -- --screen --class warrior --runs 1000`:
+
+```
+full clear                     reach boss  beat boss  hp@boss fights rounds  deaths
+warrior fresh                        0.0%       0.0%      0.0   2.57   21.3  adept_necromancer 29%, boar 19%, rat_pack 11%
+warrior Bulwark                      0.2%       0.0%      3.5   2.56   23.8  adept_necromancer 31%, boar 20%, rat_pack 11%
+warrior Berserker                    0.1%       0.0%      9.0   2.70   19.9  adept_necromancer 29%, boar 19%, adept_necromancer+boar 11%
+warrior Shadow Knight                3.1%       0.0%      8.1   4.46   29.7  boar 22%, adept_necromancer+boar 16%, boar+hex_imp 14%
+warrior Berserker+Bulwark            0.1%       0.0%      6.0   2.76   22.7  adept_necromancer 29%, boar 18%, rat_pack 12%
+warrior Shadow Knight+Bulwark        0.4%       0.0%      6.3   3.10   25.3  adept_necromancer 27%, boar 21%, rat_pack 11%
+warrior Berserker+Shadow Knight       0.9%       0.0%     10.0   3.20   22.4  adept_necromancer 26%, boar 16%, adept_necromancer+boar 13%
+
+shortest road                  reach boss  beat boss  hp@boss fights rounds  deaths
+warrior fresh                        6.9%       0.0%      6.1   2.27   19.5  adept_necromancer 17%, adept_necromancer+boar 15%, boar 13%
+warrior Bulwark                     10.7%       0.0%      8.0   2.24   21.7  adept_necromancer 19%, adept_necromancer+boar 14%, boar 12%
+warrior Berserker                   15.5%       0.0%      9.3   2.34   18.3  adept_necromancer 19%, gatekeeper 16%, adept_necromancer+boar 13%
+warrior Shadow Knight               42.4%       0.0%      9.5   3.23   23.0  gatekeeper 42%, boar+hex_imp 15%, adept_necromancer+boar 14%
+warrior Berserker+Bulwark           12.7%       0.0%      9.3   2.32   20.1  adept_necromancer 20%, adept_necromancer+boar 16%, gatekeeper 13%
+warrior Shadow Knight+Bulwark       17.6%       0.0%      8.0   2.57   22.2  gatekeeper 18%, adept_necromancer+boar 17%, adept_necromancer 14%
+warrior Berserker+Shadow Knight     22.6%       0.0%     10.5   2.56   19.3  gatekeeper 23%, adept_necromancer+boar 15%, adept_necromancer 14%
+```
+
+Reading:
+- Reaching the gate is the same as with Wren (same road). Andre, like Wren, is beaten 0% by any
+  loadout with two heirlooms and no loot.
+- Real runs carry loot, so the next run log is the first real look at Andre since the node map.
+- The four-fight gauntlet already used Andre and is unchanged.
+
 ## Blackjack opening draw 2026-10-29 (DECISIONS #71)
 
 Playing Blackjack now draws a playing card whose value starts the total. Berserker rows only (the

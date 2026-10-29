@@ -1,6 +1,6 @@
 import type Phaser from 'phaser';
 import { DIALOGUE } from '@data/dialogue';
-import { defaultsFor } from '@data/world';
+import { STORY, defaultsFor } from '@data/world';
 import { getSkill } from '@data/index';
 import { buildPool } from '@core/loot';
 import { classProgress, deathsOn, nudgeRelation, type MetaState } from '@core/meta';
@@ -61,6 +61,7 @@ export interface DialogueResult { fight: boolean; skip: boolean; notes: string[]
  * answers the trigger, so callers fall through to whatever they did before dialogue existed.
  */
 export function openDialogue(scene: Phaser.Scene, s: RunSession, meta: MetaState, trigger: string, vars: Record<string, string | number> = {}): Promise<DialogueResult | null> {
+  if (!STORY.enabled) return Promise.resolve(null); // the story is switched off (#72)
   const first = findDialogue(trigger, s, meta);
   if (!first) return Promise.resolve(null);
   return new Promise((done) => {

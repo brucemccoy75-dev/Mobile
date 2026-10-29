@@ -14,6 +14,7 @@ import { CLASS_COLORS, COLORS, FONT, text } from '@game/ui/theme';
 import { tween, wait } from '@game/ui/tween';
 import { groundIndices, propsFor } from '@game/tiles';
 import { ensureRun } from '@game/telemetry';
+import { STORY } from '@data/world';
 
 /** World pixels per tile: about 11×5 tiles on a phone, close enough to read the ground. */
 export const TILE = 72;
@@ -169,11 +170,13 @@ export class OverworldScene extends Phaser.Scene {
     switch (n.kind) {
       case 'start': {
         this.prop(cont, 'campfire', 0.4, 14 * K, () => [this.add.circle(0, 0, 10 * K, 0xff8c42)]);
-        if (giverHere || (s.screenIndex === 0 && !currentQuest(s))) cont.add(this.add.rectangle(TILE * 0.45, 2, 20 * K, 30 * K, 0x7a5c3a).setStrokeStyle(2, 0xc9a227));
+        if (STORY.enabled && (giverHere || (s.screenIndex === 0 && !currentQuest(s)))) cont.add(this.add.rectangle(TILE * 0.45, 2, 20 * K, 30 * K, 0x7a5c3a).setStrokeStyle(2, 0xc9a227));
         cont.add(this.label(20 * K, giverHere ? currentQuest(s)!.giver.name : 'camp', '#e0c060'));
         break;
       }
       case 'quest': case 'lost': {
+        // With the story off (#72) a story node is only a bend in the road.
+        if (!STORY.enabled) { cont.add(this.add.circle(0, 0, 6 * K, 0x3a4260, 0.9).setStrokeStyle(2, 0x000000, 0.5)); break; }
         cont.add(this.add.circle(0, -2, 15 * K, cleared ? 0x3a4260 : 0xc9a227).setStrokeStyle(2, 0x000000, 0.6));
         cont.add(this.add.text(0, -2, '?', { fontFamily: FONT, fontSize: `${20 * K}px`, color: cleared ? '#8b93a7' : '#1a1200', fontStyle: 'bold' }).setOrigin(0.5));
         cont.add(this.label(16 * K, giverHere ? currentQuest(s)!.giver.name : n.kind === 'lost' ? 'a voice' : 'someone', cleared && !giverHere ? '#8b93a7' : '#e0c060'));
@@ -450,7 +453,7 @@ export class OverworldScene extends Phaser.Scene {
     // A clearing a quest re-armed greets you with the words the quest named (the brother, #61).
     if (e.kind === 'node' && node.rearm?.trigger) trigger = node.rearm.trigger;
     // Wren takes Andre's place at the gate when the rats have been avenged enough (DECISIONS #36).
-    if (e.kind === 'boss' && s.screenIndex === 0 && (meta.relations.wren ?? 0) <= WREN_GRUDGE && !s.testMode) {
+    if (STORY.enabled && e.kind === 'boss' && s.screenIndex === 0 && (meta.relations.wren ?? 0) <= WREN_GRUDGE && !s.testMode) {
       const w = s.equipment.weapon;
       e = { ...e, enemyId: 'wren', custom: [wrenBoss(w?.name ?? null, w ? w.mods.reduce((a, m) => a + (m.stat?.atk ?? 0), 0) : 0)] };
       trigger = 'gate:wren';

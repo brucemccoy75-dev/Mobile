@@ -17,7 +17,8 @@ import { runFight, withMods, type GauntletResult, type Loadout } from './gauntle
  * This plays the real screen instead: the authored map rolled from the seed with the designer's
  * node rules, so its duos, unknowns and shrine are the ones a player meets; a run opens with
  * heirlooms drawn like a real one; HP carries over; the shrine is saved for when it is needed;
- * and the gate is who the designer meets there (Wren with your weapon, or Andre).
+ * and the gate is who the designer meets there: Knight Andre while the story is off (#72), or
+ * Wren with your weapon for logs from when she held it.
  * Not modelled: loot, gold and the shop, level-ups during the run, quests and dialogue.
  */
 export type Route = 'clear' | 'short';

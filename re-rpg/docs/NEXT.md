@@ -4,17 +4,19 @@
 
 **State.** Branch `claude/re-rpg-mobile-architecture-t26won`, folder `re-rpg/`, live on GitHub
 Pages at https://brucemccoy75-dev.github.io/Mobile/ (deploys ~70 s after a push; poll
-`origin/gh-pages` for "Deploy re-rpg <sha>"). 283 tests pass (`npm run check`: typecheck,
+`origin/gh-pages` for "Deploy re-rpg <sha>"). 287 tests pass (`npm run check`: typecheck,
 cards:validate, world:validate, tests, build). The game today is:
 
 - **Node overworld** (DECISIONS #37): a static node network per screen over an authored terrain,
   contents rolled per run (and shaped by node rules, #55), tap a reachable node to travel, swipe to
   pan. Screen 1 is painted (`public/art/c/map1.jpg`, #39); screen 2 uses the tileset. Subtle
   ambience: dust behind the hero, ripples on water, birds now and then (#60). `?dev` shows an overlay.
-- **Story** lives in `src/data/world.json` (#55–#61): the dialogue library, each enemy's everyday
-  lines and on-kill hooks, per-node rules, quests, and the special-run chance (20%). Wren gives
-  screen 1's quest at the start camp; Tam's re-arm errand is dialogue on screen 1; Old Marrow or
-  Sister Vell gives screen 2's. Your ghost is switched off (`GHOST_ENABLED`, #54), kept for later.
+- **The story is switched off** (#72) while the designer balances: `STORY.enabled = false` in
+  `src/data/world.ts`. A run is the fixed start, the map's usual placement, and Knight Andre
+  always at the gate. There are no quests, special runs, dialogue, on-kill hooks or Wren, and the
+  story nodes are plain dots. Everything is kept: `world.json` (#55–#61) holds the dialogue
+  library, everyday lines, on-kill hooks, node rules and quests, and the world editor still edits
+  it. Set the switch to `true` to bring it all back. The ghost is also off (`GHOST_ENABLED`, #54).
 - **Combat**:
   - a hand of 3 before every card (#53, #70);
   - one card per enemy alive: a duo is two cards (#68);
@@ -48,7 +50,7 @@ own command → Playwright at 844×390 (the game) or 390×844 (the editors) with
 (Test Mode: set registry `testSetup`, call `TestMode.fight()`, then `Combat.act()` and poll
 `busy`; to answer a dialogue from a script, `scene('Dialogue').choose(d, option)`) → commit with
 the attribution lines → `git push -u origin <branch>` → poll gh-pages. Record decisions in
-`docs/DECISIONS.md` (next number is 72). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
+`docs/DECISIONS.md` (next number is 73). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
 
 **Run logs** (`docs/PLAYTESTS.md`, DECISIONS #67). When the designer sends a run log, always:
 1. save it in `docs/playtests/`;
@@ -72,31 +74,33 @@ frozen by the validator until the warrior is done.
 
 ## Backlog, in order
 
-1. **Story with the designer.** Write each enemy's everyday lines (10–20 each, by personality;
-   the designer wants to do this together), the first special-run quest, and lines for Tam's node
-   on screen 2 (it is quiet there since #61).
-2. **Pacing and balance** from Phone test 8 (BALANCE.md), with the designer:
+1. **Pacing and balance**, the focus now (the story is off for it, #72). From Phone test 8
+   (BALANCE.md), with the designer:
    - what a full clear should cost (a camp near the gate, duos shown on the map as a choice, a shop
      that turns gold into HP: all world data);
    - growth within a run against growth across runs;
    - fill Paladin and Weaponmaster through editor imports.
 
    Sim: model loot and the shop in the screen mirror, so it predicts a run instead of flooring it.
-3. **Remaining hard-coded story → data** (from the #61 review):
+2. **Remaining hard-coded story → data** (from the #61 review):
    - Wren at the gate (`OverworldScene` encounter, `WREN_GRUDGE`) as `screens[i].gate: [{when, boss, trigger}]`.
    - Her boss-win payoff (`CombatScene`: +9 relation, `wren_beaten`) as an on-kill hook for a
      custom boss (the validator allows only roster ids today).
    - The start node's words per screen (`giver:wren` only on screen 1) as `screens[i].start`.
    - Node labels ("camp", "a voice", "someone") as a node-rule `label`.
    - One variable set (`{weapon}`, `{species}`…) for every dialogue, not only before fights.
-4. **World editor performance**: every change rebuilds the page and re-runs validate and diff.
+3. **World editor performance**: every change rebuilds the page and re-runs validate and diff.
    Re-render only the edited panel; validate, diff and save the draft when idle. Matters once the
    library holds ~300 entries.
-5. **Dead code**: the generated-map path (`src/core/map/generate.ts`, `encounter.ts`, `findPath`)
+4. **Dead code**: the generated-map path (`src/core/map/generate.ts`, `encounter.ts`, `findPath`)
    and `generateQuest` / `GIVERS` are used only by tests; switch those tests to the authored map
    and `questFromDef`, then delete (keep `costField`). `RunState` still carries threat / POI fields
    for old saves.
-6. **Art queue**: screen-2 painting (prompt in `docs/ART.md`, layout in `art-src/layout-screen2.png`),
+5. **Art queue**: screen-2 painting (prompt in `docs/ART.md`, layout in `art-src/layout-screen2.png`),
    painted node icons, Wren's still, life on the painting.
-7. Small: long card text overflows the card face (Death Touch, Spirit Boomerang); dialogue
-   `chance` conditions draw from the quest stream (move to their own stream).
+6. **Story, when the switch goes back on** (#72): each enemy's everyday lines (10–20 each, by
+   personality, with the designer), the first special-run quest, and lines for Tam's node on
+   screen 2.
+7. Small: long card text now steps its font down a size (#69); check Death Touch and Spirit
+   Boomerang on a phone. Dialogue `chance` conditions draw from the quest stream (move them to
+   their own stream).

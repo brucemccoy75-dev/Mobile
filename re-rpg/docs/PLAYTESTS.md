@@ -43,8 +43,8 @@ how often did the designer?" (DECISIONS #67).
     (`world.json`), so its duos, unknowns and shrine are the ones a player meets;
   - opens with two heirlooms drawn the way a run draws them, and carries HP over;
   - saves the shrine for when HP is at half or less, or for the gate;
-  - fights the gate as the designer meets it: Wren with the player's weapon, since her grudge
-    took the gate; `--boss gatekeeper` for Knight Andre;
+  - fights the gate as the designer meets it: Knight Andre while the story is off (DECISIONS #72).
+    `--boss wren` is for logs from when Wren held the gate (with the player's weapon);
   - has two routes: **clear** (every fight on the screen, as the designer plays) and **short**
     (only the shortest road to the gate).
 - **Gauntlet** (`src/core/sim/gauntlet.ts`, default): four random single fights then Andre, with

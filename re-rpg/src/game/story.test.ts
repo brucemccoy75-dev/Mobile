@@ -1,8 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createMeta } from '@core/meta';
 import { createSession, currentQuest, nodeById, rearmLastFight, storyCtx } from './session';
 import { applyWin } from './story';
 import { applyOption } from './dialogue';
+import { STORY } from '@data/world';
+
+// These tests are the story's own: they run with it switched on (DECISIONS #72).
+beforeAll(() => { STORY.enabled = true; });
+afterAll(() => { STORY.enabled = false; });
 
 const fightNode = (s: ReturnType<typeof createSession>) => s.map.nodes!.find((n) => n.kind === 'monster' || n.kind === 'unknown')!;
 

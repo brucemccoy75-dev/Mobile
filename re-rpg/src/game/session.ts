@@ -7,7 +7,7 @@ import { RunRng, newSeed } from '@core/rng';
 import { key, parseScreen, type MapNode, type ScreenMap, type Tile, type TileType } from '@core/map';
 import { SCREEN1 } from '@data/maps/screen1';
 import { SCREEN2 } from '@data/maps/screen2';
-import { WORLD, nodeRules } from '@data/world';
+import { STORY, WORLD, nodeRules } from '@data/world';
 import { DECK_CAP } from '@core/combat';
 import { PAIRS } from '@data/packs';
 import { TOME_COPY_CAP } from '@data/skills';
@@ -149,7 +149,7 @@ export function createSession(classId: ClassId, meta: MetaState, seed = newSeed(
     seed, rng, classId, setId, families: unlockedSets(meta, classId), base: { ...base }, stats: { ...base }, hp: base.maxHp, gold: 0,
     deck: [], equipment: emptyEquipment(),
     screenIndex: 0, map: undefined as unknown as ScreenMap, playerPos: { x: 0, y: 0 }, threat: 0,
-    openedPois: new Set(), usedShrines: new Set(), defeatedGuards: new Set(), clearedNodes: new Set(), lastClearedNode: null, flags: new Set(), special: rng.stream('special').chance(WORLD.specialChance ?? 0), bossDefeated: false, encountersWon: 0,
+    openedPois: new Set(), usedShrines: new Set(), defeatedGuards: new Set(), clearedNodes: new Set(), lastClearedNode: null, flags: new Set(), special: STORY.enabled && rng.stream('special').chance(WORLD.specialChance ?? 0), bossDefeated: false, encountersWon: 0,
     newDiscoveries: [], heirloomName: null, shop: { lines: [], healPrice: 0, healPct: 0.5, healUsed: true }, quests: [], skillUpgrades: {}, customItems: [],
     pendingEncounter: null, lastResult: null, pendingOffer: null, heirloomChoices: [],
   };
@@ -221,6 +221,7 @@ export function offerQuest(s: RunSession, meta: MetaState, id: string): Quest | 
 
 /** The quest a screen offers this run (DECISIONS #57): its special one on a special run when one qualifies (#58), else a usual one. */
 function pickScreenQuest(s: RunSession, meta: MetaState, index: number): QuestDef | null {
+  if (!STORY.enabled) return null; // no quests while the story is switched off (#72)
   const ctx = storyCtx(s, meta);
   return (s.special ? pickQuestDef(WORLD.quests, index, ctx, true) : null) ?? pickQuestDef(WORLD.quests, index, ctx, false);
 }
@@ -253,8 +254,8 @@ export function startScreen(s: RunSession, index: number, meta?: MetaState): voi
   setScreenQuest(s, meta ?? createMeta(), index, quest);
 }
 
-/** Where this screen's quest is offered and handed in: its giver node, else the start (Wren's camp). */
-export const questGiverNode = (s: RunSession): string | undefined => currentQuest(s)?.giverNode ?? s.map.nodes?.find((n) => n.kind === 'start')?.id;
+/** Where this screen's quest is offered and handed in: its giver node, else the start (Wren's camp). No quest, no giver (#72). */
+export const questGiverNode = (s: RunSession): string | undefined => { const q = currentQuest(s); return q ? q.giverNode ?? s.map.nodes?.find((n) => n.kind === 'start')?.id : undefined; };
 
 /** This screen's quest: the latest one, so the next link of a chain takes over once the last is handed in. */
 export const currentQuest = (s: RunSession): Quest | undefined => s.quests.filter((q) => q.id.startsWith(`quest_${s.screenIndex}_`)).at(-1);

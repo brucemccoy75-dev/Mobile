@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { afterAll, beforeAll, describe, it, expect } from 'vitest';
 import { getItem, getSkill } from '@data/index';
 import { DECK_CAP } from '@core/combat';
 import { createMeta, gainExp, unlockNode } from '@core/meta';
@@ -7,6 +7,11 @@ import { basicsFor } from '@data/skills';
 import { WORLD } from '@data/world';
 import { getSet } from '@data/index';
 import { buildPool } from '@core/loot';
+import { STORY } from '@data/world';
+
+// These tests are the story's own: they run with it switched on (DECISIONS #72).
+beforeAll(() => { STORY.enabled = true; });
+afterAll(() => { STORY.enabled = false; });
 
 describe('session', () => {
   it('serialises and resumes identically, including RNG streams', () => {

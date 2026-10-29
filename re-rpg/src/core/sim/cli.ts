@@ -3,7 +3,7 @@ import { basicsFor } from '@data/skills';
 //   npm run sim                       all classes, screen 1 gauntlet, 1000 runs each
 //   npm run sim -- --runs 5000 --class warrior --fights 4 --tier 1 --boss gatekeeper
 //   npm run sim -- --duel boar        one-on-one win rates against a single enemy
-//   npm run sim -- --screen --class warrior   the screen-1 mirror (DECISIONS #67): real map, duos, shrine, Wren
+//   npm run sim -- --screen --class warrior   the screen-1 mirror (DECISIONS #67): real map, duos, shrine, Knight Andre (--boss wren for Wren)
 import { CLASSES, getEnemy } from '@data/index';
 import type { ClassId } from '@data/types';
 import { RunRng } from '@core/rng';
@@ -29,7 +29,7 @@ const pct = (n: number) => `${n.toFixed(1).padStart(5)}%`;
 const screen = args.includes('--screen');
 
 if (screen) {
-  const gate = opt('boss', 'wren') as Gate;
+  const gate = opt('boss', 'gatekeeper') as Gate; // Knight Andre: the story (and Wren) is off, #72
   console.log(`\nScreen-1 mirror: the real map per seed (duos, shrine), two heirlooms, gate = ${gate}, ${runs} runs per loadout, greedy policy\n`);
   for (const classId of classes) {
     for (const route of ['clear', 'short'] as Route[]) {

@@ -17,9 +17,10 @@ Read, in this order, before doing anything:
 4. `re-rpg/docs/PLAYTESTS.md`: what to do with every run log I send (save it, `npm run playtest`
    against the screen-1 mirror, both sim tables, a "Phone test N" write-up in BALANCE.md). The
    latest reading is the top section of `re-rpg/docs/BALANCE.md`.
-5. `re-rpg/docs/DECISIONS.md` entries #55 to #71 (the world and quest editor, battle effects,
+5. `re-rpg/docs/DECISIONS.md` entries #55 to #72 (the world and quest editor, battle effects,
    ambience, the story-in-data review, blocks, the run-log procedure, one card per enemy,
-   branching cards with Regen and Blackjack, and three cards before every card).
+   branching cards with Regen and Blackjack, three cards before every card, and the story switched
+   off).
    The whole file is the history of why things are the way they are; look up any older number
    you meet.
 
@@ -45,5 +46,5 @@ Ground rules:
   fails, say so with the output.
 
 First task: confirm the branch, run `npm run check`, and tell me the test count and the latest
-commit hash. Then wait: the planned next step is writing each enemy's everyday lines with me
-(10–20 per enemy, by personality), which starts with me describing the personalities.
+commit hash. Then wait: the focus is balance, with the story switched off (DECISIONS #72). I
+will send run logs (follow PLAYTESTS.md) and card exports (follow CARDS.md).

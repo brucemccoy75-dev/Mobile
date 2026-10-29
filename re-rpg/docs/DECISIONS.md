@@ -764,3 +764,33 @@ The sim policy counts soft Aces when it decides whether a hit would bust. Pinned
 tests in `engine.test.ts` (the draw starts the total, a 2 then 20 busts, Ace then 20 is 21, a
 second Blackjack draws again and can bust). Mirror: Berserker's shortest road goes from 17.1% to
 15.5% (BALANCE.md). Screenshot in `docs/audit/blackjack-draw-2026-10-29/`.
+
+## 72. The story is switched off while the game is balanced
+
+Designer's request: simplify the game to work on balance. Turn the quest systems off (not
+delete them), remove Wren for now, and keep the boss static. A run on screen 1 is now: the fixed
+start, the fixed gate with its own boss (Knight Andre), and the map's usual placement rules for
+everything between (the bag of fights, unknowns, elites, treasure, the shop and the shrine;
+DECISIONS #37, #55).
+
+One switch, `STORY.enabled` in `src/data/world.ts`, is `false`. While it is off:
+- **No quests, no special runs**: no screen quest is picked, and nothing pins nodes.
+- **No words anywhere**: `openDialogue` returns nothing. So no camp talk (Wren), no story-node
+  talk (Tam, the lost one), no pre-fight lines, no gate lines. The pre-fight options that skipped
+  a fight or paid gold or HP are gone with them, which keeps the numbers clean.
+- **No on-kill hooks**: killing rats no longer moves Wren's standing.
+- **Knight Andre always holds the gate**, whatever Wren's standing in the save.
+- **The story nodes** (the `q` and `n` slots) are plain bends in the road: a small dot, nothing
+  happens there.
+
+Everything stays: `world.json`, the world editor, the quest and dialogue engines, the Quest
+scene, Wren's boss. Setting `STORY.enabled = true` brings it all back. The story's own tests turn
+it on for themselves; `src/game/storyOff.test.ts` pins the off state.
+
+Found on the way: `questGiverNode` named the start camp even with no quest, so the map read a
+quest that was not there and a new run crashed on "Begin". Now no quest means no giver. Pinned in
+`storyOff.test.ts`.
+
+The sim and `npm run playtest` now default the gate to Knight Andre (`--boss wren` for older
+logs). Reaching the gate is unchanged, and beating Andre is 0% in the mirror, as it was for Wren
+(BALANCE.md). Screenshot in `docs/audit/story-off-2026-10-29/`.
