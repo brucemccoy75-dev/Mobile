@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { Rng, RunRng } from '@core/rng';
-import { createCombat, step, currentIntent, isPlayerStunned, LUCK_PER_POINT } from './engine';
+import { createCombat, step, currentIntent, isPlayerStunned, canPlay, LUCK_PER_POINT } from './engine';
 import { hasStatus, getStatus } from './status';
 import type { CombatState } from './types';
-import type { Enemy } from '@data/types';
+import type { Enemy, Skill } from '@data/types';
 import { getClass, getEnemy, registerSkill } from '@data/index';
 
 const WARRIOR = { stats: { maxHp: 25, atk: 4, def: 1 } };
@@ -789,5 +789,102 @@ describe('one play per living enemy (DECISIONS #68)', () => {
     expect(s.playsLeft).toBe(2);
     expect(enemyActed(step(s, { type: 'card', index: 0, target: 0 }))).toBe(false);
     expect(enemyActed(step(s, { type: 'card', index: 0, target: 0 }))).toBe(true); // three cards, then they act
+  });
+});
+
+describe('synergy card mechanics (DECISIONS #69)', () => {
+  const skill = (id: string, effects: Skill['effects']): Skill => ({ id, name: id, text: '', classId: 'warrior', rarity: 'rare', effects });
+  const DESPERATION = skill('t_desperation', [{ type: 'if', cond: { kind: 'selfHpBelow', pct: 0.2 }, then: [{ type: 'heal', pct: 0.2 }], else: [{ type: 'damage', mult: 0, flat: 5 }] }]);
+  const KNIFE = skill('t_knife', [{ type: 'if', cond: { kind: 'targetDebuffed' }, then: [{ type: 'damage', mult: 1.5 }], else: [{ type: 'status', target: 'self', status: 'weak', turns: 2 }] }]);
+  const LUNCH = skill('t_lunch', [{ type: 'status', target: 'self', status: 'regen', turns: 3, magnitude: 10 }]);
+  const BLACKJACK = skill('t_blackjack', [{ type: 'status', target: 'self', status: 'blackjack', turns: 99, magnitude: 5 }]);
+  const TRICK = skill('t_trick', [{ type: 'if', cond: { kind: 'coin' }, then: [{ type: 'damage', mult: 0.5 }, { type: 'extraPlay', n: 1 }, { type: 'draw', upTo: 3 }],
+    else: [{ type: 'status', target: 'self', status: 'weak', turns: 2 }, { type: 'status', target: 'self', status: 'exposed', turns: 2 }, { type: 'status', target: 'self', status: 'curse', turns: 2, magnitude: 1 }] }]);
+  for (const s of [DESPERATION, KNIFE, LUNCH, BLACKJACK, TRICK]) registerSkill(s);
+  const ATTACKS = Array<string>(8).fill('attack');
+  const enemyActed = (ev: { t: string; side?: string }[]) => ev.some((e) => e.t === 'play' && e.side === 'enemy');
+
+  it('Desperation heals 20% below 20% HP, otherwise deals a flat 5', () => {
+    const high = fight([], PASSIVE);
+    play(high, 't_desperation');
+    expect(high.enemies[0]!.hp).toBe(25);
+    const edge = fight([], PASSIVE, 1, 5); // exactly 20% is not below it
+    play(edge, 't_desperation');
+    expect(edge.enemies[0]!.hp).toBe(25);
+    const low = fight([], PASSIVE, 1, 4);
+    play(low, 't_desperation');
+    expect(low.player.hp).toBe(9);
+    expect(low.enemies[0]!.hp).toBe(30);
+  });
+
+  it('Utility Knife hits 150% into a debuffed enemy, otherwise leaves you Weak', () => {
+    const clean = fight([], PASSIVE);
+    play(clean, 't_knife');
+    expect(clean.enemies[0]!.hp).toBe(30);
+    expect(hasStatus(clean.player, 'weak')).toBe(true);
+    const hexed = fight([], PASSIVE);
+    hexed.enemies[0]!.statuses.push({ id: 'weak', turns: 2, magnitude: 1 });
+    play(hexed, 't_knife');
+    expect(hexed.enemies[0]!.hp).toBe(24); // round(4 × 1.5)
+    expect(hasStatus(hexed.player, 'weak')).toBe(false);
+  });
+
+  it('Lunch Break heals 10% a round for 3 rounds and locks every damage card meanwhile', () => {
+    const s = fight(['defend', ...ATTACKS], PASSIVE, 1, 10, []);
+    play(s, 't_lunch');
+    expect(s.player.hp).toBe(13); // 10% of 25, rounded, at the end of the round
+    s.player.hand = ['attack', 'defend', 'attack'];
+    expect(canPlay(s, 0)).toBe(false);
+    expect(canPlay(s, 1)).toBe(true);
+    expect(() => step(s, { type: 'card', index: 0 })).toThrow(/Regen/);
+    step(s, { type: 'card', index: 1 });
+    expect(s.player.hp).toBe(16);
+    s.player.hand = ['attack', 'attack'];
+    expect(() => step(s, { type: 'skip' })).not.toThrow(); // nothing playable: the turn may pass
+    expect(s.player.hp).toBe(19);
+    expect(hasStatus(s.player, 'regen')).toBe(false);
+    expect(canPlay(s, 0)).toBe(true);
+  });
+
+  it('Blackjack: 5× every hit for the fight, and passing 21 in total kills you, even on a killing blow', () => {
+    const s = fight(ATTACKS, DUMMY, 1, 99);
+    play(s, 't_blackjack');
+    const ev1 = play(s, 'attack');
+    expect(s.enemies[0]!.hp).toBe(10); // 4 × 5 = 20
+    expect(ev1.find((e) => e.t === 'blackjack')).toMatchObject({ total: 20 });
+    expect(s.outcome).toBe('ongoing');
+    const ev2 = play(s, 'attack');
+    expect(ev2.find((e) => e.t === 'bust')).toMatchObject({ total: 30 });
+    expect(s.outcome).toBe('lost');
+    expect(s.player.hp).toBe(0);
+  });
+
+  it('Blackjack counts only what lands: a blocked hit adds nothing', () => {
+    const s = fight(ATTACKS, DUMMY, 1, 99);
+    play(s, 't_blackjack');
+    s.enemies[0]!.statuses.push({ id: 'guard', turns: 99, magnitude: 1 });
+    const ev = play(s, 'attack');
+    expect(ev.some((e) => e.t === 'bust')).toBe(false);
+    expect(s.enemies[0]!.hp).toBe(30);
+  });
+
+  it('Trickster: a right call hits for 50%, gives another card and refills the hand; a wrong one curses you', () => {
+    const go = (call: 'heads' | 'tails') => {
+      const s = createCombat({ player: { stats: { ...WARRIOR.stats, luck: 0 }, deck: ATTACKS, basics: [] }, enemy: DUMMY, rng: new Rng(7) });
+      s.player.hand = ['t_trick']; // alone in hand, so a right call has to draw three
+      const ev = step(s, { type: 'card', index: 0, call });
+      return { s, ev, coin: ev.find((e) => e.t === 'coin') as { won: boolean; result: string; call: string } };
+    };
+    const a = go('heads'), b = go('tails');
+    expect(a.coin.result).toBe(b.coin.result); // same seed, same flip
+    expect(a.coin.won).not.toBe(b.coin.won);
+    const win = a.coin.won ? a : b, lose = a.coin.won ? b : a;
+    expect(win.s.enemies[0]!.hp).toBe(28);
+    expect(enemyActed(win.ev)).toBe(false);
+    expect(win.s.playsLeft).toBe(1);
+    expect(win.s.player.hand).toHaveLength(3);
+    expect(lose.s.enemies[0]!.hp).toBe(30);
+    for (const st of ['weak', 'exposed', 'curse'] as const) expect(hasStatus(lose.s.player, st)).toBe(true);
+    expect(enemyActed(lose.ev)).toBe(true);
   });
 });

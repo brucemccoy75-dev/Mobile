@@ -28,6 +28,9 @@ export function computeHit(attacker: Combatant, target: Combatant, mult: number,
   // Hardened (armoured enemies' shell): half damage while it lasts, instead of a full block.
   if (hasStatus(target, 'harden')) dmg = Math.max(1, Math.ceil(dmg * 0.5));
   if (hasStatus(target, 'exposed')) dmg *= EXPOSED_MULT;
+  // Blackjack (DECISIONS #69): every hit lands this many times over.
+  const bj = getStatus(attacker, 'blackjack');
+  if (bj) dmg *= bj.magnitude;
   return dmg;
 }
 

@@ -1,4 +1,4 @@
-import type { ClassId, DamageKind, Effect, Rarity, SetId, Skill, SkillSet, SkillUses, StatusId } from './types';
+import type { ClassId, Condition, DamageKind, Effect, Rarity, SetId, Skill, SkillSet, SkillUses, StatusId } from './types';
 import { VFX_KINDS, type VfxKind } from '@core/vfx';
 
 /**
@@ -15,6 +15,9 @@ import { VFX_KINDS, type VfxKind } from '@core/vfx';
  *            linked from every card that is tiring. Two modifier statuses take something away
  *            instead (DECISIONS #48): remove_guard and remove_buffs run before the card's damage,
  *            on the enemies the damage hits.
+ *   condition / else  a card may branch (DECISIONS #69): the damage, heal and modifiers above
+ *            are what it does when the condition holds (your HP below a percent, the enemy
+ *            carrying a debuff, or a coin you call); `else` is what it does otherwise.
  *   families own membership: a card drops when a family that lists it is unlocked.
  */
 export const CARDS_VERSION = 2;
@@ -29,6 +32,11 @@ export interface CardDamage {
   targets: 'one' | 'all'; // the chosen enemy, or every living enemy (DECISIONS #44)
 }
 export interface CardHeal { percent: number; flat: number; }
+/** What a branching card asks (DECISIONS #69). */
+export type CardCondition = { kind: 'self_hp_below'; percent: number } | { kind: 'enemy_debuffed' } | { kind: 'coin' };
+export const CONDITION_KINDS: CardCondition['kind'][] = ['self_hp_below', 'enemy_debuffed', 'coin'];
+/** The otherwise side of a branching card. */
+export interface CardBranch { damage: CardDamage | null; heal: CardHeal | null; modifiers: string[]; }
 export interface CardDef {
   id: string;
   name: string;
@@ -40,10 +48,13 @@ export interface CardDef {
   modifiers: string[];
   /** The battle effect (DECISIONS #59); absent = chosen from what the card does. */
   vfx?: VfxKind;
+  /** A branching card (DECISIONS #69): damage/heal/modifiers run when this holds, `else` otherwise. */
+  condition?: CardCondition;
+  else?: CardBranch;
   note?: string;
 }
 /** A status to give, or one of the two removals (DECISIONS #48). */
-export type ModifierStatus = StatusId | 'remove_guard' | 'remove_buffs' | 'backfire';
+export type ModifierStatus = StatusId | 'remove_guard' | 'remove_buffs' | 'backfire' | 'extra_play' | 'draw_to';
 export interface ModifierDef {
   id: string;
   name: string;
@@ -71,7 +82,7 @@ export interface CardsData {
   trees: Record<ClassId, TreeNodeDef[]>;
 }
 
-export const STATUS_IDS: StatusId[] = ['exposed', 'guard', 'ward', 'aegis', 'burn', 'chill', 'weak', 'stun', 'brace', 'scatter', 'curse', 'harden'];
+export const STATUS_IDS: StatusId[] = ['exposed', 'guard', 'ward', 'aegis', 'burn', 'chill', 'weak', 'stun', 'brace', 'scatter', 'curse', 'harden', 'regen', 'blackjack'];
 /** What each removal takes off the enemy: Guard alone, or every status that helps its holder. */
 export const REMOVALS: Record<'remove_guard' | 'remove_buffs', StatusId[]> = {
   remove_guard: ['guard'],
@@ -79,24 +90,29 @@ export const REMOVALS: Record<'remove_guard' | 'remove_buffs', StatusId[]> = {
 };
 export const isRemoval = (s: ModifierStatus): s is keyof typeof REMOVALS => s in REMOVALS;
 /** Every value the modifier's status field takes, in editor order. */
-export const MODIFIER_STATUSES: ModifierStatus[] = [...STATUS_IDS, 'remove_guard', 'remove_buffs', 'backfire'];
+export const MODIFIER_STATUSES: ModifierStatus[] = [...STATUS_IDS, 'remove_guard', 'remove_buffs', 'backfire', 'extra_play', 'draw_to'];
+/** Modifiers that are an action on your turn, not a status (DECISIONS #69): play more, draw up. */
+export const TURN_MODIFIERS: ModifierStatus[] = ['extra_play', 'draw_to'];
 export const RARITIES: Rarity[] = ['basic', 'common', 'uncommon', 'rare'];
 export const USES: SkillUses[] = ['fleeting', 'once_per_fight'];
 export const CLASS_IDS: ClassId[] = ['warrior', 'wizard', 'shaman'];
 /** Which statuses are counted in hits (consumed by hits), which last a single action, which take an amount. */
 export const HIT_STATUSES: StatusId[] = ['guard', 'ward'];
-export const AMOUNT_STATUSES: StatusId[] = ['guard', 'ward', 'burn', 'curse'];
+export const AMOUNT_STATUSES: StatusId[] = ['guard', 'ward', 'burn', 'curse', 'regen', 'blackjack'];
 
 // ---------------------------------------------------------------- compile
 
 export function modifierEffect(m: ModifierDef, targets?: 'one' | 'all'): Effect {
   if (m.status === 'backfire') return { type: 'backfire', pct: (m.amount ?? 100) / 100 };
+  if (m.status === 'extra_play') return { type: 'extraPlay', n: m.amount ?? 1 };
+  if (m.status === 'draw_to') return { type: 'draw', upTo: m.amount ?? 3 };
   if (isRemoval(m.status)) {
     const s: Extract<Effect, { type: 'strip' }> = { type: 'strip', statuses: [...REMOVALS[m.status]] };
     if (targets === 'all') s.targets = 'all';
     return s;
   }
-  const e: Extract<Effect, { type: 'status' }> = { type: 'status', target: m.target, status: m.status, turns: HIT_STATUSES.includes(m.status) ? 99 : m.status === 'chill' ? 1 : (m.rounds ?? 1) };
+  // Guard and Ward are spent by hits and Blackjack lasts the fight (#69): none of them run out by rounds.
+  const e: Extract<Effect, { type: 'status' }> = { type: 'status', target: m.target, status: m.status, turns: HIT_STATUSES.includes(m.status) || m.status === 'blackjack' ? 99 : m.status === 'chill' ? 1 : (m.rounds ?? 1) };
   if (m.amount !== undefined) e.magnitude = m.amount;
   if (m.chance !== undefined && m.chance < 100) e.chance = m.chance / 100;
   if (m.magic) e.kind = 'magic';
@@ -120,6 +136,10 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 export function modifierText(m: ModifierDef, targets?: 'one' | 'all'): string {
   if (m.text) return m.text;
   if (m.status === 'backfire') return (m.amount ?? 100) >= 100 ? 'If the target survives, you lose all your HP.' : `If the target survives, you lose ${m.amount}% of your max HP.`;
+  if (m.status === 'extra_play') return `Play ${(m.amount ?? 1) === 1 ? 'one more card' : `${m.amount} more cards`} this turn.`;
+  if (m.status === 'draw_to') return `Draw until you hold ${m.amount ?? 3}.`;
+  if (m.status === 'regen') return `Lunch Break: heal ${m.amount ?? 0}% of max HP a round for ${plural(m.rounds ?? 1, 'round')}. No damage cards meanwhile.`;
+  if (m.status === 'blackjack') return `Blackjack: your hits deal ${m.amount ?? 1}× for the rest of the fight. Deal more than 21 in total and you die.`;
   if (isRemoval(m.status)) {
     const whose = targets === 'all' ? "every enemy's" : "the enemy's";
     return m.status === 'remove_guard' ? `Remove ${whose} Guard first.` : `Remove ${whose} buffs first (Guard, Ward, Aegis, Hardened, Braced, Scattered).`;
@@ -130,6 +150,7 @@ export function modifierText(m: ModifierDef, targets?: 'one' | 'all'): string {
   if (m.status === 'ward') return `Block the next ${m.amount === 1 || !m.amount ? 'magic hit or curse' : `${m.amount} magic hits or curses`}.`;
   if (m.status === 'aegis') return `Block every hit for ${plural(m.rounds ?? 1, 'round')}.`;
   if (m.status === 'chill') return `${chance}Chill: the enemy skips its next action.`;
+  if ((m.status === 'burn' || m.status === 'curse') && m.target === 'self') return `${chance}You are ${m.status === 'curse' ? 'Cursed' : 'Burning'} (${m.amount ?? 1} a round) for ${plural(m.rounds ?? 1, 'round')}.`;
   if (m.status === 'burn' || m.status === 'curse') return `${chance}${cap} ${m.amount ?? 1} for ${plural(m.rounds ?? 1, 'round')}.`;
   if (m.target === 'self') return `${chance}You are ${m.status === 'stun' ? 'Recovering' : cap} for ${plural(m.rounds ?? 1, 'round')}.`;
   return `${chance}Enemy is ${cap} for ${plural(m.rounds ?? 1, 'round')}.`;
@@ -137,6 +158,18 @@ export function modifierText(m: ModifierDef, targets?: 'one' | 'all'): string {
 
 /** The static card text (percentages; the game shows computed numbers on the card itself). */
 export function cardText(c: CardDef, mods: Map<string, ModifierDef>): string {
+  const parts: string[] = [];
+  if (c.condition) {
+    const [yes, no] = c.condition.kind === 'self_hp_below' ? [`If your HP is below ${c.condition.percent}%:`, 'Otherwise:'] : c.condition.kind === 'enemy_debuffed' ? ['If the enemy has a debuff:', 'Otherwise:'] : ['Call the coin. Right:', 'Wrong:'];
+    parts.push(`${yes} ${branchText(c, mods)}`);
+    if (c.else) parts.push(`${no} ${branchText(c.else, mods)}`);
+  } else parts.push(branchText(c, mods));
+  if (c.uses === 'once_per_fight') parts.push('Once per fight.');
+  if (c.uses === 'fleeting') parts.push('Fleeting: spent when played.');
+  return parts.filter(Boolean).join(' ');
+}
+
+function branchText(c: CardBranch, mods: Map<string, ModifierDef>): string {
   const parts: string[] = [];
   // Removals run before the damage, so they read first (DECISIONS #48).
   const linked = c.modifiers.map((id) => mods.get(id)).filter((m): m is ModifierDef => !!m);
@@ -152,8 +185,6 @@ export function cardText(c: CardDef, mods: Map<string, ModifierDef>): string {
   }
   if (c.heal) parts.push(`Heal ${c.heal.percent ? `${c.heal.percent}%` : ''}${c.heal.percent && c.heal.flat ? ' + ' : ''}${c.heal.flat ? `${c.heal.flat}` : ''} HP.`);
   for (const m of linked) if (!isRemoval(m.status)) parts.push(modifierText(m));
-  if (c.uses === 'once_per_fight') parts.push('Once per fight.');
-  if (c.uses === 'fleeting') parts.push('Fleeting: spent when played.');
   return parts.join(' ');
 }
 
@@ -166,14 +197,19 @@ export function compileCards(data: CardsData): Compiled {
     const c = data.cards.find((x) => x.id === id);
     if (c && c.classId === f.classId) familyOfClassCard.set(id, f.id);
   }
-  const skills: Skill[] = data.cards.map((c) => {
+  const branch = (c: CardBranch, id: string): Effect[] => {
     const effects: Effect[] = [];
     if (c.damage) effects.push(damageEffect(c.damage));
     if (c.heal) { const h: Extract<Effect, { type: 'heal' }> = { type: 'heal' }; if (c.heal.percent) h.pct = c.heal.percent / 100; if (c.heal.flat) h.flat = c.heal.flat; effects.push(h); }
-    for (const id of c.modifiers) { const m = mods.get(id); if (!m) throw new Error(`card ${c.id}: unknown modifier ${id}`); effects.push(modifierEffect(m, c.damage?.targets)); }
+    for (const mid of c.modifiers) { const m = mods.get(mid); if (!m) throw new Error(`card ${id}: unknown modifier ${mid}`); effects.push(modifierEffect(m, c.damage?.targets)); }
     // Removals run ahead of the damage, a backfire after everything, whatever their place in the list (DECISIONS #48, #51).
     const order = (e: Effect) => (e.type === 'strip' ? 0 : e.type === 'backfire' ? 2 : 1);
-    effects.sort((a, b) => order(a) - order(b));
+    return effects.sort((a, b) => order(a) - order(b));
+  };
+  const skills: Skill[] = data.cards.map((c) => {
+    let effects = branch(c, c.id);
+    // A branching card is one effect holding both sides (DECISIONS #69).
+    if (c.condition) effects = [{ type: 'if', cond: conditionOf(c.condition), then: effects, else: c.else ? branch(c.else, c.id) : [] }];
     const sk: Skill = { id: c.id, name: c.name, text: cardText(c, mods), classId: c.classId, rarity: c.rarity, effects };
     const fam = familyOfClassCard.get(c.id);
     if (fam) sk.setId = fam;
@@ -184,6 +220,9 @@ export function compileCards(data: CardsData): Compiled {
   const sets: SkillSet[] = data.families.map((f) => ({ id: f.id, classId: f.classId, name: f.name, skills: [...f.cards] }));
   return { skills, sets, trees: data.trees, basics: data.basics };
 }
+
+const conditionOf = (c: CardCondition): Condition =>
+  c.kind === 'self_hp_below' ? { kind: 'selfHpBelow', pct: c.percent / 100 } : c.kind === 'enemy_debuffed' ? { kind: 'targetDebuffed' } : { kind: 'coin' };
 
 // ---------------------------------------------------------------- validate
 
@@ -214,15 +253,34 @@ export function validateCards(data: CardsData, shipped?: CardsData): string[] {
       if (m.rounds !== undefined || m.chance !== undefined || m.magic) bad(`modifier ${m.id}: backfire takes no rounds, chance or magic`);
       continue;
     }
+    if (TURN_MODIFIERS.includes(m.status)) {
+      if (m.target !== 'self') bad(`modifier ${m.id}: ${m.status} works on yourself only`);
+      if (!isInt(m.amount, 1, 3)) bad(`modifier ${m.id}: ${m.status} needs an amount 1-3`);
+      if (m.rounds !== undefined || m.chance !== undefined || m.magic) bad(`modifier ${m.id}: ${m.status} takes no rounds, chance or magic`);
+      continue;
+    }
+    if (m.status === 'regen') {
+      if (m.target !== 'self') bad(`modifier ${m.id}: regen works on yourself only`);
+      if (!isInt(m.amount, 1, 50)) bad(`modifier ${m.id}: regen amount is a percent of max HP, 1-50`);
+      if (!isInt(m.rounds, 1, 9)) bad(`modifier ${m.id}: regen needs rounds 1-9`);
+      if (m.chance !== undefined || m.magic) bad(`modifier ${m.id}: regen takes no chance or magic`);
+      continue;
+    }
+    if (m.status === 'blackjack') {
+      if (m.target !== 'self') bad(`modifier ${m.id}: blackjack works on yourself only`);
+      if (!isInt(m.amount, 2, 9) || m.rounds !== undefined || m.chance !== undefined || m.magic) bad(`modifier ${m.id}: blackjack lasts the fight: amount 2-9, no rounds or chance`);
+      continue;
+    }
     if (isRemoval(m.status)) {
       if (m.target !== 'enemy') bad(`modifier ${m.id}: ${m.status} works on the enemy only`);
       if (m.rounds !== undefined || m.amount !== undefined || m.chance !== undefined || m.magic) bad(`modifier ${m.id}: ${m.status} takes no rounds, amount, chance or magic`);
       continue;
     }
+    const st = m.status as StatusId; // the turn modifiers, removals, backfire, regen and blackjack were handled above
     if (m.rounds !== undefined && !isInt(m.rounds, 1, 9)) bad(`modifier ${m.id}: rounds must be 1-9`);
-    if (!HIT_STATUSES.includes(m.status) && m.status !== 'chill' && m.rounds === undefined) bad(`modifier ${m.id}: ${m.status} needs rounds`);
+    if (!HIT_STATUSES.includes(st) && st !== 'chill' && m.rounds === undefined) bad(`modifier ${m.id}: ${st} needs rounds`);
     if (m.amount !== undefined && !isInt(m.amount, 1, 9)) bad(`modifier ${m.id}: amount must be 1-9`);
-    if (AMOUNT_STATUSES.includes(m.status) && m.amount === undefined) bad(`modifier ${m.id}: ${m.status} needs an amount`);
+    if (AMOUNT_STATUSES.includes(st) && m.amount === undefined) bad(`modifier ${m.id}: ${st} needs an amount`);
     if (m.chance !== undefined && !isInt(m.chance, 1, 100)) bad(`modifier ${m.id}: chance must be 1-100`);
   }
   for (const c of data.cards ?? []) {
@@ -234,23 +292,16 @@ export function validateCards(data: CardsData, shipped?: CardsData): string[] {
     if (c.uses !== null && c.uses !== undefined && !USES.includes(c.uses)) bad(`${w}: uses must be empty, fleeting or once_per_fight`);
     if (!c.damage && !c.heal && !(c.modifiers?.length)) bad(`${w}: needs damage, heal or a modifier`);
     if (c.vfx !== undefined && !VFX_KINDS.includes(c.vfx)) bad(`${w}: unknown effect ${c.vfx}`);
-    if (c.damage) {
-      const d = c.damage;
-      if (!isInt(d.percent, 0, 500)) bad(`${w}: damage percent must be 0-500`);
-      if (!isInt(d.bonus, 0, 30)) bad(`${w}: damage bonus must be 0-30`);
-      if (!isInt(d.hits, 1, 6)) bad(`${w}: hits must be 1-6`);
-      if (d.type !== 'physical' && d.type !== 'magic') bad(`${w}: damage type must be physical or magic`);
-      if (!isInt(d.drain, 0, 100)) bad(`${w}: drain must be 0-100`);
-      if (d.targets !== 'one' && d.targets !== 'all') bad(`${w}: targets must be one or all`);
-      if (d.percent === 0 && d.bonus === 0) bad(`${w}: damage needs a percent or a bonus`);
+    checkBranch(c, w, '', mods, bad);
+    if (c.condition !== undefined) {
+      if (!CONDITION_KINDS.includes(c.condition.kind)) bad(`${w}: unknown condition ${(c.condition as { kind: string }).kind}`);
+      if (c.condition.kind === 'self_hp_below' && !isInt(c.condition.percent, 1, 99)) bad(`${w}: HP threshold must be 1-99`);
     }
-    if (c.heal) {
-      if (!isInt(c.heal.percent, 0, 100)) bad(`${w}: heal percent must be 0-100`);
-      if (!isInt(c.heal.flat, 0, 50)) bad(`${w}: heal flat must be 0-50`);
-      if (c.heal.percent === 0 && c.heal.flat === 0) bad(`${w}: heal needs a percent or a flat amount`);
+    if (c.else) {
+      if (!c.condition) bad(`${w}: an otherwise branch needs a condition`);
+      if (!c.else.damage && !c.else.heal && !(c.else.modifiers?.length)) bad(`${w}: the otherwise branch needs damage, heal or a modifier`);
+      checkBranch(c.else, w, 'otherwise ', mods, bad);
     }
-    for (const id of c.modifiers ?? []) if (!mods.has(id)) bad(`${w}: unknown modifier ${id}`);
-    if (new Set(c.modifiers ?? []).size !== (c.modifiers ?? []).length) bad(`${w}: a modifier is linked twice`);
   }
   const famIds = new Set<string>();
   const cardById = new Map((data.cards ?? []).map((c) => [c.id, c]));
@@ -301,6 +352,27 @@ export function validateCards(data: CardsData, shipped?: CardsData): string[] {
     }
   }
   return out;
+}
+
+/** The damage, heal and modifier rules, for a card's main side or its otherwise side (`side` prefixes the message). */
+function checkBranch(b: CardBranch, w: string, side: string, mods: Map<string, ModifierDef>, bad: (s: string) => void): void {
+  if (b.damage) {
+    const d = b.damage;
+    if (!isInt(d.percent, 0, 500)) bad(`${w}: ${side}damage percent must be 0-500`);
+    if (!isInt(d.bonus, 0, 30)) bad(`${w}: ${side}damage bonus must be 0-30`);
+    if (!isInt(d.hits, 1, 6)) bad(`${w}: ${side}hits must be 1-6`);
+    if (d.type !== 'physical' && d.type !== 'magic') bad(`${w}: ${side}damage type must be physical or magic`);
+    if (!isInt(d.drain, 0, 100)) bad(`${w}: ${side}drain must be 0-100`);
+    if (d.targets !== 'one' && d.targets !== 'all') bad(`${w}: ${side}targets must be one or all`);
+    if (d.percent === 0 && d.bonus === 0) bad(`${w}: ${side}damage needs a percent or a bonus`);
+  }
+  if (b.heal) {
+    if (!isInt(b.heal.percent, 0, 100)) bad(`${w}: ${side}heal percent must be 0-100`);
+    if (!isInt(b.heal.flat, 0, 50)) bad(`${w}: ${side}heal flat must be 0-50`);
+    if (b.heal.percent === 0 && b.heal.flat === 0) bad(`${w}: ${side}heal needs a percent or a flat amount`);
+  }
+  for (const id of b.modifiers ?? []) if (!mods.has(id)) bad(`${w}: unknown modifier ${id}`);
+  if (new Set(b.modifiers ?? []).size !== (b.modifiers ?? []).length) bad(`${w}: a modifier is linked twice`);
 }
 
 /** Human summary of what an import changes, for the commit message. */

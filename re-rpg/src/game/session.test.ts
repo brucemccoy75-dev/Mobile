@@ -62,7 +62,7 @@ describe('session', () => {
     applyHeirlooms(s, tank.slice(0, 2), meta);
     expect(s.families).toEqual(['warrior_tank']);
     expect(s.setId).toBe('warrior_tank');
-    expect(s.deck.every((id) => ['shield_bash', 'bind_wound'].includes(id))).toBe(true);
+    expect(s.deck.every((id) => ['shield_bash', 'bind_wound', 'desperation', 'utility_knife'].includes(id))).toBe(true);
     expect(s.heirloomChoices).toEqual([]);
     expect(s.shop.lines.every((l) => l.kind !== 'tome' || getSet('warrior_tank').skills.includes(l.id))).toBe(true);
   });

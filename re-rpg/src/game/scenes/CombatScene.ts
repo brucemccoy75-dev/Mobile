@@ -4,7 +4,7 @@ import { describeSkill, getEnemy, getSkill } from '@data/index';
 import type { CardPreview } from '@data/describe';
 import { basicsFor } from '@data/skills';
 import type { Enemy, Intent, Posture } from '@data/types';
-import { createCombat, currentIntent, isPlayerStunned, previewDamage, resolveTarget, skillInCombat, step, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
+import { createCombat, currentIntent, effectsNow, isLocked, isPlayerStunned, playableIndices, previewDamage, resolveTarget, skillInCombat, step, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
 import { getMeta, getSession, getStore, persistMeta, persistRun, setName, setSession, spendConsumedTomes, type PendingEncounter, type RunSession } from '@game/session';
 import { gainExp, ghostOn, layGhost, leaveGhost, nudgeRelation, recordDeath } from '@core/meta';
 import { ghostSpoils } from '@core/variants';
@@ -23,7 +23,7 @@ import { BattleFx, type Guard } from '@game/fx/battleFx';
 import { blockSide } from '@game/fx/shapes';
 import { beats } from '@game/playback';
 import { applyWin } from '@game/story';
-import { SHIELD_COLOR, blockColor, type VfxKind } from '@core/vfx';
+import { SELF_VFX, SHIELD_COLOR, blockColor, type VfxKind } from '@core/vfx';
 
 /**
  * Side-view turn-based combat. Phaser only renders: the engine in core/combat
@@ -431,7 +431,9 @@ export class CombatScene extends Phaser.Scene {
     const shown = (en: typeof target, strip: string[] = []) => ({ ...en, statuses: this.statusList('enemy', en.slot).filter((st) => !strip.includes(st.id)) });
     const shownPlayer = { ...this.state.player, statuses: this.statusList('player') };
     ids.forEach((id, i) => {
-      const sk = skillInCombat(this.state, id);
+      const full = skillInCombat(this.state, id);
+      // A branching card shows the side it would take right now (DECISIONS #69); its text keeps both.
+      const sk = { ...full, effects: effectsNow(this.state, full, target) };
       const dmg = sk.effects.find((e) => e.type === 'damage');
       let preview: CardPreview | undefined;
       if (dmg && dmg.type === 'damage') {
@@ -442,7 +444,9 @@ export class CombatScene extends Phaser.Scene {
         const parts = victims.map((v) => previewDamage(shownPlayer, shown(v, strip), dmg));
         preview = { hits: parts.flatMap((p) => p.hits), reasons: [...new Set(parts.flatMap((p) => p.reasons))] };
       }
-      const card = new Card(this, startX + i * (CARD_W + gap), this.handY, sk, () => this.act(this.holdMode ? { type: 'hold', index: i } : { type: 'card', index: i, target: this.target }), describeSkill(sk, this.state.player.stats), this.state.player.stats, preview);
+      const card = new Card(this, startX + i * (CARD_W + gap), this.handY, sk, () => this.act(this.holdMode ? { type: 'hold', index: i } : { type: 'card', index: i, target: this.target }), describeSkill(full, this.state.player.stats), this.state.player.stats, preview);
+      // Lunch Break (#69): a card that deals damage waits until Regen is over.
+      if (isLocked(this.state, id)) { card.setEnabled(false); card.add(this.add.text(0, 0, 'ON LUNCH BREAK', { ...text.small, fontSize: '11px', color: '#0b0f1a', fontStyle: 'bold', backgroundColor: '#7dff9a', padding: { x: 5, y: 2 } }).setOrigin(0.5)); }
       this.hand.push(card);
     });
   }
@@ -453,7 +457,7 @@ export class CombatScene extends Phaser.Scene {
   }
 
   private setInputEnabled(on: boolean) {
-    for (const c of this.hand) c.setEnabled(on);
+    for (const c of this.hand) c.setEnabled(on && !isLocked(this.state, c.skillId));
     this.holdBtn.setEnabled(on);
     if (!on) this.toggleHold(false);
   }
@@ -469,7 +473,7 @@ export class CombatScene extends Phaser.Scene {
   private async autoPass() {
     const stunned = isPlayerStunned(this.state);
     const left = stunned ? Math.max(0, (this.state.player.statuses.find((s) => s.id === 'stun')?.turns ?? 1) - 1) : 0;
-    this.handHint.setText(stunned ? `Recovering… ${left} turn${left === 1 ? '' : 's'} to go` : 'No cards. The turn passes.');
+    this.handHint.setText(stunned ? `Recovering… ${left} turn${left === 1 ? '' : 's'} to go` : this.state.player.hand.length ? 'On lunch break: nothing to play. The turn passes.' : 'No cards. The turn passes.');
     for (const c of this.hand) c.setEnabled(false);
     await wait(this, 900);
     this.handHint.setText('');
@@ -492,8 +496,27 @@ export class CombatScene extends Phaser.Scene {
 
   private act(action: PlayerAction) {
     if (this.busy || this.state.outcome !== 'ongoing') return;
+    // A coin card (Trickster, #69): the player calls it before it is played.
+    if (action.type === 'card' && !action.call) {
+      const id = this.state.player.hand[action.index];
+      if (id && skillInCombat(this.state, id).effects.some((e) => e.type === 'if' && e.cond.kind === 'coin')) { this.askCoin((call) => this.act({ ...action, call })); return; }
+    }
     const events = step(this.state, action);
     void this.playEvents(events);
+  }
+
+  /** Heads or tails, over the hand; Cancel puts the card back. */
+  private askCoin(then: (call: 'heads' | 'tails') => void) {
+    const W = this.scale.gameSize.width, y = this.handY;
+    this.setInputEnabled(false);
+    const parts: Phaser.GameObjects.GameObject[] = [];
+    const close = () => { for (const p of parts) p.destroy(); };
+    parts.push(this.add.rectangle(W / 2, y, W, 150, 0x070a12, 0.85).setDepth(60).setInteractive());
+    parts.push(this.add.text(W / 2, y - 48, 'Call it', { ...text.body, fontSize: '18px', color: COLORS.gold, fontStyle: 'bold' }).setOrigin(0.5).setDepth(61));
+    const pick = (call: 'heads' | 'tails') => { close(); then(call); };
+    parts.push(new Button(this, W / 2 - 120, y + 8, 'Heads', () => pick('heads'), { width: 150, height: 56, fontSize: '18px', fill: 0x3a2e10, edge: 0xe0b040 }).setDepth(61));
+    parts.push(new Button(this, W / 2 + 120, y + 8, 'Tails', () => pick('tails'), { width: 150, height: 56, fontSize: '18px', fill: 0x3a2e10, edge: 0xe0b040 }).setDepth(61));
+    parts.push(new Button(this, W - 70, y + 8, 'Cancel', () => { close(); this.setInputEnabled(true); }, { width: 100, height: 44, fontSize: '14px' }).setDepth(61));
   }
 
   private async playEvents(events: CombatEvent[]) {
@@ -508,7 +531,7 @@ export class CombatScene extends Phaser.Scene {
     this.busy = false;
     if (this.state.outcome === 'ongoing') {
       this.syncAll();
-      if (isPlayerStunned(this.state) || this.state.player.hand.length === 0) { void this.autoPass(); return; }
+      if (isPlayerStunned(this.state) || playableIndices(this.state).length === 0) { void this.autoPass(); return; }
       this.setInputEnabled(true);
     } else {
       this.syncAll();
@@ -611,6 +634,8 @@ export class CombatScene extends Phaser.Scene {
         await tween(this, { targets: s, x: p.x + 28 * dir, duration: 110, yoyo: true, ease: 'Quad.Out' });
         this.cast = { kind: e.vfx ?? 'none', side: e.side, who, done: new Set() };
         if (e.vfx === 'heal') this.fx.heal(p);
+        if (e.vfx === 'sandwich') void this.fx.sandwich(p);
+        if (e.vfx === 'cards') void this.fx.cards(p);
         return;
       }
       case 'damage': {
@@ -663,7 +688,8 @@ export class CombatScene extends Phaser.Scene {
         this.dispUpsert(e.side, { id: e.status, turns: e.turns, magnitude: e.magnitude }, who);
         this.syncChips();
         // Guard is self-evident from the chip and the card name; everything else gets a callout.
-        if (e.status === 'guard') { await wait(this, 350); return; }
+        // Lunch Break and Blackjack are named by the card that gave them (#69): no second callout over the name.
+        if (e.status === 'guard' || (e.side === 'player' && (e.status === 'regen' || e.status === 'blackjack'))) { await wait(this, 350); return; }
         const p = pos(e.side);
         const m = STATUS_LABELS[e.status];
         await floatText(this, p.x, p.y - 110 - stack * 28, m.label, m.color, 22, 900);
@@ -718,6 +744,20 @@ export class CombatScene extends Phaser.Scene {
         await this.luckFanfare('BONUS TURN!', '#7cffb2', 'play again before they move');
         this.phaseText.setText('YOUR TURN · BONUS').setColor('#7cffb2');
         return;
+      case 'coin': {
+        // Trickster (#69): the coin flips over the hero and lands on what came up.
+        await this.fx.coin({ x: this.px, y: this.py - 90 }, e.result);
+        await floatText(this, this.px, this.py - 60, `${e.result.toUpperCase()}! ${e.won ? 'you called it' : 'wrong call'}`, e.won ? '#ffd166' : '#ff6b6b', 26, 1000);
+        return;
+      }
+      case 'blackjack':
+        void floatText(this, this.px, this.py - 120, `${e.total} / 21`, e.total >= 17 ? '#ff6b6b' : '#ffd700', 30, 1300);
+        return;
+      case 'bust':
+        this.cameras.main.shake(260, 0.014);
+        this.showHp('player', -this.state.player.stats.maxHp);
+        await this.luckFanfare('BUST!', '#ff3355', `${e.total} is over 21`);
+        return;
       case 'plays': {
         // One card per enemy alive when the turn began (DECISIONS #68); a bonus turn adds one.
         const bonus = !!this.state.bonusTaken;
@@ -749,7 +789,7 @@ export class CombatScene extends Phaser.Scene {
    */
   private async castAt(target: 'player' | 'enemy', who: number, to: { x: number; y: number }, guard?: Guard): Promise<boolean> {
     const c = this.cast;
-    if (!c || c.side === target || c.kind === 'slash' || c.kind === 'none' || c.kind === 'heal') return false;
+    if (!c || c.side === target || c.kind === 'slash' || c.kind === 'none' || SELF_VFX.includes(c.kind)) return false;
     const key = `${target}:${target === 'enemy' ? who : 0}`;
     if (c.done.has(key)) return false;
     c.done.add(key);

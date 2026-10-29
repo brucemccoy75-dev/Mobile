@@ -1,11 +1,11 @@
 import { getSkill } from '@data/index';
 import type { Effect } from '@data/types';
-import { currentIntents, hasStatus, isPlayerStunned, livingEnemies, type CombatState, type PlayerAction } from '@core/combat';
+import { BLACKJACK_LIMIT, currentIntents, effectsNow, hasStatus, isPlayerStunned, livingEnemies, playableIndices, previewDamage, type CombatState, type PlayerAction } from '@core/combat';
 
 export type Policy = (s: CombatState) => PlayerAction;
 
 const has = (effects: Effect[], pred: (e: Effect) => boolean) => effects.some(pred);
-const isHeal = (e: Effect) => e.type === 'heal' || (e.type === 'damage' && !!e.lifesteal);
+const isHeal = (e: Effect) => e.type === 'heal' || (e.type === 'damage' && !!e.lifesteal) || (e.type === 'status' && e.target === 'self' && e.status === 'regen');
 const isGuard = (e: Effect) => e.type === 'status' && e.target === 'self' && (e.status === 'guard' || e.status === 'ward' || e.status === 'aegis');
 const blocks = (e: Effect, magic: boolean) => e.type === 'status' && e.target === 'self' && (e.status === 'aegis' || e.status === (magic ? 'ward' : 'guard'));
 const isDamage = (e: Effect) => e.type === 'damage';
@@ -27,7 +27,9 @@ const dmgValue = (effects: Effect[], enemyAttacking: boolean) =>
  * baseline the balance should be tuned around.
  */
 export const greedy: Policy = (s) => {
-  if (isPlayerStunned(s) || s.player.hand.length === 0) return { type: 'skip' };
+  // Lunch Break (DECISIONS #69) can leave nothing playable: then the turn passes.
+  const playable = playableIndices(s);
+  if (isPlayerStunned(s) || playable.length === 0) return { type: 'skip' };
   // Duos: incoming damage is the sum over living enemies; the target is the weakest one that is not braced.
   const intents = currentIntents(s);
   const living = livingEnemies(s);
@@ -41,7 +43,13 @@ export const greedy: Policy = (s) => {
   const hp = s.player.hp;
   const maxHp = s.player.stats.maxHp;
   const guarded = hasStatus(s.player, 'aegis') || (intent.kind === 'attack' && intent.dmgType === 'magic' ? hasStatus(s.player, 'ward') : hasStatus(s.player, 'guard'));
-  const hand = s.player.hand.map((id, index) => ({ index, skill: getSkill(id) }));
+  // Each card as it would play right now: a branching card is the side it takes (a coin, its winning side), #69.
+  // Under Blackjack a hit that would pass 21 is not a card at all; if that leaves nothing, hold one back.
+  const busts = (effects: Effect[]) => hasStatus(s.player, 'blackjack') && effects.some((e) => e.type === 'damage') &&
+    (s.blackjackTotal ?? 0) + effects.reduce((a, e) => a + (e.type === 'damage' ? (e.targets === 'all' ? living : [targetEnemy]).reduce((t, v) => t + previewDamage(s.player, v, e).hits.reduce((x, h) => x + h.amount, 0), 0) : 0), 0) > BLACKJACK_LIMIT;
+  const hand = s.player.hand.map((id, index) => ({ index, skill: { ...getSkill(id), effects: effectsNow(s, getSkill(id), targetEnemy) } }))
+    .filter((h) => playable.includes(h.index) && !busts(h.skill.effects));
+  if (!hand.length) return { type: 'hold', index: playable[0]! };
   const incomingAttack = attackIntents.length > 0;
   const enemyGuarded = hasStatus(targetEnemy, 'guard');
   const card = (index: number): PlayerAction => ({ type: 'card', index, target });
@@ -124,5 +132,5 @@ export const greedy: Policy = (s) => {
   const defend = hand.find((h) => h.skill.id === (magicIn ? 'ward' : 'defend'));
   if (defend && incomingAttack && !guarded) return card(defend.index);
   if (anyDmg) return card(anyDmg.index);
-  return card(0);
+  return card(hand[0]!.index);
 };

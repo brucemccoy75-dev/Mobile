@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { RunRng } from '@core/rng';
+import { getSet } from '@data/index';
 import { greedy } from './policy';
 import { buildScreen, rollHeirlooms, runScreen, screenLoadouts, screenRoute } from './screen';
 
@@ -42,6 +43,6 @@ describe('screen mirror', () => {
     const deck = rollHeirlooms(lo, new RunRng('h').stream('heirlooms'));
     expect(deck).toHaveLength(2);
     expect(new Set(deck).size).toBe(2);
-    for (const id of deck) expect(['broadsword', 'exposing_strike', 'mighty_blow', 'last_strike', 'spiritboomerang']).toContain(id);
+    for (const id of deck) expect(getSet('warrior_dps').skills).toContain(id);
   });
 });

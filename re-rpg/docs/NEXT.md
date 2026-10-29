@@ -4,7 +4,7 @@
 
 **State.** Branch `claude/re-rpg-mobile-architecture-t26won`, folder `re-rpg/`, live on GitHub
 Pages at https://brucemccoy75-dev.github.io/Mobile/ (deploys ~70 s after a push; poll
-`origin/gh-pages` for "Deploy re-rpg <sha>"). 269 tests pass (`npm run check`: typecheck,
+`origin/gh-pages` for "Deploy re-rpg <sha>"). 279 tests pass (`npm run check`: typecheck,
 cards:validate, world:validate, tests, build). The game today is:
 
 - **Node overworld** (DECISIONS #37): a static node network per screen over an authored terrain,
@@ -15,15 +15,16 @@ cards:validate, world:validate, tests, build). The game today is:
   lines and on-kill hooks, per-node rules, quests, and the special-run chance (20%). Wren gives
   screen 1's quest at the start camp; Tam's re-arm errand is dialogue on screen 1; Old Marrow or
   Sister Vell gives screen 2's. Your ghost is switched off (`GHOST_ENABLED`, #54), kept for later.
-- **Combat**: a hand of 3 every round (#53), one card per enemy alive (a duo is two cards, #68), statuses that land together play together (#64), duos, sweeps hit every enemy at once (#47), remove
+- **Combat**: a hand of 3 every round (#53), one card per enemy alive (a duo is two cards, #68), branching cards (HP below, enemy debuffed, a coin you call), Lunch Break's Regen that locks damage cards, Blackjack ×5 to 21 (#69), statuses that land together play together (#64), duos, sweeps hit every enemy at once (#47), remove
   guard / remove buffs (#48), backfire (#51), luck: crits and bonus turns 1% each at base (#50,
   #52). Battle effects (#59, #62): slash, a quick coloured shield per status and a fast deflection on a block that stops the slash or spell at the shield (#63, #66), fireball,
   lightning, frost, poison cloud over the head, a curse skull of smoke (#65), arcane, heal, chosen from what a card
   does (or named per card in the card editor).
 - **Progression**: levels 1–10 per class, +1 max HP per level and a rare card or gold (#49);
   warrior tree Bulwark, Berserker → Paladin, Shadow Knight → Weaponmaster (#46); Shadow Knight
-  holds Minor leech, Leech, Death Touch; Paladin and Weaponmaster are empty. Nothing drops without
-  a node (#42).
+  holds Minor leech, Leech, Death Touch; Bulwark gained Desperation and Utility Knife, Berserker
+  Lunch Break, Blackjack and Trickster (#69); Paladin and Weaponmaster are empty. Nothing drops
+  without a node (#42).
 
 **Two editors, phone first** (title screen): the **card editor** (`editor.html`, `docs/CARDS.md`)
 and the **world editor** (`world.html`, `docs/WORLD.md`: Nodes, Quests, Words, Enemies). The
@@ -37,7 +38,7 @@ own command → Playwright at 844×390 (the game) or 390×844 (the editors) with
 (Test Mode: set registry `testSetup`, call `TestMode.fight()`, then `Combat.act()` and poll
 `busy`; to answer a dialogue from a script, `scene('Dialogue').choose(d, option)`) → commit with
 the attribution lines → `git push -u origin <branch>` → poll gh-pages. Record decisions in
-`docs/DECISIONS.md` (next number is 69). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
+`docs/DECISIONS.md` (next number is 70). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
 
 **Run logs** (`docs/PLAYTESTS.md`, DECISIONS #67). When the designer sends a run log, always:
 1. save it in `docs/playtests/`;

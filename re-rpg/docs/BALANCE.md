@@ -4,6 +4,63 @@ Newest first. Run logs are read with the procedure in `docs/PLAYTESTS.md` (`npm 
 
 Loadouts: **fresh** = Attack/Defend only, empty deck. **Set** = the two set tomes in the deck. **gearN** = a full three-slot kit for screen N (`GEAR_KIT` in `src/core/sim/gauntlet.ts`). The sim does not model loot choice, relics or 4-card decks, so these are floors, not expectations.
 
+## Cards import 2026-10-29 (DECISIONS #69: Desperation, Utility Knife, Lunch Break, Blackjack, Trickster)
+
+New cards desperation and utility_knife (Bulwark), lunch_break, blackjack and trickster
+(Berserker); new modifiers lunch_regen, blackjack_x5, extra_play_1, draw_to_3, weak_self_2,
+curse_self_2.
+
+`npm run sim -- --class warrior --runs 1000` (four-fight gauntlet; a set loadout holds its whole
+family, so the new cards are in it):
+
+```
+warrior fresh                       25.6%       0.0%      5.8   2.64   20.4  adept_necromancer 32%, gatekeeper 26%, boar 25%
+warrior Bulwark                     30.9%       0.0%     10.0   2.66   27.3  gatekeeper 31%, adept_necromancer 28%, boar 27%
+warrior Berserker                   56.7%       0.0%     11.5   3.16   14.9  gatekeeper 57%, adept_necromancer 19%, boar 17%
+warrior Bulwark+gear1               81.5%       0.1%     16.0   3.71   29.6  gatekeeper 81%, boar 9%, adept_necromancer 7%
+warrior Berserker+gear1             82.5%       0.0%     16.5   3.69   15.8  gatekeeper 83%, adept_necromancer 7%, boar 7%
+warrior both sets+gear1             84.8%       0.6%     17.3   3.74   21.9  gatekeeper 84%, boar 8%, adept_necromancer 6%
+```
+
+`npm run sim -- --screen --class warrior --runs 1000` (two heirlooms drawn from the family):
+
+```
+full clear                     reach boss  beat boss  hp@boss fights rounds  deaths
+warrior fresh                        0.0%       0.0%      0.0   2.52   21.0  adept_necromancer 28%, boar 19%, rat_pack 11%
+warrior Bulwark                      0.1%       0.0%      4.0   2.54   23.5  adept_necromancer 31%, boar 19%, rat_pack 11%
+warrior Berserker                    0.2%       0.0%      8.5   2.79   19.9  adept_necromancer 26%, boar 19%, adept_necromancer+boar 13%
+warrior Shadow Knight                1.6%       0.0%      8.9   4.37   29.1  boar 22%, boar+hex_imp 15%, adept_necromancer+boar 14%
+warrior Berserker+Bulwark            0.2%       0.0%     12.5   2.77   22.5  adept_necromancer 29%, boar 17%, rat_pack 12%
+warrior Shadow Knight+Bulwark        1.0%       0.0%      6.5   3.07   25.1  adept_necromancer 26%, boar 20%, adept_necromancer+boar 11%
+warrior Berserker+Shadow Knight       0.6%       0.0%     10.3   3.23   22.5  adept_necromancer 25%, boar 17%, adept_necromancer+boar 13%
+
+shortest road                  reach boss  beat boss  hp@boss fights rounds  deaths
+warrior fresh                        5.9%       0.0%      6.2   2.22   19.3  adept_necromancer+boar 17%, adept_necromancer 16%, boar 13%
+warrior Bulwark                      9.1%       0.0%      8.6   2.21   21.4  adept_necromancer 20%, adept_necromancer+boar 14%, boar 12%
+warrior Berserker                   15.0%       0.0%      8.5   2.41   18.2  adept_necromancer 17%, wren 15%, adept_necromancer+boar 14%
+warrior Shadow Knight               36.5%       0.0%      9.2   3.17   23.2  wren 37%, boar+hex_imp 16%, adept_necromancer+boar 16%
+warrior Berserker+Bulwark           11.6%       0.0%     10.1   2.32   20.0  adept_necromancer 19%, adept_necromancer+boar 16%, boar+hex_imp 12%
+warrior Shadow Knight+Bulwark       15.7%       0.0%      8.5   2.52   21.8  adept_necromancer+boar 16%, wren 16%, adept_necromancer 13%
+warrior Berserker+Shadow Knight      21.8%       0.0%      9.5   2.63   19.6  wren 22%, boar+hex_imp 15%, adept_necromancer 14%
+```
+
+Reading:
+- **Bulwark and Berserker got weaker in the sim** (gauntlet: Berserker 81.8% to 56.7%, Bulwark
+  39.9% to 30.9%; mirror shortest road: Berserker 18.0% to 15.0%, Bulwark 12.7% to 9.1%). Shadow
+  Knight, untouched, is identical, so the change is the new cards. Two causes:
+  - Two heirlooms are now drawn from 8 Berserker cards (was 5), so Mighty Blow and Broadsword
+    come up less.
+  - The greedy policy plays the new cards badly. It calls the coin blind (half its Tricksters
+    curse it), throws Utility Knife into clean enemies (Tiring), and has no plan for Blackjack
+    beyond not busting.
+
+  Read this as "the sim cannot judge these cards", not as their strength.
+- **Blackjack's shape at attack 4**: the first hit is 20.
+  - One Attack ends any single screen-1 enemy, and only the 10–12 HP that lands counts.
+  - In a duo, the second kill busts.
+  - Wren (46 HP) cannot be finished under it.
+- The next run log is the real test.
+
 ## Plays per living enemy 2026-10-29 (DECISIONS #68)
 
 One card per enemy alive at the start of the turn; the hand stays 3. Single fights are untouched,

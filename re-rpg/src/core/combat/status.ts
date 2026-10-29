@@ -66,7 +66,7 @@ export function consumeChill(c: Combatant, events: CombatEvent[]): boolean {
 }
 
 /**
- * End-of-round tick: Burn deals its damage, then timed statuses lose a turn and
+ * End-of-round tick: Burn deals its damage, Regen heals, then timed statuses lose a turn and
  * expire at zero. Guard and Chill are consumed by events, not time.
  */
 export function tickStatuses(c: Combatant, events: CombatEvent[]): void {
@@ -78,8 +78,17 @@ export function tickStatuses(c: Combatant, events: CombatEvent[]): void {
       events.push({ t: 'burn', side: c.side, amount, status: dot });
     }
   }
+  // Regen (DECISIONS #69): a share of max HP back each round end; a curse halves it, as it halves every heal.
+  const regen = getStatus(c, 'regen');
+  if (regen && c.hp > 0) {
+    let amount = Math.round((c.stats.maxHp * regen.magnitude) / 100);
+    if (hasStatus(c, 'curse')) amount = Math.floor(amount / 2);
+    amount = Math.min(c.stats.maxHp - c.hp, amount);
+    if (amount > 0) { c.hp += amount; events.push({ t: 'heal', side: c.side, amount }); }
+  }
   for (const s of c.statuses.slice()) {
-    if (s.id === 'guard' || s.id === 'ward' || s.id === 'chill') continue;
+    // Blackjack lasts the whole fight.
+    if (s.id === 'guard' || s.id === 'ward' || s.id === 'chill' || s.id === 'blackjack') continue;
     s.turns -= 1;
     if (s.turns <= 0) removeStatus(c, s.id, events);
   }

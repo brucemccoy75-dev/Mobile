@@ -18,7 +18,9 @@ export interface Stats {
 }
 
 /** guard blocks the next physical hit; ward the next magic hit; aegis every hit for N rounds. */
-export type StatusId = 'exposed' | 'guard' | 'ward' | 'aegis' | 'burn' | 'chill' | 'weak' | 'stun' | 'brace' | 'scatter' | 'curse' | 'harden';
+export type StatusId = 'exposed' | 'guard' | 'ward' | 'aegis' | 'burn' | 'chill' | 'weak' | 'stun' | 'brace' | 'scatter' | 'curse' | 'harden'
+  /** Regen (DECISIONS #69): heal `magnitude`% of max HP each round end; no damage cards while it lasts. Blackjack: every hit ×`magnitude` for the fight; more than 21 dealt in total and you die. */
+  | 'regen' | 'blackjack';
 
 export type DamageKind = 'physical' | 'magic';
 
@@ -40,7 +42,19 @@ export type Effect =
   /** Removes these statuses from the enemy before the hit (DECISIONS #48); `targets: 'all'` strips every living enemy. */
   | { type: 'strip'; statuses: StatusId[]; targets?: 'all' }
   /** If the card's damage leaves its target (any target, for a sweep) alive, the player loses `pct` of max HP, through any block (DECISIONS #51). */
-  | { type: 'backfire'; pct: number };
+  | { type: 'backfire'; pct: number }
+  /** A card that branches (DECISIONS #69): `then` when the condition holds, else `else`. Resolved when played. */
+  | { type: 'if'; cond: Condition; then: Effect[]; else: Effect[] }
+  /** Play `n` more cards this turn (on top of the one this card used). */
+  | { type: 'extraPlay'; n: number }
+  /** Draw until the hand holds `upTo` cards. */
+  | { type: 'draw'; upTo: number };
+
+/**
+ * What a branching card asks (DECISIONS #69): your HP below a share of max, the target carrying
+ * a debuff (Exposed, Weak, Burn, Chill, Recovering, Curse), or a coin you call (heads or tails).
+ */
+export type Condition = { kind: 'selfHpBelow'; pct: number } | { kind: 'targetDebuffed' } | { kind: 'coin' };
 
 /** How often a tome may be played. Default: every time it is drawn. */
 export type SkillUses = 'once_per_fight' | 'fleeting';

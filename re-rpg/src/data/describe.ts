@@ -1,7 +1,8 @@
-import type { Effect, Skill, Stats, StatusId } from './types';
+import type { Condition, Effect, Skill, Stats, StatusId } from './types';
 
 const STATUS_NAME: Record<StatusId, string> = {
   exposed: 'Exposed', guard: 'Guard', ward: 'Ward', aegis: 'Aegis', burn: 'Burn', chill: 'Chill', weak: 'Weak', stun: 'Recovering', brace: 'Braced', scatter: 'Scattered', curse: 'Cursed', harden: 'Hardened',
+  regen: 'Lunch Break', blackjack: 'Blackjack',
 };
 
 const rounds = (n: number) => `${n} round${n === 1 ? '' : 's'}`;
@@ -17,9 +18,46 @@ export function baseHit(stats: Stats, e: Extract<Effect, { type: 'damage' }>): n
  * "160%"). Deliberately ignores the enemy: what the card does, not what will land.
  */
 export function describeSkill(skill: Skill, stats: Stats): string {
+  const parts = describeEffects(skill.effects, stats);
+  if (skill.uses === 'once_per_fight') parts.push('Once per fight.');
+  if (skill.uses === 'fleeting') parts.push('Fleeting: spent when played.');
+  return parts.join(' ');
+}
+
+/** What a branch asks, as the start of its sentence (DECISIONS #69). */
+const askText = (c: Condition): [string, string] =>
+  c.kind === 'selfHpBelow' ? [`If your HP is below ${Math.round(c.pct * 100)}%:`, 'Otherwise:']
+  : c.kind === 'targetDebuffed' ? ['If the enemy has a debuff:', 'Otherwise:']
+  : ['Call the coin. Right:', 'Wrong:'];
+
+/** Plain timed statuses on yourself, which read as one sentence when several share a duration. */
+const PLAIN_SELF: ReadonlySet<StatusId> = new Set(['weak', 'exposed', 'curse', 'burn', 'harden', 'brace', 'scatter']);
+const isPlainSelf = (e: Effect): e is Extract<Effect, { type: 'status' }> => e.type === 'status' && e.target === 'self' && PLAIN_SELF.has(e.status) && e.chance === undefined;
+
+function describeEffects(effects: Effect[], stats: Stats): string[] {
   const parts: string[] = [];
-  for (const e of skill.effects) {
+  // Several plain statuses on yourself for the same rounds: "You are Weak, Exposed and Cursed for 2 rounds." (#69)
+  const group = effects.filter(isPlainSelf);
+  const merged = group.length > 1 && group.every((g) => g.turns === group[0]!.turns);
+  if (merged) {
+    const names = group.map((g) => STATUS_NAME[g.status]);
+    parts.push(`You are ${names.slice(0, -1).join(', ')} and ${names.at(-1)} for ${rounds(group[0]!.turns)}.`);
+  }
+  for (const e of effects) {
+    if (merged && isPlainSelf(e)) continue;
     switch (e.type) {
+      case 'if': {
+        const [yes, no] = askText(e.cond);
+        parts.push(`${yes} ${describeEffects(e.then, stats).join(' ')}`);
+        if (e.else.length) parts.push(`${no} ${describeEffects(e.else, stats).join(' ')}`);
+        break;
+      }
+      case 'extraPlay':
+        parts.push(`${e.n === 1 ? 'One more card' : `${e.n} more cards`} this turn.`);
+        break;
+      case 'draw':
+        parts.push(`Draw to ${e.upTo} cards.`);
+        break;
       case 'damage': {
         const n = baseHit(stats, e);
         const hits = e.hits ?? 1;
@@ -54,6 +92,9 @@ export function describeSkill(skill: Skill, stats: Stats): string {
           else if (e.status === 'weak') parts.push(e.turns <= 2 ? 'Tiring: Weak next turn.' : `You are Weak for ${rounds(e.turns)}.`);
           else if (e.status === 'stun') parts.push(`Recovering: skip your next ${e.turns - 1} turn${e.turns - 1 === 1 ? '' : 's'}.`);
           else if (e.status === 'exposed') parts.push(e.turns === 1 ? 'You are Exposed this round.' : `You are Exposed for ${rounds(e.turns)}.`);
+          else if (e.status === 'regen') parts.push(`Lunch Break: heal ${Math.round((stats.maxHp * (e.magnitude ?? 0)) / 100)} HP a round for ${rounds(e.turns)}. No damage cards meanwhile.`);
+          else if (e.status === 'blackjack') parts.push(`Blackjack: your hits deal ${e.magnitude ?? 1}× for the rest of the fight. Deal more than 21 in total and you die.`);
+          else if (e.status === 'curse') parts.push(`You are Cursed (${e.magnitude ?? 1} a round, heals halved) for ${rounds(e.turns)}.`);
           else parts.push(`You are ${STATUS_NAME[e.status]} for ${rounds(e.turns)}.`);
         } else {
           if (e.status === 'burn' || e.status === 'curse') parts.push(`${chance}${STATUS_NAME[e.status]} ${e.magnitude ?? 1} per round for ${rounds(e.turns)}.`);
@@ -64,9 +105,7 @@ export function describeSkill(skill: Skill, stats: Stats): string {
       }
     }
   }
-  if (skill.uses === 'once_per_fight') parts.push('Once per fight.');
-  if (skill.uses === 'fleeting') parts.push('Fleeting: spent when played.');
-  return parts.join(' ');
+  return parts;
 }
 
 /** Card face: colour family plus the one number that matters, shown large under the text (DECISIONS #28). */
@@ -81,9 +120,11 @@ export interface CardPreview { hits: { amount: number; blocked: boolean }[]; rea
  * why it differs from the text's base number. Without one (shop, rewards) it is the base.
  */
 export function cardFace(skill: Skill, stats: Stats, preview?: CardPreview): CardFace {
-  const dmg = skill.effects.find((e): e is Extract<Effect, { type: 'damage' }> => e.type === 'damage');
-  const heal = skill.effects.find((e): e is Extract<Effect, { type: 'heal' }> => e.type === 'heal');
-  const st = skill.effects.filter((e): e is Extract<Effect, { type: 'status' }> => e.type === 'status');
+  // A branching card's face is its first side; in combat the scene passes the side it would take now (DECISIONS #69).
+  const effects = skill.effects.flatMap((e) => (e.type === 'if' ? e.then : [e]));
+  const dmg = effects.find((e): e is Extract<Effect, { type: 'damage' }> => e.type === 'damage');
+  const heal = effects.find((e): e is Extract<Effect, { type: 'heal' }> => e.type === 'heal');
+  const st = effects.filter((e): e is Extract<Effect, { type: 'status' }> => e.type === 'status');
   if (dmg) {
     const hits = dmg.hits ?? 1, n = baseHit(stats, dmg);
     const magic = dmg.kind === 'magic';
@@ -97,6 +138,10 @@ export function cardFace(skill: Skill, stats: Stats, preview?: CardPreview): Car
     return { kind, value, unit: unit + why };
   }
   if (heal) return { kind: 'heal', value: `${Math.round((heal.flat ?? 0) + (heal.pct ?? 0) * stats.maxHp)}`, unit: 'heal' };
+  const regen = st.find((e) => e.target === 'self' && e.status === 'regen');
+  if (regen) return { kind: 'heal', value: `${Math.round((stats.maxHp * (regen.magnitude ?? 0)) / 100)}×${regen.turns}`, unit: 'heal' };
+  const bj = st.find((e) => e.target === 'self' && e.status === 'blackjack');
+  if (bj) return { kind: 'attack', value: `×${bj.magnitude ?? 1}`, unit: 'to 21' };
   const block = st.find((e) => e.target === 'self' && (e.status === 'guard' || e.status === 'ward' || e.status === 'aegis'));
   if (block) {
     if (block.status === 'aegis') return { kind: 'defense', value: `${block.turns}`, unit: block.turns === 1 ? 'round' : 'rounds' };
@@ -109,7 +154,10 @@ export function cardFace(skill: Skill, stats: Stats, preview?: CardPreview): Car
     if (hostile.status === 'chill') return { kind: 'magic', value: '1', unit: 'skip' };
     return { kind: 'magic', value: `${hostile.turns}`, unit: STATUS_NAME[hostile.status].toLowerCase() };
   }
-  const strip = skill.effects.find((e): e is Extract<Effect, { type: 'strip' }> => e.type === 'strip');
+  // A side that only costs you (Utility Knife against a clean enemy, #69): say so instead of a blank face.
+  const cost = st.find((e) => e.target === 'self' && (e.status === 'weak' || e.status === 'exposed' || e.status === 'curse'));
+  if (cost && st.every((e) => e.target === 'self') && !effects.some((e) => e.type === 'strip')) return { kind: 'defense', value: '0', unit: `${STATUS_NAME[cost.status].toLowerCase()} on you` };
+  const strip = effects.find((e): e is Extract<Effect, { type: 'strip' }> => e.type === 'strip');
   if (strip) return { kind: 'attack', value: '', unit: strip.statuses.length === 1 ? `removes ${STATUS_NAME[strip.statuses[0]!].toLowerCase()}` : 'removes buffs' };
   return { kind: 'defense', value: '', unit: '' };
 }

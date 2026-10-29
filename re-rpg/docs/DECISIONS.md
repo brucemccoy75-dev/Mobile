@@ -679,3 +679,53 @@ Measured with the screen mirror (BALANCE.md, Plays per living enemy):
 - a full clear still almost never does (0–1.6%), because the ten-fight attrition is unchanged.
 
 Screenshots in `docs/audit/plays-2026-10-29/`.
+
+## 69. Branching cards, Lunch Break, Blackjack and a coin
+
+Designer's request: five cards that play off each other, two for Bulwark and three for Berserker,
+added as if exported from the card editor. They needed four new mechanics, each built engine-first
+with tests, then the schema, the editor and the validator:
+- **Branching cards.** A card may name a condition: your HP below a percent, the enemy carrying a
+  debuff (Exposed, Weak, Burn, Chill, Recovering, Curse), or a coin the player calls. Its
+  damage, heal and modifiers run when the condition holds, and its `else` runs otherwise. A coin
+  flip happens when the card is played, against the call made in a Heads/Tails prompt.
+  In combat a card's face shows the side it would take right now (a coin, its winning side).
+- **Regen** (Lunch Break): heals a share of max HP at each round end (a curse halves it). While
+  it lasts, no card that can deal damage may be played, by the designer's choice of "any card
+  that deals damage". Such cards show "ON LUNCH BREAK". If nothing is playable the turn passes.
+- **Blackjack**: every hit is multiplied for the rest of the fight. The damage that lands (not
+  overkill, not blocked hits) adds up, by the designer's choice of a running total, and passing
+  21 kills you, even on the hit that kills the enemy. With attack 4 the first hit is 20, so it
+  one-shots any single screen-1 enemy (12 HP counts 12), busts on the second kill of a duo, and
+  cannot finish a boss.
+- **Extra play and draw**: modifiers that give more plays this turn (#68) and draw back up to a
+  hand size.
+
+The cards:
+- **Bulwark**
+  - **Desperation** (rare, fleeting): heal 20% below 20% HP, otherwise a flat 5 damage.
+  - **Utility Knife** (rare): 150% into a debuffed enemy, otherwise Tiring.
+- **Berserker**
+  - **Lunch Break** (rare): Regen 10% for 3 rounds.
+  - **Blackjack** (rare): ×5 to 21.
+  - **Trickster** (rare): call the coin. Right: 50% damage, one more card, draw to 3.
+    Wrong: Weak, Exposed and Cursed (1 a round) for 2 rounds.
+
+Choices made where the request was open, for the designer to change in the editor:
+- Trickster's rarity is rare.
+- Utility Knife's no-debuff side deals no damage and is Tiring (Weak 2 rounds).
+- Desperation's 5 is flat, so gear adds to it as to every hit.
+- Blackjack is a pure buff card.
+
+New battle effects:
+- sandwich: drops onto the hero and is eaten;
+- cards: a fan whirls around the hero;
+- coin: flips and lands on the result.
+
+A long card text now steps its font down a size instead of running into the number, and several
+self-statuses with the same duration read as one sentence.
+
+Pinned by the "synergy card mechanics" tests in `engine.test.ts` and the branching-card and
+shipped-card tests in `data.test.ts`. The family lists in the loot, meta and session tests were
+updated to the new families. Sim and reading: BALANCE.md, Cards import 2026-10-29. Screenshots
+in `docs/audit/synergy-2026-10-29/`.

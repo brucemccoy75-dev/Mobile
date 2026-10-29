@@ -118,6 +118,50 @@
       "target": "self",
       "status": "backfire",
       "amount": 100
+    },
+    {
+      "id": "lunch_regen",
+      "name": "Lunch break",
+      "target": "self",
+      "status": "regen",
+      "rounds": 3,
+      "amount": 10
+    },
+    {
+      "id": "blackjack_x5",
+      "name": "Blackjack ×5",
+      "target": "self",
+      "status": "blackjack",
+      "amount": 5
+    },
+    {
+      "id": "extra_play_1",
+      "name": "One more card",
+      "target": "self",
+      "status": "extra_play",
+      "amount": 1
+    },
+    {
+      "id": "draw_to_3",
+      "name": "Draw to 3",
+      "target": "self",
+      "status": "draw_to",
+      "amount": 3
+    },
+    {
+      "id": "weak_self_2",
+      "name": "Weak 2 (self)",
+      "target": "self",
+      "status": "weak",
+      "rounds": 2
+    },
+    {
+      "id": "curse_self_2",
+      "name": "Curse 1×2 (self)",
+      "target": "self",
+      "status": "curse",
+      "rounds": 2,
+      "amount": 1
     }
   ],
   "cards": [
@@ -585,6 +629,125 @@
         "backfire"
       ],
       "note": "Needs new modifier - if spell does not kill target damage self for max hp"
+    },
+    {
+      "id": "desperation",
+      "name": "Desperation",
+      "classId": "warrior",
+      "rarity": "rare",
+      "uses": "fleeting",
+      "damage": null,
+      "heal": {
+        "percent": 20,
+        "flat": 0
+      },
+      "modifiers": [],
+      "condition": {
+        "kind": "self_hp_below",
+        "percent": 20
+      },
+      "else": {
+        "damage": {
+          "percent": 0,
+          "bonus": 5,
+          "hits": 1,
+          "type": "physical",
+          "ignoreDef": false,
+          "drain": 0,
+          "targets": "one"
+        },
+        "heal": null,
+        "modifiers": []
+      }
+    },
+    {
+      "id": "utility_knife",
+      "name": "Utility Knife",
+      "classId": "warrior",
+      "rarity": "rare",
+      "uses": null,
+      "damage": {
+        "percent": 150,
+        "bonus": 0,
+        "hits": 1,
+        "type": "physical",
+        "ignoreDef": false,
+        "drain": 0,
+        "targets": "one"
+      },
+      "heal": null,
+      "modifiers": [],
+      "vfx": "slash",
+      "condition": {
+        "kind": "enemy_debuffed"
+      },
+      "else": {
+        "damage": null,
+        "heal": null,
+        "modifiers": [
+          "tiring"
+        ]
+      }
+    },
+    {
+      "id": "lunch_break",
+      "name": "Lunch Break",
+      "classId": "warrior",
+      "rarity": "rare",
+      "uses": null,
+      "damage": null,
+      "heal": null,
+      "modifiers": [
+        "lunch_regen"
+      ],
+      "vfx": "sandwich"
+    },
+    {
+      "id": "blackjack",
+      "name": "Blackjack",
+      "classId": "warrior",
+      "rarity": "rare",
+      "uses": null,
+      "damage": null,
+      "heal": null,
+      "modifiers": [
+        "blackjack_x5"
+      ],
+      "vfx": "cards"
+    },
+    {
+      "id": "trickster",
+      "name": "Trickster",
+      "classId": "warrior",
+      "rarity": "rare",
+      "uses": null,
+      "damage": {
+        "percent": 50,
+        "bonus": 0,
+        "hits": 1,
+        "type": "physical",
+        "ignoreDef": false,
+        "drain": 0,
+        "targets": "one"
+      },
+      "heal": null,
+      "modifiers": [
+        "extra_play_1",
+        "draw_to_3"
+      ],
+      "vfx": "coin",
+      "condition": {
+        "kind": "coin"
+      },
+      "else": {
+        "damage": null,
+        "heal": null,
+        "modifiers": [
+          "weak_self_2",
+          "winded",
+          "curse_self_2"
+        ]
+      }
     }
   ],
   "families": [
@@ -598,7 +761,9 @@
         "warding_blast",
         "stand_firm",
         "final_stand",
-        "healboomerang"
+        "healboomerang",
+        "desperation",
+        "utility_knife"
       ]
     },
     {
@@ -610,7 +775,10 @@
         "exposing_strike",
         "mighty_blow",
         "last_strike",
-        "spiritboomerang"
+        "spiritboomerang",
+        "lunch_break",
+        "blackjack",
+        "trickster"
       ]
     },
     {

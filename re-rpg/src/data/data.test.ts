@@ -123,3 +123,74 @@ describe('backfire modifier (DECISIONS #51)', () => {
     expect(validateCards(bad)).toEqual(['modifier backfire_all: backfire works on yourself only', 'modifier backfire_all: backfire needs an amount (percent of max HP, 1-100)']);
   });
 });
+
+describe('branching cards and new statuses (DECISIONS #69)', () => {
+  const dmg = (percent: number, bonus = 0) => ({ percent, bonus, hits: 1, type: 'physical' as const, ignoreDef: false, drain: 0, targets: 'one' as const });
+  const base = (): CardsData => {
+    const data: CardsData = JSON.parse(JSON.stringify(CARDS_DATA));
+    data.modifiers.push(
+      { id: 't_regen', name: 'Lunch', target: 'self', status: 'regen', rounds: 3, amount: 10 },
+      { id: 't_bj', name: 'Blackjack', target: 'self', status: 'blackjack', amount: 5 },
+      { id: 't_more', name: 'One more', target: 'self', status: 'extra_play', amount: 1 },
+      { id: 't_draw', name: 'Draw to 3', target: 'self', status: 'draw_to', amount: 3 },
+    );
+    data.cards.push(
+      { id: 't_desp', name: 'Desp', classId: 'warrior', rarity: 'rare', uses: 'fleeting', condition: { kind: 'self_hp_below', percent: 20 }, damage: null, heal: { percent: 20, flat: 0 }, modifiers: [], else: { damage: dmg(0, 5), heal: null, modifiers: [] } },
+      { id: 't_knife', name: 'Knife', classId: 'warrior', rarity: 'rare', uses: null, condition: { kind: 'enemy_debuffed' }, damage: dmg(150), heal: null, modifiers: [], else: { damage: null, heal: null, modifiers: ['tiring'] } },
+      { id: 't_trick', name: 'Trick', classId: 'warrior', rarity: 'rare', uses: null, condition: { kind: 'coin' }, damage: dmg(50), heal: null, modifiers: ['t_more', 't_draw'], else: { damage: null, heal: null, modifiers: ['winded'] } },
+      { id: 't_lunch', name: 'Lunch', classId: 'warrior', rarity: 'rare', uses: null, damage: null, heal: null, modifiers: ['t_regen'] },
+      { id: 't_bjc', name: 'BJ', classId: 'warrior', rarity: 'rare', uses: null, damage: null, heal: null, modifiers: ['t_bj'] },
+    );
+    return data;
+  };
+  const sk = (data: CardsData, id: string) => compileCards(data).skills.find((k) => k.id === id)!;
+
+  it('a condition compiles to one branch effect with both sides, and reads as a sentence', () => {
+    const data = base();
+    expect(validateCards(data)).toEqual([]);
+    expect(sk(data, 't_desp').effects).toEqual([{ type: 'if', cond: { kind: 'selfHpBelow', pct: 0.2 }, then: [{ type: 'heal', pct: 0.2 }], else: [{ type: 'damage', mult: 0, flat: 5 }] }]);
+    expect(sk(data, 't_desp').text).toBe('If your HP is below 20%: Heal 20% HP. Otherwise: Deal 0% + 5 damage. Fleeting: spent when played.');
+    expect(sk(data, 't_knife').effects).toEqual([{ type: 'if', cond: { kind: 'targetDebuffed' }, then: [{ type: 'damage', mult: 1.5 }], else: [{ type: 'status', target: 'self', status: 'weak', turns: 2 }] }]);
+    expect(sk(data, 't_trick').effects).toEqual([{ type: 'if', cond: { kind: 'coin' }, then: [{ type: 'damage', mult: 0.5 }, { type: 'extraPlay', n: 1 }, { type: 'draw', upTo: 3 }], else: [{ type: 'status', target: 'self', status: 'exposed', turns: 2 }] }]);
+    expect(sk(data, 't_trick').text).toBe('Call the coin. Right: Deal 50% damage. Play one more card this turn. Draw until you hold 3. Wrong: You are Exposed for 2 rounds.');
+  });
+
+  it('Regen and Blackjack compile as statuses on yourself; Blackjack lasts the fight', () => {
+    const data = base();
+    expect(sk(data, 't_lunch').effects).toEqual([{ type: 'status', target: 'self', status: 'regen', turns: 3, magnitude: 10 }]);
+    expect(sk(data, 't_bjc').effects).toEqual([{ type: 'status', target: 'self', status: 'blackjack', turns: 99, magnitude: 5 }]);
+    expect(sk(data, 't_lunch').text).toBe('Lunch Break: heal 10% of max HP a round for 3 rounds. No damage cards meanwhile.');
+    expect(sk(data, 't_bjc').text).toBe('Blackjack: your hits deal 5× for the rest of the fight. Deal more than 21 in total and you die.');
+  });
+
+  it('the validator names what is wrong with a branch or a new status', () => {
+    const a = base(); a.cards.find((c) => c.id === 't_desp')!.condition = { kind: 'self_hp_below', percent: 0 };
+    expect(validateCards(a)).toEqual(['card t_desp: HP threshold must be 1-99']);
+    const b = base(); delete b.cards.find((c) => c.id === 't_knife')!.condition;
+    expect(validateCards(b)).toEqual(['card t_knife: an otherwise branch needs a condition']);
+    const c = base(); c.cards.find((x) => x.id === 't_knife')!.else = { damage: null, heal: null, modifiers: [] };
+    expect(validateCards(c)).toEqual(['card t_knife: the otherwise branch needs damage, heal or a modifier']);
+    const d = base(); d.modifiers.find((m) => m.id === 't_regen')!.amount = 60;
+    expect(validateCards(d)).toEqual(['modifier t_regen: regen amount is a percent of max HP, 1-50']);
+    const e = base(); e.modifiers.find((m) => m.id === 't_bj')!.rounds = 3;
+    expect(validateCards(e)).toEqual(['modifier t_bj: blackjack lasts the fight: amount 2-9, no rounds or chance']);
+    const f = base(); f.modifiers.find((m) => m.id === 't_more')!.target = 'enemy';
+    expect(validateCards(f)).toEqual(['modifier t_more: extra_play works on yourself only']);
+    const g = base(); g.modifiers.find((m) => m.id === 't_draw')!.amount = 5;
+    expect(validateCards(g)).toEqual(['modifier t_draw: draw_to needs an amount 1-3']);
+    const h = base(); h.cards.find((x) => x.id === 't_knife')!.else!.damage = { ...dmg(0), percent: 0 };
+    expect(validateCards(h)).toEqual(['card t_knife: otherwise damage needs a percent or a bonus']);
+  });
+});
+
+describe('the five synergy cards (DECISIONS #69)', () => {
+  it('compile as designed and sit in their families', () => {
+    expect(getSkill('desperation')).toMatchObject({ setId: 'warrior_tank', rarity: 'rare', uses: 'fleeting', effects: [{ type: 'if', cond: { kind: 'selfHpBelow', pct: 0.2 }, then: [{ type: 'heal', pct: 0.2 }], else: [{ type: 'damage', mult: 0, flat: 5 }] }] });
+    expect(getSkill('utility_knife')).toMatchObject({ setId: 'warrior_tank', rarity: 'rare', vfx: 'slash', effects: [{ type: 'if', cond: { kind: 'targetDebuffed' }, then: [{ type: 'damage', mult: 1.5 }], else: [{ type: 'status', target: 'self', status: 'weak', turns: 2 }] }] });
+    expect(getSkill('lunch_break')).toMatchObject({ setId: 'warrior_dps', rarity: 'rare', vfx: 'sandwich', effects: [{ type: 'status', target: 'self', status: 'regen', turns: 3, magnitude: 10 }] });
+    expect(getSkill('blackjack')).toMatchObject({ setId: 'warrior_dps', rarity: 'rare', vfx: 'cards', effects: [{ type: 'status', target: 'self', status: 'blackjack', turns: 99, magnitude: 5 }] });
+    expect(getSkill('trickster')).toMatchObject({ setId: 'warrior_dps', rarity: 'rare', vfx: 'coin', effects: [{ type: 'if', cond: { kind: 'coin' },
+      then: [{ type: 'damage', mult: 0.5 }, { type: 'extraPlay', n: 1 }, { type: 'draw', upTo: 3 }],
+      else: [{ type: 'status', target: 'self', status: 'weak', turns: 2 }, { type: 'status', target: 'self', status: 'exposed', turns: 2 }, { type: 'status', target: 'self', status: 'curse', turns: 2, magnitude: 1 }] }] });
+  });
+});

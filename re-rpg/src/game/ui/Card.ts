@@ -32,6 +32,9 @@ export class Card extends Phaser.GameObjects.Container {
     const tagW = tag ? tag.width + 6 : 0;
     const name = scene.add.text(-tagW / 2, -CARD_H / 2 + 7, skill.name, { fontFamily: FONT, fontSize: '14px', color: rarityText(skill), fontStyle: 'bold', wordWrap: { width: CARD_W - 16 - tagW }, align: 'center' }).setOrigin(0.5, 0);
     const body = scene.add.text(0, -CARD_H / 2 + 7 + name.height + 3, text, { fontFamily: FONT, fontSize: '10px', color: '#d7dbe6', wordWrap: { width: CARD_W - 14 }, align: 'center' }).setOrigin(0.5, 0);
+    // Long text (a branching card, #69) steps down a size rather than running into the number.
+    const room = CARD_H - (7 + name.height + 3) - 34;
+    for (const size of [9, 8]) if (body.height > room) body.setFontSize(size).setLineSpacing(-1);
     const value = scene.add.text(-CARD_W / 2 + 10, CARD_H / 2 - 6, face.value, { fontFamily: FONT, fontSize: '30px', color: c.accent, fontStyle: 'bold' }).setOrigin(0, 1);
     // The unit may carry the reasons the number moved ("damage · armour, hardened"). The reasons go on
     // their own line in white above the unit.

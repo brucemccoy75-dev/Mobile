@@ -54,15 +54,17 @@ export interface CombatState {
   bonusTaken?: boolean;
   /** Cards still to play before the enemies act (DECISIONS #68): one per enemy alive when the turn began, +1 for a bonus turn. */
   playsLeft: number;
+  /** Damage dealt since Blackjack went up (DECISIONS #69). */
+  blackjackTotal?: number;
   log: CombatEvent[];  // everything that has happened, in order
 }
 
 export type PlayerAction =
   /** `target` is an enemy slot; omitted or dead → the first living enemy. */
-  | { type: 'card'; index: number; target?: number }
+  | { type: 'card'; index: number; target?: number; /** A coin card's call (DECISIONS #69); heads when omitted. */ call?: 'heads' | 'tails' }
   /** Hold back: discard this card and pass the turn. The universal out for a trap turn. */
   | { type: 'hold'; index: number }
-  /** Only valid while Recovering (stunned) or with an empty hand: the turn passes. */
+  /** Only valid while Recovering (stunned), with an empty hand, or with nothing playable (Regen, #69): the turn passes. */
   | { type: 'skip' };
 
 /**
@@ -87,6 +89,11 @@ export type CombatEvent =
   | { t: 'bonusTurn' }
   /** The turn goes on: this many cards still to play before the enemies act (DECISIONS #68). */
   | { t: 'plays'; left: number }
+  /** A coin card (DECISIONS #69): what was called, what landed. */
+  | { t: 'coin'; call: 'heads' | 'tails'; result: 'heads' | 'tails'; won: boolean }
+  /** Blackjack (DECISIONS #69): the running total of damage dealt, and the bust that ends you. */
+  | { t: 'blackjack'; total: number }
+  | { t: 'bust'; total: number }
   /** The card did not kill: it turns on the player (DECISIONS #51). */
   | { t: 'backfire'; amount: number }
   | { t: 'heal'; side: Side; amount: number; who?: number }

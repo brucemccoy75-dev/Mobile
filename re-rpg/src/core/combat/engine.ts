@@ -1,7 +1,7 @@
 import { BASIC_DECK } from '@data/skills';
 import { getEnemy, getSkill } from '@data/index';
 import { skillWith, type SkillUpgrades } from '@core/run/upgrade';
-import type { Effect, Enemy, EnemyId, Intent, SkillId, Stats, StatusId } from '@data/types';
+import type { Condition, Effect, Enemy, EnemyId, Intent, Skill, SkillId, Stats, StatusId } from '@data/types';
 import { Rng } from '@core/rng';
 import { vfxForEffects, vfxForSkill } from '@core/vfx';
 import { advanceMoves, pickMove } from './ai';
@@ -113,13 +113,15 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
   if (isPlayerStunned(state)) {
     events.push({ t: 'stunned', side: 'player', turnsLeft: getStatus(state.player, 'stun')!.turns - 1 });
   } else if (action.type === 'skip') {
-    if (state.player.hand.length > 0) throw new Error('Cannot skip with cards in hand');
+    if (playableIndices(state).length > 0) throw new Error('Cannot skip with a playable card in hand');
   } else if (action.type === 'hold') {
     const id = playCard(state.player, action.index);
     events.push({ t: 'hold', skill: id });
     state.playsLeft -= 1;
   } else {
     const target = resolveTarget(state, action.target);
+    const asked = state.player.hand[action.index];
+    if (asked !== undefined && isLocked(state, asked)) throw new Error(`Regen: ${asked} deals damage and cannot be played`);
     const skill = skillInCombat(state, playCard(state.player, action.index));
     const from = events.length;
     events.push({ t: 'play', side: 'player', skill: skill.id, name: skill.name, vfx: vfxForSkill(skill) });
@@ -130,12 +132,14 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
       else { state.player.consumed.push(skill.id); events.push({ t: 'consumed', skill: skill.id }); }
     }
     tagWho(events, from, target.slot);
+    // A branching card (DECISIONS #69) becomes the branch it takes, before anything else rolls.
+    const effects = resolveBranches(skill.effects, state, target, action.call ?? 'heads', roll, events);
     // Luck (DECISIONS #50): one roll per damage card for a critical hit. Luck 0 rolls nothing.
     const luckChance = (state.player.stats.luck ?? 0) * LUCK_PER_POINT;
-    const crit = luckChance > 0 && skill.effects.some((e) => e.type === 'damage') && roll() < luckChance;
+    const crit = luckChance > 0 && effects.some((e) => e.type === 'damage') && roll() < luckChance;
     if (crit) events.push({ t: 'crit' });
-    const struck = skill.effects.some((e) => e.type === 'damage' && e.targets === 'all') ? livingEnemies(state) : [target];
-    for (const e of skill.effects) {
+    const struck = effects.some((e) => e.type === 'damage' && e.targets === 'all') ? livingEnemies(state) : [target];
+    for (const e of effects) {
       if (e.type === 'damage' && e.targets === 'all') { sweep(state, e, events, crit); continue; }
       // Backfire (DECISIONS #51): compiled last, so the damage has landed; a survivor among those struck turns it on you.
       if (e.type === 'backfire') {
@@ -147,9 +151,26 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
         continue;
       }
       if (e.type === 'strip') { strip(e.targets === 'all' ? livingEnemies(state) : [target], e.statuses, events); continue; }
+      if (e.type === 'extraPlay') { state.playsLeft += e.n; continue; }
+      if (e.type === 'draw') { for (let i = 0; i < e.upTo && state.player.hand.length < e.upTo; i++) dealOne(state.player, (a) => rng.shuffle(a), events); continue; }
       const f = events.length;
       applyEffects([e], state.player, target, roll, events, crit);
       tagWho(events, f, target.slot);
+    }
+    // Blackjack (DECISIONS #69): what landed adds to the running total; past 21 you die, even on a killing blow.
+    if (hasStatus(state.player, 'blackjack')) {
+      const landed = events.slice(from).reduce((a, e) => a + (e.t === 'damage' && e.source === 'player' ? e.amount : 0), 0);
+      if (landed > 0) {
+        const total = (state.blackjackTotal ?? 0) + landed;
+        state.blackjackTotal = total;
+        if (total > BLACKJACK_LIMIT) {
+          state.player.hp = 0;
+          state.outcome = 'lost';
+          events.push({ t: 'bust', total }, { t: 'death', side: 'player' }, { t: 'end', outcome: 'lost' });
+          return finish(state, rng, events);
+        }
+        events.push({ t: 'blackjack', total });
+      }
     }
     if (checkDeaths(state, events)) return finish(state, rng, events);
     state.playsLeft -= 1;
@@ -287,6 +308,42 @@ function stripStatuses(c: Combatant, statuses: StatusId[], events: CombatEvent[]
   }
 }
 
+/** Blackjack's bust line (DECISIONS #69). */
+export const BLACKJACK_LIMIT = 21;
+/** What a Utility Knife (or any `targetDebuffed` card) counts as a debuff. */
+export const DEBUFFS: readonly StatusId[] = ['exposed', 'weak', 'burn', 'chill', 'stun', 'curse'];
+
+const dealsDamage = (effects: Effect[]): boolean => effects.some((e) => e.type === 'damage' || (e.type === 'if' && (dealsDamage(e.then) || dealsDamage(e.else))));
+/** Regen (DECISIONS #69): while it lasts, no card that can deal damage may be played. */
+export const isLocked = (state: CombatState, id: SkillId): boolean => hasStatus(state.player, 'regen') && dealsDamage(skillInCombat(state, id).effects);
+export const canPlay = (state: CombatState, index: number): boolean => { const id = state.player.hand[index]; return id !== undefined && !isLocked(state, id); };
+export const playableIndices = (state: CombatState): number[] => state.player.hand.map((_, i) => i).filter((i) => canPlay(state, i));
+
+function holds(cond: Condition, state: CombatState, target: Combatant): boolean {
+  if (cond.kind === 'selfHpBelow') return state.player.hp < cond.pct * state.player.stats.maxHp;
+  if (cond.kind === 'targetDebuffed') return DEBUFFS.some((id) => hasStatus(target, id));
+  return true;
+}
+
+/** Replace each branch with the side it takes; a coin is flipped here and its call compared. */
+function resolveBranches(effects: Effect[], state: CombatState, target: Combatant, call: 'heads' | 'tails', roll: () => number, events: CombatEvent[]): Effect[] {
+  return effects.flatMap((e) => {
+    if (e.type !== 'if') return [e];
+    let yes: boolean;
+    if (e.cond.kind === 'coin') {
+      const result = roll() < 0.5 ? 'heads' : 'tails';
+      yes = result === call;
+      events.push({ t: 'coin', call, result, won: yes });
+    } else yes = holds(e.cond, state, target);
+    return resolveBranches(yes ? e.then : e.else, state, target, call, roll, events);
+  });
+}
+
+/** The effects a card would have right now against `target`, for its face and the sim: a coin shows its winning side. */
+export function effectsNow(state: CombatState, skill: Skill, target: Combatant): Effect[] {
+  return skill.effects.flatMap((e) => (e.type !== 'if' ? [e] : effectsNow(state, { ...skill, effects: e.cond.kind === 'coin' || holds(e.cond, state, target) ? e.then : e.else }, target)));
+}
+
 /** Luck (DECISIONS #50, #52): each point is 0.2% chance of a critical hit and of a bonus turn, per card; base luck 5 is 1%. */
 export const LUCK_PER_POINT = 0.002;
 export const CRIT_MULT = 1.5;
@@ -337,7 +394,10 @@ export function applyEffects(effects: Effect[], self: Combatant, other: Combatan
         stripStatuses(other, e.statuses, events);
         break;
       case 'backfire':
-        break; // the player's card play resolves it in step(); nothing else carries one
+      case 'if':
+      case 'extraPlay':
+      case 'draw':
+        break; // the player's card play resolves these in step(); no enemy move carries one
       case 'heal': {
         const amount = Math.round((e.flat ?? 0) + (e.pct ?? 0) * self.stats.maxHp);
         heal(self, amount, events);

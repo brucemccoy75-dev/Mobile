@@ -10,8 +10,8 @@ const ctx = (over: Partial<PoolContext> = {}): PoolContext => ({ classId: 'warri
 describe('buildPool', () => {
   it('tomes are exactly the families\' cards, general tomes included; no family, no tomes; items are class-usable', () => {
     const p = buildPool(ctx());
-    expect(p.tomes.map((t) => t.id).sort()).toEqual(['bind_wound', 'final_stand', 'healboomerang', 'shield_bash', 'stand_firm', 'warding_blast']);
-    expect(buildPool(ctx({ families: ['warrior_dps'] })).tomes.map((t) => t.id).sort()).toEqual(['broadsword', 'exposing_strike', 'last_strike', 'mighty_blow', 'spiritboomerang']);
+    expect(p.tomes.map((t) => t.id).sort()).toEqual(['bind_wound', 'desperation', 'final_stand', 'healboomerang', 'shield_bash', 'stand_firm', 'utility_knife', 'warding_blast']);
+    expect(buildPool(ctx({ families: ['warrior_dps'] })).tomes.map((t) => t.id).sort()).toEqual(['blackjack', 'broadsword', 'exposing_strike', 'last_strike', 'lunch_break', 'mighty_blow', 'spiritboomerang', 'trickster']);
     expect(buildPool(ctx({ families: [] })).tomes).toEqual([]);
     expect(p.items.every((i) => !i.classes || i.classes.includes('warrior'))).toBe(true);
     expect(p.items.some((i) => i.id === 'oak_wand')).toBe(false);
@@ -19,17 +19,17 @@ describe('buildPool', () => {
 
   it('equipped items leave the pool; tomes may drop again up to two copies', () => {
     const p = buildPool(ctx({ deck: ['shield_bash'], equipment: { ...emptyEquipment(), relic: getItem('bloodstone') } }));
-    expect(p.tomes.filter((t) => t.classId !== 'any').map((t) => t.id).sort()).toEqual(['bind_wound', 'shield_bash']);
+    expect(p.tomes.filter((t) => t.classId !== 'any').map((t) => t.id).sort()).toEqual(['bind_wound', 'desperation', 'shield_bash', 'utility_knife']);
     expect(p.items.some((i) => i.id === 'bloodstone')).toBe(false);
     const capped = buildPool(ctx({ deck: ['shield_bash', 'shield_bash'] }));
-    expect(capped.tomes.filter((t) => t.classId !== 'any').map((t) => t.id)).toEqual(['bind_wound']);
+    expect(capped.tomes.filter((t) => t.classId !== 'any').map((t) => t.id)).toEqual(['bind_wound', 'desperation', 'utility_knife']);
   });
 
   it('the run families decide the tomes; discovery no longer does (DECISIONS #32)', () => {
     const meta = createMeta(); meta.discoveredSkills.push('broadsword', 'fireball');
-    expect(buildPool(ctx({ meta })).tomes.filter((t) => t.classId !== 'any').map((t) => t.id).sort()).toEqual(['bind_wound', 'shield_bash']);
+    expect(buildPool(ctx({ meta })).tomes.filter((t) => t.classId !== 'any').map((t) => t.id).sort()).toEqual(['bind_wound', 'desperation', 'shield_bash', 'utility_knife']);
     const both = buildPool(ctx({ meta, families: ['warrior_tank', 'warrior_dps'] }));
-    expect(both.tomes.filter((t) => t.classId !== 'any').map((t) => t.id).sort()).toEqual(['bind_wound', 'broadsword', 'exposing_strike', 'shield_bash', 'spiritboomerang']);
+    expect(both.tomes.filter((t) => t.classId !== 'any').map((t) => t.id).sort()).toEqual(['bind_wound', 'blackjack', 'broadsword', 'desperation', 'exposing_strike', 'lunch_break', 'shield_bash', 'spiritboomerang', 'trickster', 'utility_knife']);
   });
 
   it('never offers basics', () => {

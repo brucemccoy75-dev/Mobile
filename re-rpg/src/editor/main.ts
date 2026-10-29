@@ -4,7 +4,8 @@
  * an exported file is imported by the procedure in docs/CARDS.md.
  */
 import { CARDS_DATA, cardText, compileCards, diffCards, modifierText, validateCards, type CardDef, type CardsData, type ModifierDef } from '@data/index';
-import { CLASS_IDS, RARITIES, MODIFIER_STATUSES, USES, AMOUNT_STATUSES, HIT_STATUSES, damageEffect, isRemoval } from '@data/cardsSchema';
+import type { CardBranch, CardCondition } from '@data/cardsSchema';
+import { CLASS_IDS, RARITIES, MODIFIER_STATUSES, USES, AMOUNT_STATUSES, HIT_STATUSES, TURN_MODIFIERS, damageEffect, isRemoval } from '@data/cardsSchema';
 import type { StatusId } from '@data/types';
 import { computeHit } from '@core/combat/damage';
 import './editor.css';
@@ -38,7 +39,7 @@ const h = (tag: string, attrs: Record<string, unknown> = {}, ...children: (Node 
 // ---------------------------------------------------------------- numbers
 
 /** One hit for the test hero against the test DEF: exactly computeHit. */
-function hitFor(c: CardDef): { per: number; total: number; base: number } | null {
+function hitFor(c: CardBranch): { per: number; total: number; base: number } | null {
   if (!c.damage) return null;
   const e = damageEffect(c.damage);
   if (e.type !== 'damage') return null;
@@ -50,18 +51,27 @@ function hitFor(c: CardDef): { per: number; total: number; base: number } | null
 }
 const mods = () => new Map(state.data.modifiers.map((m) => [m.id, m]));
 const familyOfCard = (id: string) => state.data.families.find((f) => f.classId === 'warrior' && f.cards.includes(id));
-const usedBy = (modId: string) => state.data.cards.filter((c) => c.modifiers.includes(modId)).map((c) => c.name);
+const usedBy = (modId: string) => state.data.cards.filter((c) => c.modifiers.includes(modId) || !!c.else?.modifiers.includes(modId)).map((c) => c.name);
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'card';
 const isShippedCard = (id: string) => SHIPPED.cards.some((c) => c.id === id);
 const inScope = (c: CardDef) => c.classId === 'warrior' || c.classId === 'any';
 
+/** What a branching card asks, for the editor (DECISIONS #69). */
+const askLabel = (k: CardCondition) => (k.kind === 'self_hp_below' ? `HP below ${k.percent}%` : k.kind === 'enemy_debuffed' ? 'enemy debuffed' : 'coin call');
+
 function summary(c: CardDef): string {
+  const side = sideSummary(c);
+  const bits = c.condition ? [`if ${askLabel(c.condition)}: ${side || 'nothing'}`, ...(c.else ? [`else: ${sideSummary(c.else) || 'nothing'}`] : [])] : [side];
+  if (c.uses) bits.push(c.uses === 'fleeting' ? 'fleeting' : 'once per fight');
+  return bits.filter(Boolean).join(' · ');
+}
+
+function sideSummary(c: CardBranch): string {
   const m = mods();
   const bits: string[] = [];
   if (c.damage) bits.push(`${c.damage.percent}%${c.damage.bonus ? ` +${c.damage.bonus}` : ''}${c.damage.hits > 1 ? ` ×${c.damage.hits}` : ''} ${c.damage.type}${c.damage.targets === 'all' ? ' · all enemies' : ''}${c.damage.ignoreDef ? ' · ignores DEF' : ''}${c.damage.drain ? ` · drain ${c.damage.drain}%` : ''}`);
   if (c.heal) bits.push(`heal ${c.heal.percent ? `${c.heal.percent}%` : ''}${c.heal.flat ? ` +${c.heal.flat}` : ''}`);
   for (const id of c.modifiers) bits.push(m.get(id)?.name ?? `?${id}`);
-  if (c.uses) bits.push(c.uses === 'fleeting' ? 'fleeting' : 'once per fight');
   return bits.join(' · ');
 }
 
@@ -146,7 +156,6 @@ function cardForm(c: CardDef): HTMLElement {
   const famOptions: [string, string][] = [['', 'none'], ...state.data.families.filter((f) => f.classId === 'warrior').map((f) => [f.id, f.name] as [string, string])];
   const n = hitFor(c);
   const setFamily = (id: string) => { for (const f of state.data.families) if (f.classId === 'warrior') f.cards = f.cards.filter((x) => x !== c.id); if (id) state.data.families.find((f) => f.id === id)!.cards.push(c.id); };
-  const dmg = c.damage;
   const form = h('div', { class: 'form' },
     h('div', { class: 'grid' },
       h('label', {}, 'id (fixed once shipped)', h('input', { value: c.id, disabled: shipped, onchange: (ev: Event) => { const v = slug((ev.target as HTMLInputElement).value); if (state.data.cards.some((x) => x.id === v && x !== c)) { alert('that id is taken'); render(); return; } for (const f of state.data.families) f.cards = f.cards.map((x) => (x === c.id ? v : x)); c.id = v; state.editing = v; render(); } })),
@@ -157,26 +166,21 @@ function cardForm(c: CardDef): HTMLElement {
       h('label', {}, 'uses', select(c.uses ?? '', [['', 'normal tome'], ...USES.map((u) => [u, u === 'fleeting' ? 'fleeting (gone when played)' : 'once per fight'] as [string, string])], (v) => { c.uses = (v || null) as CardDef['uses']; render(); })),
       h('label', {}, 'battle effect', select(c.vfx ?? '', [['', `automatic (${vfxForSkill(compileCards({ ...state.data, cards: [{ ...c, vfx: undefined }] } as CardsData).skills[0]!)})`], ...VFX_KINDS.map((k) => [k, k] as [string, string])], (v) => { if (v) c.vfx = v as CardDef['vfx']; else delete c.vfx; render(); })),
     ),
-    h('h2', {}, 'Damage'),
-    h('div', { class: 'chips' }, h('label', {}, h('input', { type: 'checkbox', checked: !!dmg, onchange: (ev: Event) => { c.damage = (ev.target as HTMLInputElement).checked ? { percent: 100, bonus: 0, hits: 1, type: 'physical', ignoreDef: false, drain: 0, targets: 'one' } : null; render(); } }), 'this card deals damage')),
-    dmg ? h('div', { class: 'grid' },
-      h('label', {}, 'percent of class attack', numInput(dmg.percent, (v) => { dmg.percent = v; render(); }, 0, 500)),
-      h('label', {}, 'bonus (flat, after %)', numInput(dmg.bonus, (v) => { dmg.bonus = v; render(); }, 0, 30)),
-      h('label', {}, 'hits', numInput(dmg.hits, (v) => { dmg.hits = v; render(); }, 1, 6)),
-      h('label', {}, 'type', select(dmg.type, [['physical', 'physical (Guard blocks)'], ['magic', 'magic (Ward blocks)']], (v) => { dmg.type = v as 'physical' | 'magic'; render(); })),
-      h('label', {}, 'targets', select(dmg.targets, [['one', 'the chosen enemy'], ['all', 'every living enemy']], (v) => { dmg.targets = v as 'one' | 'all'; render(); })),
-      h('label', {}, 'drain % (heal a share of damage)', numInput(dmg.drain, (v) => { dmg.drain = v; render(); }, 0, 100)),
-      h('label', {}, 'ignore defence', h('input', { type: 'checkbox', checked: dmg.ignoreDef, onchange: (ev: Event) => { dmg.ignoreDef = (ev.target as HTMLInputElement).checked; render(); } })),
-    ) : null,
-    n ? h('div', { class: 'calc' }, `With attack ${state.atk}${state.gear ? ` + gear ${state.gear}` : ''}: ${n.base} per hit before armour, ${n.per} against DEF ${state.def}${dmg && dmg.hits > 1 ? ` × ${dmg.hits} = ${n.total}` : ''}${dmg?.targets === 'all' ? ', to each enemy' : ''}.`) : null,
-    h('h2', {}, 'Heal'),
-    h('div', { class: 'chips' }, h('label', {}, h('input', { type: 'checkbox', checked: !!c.heal, onchange: (ev: Event) => { c.heal = (ev.target as HTMLInputElement).checked ? { percent: 25, flat: 0 } : null; render(); } }), 'this card heals')),
-    c.heal ? h('div', { class: 'grid' },
-      h('label', {}, 'percent of max HP', numInput(c.heal.percent, (v) => { c.heal!.percent = v; render(); }, 0, 100)),
-      h('label', {}, 'flat HP', numInput(c.heal.flat, (v) => { c.heal!.flat = v; render(); }, 0, 50)),
-    ) : null,
-    h('h2', {}, 'Modifiers (in the order they apply)'),
-    h('div', { class: 'chips' }, ...state.data.modifiers.map((md) => h('label', {}, h('input', { type: 'checkbox', checked: c.modifiers.includes(md.id), onchange: (ev: Event) => { c.modifiers = (ev.target as HTMLInputElement).checked ? [...c.modifiers, md.id] : c.modifiers.filter((x) => x !== md.id); render(); } }), `${md.name} `, h('span', { class: 'muted' }, modifierText(md))))),
+    h('h2', {}, 'Condition'),
+    h('div', { class: 'grid' },
+      h('label', {}, 'the card branches on', select(c.condition?.kind ?? '', [['', 'nothing (always does the same)'], ['self_hp_below', 'your HP below a percent'], ['enemy_debuffed', 'the enemy carrying a debuff'], ['coin', 'a coin the player calls']], (v) => {
+        if (!v) { delete c.condition; delete c.else; render(); return; }
+        c.condition = v === 'self_hp_below' ? { kind: 'self_hp_below', percent: (c.condition?.kind === 'self_hp_below' ? c.condition.percent : 20) } : { kind: v as 'enemy_debuffed' | 'coin' };
+        c.else ??= { damage: null, heal: null, modifiers: [] };
+        render();
+      })),
+      c.condition?.kind === 'self_hp_below' ? h('label', {}, 'HP below (% of max)', numInput(c.condition.percent, (v) => { (c.condition as { percent: number }).percent = v; render(); }, 1, 99)) : null,
+    ),
+    c.condition ? h('div', { class: 'muted' }, c.condition.kind === 'coin' ? 'The player calls heads or tails when they play it: a right call does the first side, a wrong one the Otherwise side. Even odds.' : c.condition.kind === 'enemy_debuffed' ? 'A debuff is Exposed, Weak, Burn, Chill, Recovering or Curse on the target.' : 'Checked when the card is played: strictly below this share of max HP.') : null,
+    c.condition ? h('h2', {}, c.condition.kind === 'coin' ? 'Right call' : 'When it holds') : null,
+    ...sideEditor(c, n),
+    c.condition && c.else ? h('h2', {}, c.condition.kind === 'coin' ? 'Wrong call' : 'Otherwise') : null,
+    ...(c.condition && c.else ? sideEditor(c.else, hitFor(c.else)) : []),
     h('div', { class: 'muted' }, 'Need a modifier that is not listed? Add it on the Modifiers tab, then link it here.'),
     h('label', {}, 'note (for the designers, not shown in game)', h('input', { value: c.note ?? '', onchange: (ev: Event) => { const v = (ev.target as HTMLInputElement).value.trim(); if (v) c.note = v; else delete c.note; render(); } })),
     h('div', { class: 'text' }, 'Card text: ', cardText(c, m)),
@@ -187,6 +191,33 @@ function cardForm(c: CardDef): HTMLElement {
     ),
   );
   return form;
+}
+
+/** Damage, heal and modifiers for one side of a card: the card itself, or its Otherwise branch (DECISIONS #69). */
+function sideEditor(c: CardBranch, n: ReturnType<typeof hitFor>): (HTMLElement | null)[] {
+  const dmg = c.damage;
+  return [
+    h('h3', {}, 'Damage'),
+    h('div', { class: 'chips' }, h('label', {}, h('input', { type: 'checkbox', checked: !!dmg, onchange: (ev: Event) => { c.damage = (ev.target as HTMLInputElement).checked ? { percent: 100, bonus: 0, hits: 1, type: 'physical', ignoreDef: false, drain: 0, targets: 'one' } : null; render(); } }), 'deals damage')),
+    dmg ? h('div', { class: 'grid' },
+      h('label', {}, 'percent of class attack', numInput(dmg.percent, (v) => { dmg.percent = v; render(); }, 0, 500)),
+      h('label', {}, 'bonus (flat, after %)', numInput(dmg.bonus, (v) => { dmg.bonus = v; render(); }, 0, 30)),
+      h('label', {}, 'hits', numInput(dmg.hits, (v) => { dmg.hits = v; render(); }, 1, 6)),
+      h('label', {}, 'type', select(dmg.type, [['physical', 'physical (Guard blocks)'], ['magic', 'magic (Ward blocks)']], (v) => { dmg.type = v as 'physical' | 'magic'; render(); })),
+      h('label', {}, 'targets', select(dmg.targets, [['one', 'the chosen enemy'], ['all', 'every living enemy']], (v) => { dmg.targets = v as 'one' | 'all'; render(); })),
+      h('label', {}, 'drain % (heal a share of damage)', numInput(dmg.drain, (v) => { dmg.drain = v; render(); }, 0, 100)),
+      h('label', {}, 'ignore defence', h('input', { type: 'checkbox', checked: dmg.ignoreDef, onchange: (ev: Event) => { dmg.ignoreDef = (ev.target as HTMLInputElement).checked; render(); } })),
+    ) : null,
+    n ? h('div', { class: 'calc' }, `With attack ${state.atk}${state.gear ? ` + gear ${state.gear}` : ''}: ${n.base} per hit before armour, ${n.per} against DEF ${state.def}${dmg && dmg.hits > 1 ? ` × ${dmg.hits} = ${n.total}` : ''}${dmg?.targets === 'all' ? ', to each enemy' : ''}.`) : null,
+    h('h3', {}, 'Heal'),
+    h('div', { class: 'chips' }, h('label', {}, h('input', { type: 'checkbox', checked: !!c.heal, onchange: (ev: Event) => { c.heal = (ev.target as HTMLInputElement).checked ? { percent: 25, flat: 0 } : null; render(); } }), 'heals')),
+    c.heal ? h('div', { class: 'grid' },
+      h('label', {}, 'percent of max HP', numInput(c.heal.percent, (v) => { c.heal!.percent = v; render(); }, 0, 100)),
+      h('label', {}, 'flat HP', numInput(c.heal.flat, (v) => { c.heal!.flat = v; render(); }, 0, 50)),
+    ) : null,
+    h('h3', {}, 'Modifiers (in the order they apply)'),
+    h('div', { class: 'chips' }, ...state.data.modifiers.map((md) => h('label', {}, h('input', { type: 'checkbox', checked: c.modifiers.includes(md.id), onchange: (ev: Event) => { c.modifiers = (ev.target as HTMLInputElement).checked ? [...c.modifiers, md.id] : c.modifiers.filter((x) => x !== md.id); render(); } }), `${md.name} `, h('span', { class: 'muted' }, modifierText(md))))),
+  ];
 }
 
 function addCard() {
@@ -224,18 +255,27 @@ function modifierForm(m: ModifierDef): HTMLElement {
   const removal = isRemoval(m.status);
   // A backfire (DECISIONS #51) is on yourself and takes one number: the share of max HP it costs.
   const backfire = m.status === 'backfire';
-  const fixed = removal || backfire;
+  // Play more / draw up (DECISIONS #69) are on yourself and take one number, like a backfire.
+  const turn = TURN_MODIFIERS.includes(m.status);
+  const fixed = removal || backfire || turn;
   const st = m.status as StatusId;
-  const needsRounds = !fixed && !HIT_STATUSES.includes(st) && st !== 'chill';
+  // Regen and Blackjack (#69) are on yourself, with an amount that is a percent or a multiplier.
+  const selfOnly = st === 'regen' || st === 'blackjack';
+  const needsRounds = !fixed && !HIT_STATUSES.includes(st) && st !== 'chill' && st !== 'blackjack';
   const needsAmount = !fixed && AMOUNT_STATUSES.includes(st);
+  const amountLabel = HIT_STATUSES.includes(st) ? 'hits blocked' : st === 'regen' ? 'heal per round (% of max HP)' : st === 'blackjack' ? 'damage multiplier (×)' : 'damage per round';
+  const [amountMin, amountMax] = st === 'regen' ? [1, 50] : st === 'blackjack' ? [2, 9] : [1, 9];
   return h('div', { class: 'form' },
     h('div', { class: 'grid' },
       h('label', {}, 'id', h('input', { value: m.id, disabled: users.length > 0, onchange: (ev: Event) => { const v = slug((ev.target as HTMLInputElement).value); if (state.data.modifiers.some((x) => x.id === v && x !== m)) { alert('that id is taken'); render(); return; } m.id = v; state.editingMod = v; render(); } })),
       h('label', {}, 'name', h('input', { value: m.name, onchange: (ev: Event) => { m.name = (ev.target as HTMLInputElement).value; render(); } })),
-      fixed ? null : h('label', {}, 'who gets it', select(m.target, [['self', 'self (the hero)'], ['enemy', 'the enemy']], (v) => { m.target = v as 'self' | 'enemy'; render(); })),
-      h('label', {}, 'status', select(m.status, MODIFIER_STATUSES.map((s) => [s, s === 'remove_guard' ? 'remove guard (before the hit)' : s === 'remove_buffs' ? 'remove all buffs (before the hit)' : s === 'backfire' ? 'backfire (if the target survives)' : s]), (v) => {
+      fixed || selfOnly ? null : h('label', {}, 'who gets it', select(m.target, [['self', 'self (the hero)'], ['enemy', 'the enemy']], (v) => { m.target = v as 'self' | 'enemy'; render(); })),
+      h('label', {}, 'status', select(m.status, MODIFIER_STATUSES.map((s) => [s, s === 'remove_guard' ? 'remove guard (before the hit)' : s === 'remove_buffs' ? 'remove all buffs (before the hit)' : s === 'backfire' ? 'backfire (if the target survives)' : s === 'extra_play' ? 'play more cards this turn' : s === 'draw_to' ? 'draw until the hand holds N' : s === 'regen' ? 'regen (lunch break: heals, locks damage cards)' : s === 'blackjack' ? 'blackjack (× damage, bust over 21)' : s]), (v) => {
         m.status = v as ModifierDef['status'];
         if (m.status === 'backfire') { m.target = 'self'; m.amount = 100; delete m.rounds; delete m.chance; delete m.magic; render(); return; }
+        if (TURN_MODIFIERS.includes(m.status)) { m.target = 'self'; m.amount = m.status === 'draw_to' ? 3 : 1; delete m.rounds; delete m.chance; delete m.magic; render(); return; }
+        if (m.status === 'regen') { m.target = 'self'; m.amount = 10; m.rounds = 3; delete m.chance; delete m.magic; render(); return; }
+        if (m.status === 'blackjack') { m.target = 'self'; m.amount = 5; delete m.rounds; delete m.chance; delete m.magic; render(); return; }
         if (isRemoval(m.status)) { m.target = 'enemy'; delete m.rounds; delete m.amount; delete m.chance; delete m.magic; render(); return; }
         const s = m.status as StatusId;
         if (HIT_STATUSES.includes(s) || s === 'chill') delete m.rounds; else m.rounds ??= 2;
@@ -244,14 +284,18 @@ function modifierForm(m: ModifierDef): HTMLElement {
       })),
       needsRounds ? h('label', {}, 'rounds (end-of-round ticks)', numInput(m.rounds ?? 1, (v) => { m.rounds = v; render(); }, 1, 9)) : null,
       backfire ? h('label', {}, 'max HP lost if the target survives (%)', numInput(m.amount ?? 100, (v) => { m.amount = v; render(); }, 1, 100)) : null,
-      needsAmount ? h('label', {}, HIT_STATUSES.includes(st) ? 'hits blocked' : 'damage per round', numInput(m.amount ?? 1, (v) => { m.amount = v; render(); }, 1, 9)) : null,
-      fixed ? null : h('label', {}, 'chance % (blank = always)', h('input', { type: 'number', value: m.chance ?? '', min: 1, max: 100, inputmode: 'numeric', onchange: (ev: Event) => { const v = Number((ev.target as HTMLInputElement).value); if (v >= 1 && v <= 100) m.chance = v; else delete m.chance; render(); } })),
+      needsAmount ? h('label', {}, amountLabel, numInput(m.amount ?? amountMin, (v) => { m.amount = v; render(); }, amountMin, amountMax)) : null,
+      turn ? h('label', {}, m.status === 'draw_to' ? 'draw until the hand holds' : 'more cards this turn', numInput(m.amount ?? 1, (v) => { m.amount = v; render(); }, 1, 3)) : null,
+      fixed || selfOnly ? null : h('label', {}, 'chance % (blank = always)', h('input', { type: 'number', value: m.chance ?? '', min: 1, max: 100, inputmode: 'numeric', onchange: (ev: Event) => { const v = Number((ev.target as HTMLInputElement).value); if (v >= 1 && v <= 100) m.chance = v; else delete m.chance; render(); } })),
       m.target === 'enemy' && !fixed ? h('label', {}, 'counts as magic (Ward can block it)', h('input', { type: 'checkbox', checked: !!m.magic, onchange: (ev: Event) => { if ((ev.target as HTMLInputElement).checked) m.magic = true; else delete m.magic; render(); } })) : null,
       h('label', {}, 'card text (blank = generated)', h('input', { value: m.text ?? '', onchange: (ev: Event) => { const v = (ev.target as HTMLInputElement).value.trim(); if (v) m.text = v; else delete m.text; render(); } })),
     ),
     h('div', { class: 'text' }, 'Reads as: ', modifierText(m)),
     removal ? h('div', { class: 'muted' }, 'Runs before the card\'s damage, on the enemies the damage hits (every enemy for a card that hits all). Remove guard takes Guard only; remove all buffs takes Guard, Ward, Aegis, Hardened, Braced and Scattered.') : null,
     backfire ? h('div', { class: 'muted' }, 'Checked after the card\'s damage: if the target (any enemy it hit, for a card that hits all) is still standing, you lose this share of your max HP. No Guard, Ward or Aegis stops it. 100% means the gamble is your life.') : null,
+    turn ? h('div', { class: 'muted' }, m.status === 'extra_play' ? 'The card still uses its own play; this adds plays on top, so 1 means you play one more card before the enemies act.' : 'Draws from the deck until the hand holds this many cards (the hand cap is 3).') : null,
+    st === 'regen' ? h('div', { class: 'muted' }, 'Heals at the end of every round while it lasts (a curse halves it). While it lasts, no card that can deal damage may be played; if nothing is playable the turn passes.') : null,
+    st === 'blackjack' ? h('div', { class: 'muted' }, 'Lasts the rest of the fight. Every hit is multiplied; everything that lands adds to a running total, and passing 21 kills the hero, even on a killing blow.') : null,
     fixed ? null : h('div', { class: 'muted' }, 'Timing: a status ticks at the end of the round it was applied in. Self, 1 round = this round only; self, 2 rounds = this round and your next turn; enemy, 2 rounds = your next turn. Guard and Ward count hits, Chill lasts one enemy action.'),
     h('div', { class: 'actions' },
       h('button', { class: 'primary', onclick: () => { state.editingMod = null; render(); } }, 'Done'),

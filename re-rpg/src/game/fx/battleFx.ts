@@ -123,6 +123,78 @@ export class BattleFx {
     g.lineStyle(2, 0xffffff, 0.9); g.beginPath(); g.moveTo(outer[0]!.x, outer[0]!.y); for (const p of outer.slice(1)) g.lineTo(p.x, p.y); g.strokePath();
   }
 
+  /** Lunch Break (#69): a sandwich drops in over the hero, bounces, and is eaten in a puff of crumbs. */
+  async sandwich(at: Pt) {
+    const g = this.scene.add.graphics().setDepth(DEPTH + 1);
+    const layer = (y: number, w: number, hgt: number, color: number, r = 6) => { g.fillStyle(color, 1); g.fillRoundedRect(-w / 2, y, w, hgt, r); };
+    layer(10, 60, 12, 0xc98b45, 5);                       // bottom bread
+    g.fillStyle(0xffd34d, 1); g.fillTriangle(-26, 8, 30, 8, 22, 14); // cheese
+    layer(4, 62, 6, 0xe0452e, 3);                         // tomato
+    g.fillStyle(0x6cc24a, 1); for (let x = -30; x < 30; x += 10) g.fillEllipse(x + 5, 3, 13, 7); // lettuce
+    layer(-14, 60, 16, 0xe8b46a, 8);                      // top bread
+    g.fillStyle(0xfff1d6, 0.9); for (const [x, y] of [[-14, -9], [0, -11], [14, -8]] as const) g.fillEllipse(x, y, 4, 2); // seeds
+    g.setPosition(at.x, at.y - 170).setScale(0.8);
+    await tween(this.scene, { targets: g, y: at.y - 78, scale: 1, duration: 320, ease: 'Bounce.Out' });
+    await wait(this.scene, 180);
+    // Eaten: it shrinks toward the hero and crumbs fall.
+    for (let i = 0; i < 12; i++) {
+      const c = this.scene.add.image(at.x + (Math.random() - 0.5) * 50, at.y - 75, 'fx_dot').setTint(Math.random() < 0.5 ? 0xc98b45 : 0xe8b46a).setScale(0.18).setDepth(DEPTH + 1);
+      this.scene.tweens.add({ targets: c, y: c.y + 50 + Math.random() * 30, x: c.x + (Math.random() - 0.5) * 20, alpha: 0, duration: 520 + Math.random() * 200, ease: 'Quad.In', onComplete: () => c.destroy() });
+    }
+    await tween(this.scene, { targets: g, scale: 0.2, alpha: 0, y: at.y - 40, duration: 260, ease: 'Quad.In' });
+    g.destroy();
+    this.heal(at);
+  }
+
+  /** Blackjack (#69): a fan of playing cards whirls around the hero and flies off. */
+  async cards(at: Pt) {
+    const faces = [['A', '♠', '#111'], ['K', '♥', '#d22'], ['Q', '♦', '#d22'], ['J', '♣', '#111'], ['10', '♥', '#d22']] as const;
+    const cy = at.y - 40, r = 78;
+    const cards = faces.map(([v, suit, col], i) => {
+      const c = this.scene.add.container(at.x, cy).setDepth(DEPTH + 1).setScale(0.2).setAlpha(0);
+      c.add([this.scene.add.rectangle(0, 0, 26, 36, 0xffffff).setStrokeStyle(1.5, 0x333333), this.scene.add.text(0, 0, `${v}\n${suit}`, { fontFamily: 'Arial', fontSize: '11px', color: col, fontStyle: 'bold', align: 'center', lineSpacing: -3 }).setOrigin(0.5)]);
+      return { c, a0: (i / faces.length) * Math.PI * 2 };
+    });
+    this.flash({ x: at.x, y: cy }, 0xffd700);
+    await tween(this.scene, {
+      targets: { t: 0 }, t: 1, duration: 760, ease: 'Sine.InOut',
+      onUpdate: (tw) => {
+        const t = tw.getValue() ?? 0;
+        for (const { c, a0 } of cards) {
+          const a = a0 + t * Math.PI * 2.2, rr = r * Math.min(1, t * 3);
+          c.setPosition(at.x + Math.cos(a) * rr, cy + Math.sin(a) * rr * 0.55).setRotation(a + Math.PI / 2).setAlpha(Math.min(1, t * 4)).setScale(0.2 + Math.min(1, t * 3) * 0.8);
+        }
+      },
+    });
+    for (const { c } of cards) this.scene.tweens.add({ targets: c, y: c.y - 120, alpha: 0, angle: c.angle + 90, duration: 380, ease: 'Quad.In', onComplete: () => c.destroy() });
+    await wait(this.scene, 200);
+  }
+
+  /** Trickster (#69): a gold coin is tossed, flips, and lands showing what came up. */
+  async coin(at: Pt, result: 'heads' | 'tails') {
+    const c = this.scene.add.container(at.x, at.y).setDepth(DEPTH + 2);
+    const face = this.scene.add.circle(0, 0, 22, 0xf5c542).setStrokeStyle(3, 0xb8861b);
+    const letter = this.scene.add.text(0, 0, 'H', { fontFamily: 'Arial', fontSize: '22px', color: '#7a5410', fontStyle: 'bold' }).setOrigin(0.5);
+    c.add([face, letter]);
+    const flips = 9;
+    await tween(this.scene, {
+      targets: { t: 0 }, t: 1, duration: 820, ease: 'Linear',
+      onUpdate: (tw) => {
+        const t = tw.getValue() ?? 0;
+        c.y = at.y - Math.sin(t * Math.PI) * 70;           // up and back down
+        const turn = t * flips * Math.PI;
+        c.scaleX = Math.abs(Math.cos(turn)) || 0.05;
+        const shown = t >= 1 ? result : Math.floor(t * flips) % 2 === 0 ? 'heads' : 'tails';
+        letter.setText(shown === 'heads' ? 'H' : 'T');
+      },
+    });
+    c.scaleX = 1; letter.setText(result === 'heads' ? 'H' : 'T');
+    this.flash({ x: at.x, y: at.y }, 0xffe08a);
+    await tween(this.scene, { targets: c, scale: 1.25, duration: 120, yoyo: true });
+    await wait(this.scene, 250);
+    void tween(this.scene, { targets: c, alpha: 0, duration: 300 }).then(() => c.destroy());
+  }
+
   /** Rising green motes on someone healing. */
   heal(at: Pt) {
     this.glow({ x: at.x, y: at.y + 40, displayWidth: 90, displayHeight: 110, originY: 1 } as never, 0x6dff8e);
