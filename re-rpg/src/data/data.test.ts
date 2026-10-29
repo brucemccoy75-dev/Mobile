@@ -160,7 +160,7 @@ describe('branching cards and new statuses (DECISIONS #69)', () => {
     expect(sk(data, 't_lunch').effects).toEqual([{ type: 'status', target: 'self', status: 'regen', turns: 3, magnitude: 10 }]);
     expect(sk(data, 't_bjc').effects).toEqual([{ type: 'status', target: 'self', status: 'blackjack', turns: 99, magnitude: 5 }]);
     expect(sk(data, 't_lunch').text).toBe('Lunch Break: heal 10% of max HP a round for 3 rounds. No damage cards meanwhile.');
-    expect(sk(data, 't_bjc').text).toBe('Blackjack: your hits deal 5× for the rest of the fight. Deal more than 21 in total and you die.');
+    expect(sk(data, 't_bjc').text).toBe('Blackjack: draw a card to start your total (A 11 or 1, faces 10). Hits deal 5× for the fight and add to it. Over 21, you die.');
   });
 
   it('the validator names what is wrong with a branch or a new status', () => {

@@ -46,7 +46,7 @@ export const greedy: Policy = (s) => {
   // Each card as it would play right now: a branching card is the side it takes (a coin, its winning side), #69.
   // Under Blackjack a hit that would pass 21 is not a card at all; if that leaves nothing, hold one back.
   const busts = (effects: Effect[]) => hasStatus(s.player, 'blackjack') && effects.some((e) => e.type === 'damage') &&
-    (s.blackjackTotal ?? 0) + effects.reduce((a, e) => a + (e.type === 'damage' ? (e.targets === 'all' ? living : [targetEnemy]).reduce((t, v) => t + previewDamage(s.player, v, e).hits.reduce((x, h) => x + h.amount, 0), 0) : 0), 0) > BLACKJACK_LIMIT;
+    (s.blackjackTotal ?? 0) + effects.reduce((a, e) => a + (e.type === 'damage' ? (e.targets === 'all' ? living : [targetEnemy]).reduce((t, v) => t + previewDamage(s.player, v, e).hits.reduce((x, h) => x + h.amount, 0), 0) : 0), 0) > BLACKJACK_LIMIT + 10 * (s.blackjackSoft ?? 0);
   const hand = s.player.hand.map((id, index) => ({ index, skill: { ...getSkill(id), effects: effectsNow(s, getSkill(id), targetEnemy) } }))
     .filter((h) => playable.includes(h.index) && !busts(h.skill.effects));
   if (!hand.length) return { type: 'hold', index: playable[0]! };

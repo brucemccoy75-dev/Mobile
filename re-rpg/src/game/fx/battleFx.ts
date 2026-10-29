@@ -170,6 +170,22 @@ export class BattleFx {
     await wait(this.scene, 200);
   }
 
+  /** Blackjack's opening card (#71): a playing card flips face up over the hero, holds, and fades. */
+  async playingCard(at: Pt, rank: string, suit: string) {
+    const red = suit === '♥' || suit === '♦' ? '#d22' : '#111';
+    const c = this.scene.add.container(at.x, at.y + 20).setDepth(DEPTH + 2).setAlpha(0);
+    c.add([
+      this.scene.add.rectangle(0, 0, 56, 78, 0xffffff).setStrokeStyle(2, 0x333333),
+      this.scene.add.text(-22, -34, `${rank}\n${suit}`, { fontFamily: 'Arial', fontSize: '13px', color: red, fontStyle: 'bold', align: 'center', lineSpacing: -3 }),
+      this.scene.add.text(0, 6, suit, { fontFamily: 'Arial', fontSize: '30px', color: red }).setOrigin(0.5),
+    ]);
+    c.scaleX = 0.05;
+    await tween(this.scene, { targets: c, y: at.y, alpha: 1, scaleX: 1, duration: 260, ease: 'Back.Out' });
+    this.flash(at, 0xffd700);
+    await wait(this.scene, 700);
+    void tween(this.scene, { targets: c, alpha: 0, y: at.y - 20, duration: 300 }).then(() => c.destroy());
+  }
+
   /** Trickster (#69): a gold coin is tossed, flips, and lands showing what came up. */
   async coin(at: Pt, result: 'heads' | 'tails') {
     const c = this.scene.add.container(at.x, at.y).setDepth(DEPTH + 2);

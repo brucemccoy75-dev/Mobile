@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Rng, RunRng } from '@core/rng';
-import { createCombat, step, currentIntent, isPlayerStunned, canPlay, LUCK_PER_POINT } from './engine';
+import { createCombat, step, currentIntent, isPlayerStunned, canPlay, blackjackValue, LUCK_PER_POINT } from './engine';
 import { hasStatus, getStatus } from './status';
 import type { CombatState } from './types';
 import type { Enemy, Skill } from '@data/types';
@@ -852,6 +852,7 @@ describe('synergy card mechanics (DECISIONS #69)', () => {
   it('Blackjack: 5× every hit for the fight, and passing 21 in total kills you, even on a killing blow', () => {
     const s = fight(ATTACKS, DUMMY, 1, 99);
     play(s, 't_blackjack');
+    s.blackjackTotal = 0; s.blackjackSoft = 0; // whatever was drawn, start these checks from nothing
     const ev1 = play(s, 'attack');
     expect(s.enemies[0]!.hp).toBe(10); // 4 × 5 = 20
     expect(ev1.find((e) => e.t === 'blackjack')).toMatchObject({ total: 20 });
@@ -862,9 +863,58 @@ describe('synergy card mechanics (DECISIONS #69)', () => {
     expect(s.player.hp).toBe(0);
   });
 
+  it('Blackjack opens by drawing a playing card: its value starts the total (#71)', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const s = fight(ATTACKS, PASSIVE, seed, 99);
+      const ev = play(s, 't_blackjack');
+      const drew = ev.find((e) => e.t === 'blackjackDraw') as { rank: string; suit: string; value: number; total: number };
+      expect(drew).toBeDefined();
+      expect(drew.value).toBe(blackjackValue(drew.rank));
+      expect(drew.total).toBe(drew.value);
+      expect(s.blackjackTotal).toBe(drew.value);
+      expect(s.blackjackSoft ?? 0).toBe(drew.rank === 'A' ? 1 : 0);
+      expect(s.outcome).toBe('ongoing'); // one card can never pass 21
+    }
+    expect([blackjackValue('A'), blackjackValue('2'), blackjackValue('10'), blackjackValue('J'), blackjackValue('Q'), blackjackValue('K')]).toEqual([11, 2, 10, 10, 10, 10]);
+  });
+
+  it('a drawn 2 leaves room for 19: an Attack at 20 busts', () => {
+    const s = fight(ATTACKS, DUMMY, 1, 99);
+    play(s, 't_blackjack');
+    s.blackjackTotal = 2; s.blackjackSoft = 0;
+    expect(play(s, 'attack').find((e) => e.t === 'bust')).toMatchObject({ total: 22 });
+    expect(s.outcome).toBe('lost');
+  });
+
+  it('an Ace counts 11, or 1 when 11 would bust: Ace then an Attack at 20 is exactly 21', () => {
+    const s = fight(ATTACKS, DUMMY, 1, 99);
+    play(s, 't_blackjack');
+    s.blackjackTotal = 11; s.blackjackSoft = 1;
+    const ev = play(s, 'attack');
+    expect(ev.some((e) => e.t === 'bust')).toBe(false);
+    expect(ev.find((e) => e.t === 'blackjack')).toMatchObject({ total: 21 });
+    expect(s.blackjackSoft).toBe(0);
+    expect(s.outcome).toBe('ongoing');
+  });
+
+  it('playing Blackjack again draws another card onto the total, and that can bust', () => {
+    let busted = false;
+    for (let seed = 1; seed <= 40 && !busted; seed++) {
+      const s = fight(ATTACKS, PASSIVE, seed, 99);
+      play(s, 't_blackjack');
+      s.blackjackTotal = 20; s.blackjackSoft = 0;
+      const ev = play(s, 't_blackjack');
+      const drew = ev.find((e) => e.t === 'blackjackDraw') as { rank: string; value: number; total: number };
+      expect(drew.total).toBe(drew.rank === 'A' ? 21 : 20 + drew.value);
+      if (ev.some((e) => e.t === 'bust')) { busted = true; expect(s.outcome).toBe('lost'); }
+    }
+    expect(busted).toBe(true);
+  });
+
   it('Blackjack counts only what lands: a blocked hit adds nothing', () => {
     const s = fight(ATTACKS, DUMMY, 1, 99);
     play(s, 't_blackjack');
+    s.blackjackTotal = 0;
     s.enemies[0]!.statuses.push({ id: 'guard', turns: 99, magnitude: 1 });
     const ev = play(s, 'attack');
     expect(ev.some((e) => e.t === 'bust')).toBe(false);

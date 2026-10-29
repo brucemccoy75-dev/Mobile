@@ -753,6 +753,13 @@ export class CombatScene extends Phaser.Scene {
       case 'blackjack':
         void floatText(this, this.px, this.py - 120, `${e.total} / 21`, e.total >= 17 ? '#ff6b6b' : '#ffd700', 30, 1300);
         return;
+      case 'blackjackDraw':
+        // The opening card (#71): it flips in over the hero, then the total it starts.
+        await wait(this, 450);
+        await this.fx.playingCard({ x: this.px, y: this.py - 110 }, e.rank, e.suit);
+        void floatText(this, this.px + 70, this.py - 110, `${e.total} / 21`, e.total >= 17 ? '#ff6b6b' : '#ffd700', 30, 1300);
+        await wait(this, 500);
+        return;
       case 'bust':
         this.cameras.main.shake(260, 0.014);
         this.showHp('player', -this.state.player.stats.maxHp);

@@ -4,7 +4,7 @@
 
 **State.** Branch `claude/re-rpg-mobile-architecture-t26won`, folder `re-rpg/`, live on GitHub
 Pages at https://brucemccoy75-dev.github.io/Mobile/ (deploys ~70 s after a push; poll
-`origin/gh-pages` for "Deploy re-rpg <sha>"). 279 tests pass (`npm run check`: typecheck,
+`origin/gh-pages` for "Deploy re-rpg <sha>"). 283 tests pass (`npm run check`: typecheck,
 cards:validate, world:validate, tests, build). The game today is:
 
 - **Node overworld** (DECISIONS #37): a static node network per screen over an authored terrain,
@@ -19,7 +19,7 @@ cards:validate, world:validate, tests, build). The game today is:
   - a hand of 3 before every card (#53, #70);
   - one card per enemy alive: a duo is two cards (#68);
   - branching cards on HP below a percent, a debuffed enemy or a coin you call; Lunch Break's
-    Regen, which locks damage cards; Blackjack ×5 to 21 (#69);
+    Regen, which locks damage cards; Blackjack ×5 to 21, opening with a drawn card (#69, #71);
   - statuses that land together play together (#64); sweeps hit every enemy at once (#47);
   - remove guard / remove buffs (#48), backfire (#51);
   - luck: crits and bonus turns, 1% each at base (#50, #52).
@@ -48,7 +48,7 @@ own command → Playwright at 844×390 (the game) or 390×844 (the editors) with
 (Test Mode: set registry `testSetup`, call `TestMode.fight()`, then `Combat.act()` and poll
 `busy`; to answer a dialogue from a script, `scene('Dialogue').choose(d, option)`) → commit with
 the attribution lines → `git push -u origin <branch>` → poll gh-pages. Record decisions in
-`docs/DECISIONS.md` (next number is 71). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
+`docs/DECISIONS.md` (next number is 72). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
 
 **Run logs** (`docs/PLAYTESTS.md`, DECISIONS #67). When the designer sends a run log, always:
 1. save it in `docs/playtests/`;

@@ -157,18 +157,21 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
       applyEffects([e], state.player, target, roll, events, crit);
       tagWho(events, f, target.slot);
     }
-    // Blackjack (DECISIONS #69): what landed adds to the running total; past 21 you die, even on a killing blow.
+    // Blackjack (DECISIONS #69, #71): playing it draws a playing card onto the total; then what lands
+    // adds to it. Past 21 you die, even on a killing blow.
+    if (effects.some((e) => e.type === 'status' && e.target === 'self' && e.status === 'blackjack')) {
+      const rank = CARD_RANKS[Math.floor(roll() * CARD_RANKS.length)]!, suit = CARD_SUITS[Math.floor(roll() * CARD_SUITS.length)]!;
+      const value = blackjackValue(rank);
+      if (rank === 'A') state.blackjackSoft = (state.blackjackSoft ?? 0) + 1;
+      const total = addToBlackjack(state, value);
+      events.push({ t: 'blackjackDraw', rank, suit, value, total });
+      if (total > BLACKJACK_LIMIT) return bust(state, rng, events, total);
+    }
     if (hasStatus(state.player, 'blackjack')) {
       const landed = events.slice(from).reduce((a, e) => a + (e.t === 'damage' && e.source === 'player' ? e.amount : 0), 0);
       if (landed > 0) {
-        const total = (state.blackjackTotal ?? 0) + landed;
-        state.blackjackTotal = total;
-        if (total > BLACKJACK_LIMIT) {
-          state.player.hp = 0;
-          state.outcome = 'lost';
-          events.push({ t: 'bust', total }, { t: 'death', side: 'player' }, { t: 'end', outcome: 'lost' });
-          return finish(state, rng, events);
-        }
+        const total = addToBlackjack(state, landed);
+        if (total > BLACKJACK_LIMIT) return bust(state, rng, events, total);
         events.push({ t: 'blackjack', total });
       }
     }
@@ -316,6 +319,26 @@ function stripStatuses(c: Combatant, statuses: StatusId[], events: CombatEvent[]
 export const BLACKJACK_LIMIT = 21;
 /** What a Utility Knife (or any `targetDebuffed` card) counts as a debuff. */
 export const DEBUFFS: readonly StatusId[] = ['exposed', 'weak', 'burn', 'chill', 'stun', 'curse'];
+
+const CARD_RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'] as const;
+const CARD_SUITS = ['♠', '♥', '♦', '♣'] as const;
+/** A playing card's blackjack value: Ace 11 (it can drop to 1), faces 10, the rest their number. */
+export const blackjackValue = (rank: string): number => (rank === 'A' ? 11 : rank === 'J' || rank === 'Q' || rank === 'K' ? 10 : Number(rank));
+
+/** Add to Blackjack's total; an Ace still counted as 11 drops to 1 rather than let it pass 21. */
+function addToBlackjack(state: CombatState, n: number): number {
+  let total = (state.blackjackTotal ?? 0) + n;
+  while (total > BLACKJACK_LIMIT && (state.blackjackSoft ?? 0) > 0) { total -= 10; state.blackjackSoft = (state.blackjackSoft ?? 0) - 1; }
+  state.blackjackTotal = total;
+  return total;
+}
+
+function bust(state: CombatState, rng: Rng, events: CombatEvent[], total: number): CombatEvent[] {
+  state.player.hp = 0;
+  state.outcome = 'lost';
+  events.push({ t: 'bust', total }, { t: 'death', side: 'player' }, { t: 'end', outcome: 'lost' });
+  return finish(state, rng, events);
+}
 
 const dealsDamage = (effects: Effect[]): boolean => effects.some((e) => e.type === 'damage' || (e.type === 'if' && (dealsDamage(e.then) || dealsDamage(e.else))));
 /** Regen (DECISIONS #69): while it lasts, no card that can deal damage may be played. */

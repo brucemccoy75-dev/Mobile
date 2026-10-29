@@ -741,3 +741,26 @@ hand cannot be refilled (the deck and discard are both empty). The four engine t
 the old draws now pin the new ones. Measured with the screen mirror (BALANCE.md): the shortest
 road reaches Wren 1–6 points more often (Shadow Knight 36.5% to 42.4%); a full clear is unchanged.
 Screenshot in `docs/audit/refill-2026-10-29/`.
+
+## 71. Blackjack opens with a drawn card
+
+Designer's note on #69: playing Blackjack should first draw a playing card, and its value starts
+the total. Draw a 10 and you start at 10; draw a 2 and you start at 2. The bust rule is
+unchanged: pass 21 and you die.
+
+How it works:
+- **The draw** is from a standard deck: 2–10 count their number, J, Q and K count 10. An Ace
+  counts 11 but drops to 1 rather than let the total pass 21, as in blackjack (each Ace once).
+- **Playing Blackjack again** in the same fight draws another card onto the total (a hit), and
+  that can bust you.
+- **What adds to the total** after the draw is unchanged from #69: the damage that lands.
+
+The card flips in over the hero and the total shows next to it. With ×5 at attack 4, an Attack
+lands 20, so after any draw of 2 or more an Attack busts. Only an Ace (11, dropping to 1) leaves
+room for exactly one Attack. Small hits (Bellow at 5) are how to work up to 21. The multiplier
+is the modifier's amount (2–9) in the card editor, if Attack should stay playable.
+
+The sim policy counts soft Aces when it decides whether a hit would bust. Pinned by the Blackjack
+tests in `engine.test.ts` (the draw starts the total, a 2 then 20 busts, Ace then 20 is 21, a
+second Blackjack draws again and can bust). Mirror: Berserker's shortest road goes from 17.1% to
+15.5% (BALANCE.md). Screenshot in `docs/audit/blackjack-draw-2026-10-29/`.

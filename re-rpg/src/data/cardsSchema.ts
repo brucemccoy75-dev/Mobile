@@ -139,7 +139,7 @@ export function modifierText(m: ModifierDef, targets?: 'one' | 'all'): string {
   if (m.status === 'extra_play') return `Play ${(m.amount ?? 1) === 1 ? 'one more card' : `${m.amount} more cards`} this turn.`;
   if (m.status === 'draw_to') return `Draw until you hold ${m.amount ?? 3}.`;
   if (m.status === 'regen') return `Lunch Break: heal ${m.amount ?? 0}% of max HP a round for ${plural(m.rounds ?? 1, 'round')}. No damage cards meanwhile.`;
-  if (m.status === 'blackjack') return `Blackjack: your hits deal ${m.amount ?? 1}× for the rest of the fight. Deal more than 21 in total and you die.`;
+  if (m.status === 'blackjack') return `Blackjack: draw a card to start your total (A 11 or 1, faces 10). Hits deal ${m.amount ?? 1}× for the fight and add to it. Over 21, you die.`;
   if (isRemoval(m.status)) {
     const whose = targets === 'all' ? "every enemy's" : "the enemy's";
     return m.status === 'remove_guard' ? `Remove ${whose} Guard first.` : `Remove ${whose} buffs first (Guard, Ward, Aegis, Hardened, Braced, Scattered).`;

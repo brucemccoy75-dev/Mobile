@@ -54,8 +54,10 @@ export interface CombatState {
   bonusTaken?: boolean;
   /** Cards still to play before the enemies act (DECISIONS #68): one per enemy alive when the turn began, +1 for a bonus turn. */
   playsLeft: number;
-  /** Damage dealt since Blackjack went up (DECISIONS #69). */
+  /** Blackjack's running total (DECISIONS #69, #71): the drawn cards plus the damage dealt since. */
   blackjackTotal?: number;
+  /** Aces in that total still counted as 11 (each can drop to 1 rather than bust). */
+  blackjackSoft?: number;
   log: CombatEvent[];  // everything that has happened, in order
 }
 
@@ -93,6 +95,8 @@ export type CombatEvent =
   | { t: 'coin'; call: 'heads' | 'tails'; result: 'heads' | 'tails'; won: boolean }
   /** Blackjack (DECISIONS #69): the running total of damage dealt, and the bust that ends you. */
   | { t: 'blackjack'; total: number }
+  /** Playing Blackjack draws a playing card onto the total (DECISIONS #71). */
+  | { t: 'blackjackDraw'; rank: string; suit: string; value: number; total: number }
   | { t: 'bust'; total: number }
   /** The card did not kill: it turns on the player (DECISIONS #51). */
   | { t: 'backfire'; amount: number }

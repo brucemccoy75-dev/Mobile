@@ -51,7 +51,7 @@ export const STATUS_LABELS: Record<StatusId, { label: string; color: string; des
   curse: { label: 'CURSED', color: '#c084fc', desc: 'Loses HP at the end of every round and healing is halved while it lasts. Ignores Guard.' },
   harden: { label: 'HARDENED', color: '#a8b3c7', desc: 'Takes half damage from every hit while it lasts. Hits still land, so Exposed and Burn still work.' },
   regen: { label: 'LUNCH BREAK', color: '#7dff9a', desc: 'Heals a share of max HP at the end of every round while it lasts. No card that deals damage can be played meanwhile.' },
-  blackjack: { label: 'BLACKJACK', color: '#ffd700', desc: 'Every hit lands five times over for the rest of the fight. Deal more than 21 damage in total and you bust: you die.' },
+  blackjack: { label: 'BLACKJACK', color: '#ffd700', desc: 'Playing it draws a playing card: its value starts your total (Ace 11 or 1, faces 10). Every hit lands five times over for the rest of the fight and adds what lands to the total. Pass 21 and you bust: you die.' },
 };
 
 /** Plain-language reading of an enemy intent for the tap-to-explain panel. */

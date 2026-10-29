@@ -4,6 +4,32 @@ Newest first. Run logs are read with the procedure in `docs/PLAYTESTS.md` (`npm 
 
 Loadouts: **fresh** = Attack/Defend only, empty deck. **Set** = the two set tomes in the deck. **gearN** = a full three-slot kit for screen N (`GEAR_KIT` in `src/core/sim/gauntlet.ts`). The sim does not model loot choice, relics or 4-card decks, so these are floors, not expectations.
 
+## Blackjack opening draw 2026-10-29 (DECISIONS #71)
+
+Playing Blackjack now draws a playing card whose value starts the total. Berserker rows only (the
+rest are unchanged):
+
+```
+screen mirror, full clear      reach boss  beat boss  hp@boss fights rounds  deaths
+warrior Berserker                    0.1%       0.0%      9.0   2.70   19.9  adept_necromancer 29%, boar 19%, adept_necromancer+boar 11%
+warrior Berserker+Bulwark            0.1%       0.0%      6.0   2.76   22.7  adept_necromancer 29%, boar 18%, rat_pack 12%
+warrior Berserker+Shadow Knight       0.9%       0.0%     10.0   3.20   22.4  adept_necromancer 26%, boar 16%, adept_necromancer+boar 13%
+screen mirror, shortest road
+warrior Berserker                   15.5%       0.0%      9.3   2.34   18.3  adept_necromancer 19%, wren 16%, adept_necromancer+boar 13%
+warrior Berserker+Bulwark           12.7%       0.0%      9.3   2.32   20.1  adept_necromancer 20%, adept_necromancer+boar 16%, wren 13%
+warrior Berserker+Shadow Knight     22.6%       0.0%     10.5   2.56   19.5  wren 23%, adept_necromancer+boar 15%, adept_necromancer 15%
+gauntlet
+warrior Berserker                   51.2%       0.0%     11.7   3.03   14.9  gatekeeper 51%, adept_necromancer 20%, boar 19%
+warrior Berserker+gear1             77.3%       0.0%     16.6   3.56   16.0  gatekeeper 77%, adept_necromancer 10%, boar 9%
+warrior both sets+gear1             81.0%       0.1%     17.2   3.63   22.0  gatekeeper 81%, boar 9%, adept_necromancer 8%
+```
+
+Reading:
+- Berserker is slightly weaker: shortest road 17.1% to 15.5%, gauntlet 57.0% to 51.2%.
+- The opening card leaves less room under 21. At ×5 an Attack (20) busts after any draw but an
+  Ace, so Blackjack now wants small hits.
+- The multiplier (the modifier's amount) is the lever if that is too tight.
+
 ## Three cards before every card 2026-10-29 (DECISIONS #70)
 
 The hand refills to 3 after every card that leaves the turn going on (duo turns, bonus turns).

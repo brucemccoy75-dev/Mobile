@@ -93,7 +93,7 @@ function describeEffects(effects: Effect[], stats: Stats): string[] {
           else if (e.status === 'stun') parts.push(`Recovering: skip your next ${e.turns - 1} turn${e.turns - 1 === 1 ? '' : 's'}.`);
           else if (e.status === 'exposed') parts.push(e.turns === 1 ? 'You are Exposed this round.' : `You are Exposed for ${rounds(e.turns)}.`);
           else if (e.status === 'regen') parts.push(`Lunch Break: heal ${Math.round((stats.maxHp * (e.magnitude ?? 0)) / 100)} HP a round for ${rounds(e.turns)}. No damage cards meanwhile.`);
-          else if (e.status === 'blackjack') parts.push(`Blackjack: your hits deal ${e.magnitude ?? 1}× for the rest of the fight. Deal more than 21 in total and you die.`);
+          else if (e.status === 'blackjack') parts.push(`Blackjack: draw a card to start your total (A 11 or 1, faces 10). Hits deal ${e.magnitude ?? 1}× for the fight and add to it. Over 21, you die.`);
           else if (e.status === 'curse') parts.push(`You are Cursed (${e.magnitude ?? 1} a round, heals halved) for ${rounds(e.turns)}.`);
           else parts.push(`You are ${STATUS_NAME[e.status]} for ${rounds(e.turns)}.`);
         } else {
