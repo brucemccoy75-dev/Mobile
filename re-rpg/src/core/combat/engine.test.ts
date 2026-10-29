@@ -728,3 +728,66 @@ describe('battle effects on the play event (DECISIONS #59)', () => {
     expect(ev.find((e) => e.t === 'play' && e.side === 'enemy')).toMatchObject({ vfx: 'slash' });
   });
 });
+
+describe('one play per living enemy (DECISIONS #68)', () => {
+  const ATTACKS = Array<string>(9).fill('attack');
+  const duo = (deck: string[] = ATTACKS, luck = 0) =>
+    createCombat({ player: { stats: { ...WARRIOR.stats, luck }, deck, basics: [] }, enemies: [DUMMY, DUMMY], rng: new Rng(1) });
+  const enemyActed = (ev: { t: string; side?: string }[]) => ev.some((e) => e.t === 'play' && e.side === 'enemy');
+
+  it('one enemy: one card, then it acts', () => {
+    const s = fight(ATTACKS);
+    expect(s.playsLeft).toBe(1);
+    expect(enemyActed(play(s, 'attack'))).toBe(true);
+  });
+
+  it('a duo gives two cards before either acts, and every round of the duo starts at two', () => {
+    const s = duo();
+    expect(s.playsLeft).toBe(2);
+    expect(s.log.some((e) => e.t === 'plays' && e.left === 2)).toBe(true);
+    const ev1 = step(s, { type: 'card', index: 0, target: 0 });
+    expect(enemyActed(ev1)).toBe(false);
+    expect(ev1.some((e) => e.t === 'plays' && e.left === 1)).toBe(true);
+    expect(ev1.filter((e) => e.t === 'deal')).toHaveLength(0); // the hand only refills at the round start
+    expect(s.player.hand).toHaveLength(2);
+    const ev2 = step(s, { type: 'card', index: 0, target: 1 });
+    expect(ev2.filter((e) => e.t === 'play' && e.side === 'enemy')).toHaveLength(2);
+    expect(s.round).toBe(2);
+    expect(s.playsLeft).toBe(2);
+    expect(s.player.hand).toHaveLength(3); // the hand stays 3: two drawn
+  });
+
+  it('plays are set at the start of the turn: killing one with the first card keeps the second', () => {
+    const s = duo();
+    s.enemies[0]!.hp = 1;
+    const ev1 = step(s, { type: 'card', index: 0, target: 0 });
+    expect(ev1.some((e) => e.t === 'death' && e.side === 'enemy')).toBe(true);
+    expect(enemyActed(ev1)).toBe(false);
+    expect(s.playsLeft).toBe(1);
+    const ev2 = step(s, { type: 'card', index: 0, target: 1 });
+    expect(ev2.filter((e) => e.t === 'play' && e.side === 'enemy')).toHaveLength(1); // only the survivor
+    expect(s.playsLeft).toBe(1); // one enemy left: one play from now on
+  });
+
+  it('holding a card uses a play', () => {
+    const s = duo();
+    const ev = step(s, { type: 'hold', index: 0 });
+    expect(enemyActed(ev)).toBe(false);
+    expect(s.playsLeft).toBe(1);
+  });
+
+  it('an empty hand ends the turn with plays unused', () => {
+    const s = duo(['attack']);
+    expect(s.player.hand).toHaveLength(1);
+    expect(enemyActed(step(s, { type: 'card', index: 0, target: 0 }))).toBe(true);
+  });
+
+  it('a bonus turn adds one play on top, once per round', () => {
+    const s = duo(ATTACKS, 500); // every card rolls a bonus; only one per round lands
+    const ev1 = step(s, { type: 'card', index: 0, target: 0 });
+    expect(ev1.some((e) => e.t === 'bonusTurn')).toBe(true);
+    expect(s.playsLeft).toBe(2);
+    expect(enemyActed(step(s, { type: 'card', index: 0, target: 0 }))).toBe(false);
+    expect(enemyActed(step(s, { type: 'card', index: 0, target: 0 }))).toBe(true); // three cards, then they act
+  });
+});

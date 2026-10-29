@@ -4,6 +4,45 @@ Newest first. Run logs are read with the procedure in `docs/PLAYTESTS.md` (`npm 
 
 Loadouts: **fresh** = Attack/Defend only, empty deck. **Set** = the two set tomes in the deck. **gearN** = a full three-slot kit for screen N (`GEAR_KIT` in `src/core/sim/gauntlet.ts`). The sim does not model loot choice, relics or 4-card decks, so these are floors, not expectations.
 
+## Plays per living enemy 2026-10-29 (DECISIONS #68)
+
+One card per enemy alive at the start of the turn; the hand stays 3. Single fights are untouched,
+so the four-fight gauntlet is identical to Phone test 8's.
+
+`npm run sim -- --screen --class warrior` after (before in brackets, from Phone test 8):
+
+```
+full clear                     reach boss  beat boss  hp@boss fights rounds  deaths
+warrior fresh                        0.0%       0.0%      0.0   2.52   21.0  adept_necromancer 28%, boar 19%, rat_pack 11%
+warrior Bulwark                      0.0%       0.0%      0.0   2.79   25.6  adept_necromancer 27%, boar 19%, rat_pack 12%
+warrior Berserker                    0.1%       0.0%      5.0   3.36   18.4  adept_necromancer 20%, boar 18%, adept_necromancer+boar 13%
+warrior Shadow Knight                1.6%       0.0%      8.9   4.37   29.1  boar 22%, boar+hex_imp 15%, adept_necromancer+boar 14%
+warrior Berserker+Bulwark            0.4%       0.0%      3.3   3.11   22.4  adept_necromancer 22%, boar 18%, adept_necromancer+boar 13%
+warrior Shadow Knight+Bulwark        0.6%       0.0%      4.7   3.28   26.4  boar 23%, adept_necromancer 22%, adept_necromancer+boar 13%
+warrior Berserker+Shadow Knight       0.3%       0.0%      9.3   3.74   22.3  boar 19%, adept_necromancer 16%, adept_necromancer+boar 14%
+
+shortest road                  reach boss  beat boss  hp@boss fights rounds  deaths
+warrior fresh                        5.9%       0.0%      6.2   2.22   19.3  adept_necromancer+boar 17%, adept_necromancer 16%, boar 13%
+warrior Bulwark                     12.7%       0.0%      8.2   2.36   22.9  adept_necromancer 17%, adept_necromancer+boar 15%, wren 13%
+warrior Berserker                   18.0%       0.0%      8.4   2.77   16.3  wren 18%, adept_necromancer+boar 16%, boar+hex_imp 15%
+warrior Shadow Knight               36.5%       0.0%      9.2   3.17   23.2  wren 37%, boar+hex_imp 16%, adept_necromancer+boar 16%
+warrior Berserker+Bulwark           16.6%       0.0%      9.1   2.55   19.9  wren 17%, adept_necromancer 15%, adept_necromancer+boar 14%
+warrior Shadow Knight+Bulwark       19.4%       0.0%      9.0   2.63   22.9  wren 19%, adept_necromancer+boar 17%, boar+hex_imp 14%
+warrior Berserker+Shadow Knight     27.6%       0.0%      8.7   2.94   19.1  wren 28%, boar+hex_imp 15%, adept_necromancer+boar 14%
+```
+
+Against Phone test 8's mirror:
+- **Duo deaths** fell from 50–63% to 35–48% of deaths on a full clear. The top killers are now
+  single fights (Necromancer, Boar), worn down by HP carried over.
+- **Shortest road** reaches Wren 6–37% (was 0.3–7%), and Wren is now its top killer for most
+  loadouts.
+- **Full clear** still almost never reaches Wren (0–1.6%). Fights won rose by 0.3–1.1. The
+  ten-fight attrition is the remaining wall (Phone test 8, open questions).
+- **Shadow Knight gains most**: Leech hits both enemies and drains (why it gains more than the
+  others is not measured).
+- **Beat boss is 0% everywhere.** The mirror has no loot, so this stays a floor; the next run log
+  will say how far real runs move.
+
 ## Phone test 8 (run log 2026-10-28)
 
 Procedure: `docs/PLAYTESTS.md`. Log: `docs/playtests/2026-10-28-runs.json` (20 warrior runs over

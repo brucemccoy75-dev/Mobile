@@ -52,6 +52,8 @@ export interface CombatState {
   rngState: number;    // combat stream snapshot, for save/resume
   /** A luck bonus turn was taken this round (one per round, DECISIONS #50). */
   bonusTaken?: boolean;
+  /** Cards still to play before the enemies act (DECISIONS #68): one per enemy alive when the turn began, +1 for a bonus turn. */
+  playsLeft: number;
   log: CombatEvent[];  // everything that has happened, in order
 }
 
@@ -83,6 +85,8 @@ export type CombatEvent =
   | { t: 'crit' }
   /** Luck (DECISIONS #50): the enemies wait; the player plays again this round. */
   | { t: 'bonusTurn' }
+  /** The turn goes on: this many cards still to play before the enemies act (DECISIONS #68). */
+  | { t: 'plays'; left: number }
   /** The card did not kill: it turns on the player (DECISIONS #51). */
   | { t: 'backfire'; amount: number }
   | { t: 'heal'; side: Side; amount: number; who?: number }

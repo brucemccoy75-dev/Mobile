@@ -461,7 +461,7 @@ export class CombatScene extends Phaser.Scene {
   private toggleHold(force?: boolean) {
     this.holdMode = force ?? !this.holdMode;
     this.holdBtn.label.setText(this.holdMode ? 'Cancel' : 'Hold');
-    this.handHint.setText(this.holdMode ? 'tap a card to hold it back and pass the turn' : '');
+    this.handHint.setText(this.holdMode ? (this.state.playsLeft > 1 ? 'tap a card to hold it back (it uses one card)' : 'tap a card to hold it back and pass the turn') : '');
     for (const c of this.hand) c.setAlpha(this.holdMode ? 0.8 : 1);
   }
 
@@ -718,6 +718,17 @@ export class CombatScene extends Phaser.Scene {
         await this.luckFanfare('BONUS TURN!', '#7cffb2', 'play again before they move');
         this.phaseText.setText('YOUR TURN · BONUS').setColor('#7cffb2');
         return;
+      case 'plays': {
+        // One card per enemy alive when the turn began (DECISIONS #68); a bonus turn adds one.
+        const bonus = !!this.state.bonusTaken;
+        this.phaseText.setText(`YOUR TURN · ${e.left === 1 ? '1 MORE CARD' : `${e.left} CARDS`}${bonus ? ' · BONUS' : ''}`).setColor(bonus ? '#7cffb2' : COLORS.gold);
+        if (!this.state.log.some((x, i) => x.t === 'plays' && i < this.state.log.indexOf(e))) {
+          // The first time in a fight, say why.
+          const n = this.state.enemies.filter((x) => !x.dead).length;
+          await floatText(this, this.scale.gameSize.width / 2, this.handY - 120, `${n} enemies: ${e.left} cards before they move`, COLORS.gold, 26, 1300);
+        }
+        return;
+      }
       case 'death': {
         const s = sprite(e.side);
         if (s instanceof Phaser.GameObjects.Sprite) s.anims.stop();

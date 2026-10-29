@@ -318,12 +318,15 @@ describe('duos: every status event names its enemy slot', () => {
   it('a rear enemy\'s self-buff is tagged to it, and your self-status keeps your side', () => {
     const SHELLER = seq('sheller', [selfBuff('harden'), WAIT, WAIT]);
     const s = fight(['defend', 'attack', 'attack'], [DUMMY, SHELLER]);
+    // Two living enemies, two cards a turn (DECISIONS #68): they act after the second.
     const r1 = play(s, 'defend', 1);
-    expect(r1.find(applied('harden'))).toMatchObject({ who: 1 });
     expect(r1.find(applied('guard', 'player'))).toMatchObject({ side: 'player', who: 1 }); // tagged with the target slot, read by side
+    const r1b = play(s, 'attack', 0);
+    expect(r1b.find(applied('harden'))).toMatchObject({ who: 1 });
     expect(hasStatus(s.enemies[0]!, 'harden')).toBe(false);
     expect(getStatus(s.enemies[1]!, 'harden')).toMatchObject({ turns: 1 });
     expect(landed(play(s, 'attack', 0), 'player')).toEqual([4]);   // the front dummy is not hardened
+    play(s, 'attack', 0);                                           // round 2 ends
     const r3 = play(s, 'attack', 1);
     expect(landed(r3, 'player')).toEqual([4]);                     // the shell lapsed at the end of round 2
     expect(r3.find((e) => e.t === 'damage' && e.source === 'player')).toMatchObject({ who: 1 });

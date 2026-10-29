@@ -60,7 +60,7 @@ export function createCombat(opts: CombatOptions): CombatState {
     return e;
   });
 
-  const state: CombatState = { skillUpgrades: { ...(opts.skillUpgrades ?? {}) }, round: 0, outcome: 'ongoing', player, enemies, enemyDefs: defs, enemy: enemies[0]!, enemyDef: defs[0]!, rngState: opts.rng.getState(), log: [] };
+  const state: CombatState = { skillUpgrades: { ...(opts.skillUpgrades ?? {}) }, round: 0, outcome: 'ongoing', player, enemies, enemyDefs: defs, enemy: enemies[0]!, enemyDef: defs[0]!, rngState: opts.rng.getState(), log: [], playsLeft: 1 };
   const events: CombatEvent[] = [];
   startRound(state, opts.rng, events);
   state.rngState = opts.rng.getState();
@@ -117,6 +117,7 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
   } else if (action.type === 'hold') {
     const id = playCard(state.player, action.index);
     events.push({ t: 'hold', skill: id });
+    state.playsLeft -= 1;
   } else {
     const target = resolveTarget(state, action.target);
     const skill = skillInCombat(state, playCard(state.player, action.index));
@@ -151,12 +152,20 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
       tagWho(events, f, target.slot);
     }
     if (checkDeaths(state, events)) return finish(state, rng, events);
-    // ...and one for a bonus turn: the enemies wait and nothing ticks; once per round, never on an empty hand.
+    state.playsLeft -= 1;
+    // ...and one for a bonus turn: one more card before the enemies move; once per round, never on an empty hand.
     if (luckChance > 0 && !state.bonusTaken && state.player.hand.length > 0 && roll() < luckChance) {
       state.bonusTaken = true;
+      state.playsLeft += 1;
       events.push({ t: 'bonusTurn' });
-      return finish(state, rng, events);
     }
+  }
+
+  // One play per enemy alive when the turn began (DECISIONS #68), so a kill keeps the rest: the
+  // enemies wait until the plays are used or the hand is empty. Nothing ticks inside a turn.
+  if (action.type !== 'skip' && !events.some((e) => e.t === 'stunned') && state.playsLeft > 0 && state.player.hand.length > 0) {
+    events.push({ t: 'plays', left: state.playsLeft });
+    return finish(state, rng, events);
   }
 
   // Enemy turns, front to back
@@ -209,6 +218,8 @@ function startRound(state: CombatState, rng: Rng, events: CombatEvent[]): void {
   // Every round starts with a full hand (DECISIONS #53): draw whatever is missing, two after a bonus turn, none if nothing was played.
   const deals = Math.max(0, HAND_CAP - state.player.hand.length);
   for (let i = 0; i < deals; i++) dealOne(state.player, (a) => rng.shuffle(a), events);
+  state.playsLeft = Math.max(1, livingEnemies(state).length);
+  if (state.playsLeft > 1) events.push({ t: 'plays', left: state.playsLeft });
 }
 
 function checkDeaths(state: CombatState, events: CombatEvent[]): boolean {

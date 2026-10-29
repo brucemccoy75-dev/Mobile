@@ -653,3 +653,29 @@ boss against 0% real, while the mirror said 0%. The shrine's heal moved to `SHRI
 `src/core/map` so the scene and the mirror share it. Pinned by `src/core/sim/screen.test.ts` and
 the run-log summary test in `src/core/telemetry/telemetry.test.ts`. First reading: BALANCE.md,
 Phone test 8.
+
+## 68. One card per enemy alive
+
+Designer's note after Phone test 8: a duo got two actions a round to the player's one, so a duo
+round often had no answer but to take the damage. Now the player plays one card per enemy alive
+when the turn begins. A duo is two cards (Defend against the Boar's Tusk *and* Attack the Imp),
+and a trio would be three. The enemies act once the plays are used, or the hand runs out.
+- **Plays are fixed at the start of the turn** (designer's choice): killing one of a duo with the
+  first card keeps the second. From the next round, one enemy means one card.
+- **The hand stays 3** (designer's choice): against a duo you choose 2 of your 3, and the 3rd
+  waits for next round. The hand refills at the round start as before (#53).
+- **Hold** uses a play. A **bonus turn** (#50) adds one play on top, once per round.
+- **Nothing ticks inside a turn**. A self-status lands at once, so a Tiring card (self Weak)
+  played first weakens the second card that turn: the order of the two cards matters.
+
+The engine keeps `playsLeft` on the combat state and says `plays` when the turn goes on. The
+scene reads "YOUR TURN · 2 CARDS", then "1 MORE CARD". The first two-card turn of a fight shows
+"2 enemies: 2 cards before they move". Pinned by the "one play per living enemy" tests in
+`engine.test.ts`; the duo tagging test in `status.test.ts` now plays two cards a round.
+
+Measured with the screen mirror (BALANCE.md, Plays per living enemy):
+- duo deaths fell from 50–63% to 35–48% of deaths on a full clear;
+- the shortest road now reaches Wren 6–37% (was 0.3–7%);
+- a full clear still almost never does (0–1.6%), because the ten-fight attrition is unchanged.
+
+Screenshots in `docs/audit/plays-2026-10-29/`.
