@@ -1,15 +1,17 @@
 import Phaser from 'phaser';
 import { CLASSES, ENEMIES, ITEMS, SKILLS, getClass, getEnemy, getItem, getSkill } from '@data/index';
-import type { ClassId, EnemyId, SkillId, Slot } from '@data/types';
+import { CURSED_TRAITS, type ClassId, type CursedTrait, type EnemyId, type SkillId, type Slot } from '@data/types';
 import { TOME_COPY_CAP } from '@data/skills';
 import { DECK_CAP } from '@core/combat';
 import { computeStats, equipmentFromIds } from '@core/run';
 import { createSession, getMeta, setSession } from '@game/session';
-import { wrenBoss } from '@core/variants';
+import { cursedEnemy, wrenBoss } from '@core/variants';
+
+const TRAIT_SHORT: Record<CursedTrait, string> = { hp: '2× HP', damage: '2× dmg', shield: 'shield', thorns: 'thorns', followUp: 'follow-up' };
 import { Button } from '@game/ui/Button';
 import { COLORS, text } from '@game/ui/theme';
 
-export interface TestSetup { enemyId: EnemyId; extraId?: EnemyId | null; classId: ClassId; deck: SkillId[]; equipment: Record<Slot, string | null>; }
+export interface TestSetup { enemyId: EnemyId; extraId?: EnemyId | null; classId: ClassId; deck: SkillId[]; equipment: Record<Slot, string | null>; /** Cursed traits to fight with (DECISIONS #73); up to two. */ cursed?: CursedTrait[]; }
 const SLOTS: Slot[] = ['weapon', 'body', 'relic'];
 const defaultSetup = (): TestSetup => ({ enemyId: 'boar', classId: 'warrior', deck: [], equipment: { weapon: null, body: null, relic: null } });
 
@@ -30,9 +32,13 @@ export class TestModeScene extends Phaser.Scene {
     const sel = (on: boolean) => (on ? { fill: 0x3b2a1a, edge: COLORS.goldHex } : {});
 
     this.add.text(16, 14, 'TEST MODE', { ...text.h2, color: COLORS.gold }).setOrigin(0, 0);
-    this.add.text(236, 22, 'nothing here is saved, logged or counted · class base stats, no legacy', { ...text.small, fontSize: '12px', color: COLORS.muted }).setOrigin(0, 0);
+    this.add.text(676, 24, 'nothing saved or logged\nclass base stats', { ...text.small, fontSize: '11px', color: COLORS.muted }).setOrigin(0, 0.5);
     new Button(this, W - 250, 24, 'Back', () => this.scene.start('Title'), { width: 110, height: 32, fontSize: '13px' });
     new Button(this, W - 100, 24, 'Fight', () => this.fight(), { width: 150, height: 36, fontSize: '15px', fill: 0x1f2a44, edge: COLORS.goldHex });
+    // Cursed (DECISIONS #73): pick up to two traits and the enemy you fight is cursed with them.
+    const cursed = this.setup.cursed ?? [];
+    this.add.text(250, 24, 'cursed:', { ...text.small, color: '#ff6b6b' }).setOrigin(1, 0.5);
+    CURSED_TRAITS.forEach((t, i) => new Button(this, 290 + i * 76, 24, TRAIT_SHORT[t], () => this.set({ cursed: cursed.includes(t) ? cursed.filter((x) => x !== t) : [...cursed, t].slice(-2) }), { width: 72, height: 26, fontSize: '11px', ...sel(cursed.includes(t)) }));
 
     // enemies
     const x0 = 16;
@@ -110,6 +116,12 @@ export class TestModeScene extends Phaser.Scene {
       return;
     }
     const enemy = getEnemy(this.setup.enemyId);
+    if (this.setup.cursed?.length && enemy.archetype !== 'boss') {
+      s.pendingEncounter = { kind: 'random', enemyId: enemy.id, tile: 'forest', cursed: true, custom: [cursedEnemy(enemy, this.setup.cursed)] };
+      setSession(this, s);
+      this.scene.start('Combat');
+      return;
+    }
     s.pendingEncounter = { kind: enemy.archetype === 'boss' ? 'boss' : 'random', enemyId: enemy.id, tile: 'forest', extra: this.setup.extraId && this.setup.extraId !== enemy.id ? [this.setup.extraId] : undefined };
     setSession(this, s);
     this.scene.start('Combat');

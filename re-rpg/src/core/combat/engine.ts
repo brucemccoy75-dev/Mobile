@@ -26,10 +26,18 @@ export interface CombatOptions {
   enemies?: (EnemyId | Enemy)[];
   rng: Rng;             // the run's 'combat' stream
   skillUpgrades?: SkillUpgrades;
+  /** What each growing card has gained this run (DECISIONS #73). */
+  growth?: Record<SkillId, number>;
 }
 
 /** The skill as it plays in this fight, with any run-local upgrade applied. */
-export const skillInCombat = (state: CombatState, id: SkillId) => skillWith(getSkill(id), state.skillUpgrades);
+export const skillInCombat = (state: CombatState, id: SkillId) => withGrowth(skillWith(getSkill(id), state.skillUpgrades), state.growth?.[id] ?? 0);
+
+/** A growing card (DECISIONS #73) hits harder by what it has gained this run: flat damage on every hit. */
+function withGrowth(skill: Skill, g: number): Skill {
+  if (!g) return skill;
+  return { ...skill, effects: skill.effects.map((e) => (e.type === 'damage' ? { ...e, flat: (e.flat ?? 0) + g } : e)) };
+}
 
 export const livingEnemies = (state: CombatState): EnemyCombatant[] => state.enemies.filter((e) => !e.dead);
 
@@ -53,14 +61,14 @@ export function createCombat(opts: CombatOptions): CombatState {
     statuses: [], deck: opts.rng.shuffle([...(opts.player.basics ?? BASIC_DECK), ...opts.player.deck]), hand: [], discard: [], exhausted: [], consumed: [],
   };
   const enemies = defs.map((def, slot) => {
-    const base = { side: 'enemy' as const, name: def.name, enemyId: def.id, slot, dead: false, stats: { ...def.stats }, hp: def.stats.maxHp, statuses: [], phase: 0, seqIndex: 0 };
+    const base = { side: 'enemy' as const, name: def.name, enemyId: def.id, slot, dead: false, stats: { ...def.stats }, hp: def.stats.maxHp, statuses: [], phase: 0, seqIndex: 0, ...(def.cursed ? { cursed: [...def.cursed] } : {}) };
     const e = base as unknown as EnemyCombatant;
     e.current = pickMove(e, def, roll);
     e.next = pickMove(e, def, roll);
     return e;
   });
 
-  const state: CombatState = { skillUpgrades: { ...(opts.skillUpgrades ?? {}) }, round: 0, outcome: 'ongoing', player, enemies, enemyDefs: defs, enemy: enemies[0]!, enemyDef: defs[0]!, rngState: opts.rng.getState(), log: [], playsLeft: 1 };
+  const state: CombatState = { skillUpgrades: { ...(opts.skillUpgrades ?? {}) }, round: 0, outcome: 'ongoing', player, enemies, enemyDefs: defs, enemy: enemies[0]!, enemyDef: defs[0]!, rngState: opts.rng.getState(), log: [], playsLeft: 1, growth: { ...(opts.growth ?? {}) } };
   const events: CombatEvent[] = [];
   startRound(state, opts.rng, events);
   state.rngState = opts.rng.getState();
@@ -157,6 +165,20 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
       applyEffects([e], state.player, target, roll, events, crit);
       tagWho(events, f, target.slot);
     }
+    // Thorns (DECISIONS #73): every attack on a thorned enemy costs the attacker, through any block.
+    if (effects.some((e) => e.type === 'damage')) {
+      for (const v of struck) {
+        if (!v.cursed?.includes('thorns') || state.player.hp <= 0) continue;
+        const amount = Math.min(state.player.hp, CURSED_THORNS);
+        state.player.hp -= amount;
+        events.push({ t: 'thorns', amount, who: v.slot });
+      }
+    }
+    // A growing card (#73) gains for every hit that landed, for the rest of the run.
+    if (skill.grow) {
+      const landed = events.slice(from).filter((e) => e.t === 'damage' && e.source === 'player' && e.amount > 0).length;
+      if (landed) state.growth[skill.id] = (state.growth[skill.id] ?? 0) + skill.grow * landed;
+    }
     // Blackjack (DECISIONS #69, #71): playing it draws a playing card onto the total; then what lands
     // adds to it. Past 21 you die, even on a killing blow.
     if (effects.some((e) => e.type === 'status' && e.target === 'self' && e.status === 'blackjack')) {
@@ -203,6 +225,12 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
       const move = e.current;
       events.push({ t: 'play', side: 'enemy', skill: move.id, name: move.name, vfx: vfxForEffects(move.effects) });
       applyEffects(move.effects, e, state.player, roll, events);
+      // A cursed follow-up (DECISIONS #73): a quarter of its attack right after, and no block stops it.
+      if (e.cursed?.includes('followUp') && move.effects.some((m) => m.type === 'damage') && state.player.hp > 0) {
+        const amount = Math.min(state.player.hp, Math.max(1, computeHit(e, state.player, CURSED_FOLLOW_UP)));
+        state.player.hp -= amount;
+        events.push({ t: 'damage', source: 'enemy', target: 'player', amount, blocked: false, hit: 1, hits: 1, kind: 'physical', followUp: true });
+      }
     }
     tagWho(events, from, e.slot);
     if (checkDeaths(state, events)) return finish(state, rng, events);
@@ -314,6 +342,10 @@ function stripStatuses(c: Combatant, statuses: StatusId[], events: CombatEvent[]
     (events[events.length - 1] as Extract<CombatEvent, { t: 'statusExpired' }>).stripped = true;
   }
 }
+
+/** A cursed enemy's thorns and follow-up (DECISIONS #73). */
+export const CURSED_THORNS = 2;
+export const CURSED_FOLLOW_UP = 0.25;
 
 /** Blackjack's bust line (DECISIONS #69). */
 export const BLACKJACK_LIMIT = 21;

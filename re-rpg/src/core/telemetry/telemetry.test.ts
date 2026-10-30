@@ -69,4 +69,9 @@ describe('run-log summary (DECISIONS #67)', () => {
     expect(fresh.deaths).toEqual({ 'boar+hex_imp': 1, wren: 1 });
     expect(s[1]!.levels).toEqual([4]);
   });
+
+  it('counts cursed fights and how many were won (DECISIONS #73)', () => {
+    const cursedLog = { version: 1 as const, runs: [run([], 'died', [{ ...fight(['boar'], 'won'), cursed: ['hp', 'thorns'] }, { ...fight(['hex_imp'], 'lost'), cursed: ['shield', 'followUp'] }], 3)] };
+    expect(summarizeRuns(cursedLog, names)[0]).toMatchObject({ cursedFights: 2, cursedWins: 1 });
+  });
 });

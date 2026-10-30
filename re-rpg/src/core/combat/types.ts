@@ -1,5 +1,5 @@
 import type { VfxKind } from '@core/vfx';
-import type { DamageKind, Effect, Enemy, EnemyId, EnemyMove, Intent, Posture, SkillId, Stats, Status, StatusId } from '@data/types';
+import type { CursedTrait, DamageKind, Effect, Enemy, EnemyId, EnemyMove, Intent, Posture, SkillId, Stats, Status, StatusId } from '@data/types';
 
 export type Side = 'player' | 'enemy';
 
@@ -9,6 +9,8 @@ export interface Combatant {
   hp: number;
   stats: Stats;
   statuses: Status[];
+  /** A cursed enemy's combat traits (DECISIONS #73): shield, thorns, followUp. */
+  cursed?: CursedTrait[];
 }
 
 export interface PlayerCombatant extends Combatant {
@@ -54,6 +56,8 @@ export interface CombatState {
   bonusTaken?: boolean;
   /** Cards still to play before the enemies act (DECISIONS #68): one per enemy alive when the turn began, +1 for a bonus turn. */
   playsLeft: number;
+  /** Flat damage each growing card has gained this run (DECISIONS #73), carried in and out of the fight. */
+  growth: Record<SkillId, number>;
   /** Blackjack's running total (DECISIONS #69, #71): the drawn cards plus the damage dealt since. */
   blackjackTotal?: number;
   /** Aces in that total still counted as 11 (each can drop to 1 rather than bust). */
@@ -84,7 +88,9 @@ export type CombatEvent =
   | { t: 'exhaust'; skill: SkillId }
   | { t: 'consumed'; skill: SkillId }
   | { t: 'counter'; amount: number; blocked: boolean; who?: number; volley?: number }
-  | { t: 'damage'; source: Side; target: Side; amount: number; blocked: boolean; hit: number; hits: number; kind: DamageKind; crit?: boolean; who?: number; volley?: number }
+  | { t: 'damage'; source: Side; target: Side; amount: number; blocked: boolean; hit: number; hits: number; kind: DamageKind; crit?: boolean; who?: number; volley?: number; /** A cursed enemy's follow-up (#73). */ followUp?: boolean }
+  /** A cursed enemy's thorns hurt the attacker (DECISIONS #73). */
+  | { t: 'thorns'; amount: number; who?: number }
   /** Luck (DECISIONS #50): the card just played lands every hit at +50%. */
   | { t: 'crit' }
   /** Luck (DECISIONS #50): the enemies wait; the player plays again this round. */

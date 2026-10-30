@@ -4,7 +4,7 @@
 
 **State.** Branch `claude/re-rpg-mobile-architecture-t26won`, folder `re-rpg/`, live on GitHub
 Pages at https://brucemccoy75-dev.github.io/Mobile/ (deploys ~70 s after a push; poll
-`origin/gh-pages` for "Deploy re-rpg <sha>"). 287 tests pass (`npm run check`: typecheck,
+`origin/gh-pages` for "Deploy re-rpg <sha>"). 298 tests pass (`npm run check`: typecheck,
 cards:validate, world:validate, tests, build). The game today is:
 
 - **Node overworld** (DECISIONS #37): a static node network per screen over an authored terrain,
@@ -24,7 +24,10 @@ cards:validate, world:validate, tests, build). The game today is:
     Regen, which locks damage cards; Blackjack ×5 to 21, opening with a drawn card (#69, #71);
   - statuses that land together play together (#64); sweeps hit every enemy at once (#47);
   - remove guard / remove buffs (#48), backfire (#51);
-  - luck: crits and bonus turns, 1% each at base (#50, #52).
+  - luck: crits and bonus turns, 1% each at base (#50, #52);
+  - cursed enemies from class level 3 (5% of fight nodes, a prompt first). Each has two of: 2× HP,
+    2× damage, a half-damage shield, thorns 2, an unblockable follow-up. They pay 3× gold and EXP,
+    plus the cursed pool, today just Cursed Counter (#73).
 - **Battle effects** (#59, #62), chosen from what a card does or named per card in the card
   editor:
   - slash, fireball, lightning, frost, arcane, heal;
@@ -50,7 +53,7 @@ own command → Playwright at 844×390 (the game) or 390×844 (the editors) with
 (Test Mode: set registry `testSetup`, call `TestMode.fight()`, then `Combat.act()` and poll
 `busy`; to answer a dialogue from a script, `scene('Dialogue').choose(d, option)`) → commit with
 the attribution lines → `git push -u origin <branch>` → poll gh-pages. Record decisions in
-`docs/DECISIONS.md` (next number is 73). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
+`docs/DECISIONS.md` (next number is 74). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
 
 **Run logs** (`docs/PLAYTESTS.md`, DECISIONS #67). When the designer sends a run log, always:
 1. save it in `docs/playtests/`;

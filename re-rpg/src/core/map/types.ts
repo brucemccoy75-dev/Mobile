@@ -1,4 +1,4 @@
-import type { EnemyId } from '@data/types';
+import type { CursedTrait, EnemyId } from '@data/types';
 
 export type TileType = 'road' | 'grass' | 'forest' | 'swamp' | 'water' | 'rock' | 'arena';
 
@@ -41,6 +41,8 @@ export interface MapNode {
   dialogue?: string;
   /** Set while a quest has re-armed this node: the words that greet you and a flag set when you win it (DECISIONS #61). */
   rearm?: { trigger?: string; winFlag?: string };
+  /** A cursed enemy waits here (DECISIONS #73): its two traits. Gone once the player declines it. */
+  cursed?: CursedTrait[];
 }
 
 /** Kinds a designer may put on a content slot (world editor, DECISIONS #55). */

@@ -47,6 +47,8 @@ export interface RunState extends Versioned {
   shop: ShopStock;
   quests: Quest[];
   skillUpgrades: SkillUpgrades;
+  /** What each growing card has gained this run (DECISIONS #73); absent in older saves. */
+  skillGrowth?: Record<string, number>;
   /** Items that exist only in this run (quest upgrades), stored whole. */
   customItems: Item[];
 }

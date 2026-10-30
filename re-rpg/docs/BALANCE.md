@@ -4,6 +4,19 @@ Newest first. Run logs are read with the procedure in `docs/PLAYTESTS.md` (`npm 
 
 Loadouts: **fresh** = Attack/Defend only, empty deck. **Set** = the two set tomes in the deck. **gearN** = a full three-slot kit for screen N (`GEAR_KIT` in `src/core/sim/gauntlet.ts`). The sim does not model loot choice, relics or 4-card decks, so these are floors, not expectations.
 
+## Cursed enemies 2026-10-30 (DECISIONS #73)
+
+No sim table changes:
+- Cursed Counter is in no family, so no gauntlet or mirror loadout holds it.
+- The screen mirror plays level 1, where nothing is cursed.
+
+Cursed fights show up in run logs (each fight's `cursed` traits), and `npm run playtest` counts
+cursed fights met and won per group. To read them by hand, Test Mode can curse any enemy with any
+two traits. At attack 4 against a 12-HP Boar:
+- a shielded Boar takes 2 a hit;
+- thorns cost 2 per attack;
+- a cursed 2× damage Boar's Tusk is 10, and its follow-up lands 2 through a Guard.
+
 ## Story off, Knight Andre at the gate 2026-10-29 (DECISIONS #72)
 
 The baseline to balance against: no quests, no dialogue, Knight Andre (52 HP) always at the gate.

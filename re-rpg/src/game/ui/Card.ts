@@ -28,7 +28,9 @@ export class Card extends Phaser.GameObjects.Container {
     this.bg = scene.add.rectangle(0, 0, CARD_W, CARD_H, c.fill).setStrokeStyle(2, c.edge);
     // Name in the rarity colour, body text under it, the headline number big in the bottom-left corner.
     // A use tag (FLEETING) sits in the top-right corner, where nothing else is drawn; the name centres in what is left.
-    const tag = skill.uses ? scene.add.text(CARD_W / 2 - 5, -CARD_H / 2 + 5, skill.uses === 'fleeting' ? 'FLEETING' : 'ONCE', { fontFamily: FONT, fontSize: '8px', color: '#0b0f1a', fontStyle: 'bold', backgroundColor: skill.uses === 'fleeting' ? '#c084fc' : '#e0c060', padding: { x: 4, y: 2 } }).setOrigin(1, 0) : null;
+    // A cursed-pool card (DECISIONS #73) wears a red CURSED tag in the same corner.
+    const tagText = skill.pool === 'cursed' ? 'CURSED' : skill.uses === 'fleeting' ? 'FLEETING' : skill.uses ? 'ONCE' : '';
+    const tag = tagText ? scene.add.text(CARD_W / 2 - 5, -CARD_H / 2 + 5, tagText, { fontFamily: FONT, fontSize: '8px', color: skill.pool === 'cursed' ? '#ffffff' : '#0b0f1a', fontStyle: 'bold', backgroundColor: skill.pool === 'cursed' ? '#c1121f' : skill.uses === 'fleeting' ? '#c084fc' : '#e0c060', padding: { x: 4, y: 2 } }).setOrigin(1, 0) : null;
     const tagW = tag ? tag.width + 6 : 0;
     const name = scene.add.text(-tagW / 2, -CARD_H / 2 + 7, skill.name, { fontFamily: FONT, fontSize: '14px', color: rarityText(skill), fontStyle: 'bold', wordWrap: { width: CARD_W - 16 - tagW }, align: 'center' }).setOrigin(0.5, 0);
     const body = scene.add.text(0, -CARD_H / 2 + 7 + name.height + 3, text, { fontFamily: FONT, fontSize: '10px', color: '#d7dbe6', wordWrap: { width: CARD_W - 14 }, align: 'center' }).setOrigin(0.5, 0);

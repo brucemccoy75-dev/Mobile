@@ -19,6 +19,8 @@ export function baseHit(stats: Stats, e: Extract<Effect, { type: 'damage' }>): n
  */
 export function describeSkill(skill: Skill, stats: Stats): string {
   const parts = describeEffects(skill.effects, stats);
+  if (skill.grow) parts.push(`+${skill.grow} damage every time it lands, for the run.`);
+  if (skill.locksCards) parts.push('While you hold it, you can take no other card.');
   if (skill.uses === 'once_per_fight') parts.push('Once per fight.');
   if (skill.uses === 'fleeting') parts.push('Fleeting: spent when played.');
   return parts.join(' ');

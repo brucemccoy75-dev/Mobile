@@ -941,3 +941,52 @@ describe('synergy card mechanics (DECISIONS #69)', () => {
     expect(enemyActed(lose.ev)).toBe(true);
   });
 });
+
+describe('cursed enemies and growing cards (DECISIONS #73)', () => {
+  const cursed = (traits: Enemy['cursed']): Enemy => ({ ...DUMMY, id: 'cursed_dummy', name: 'Cursed Dummy', cursed: traits });
+  const quietCursed = (traits: Enemy['cursed']): Enemy => ({ ...PASSIVE, id: 'cursed_passive', name: 'Cursed Passive', cursed: traits });
+
+  it('a cursed shield halves every hit, for good', () => {
+    const s = fight(Array<string>(6).fill('attack'), quietCursed(['shield']));
+    play(s, 'attack');
+    expect(s.enemies[0]!.hp).toBe(28); // 4 halved
+    play(s, 'attack');
+    expect(s.enemies[0]!.hp).toBe(26);
+  });
+
+  it('thorns hurt you 2 for every attack on it, through any block; a card with no damage is safe', () => {
+    const s = fight([], quietCursed(['thorns']));
+    s.player.statuses.push({ id: 'guard', turns: 99, magnitude: 3 });
+    const ev = play(s, 'attack');
+    expect(ev.find((e) => e.t === 'thorns')).toMatchObject({ amount: 2 });
+    expect(s.player.hp).toBe(23);
+    play(s, 'defend');
+    expect(s.player.hp).toBe(23);
+  });
+
+  it('a follow-up hits for 25% of its attack right after its attack, and Guard does not stop it', () => {
+    const s = fight([], cursed(['followUp']));
+    s.player.statuses.push({ id: 'guard', turns: 99, magnitude: 1 });
+    const ev = play(s, 'defend'); // a second Guard stack would also be spent by the first hit, not the follow-up
+    const hits = ev.filter((e) => e.t === 'damage' && e.target === 'player');
+    expect(hits[0]).toMatchObject({ blocked: true });
+    expect(hits.at(-1)).toMatchObject({ followUp: true, blocked: false, amount: 1 }); // 25% of 3, at least 1
+    expect(s.player.hp).toBe(24);
+  });
+
+  it('a growing card adds its growth every time it lands, and the growth carries in from the run', () => {
+    registerSkill({ id: 't_counter', name: 'Counter', text: '', classId: 'warrior', rarity: 'rare', effects: [{ type: 'damage', mult: 1 }], grow: 1 });
+    const s = fight([], PASSIVE);
+    play(s, 't_counter');
+    expect(s.enemies[0]!.hp).toBe(26); // 4
+    expect(s.growth.t_counter).toBe(1);
+    play(s, 't_counter');
+    expect(s.enemies[0]!.hp).toBe(21); // 5
+    s.enemies[0]!.statuses.push({ id: 'guard', turns: 99, magnitude: 1 });
+    play(s, 't_counter');
+    expect(s.growth.t_counter).toBe(2); // a blocked hit does not grow it
+    const next = createCombat({ player: { ...WARRIOR, deck: [], basics: [] }, enemy: PASSIVE, rng: new Rng(1), growth: { t_counter: 5 } });
+    play(next, 't_counter');
+    expect(next.enemies[0]!.hp).toBe(21); // 4 + 5
+  });
+});

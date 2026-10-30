@@ -15,6 +15,8 @@ export interface FightRecord {
   enemyId: string;
   /** Every enemy in the fight, front first (duos). */
   enemies?: string[];
+  /** A cursed enemy's traits (DECISIONS #73). */
+  cursed?: string[];
   kind: 'random' | 'guard' | 'boss' | 'node';
   tile?: string;
   rounds: number;
@@ -136,6 +138,9 @@ export interface RunSummary {
   medianRegen: number;
   /** Deaths by the fight's enemies joined with "+". */
   deaths: Record<string, number>;
+  /** Cursed fights met and won (DECISIONS #73). */
+  cursedFights: number;
+  cursedWins: number;
 }
 
 const median = (xs: number[]) => { if (!xs.length) return 0; const s = [...xs].sort((a, b) => a - b), m = s.length >> 1; return s.length % 2 ? s[m]! : (s[m - 1]! + s[m]!) / 2; };
@@ -168,6 +173,8 @@ export function summarizeRuns(log: TelemetryLog, name: (familyId: string) => str
       duoDeathPct: lost.length ? (100 * lost.filter((f) => enemies(f).length > 1).length) / lost.length : 0,
       medianRegen: median(regen),
       deaths,
+      cursedFights: fights.filter((f) => f.cursed?.length).length,
+      cursedWins: fights.filter((f) => f.cursed?.length && f.outcome === 'won').length,
     };
   }).sort((a, b) => a.families.length - b.families.length || a.label.localeCompare(b.label));
 }

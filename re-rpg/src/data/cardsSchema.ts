@@ -51,6 +51,12 @@ export interface CardDef {
   /** A branching card (DECISIONS #69): damage/heal/modifiers run when this holds, `else` otherwise. */
   condition?: CardCondition;
   else?: CardBranch;
+  /** `cursed`: outside every family, won only from a cursed enemy (DECISIONS #73). */
+  pool?: 'cursed';
+  /** Flat damage gained every time it lands a hit, kept for the rest of the run (#73). */
+  grow?: number;
+  /** Holding it, the player can take no other card (#73). */
+  locksCards?: boolean;
   note?: string;
 }
 /** A status to give, or one of the two removals (DECISIONS #48). */
@@ -164,6 +170,8 @@ export function cardText(c: CardDef, mods: Map<string, ModifierDef>): string {
     parts.push(`${yes} ${branchText(c, mods)}`);
     if (c.else) parts.push(`${no} ${branchText(c.else, mods)}`);
   } else parts.push(branchText(c, mods));
+  if (c.grow) parts.push(`+${c.grow} damage every time it lands, for the rest of the run.`);
+  if (c.locksCards) parts.push('While you hold it, you can take no other card.');
   if (c.uses === 'once_per_fight') parts.push('Once per fight.');
   if (c.uses === 'fleeting') parts.push('Fleeting: spent when played.');
   return parts.filter(Boolean).join(' ');
@@ -215,6 +223,9 @@ export function compileCards(data: CardsData): Compiled {
     if (fam) sk.setId = fam;
     if (c.uses) sk.uses = c.uses;
     if (c.vfx) sk.vfx = c.vfx;
+    if (c.pool) sk.pool = c.pool;
+    if (c.grow) sk.grow = c.grow;
+    if (c.locksCards) sk.locksCards = true;
     return sk;
   });
   const sets: SkillSet[] = data.families.map((f) => ({ id: f.id, classId: f.classId, name: f.name, skills: [...f.cards] }));
@@ -292,6 +303,10 @@ export function validateCards(data: CardsData, shipped?: CardsData): string[] {
     if (c.uses !== null && c.uses !== undefined && !USES.includes(c.uses)) bad(`${w}: uses must be empty, fleeting or once_per_fight`);
     if (!c.damage && !c.heal && !(c.modifiers?.length)) bad(`${w}: needs damage, heal or a modifier`);
     if (c.vfx !== undefined && !VFX_KINDS.includes(c.vfx)) bad(`${w}: unknown effect ${c.vfx}`);
+    if (c.pool !== undefined && c.pool !== 'cursed') bad(`${w}: pool must be empty or cursed`);
+    if (c.grow !== undefined && !isInt(c.grow, 1, 9)) bad(`${w}: grow must be 1-9`);
+    if (c.grow && !c.damage && !c.else?.damage) bad(`${w}: grow needs damage`);
+    if (c.locksCards !== undefined && typeof c.locksCards !== 'boolean') bad(`${w}: locksCards must be true or false`);
     checkBranch(c, w, '', mods, bad);
     if (c.condition !== undefined) {
       if (!CONDITION_KINDS.includes(c.condition.kind)) bad(`${w}: unknown condition ${(c.condition as { kind: string }).kind}`);
@@ -314,6 +329,7 @@ export function validateCards(data: CardsData, shipped?: CardsData): string[] {
       const c = cardById.get(id);
       if (!c) { bad(`${w}: unknown card ${id}`); continue; }
       if (c.rarity === 'basic') bad(`${w}: basics are in every fight and do not belong to a family (${id})`);
+      if (c.pool === 'cursed') bad(`${w}: ${id} is a cursed card; cursed cards come only from cursed enemies`);
       if (c.classId !== 'any' && c.classId !== f.classId) bad(`${w}: ${id} belongs to the ${c.classId}`);
     }
   }

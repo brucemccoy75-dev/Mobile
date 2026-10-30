@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { describeSkill, familyOf } from '@data/index';
 import type { SkillId } from '@data/types';
-import { rollOffer, sellValue, type Offer, type RewardChoice } from '@core/loot';
+import { cursedOffer, goldFor, rollOffer, sellValue, type Offer, type RewardChoice } from '@core/loot';
+import type { PendingOffer } from '@game/session';
 import { DECK_CAP } from '@core/combat';
 import { getMeta, getSession, persistMeta, persistRun, takeChoice, type RunSession } from '@game/session';
 import { recordReward } from '@game/telemetry';
@@ -11,7 +12,7 @@ import { openComparePanel, openSwapPanel } from '@game/ui/panels';
 import { COLORS, FONT, RARITY_COLORS, text } from '@game/ui/theme';
 import { tween, wait } from '@game/ui/tween';
 
-const TITLES = { kill: 'Spoils', guard: 'Spoils', chest: 'Chest', boss: 'Boss hoard' } as const;
+const TITLES = { kill: 'Spoils', guard: 'Spoils', chest: 'Chest', boss: 'Boss hoard', cursed: 'Cursed spoils' } as const;
 
 /**
  * Pick 1 of N (DECISIONS #4). Items with an occupied slot open a compare panel;
@@ -23,6 +24,8 @@ export class RewardScene extends Phaser.Scene {
   private session!: RunSession;
   private offer!: Offer;
   private done = false;
+  /** What follows this offer: the cursed pool after a cursed win's spoils (DECISIONS #73). */
+  private next: PendingOffer | null = null;
 
   constructor() { super('Reward'); }
 
@@ -32,10 +35,19 @@ export class RewardScene extends Phaser.Scene {
     const pending = this.session.pendingOffer;
     if (!pending) { this.scene.start('Overworld'); return; }
     this.session.pendingOffer = null;
+    this.next = pending.then ?? null;
     const meta = getMeta(this);
-    this.offer = rollOffer(pending.source, this.session.screenIndex, {
-      classId: this.session.classId, families: this.session.families, meta, deck: this.session.deck, equipment: this.session.equipment,
-    }, this.session.rng.stream('loot'), pending.gold);
+    const ctx = { classId: this.session.classId, families: this.session.families, meta, deck: this.session.deck, equipment: this.session.equipment };
+    const rng = this.session.rng.stream('loot');
+    if (pending.source === 'cursed') {
+      this.offer = cursedOffer(ctx);
+      // Nothing to offer (the pool is empty, or a card you hold locks the rest): straight on.
+      if (!this.offer.choices.length) { this.finish(); return; }
+    } else {
+      // A cursed win pays its gold three times over (DECISIONS #73).
+      const gold = pending.gold ?? (pending.goldMult ? goldFor(pending.source, this.session.screenIndex, rng) * pending.goldMult : undefined);
+      this.offer = rollOffer(pending.source, this.session.screenIndex, ctx, rng, gold);
+    }
     this.session.gold += this.offer.gold;
 
     const { width: W, height: H } = this.scale.gameSize;
@@ -61,7 +73,7 @@ export class RewardScene extends Phaser.Scene {
   private drawChoice(c: RewardChoice, x: number, y: number, w: number, h: number) {
     const rarity = c.kind === 'tome' ? c.skill.rarity : c.item.rarity;
     const bg = this.add.rectangle(x, y, w, h, COLORS.panel).setStrokeStyle(3, RARITY_COLORS[rarity]);
-    const tag = c.kind === 'tome' ? `TOME · ${familyOf(this.session.classId, c.skill.id)?.name ?? 'skill'}` : `${c.item.slot.toUpperCase()} · ${rarity}`;
+    const tag = c.kind === 'tome' ? (c.skill.pool === 'cursed' ? 'CURSED TOME' : `TOME · ${familyOf(this.session.classId, c.skill.id)?.name ?? 'skill'}`) : `${c.item.slot.toUpperCase()} · ${rarity}`;
     this.add.text(x, y - h / 2 + 16, tag, { fontFamily: FONT, fontSize: '12px', color: '#9aa3b8', fontStyle: 'bold' }).setOrigin(0.5);
     const name = c.kind === 'tome' ? c.skill.name : c.item.name;
     this.add.text(x, y - h / 2 + 46, name, { ...text.h2, fontSize: '21px', wordWrap: { width: w - 20 }, align: 'center' }).setOrigin(0.5);
@@ -122,6 +134,8 @@ export class RewardScene extends Phaser.Scene {
 
   private finish() {
     this.done = true;
+    // A chained offer (the cursed pool after a cursed win's spoils) comes next, on its own screen.
+    if (this.next) { this.session.pendingOffer = this.next; this.next = null; void persistRun(this).then(() => this.scene.restart()); return; }
     void persistRun(this).then(() => this.scene.start('Overworld'));
   }
 }

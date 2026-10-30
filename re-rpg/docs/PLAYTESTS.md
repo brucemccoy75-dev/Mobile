@@ -16,8 +16,8 @@ how often did the designer?" (DECISIONS #67).
    - fights won;
    - the share of deaths that came in duos.
 
-   It also prints the top deaths, HP regained between fights, rounds per fight and the duo share
-   of fights.
+   It also prints the top deaths, HP regained between fights, rounds per fight, the duo share of
+   fights, and cursed fights met and won (DECISIONS #73).
 3. **Run both sim tables:**
    - `npm run sim -- --screen --class warrior` (the mirror for every loadout);
    - `npm run sim -- --class warrior` (the four-fight gauntlet, the historic floor every BALANCE.md

@@ -1,4 +1,4 @@
-import { ITEMS, SKILLS, getSet } from '@data/index';
+import { ITEMS, SKILLS, getSet, getSkill } from '@data/index';
 import { TOME_COPY_CAP } from '@data/skills';
 import type { ClassId, Item, Rarity, SetId, Skill, SkillId } from '@data/types';
 import type { Rng } from '@core/rng';
@@ -10,7 +10,8 @@ export type RewardSource = 'kill' | 'guard' | 'chest' | 'boss';
 export type RewardChoice = { kind: 'tome'; skill: Skill } | { kind: 'item'; item: Item };
 
 export interface Offer {
-  source: RewardSource;
+  /** `cursed`: the offer after a cursed win, from the cursed pool (DECISIONS #73). */
+  source: RewardSource | 'cursed';
   choices: RewardChoice[];
   gold: number;
 }
@@ -37,11 +38,26 @@ export function buildPool(ctx: PoolContext): { tomes: Skill[]; items: Item[] } {
   // Families decide the tomes, general tomes included (DECISIONS #42: nothing drops without a node); equipment is still gated by discovery and class.
   const tomeIds = new Set<string>(ctx.families.flatMap((id) => getSet(id).skills));
   const copies = (id: string) => ctx.deck.filter((d) => d === id).length;
-  const tomes = SKILLS.filter((s) => tomeIds.has(s.id) && s.rarity !== 'basic' && (s.classId === ctx.classId || s.classId === 'any') && copies(s.id) < TOME_COPY_CAP);
+  // A card that locks (Cursed Counter, DECISIONS #73) takes every other card off the table while it is held.
+  const tomes = locked(ctx) ? [] : SKILLS.filter((s) => tomeIds.has(s.id) && s.rarity !== 'basic' && s.pool !== 'cursed' && (s.classId === ctx.classId || s.classId === 'any') && copies(s.id) < TOME_COPY_CAP);
   // Rarity gating lives in the source weights (a kill almost never rolls rare), so the
   // item pool is simply everything this class can use and does not already hold.
   const items = ITEMS.filter((i) => (!i.classes || i.classes.includes(ctx.classId)) && !held.has(i.id));
   return { tomes, items };
+}
+
+/** True while the deck holds a card that locks out every other card (DECISIONS #73). */
+export const locked = (ctx: Pick<PoolContext, 'deck'>): boolean => ctx.deck.some((id) => getSkill(id).locksCards);
+
+/** The cursed pool (DECISIONS #73): cards outside every family, won only from a cursed enemy; nothing while a lock is held. */
+export function cursedPool(ctx: PoolContext): Skill[] {
+  if (locked(ctx)) return [];
+  return SKILLS.filter((s) => s.pool === 'cursed' && (s.classId === ctx.classId || s.classId === 'any') && ctx.deck.filter((d) => d === s.id).length < TOME_COPY_CAP);
+}
+
+/** The offer after a cursed win (DECISIONS #73): the cursed pool, up to three, no gold of its own. */
+export function cursedOffer(ctx: PoolContext): Offer {
+  return { source: 'cursed', choices: cursedPool(ctx).slice(0, 3).map((skill) => ({ kind: 'tome', skill })), gold: 0 };
 }
 
 /** Rarity weights by source, shifted toward rarer on screen 2 (GAME_DESIGN §5 rule 4). */

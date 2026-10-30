@@ -194,3 +194,20 @@ describe('the five synergy cards (DECISIONS #69)', () => {
       else: [{ type: 'status', target: 'self', status: 'weak', turns: 2 }, { type: 'status', target: 'self', status: 'exposed', turns: 2 }, { type: 'status', target: 'self', status: 'curse', turns: 2, magnitude: 1 }] }] });
   });
 });
+
+describe('the cursed pool (DECISIONS #73)', () => {
+  it('Cursed Counter: outside every family, grows 1 a hit, and locks out other cards', () => {
+    expect(getSkill('cursed_counter')).toMatchObject({ pool: 'cursed', grow: 1, locksCards: true, effects: [{ type: 'damage', mult: 1 }] });
+    expect(getSkill('cursed_counter').setId).toBeUndefined();
+    expect(getSkill('cursed_counter').text).toBe('Deal 100% damage. +1 damage every time it lands, for the rest of the run. While you hold it, you can take no other card.');
+  });
+  it('the validator keeps cursed cards out of families and wants damage for a card that grows', () => {
+    const clone = (): CardsData => JSON.parse(JSON.stringify(CARDS_DATA));
+    const a = clone(); a.families.find((f) => f.id === 'warrior_dps')!.cards.push('cursed_counter');
+    expect(validateCards(a)).toEqual(['family warrior_dps: cursed_counter is a cursed card; cursed cards come only from cursed enemies']);
+    const b = clone(); b.cards.find((c) => c.id === 'broadsword')!.grow = 2; b.cards.find((c) => c.id === 'broadsword')!.damage = null; b.cards.find((c) => c.id === 'broadsword')!.modifiers = ['tiring'];
+    expect(validateCards(b)).toEqual(['card broadsword: grow needs damage']);
+    const c = clone(); (c.cards.find((x) => x.id === 'cursed_counter') as { pool: string }).pool = 'weird';
+    expect(validateCards(c)).toEqual(['card cursed_counter: pool must be empty or cursed']);
+  });
+});

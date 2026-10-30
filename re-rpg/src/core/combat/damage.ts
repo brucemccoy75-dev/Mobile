@@ -7,6 +7,8 @@ export const EXPOSED_MULT = 2;
 export const WEAK_MULT = 0.5;
 
 export const DEF_FLOOR = 0.5;
+/** What a cursed enemy's shield lets through (DECISIONS #73). */
+export const CURSED_SHIELD = 0.5;
 
 /**
  * One hit, before Guard. Flat and readable on purpose:
@@ -27,6 +29,8 @@ export function computeHit(attacker: Combatant, target: Combatant, mult: number,
   let dmg = Math.max(1, Math.ceil(base * DEF_FLOOR), base - def);
   // Hardened (armoured enemies' shell): half damage while it lasts, instead of a full block.
   if (hasStatus(target, 'harden')) dmg = Math.max(1, Math.ceil(dmg * 0.5));
+  // A cursed shield (DECISIONS #73): every hit halved, for good.
+  if (target.cursed?.includes('shield')) dmg = Math.max(1, Math.ceil(dmg * CURSED_SHIELD));
   if (hasStatus(target, 'exposed')) dmg *= EXPOSED_MULT;
   // Blackjack (DECISIONS #69): every hit lands this many times over.
   const bj = getStatus(attacker, 'blackjack');

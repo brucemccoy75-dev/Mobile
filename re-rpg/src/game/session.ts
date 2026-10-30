@@ -1,7 +1,8 @@
 // The live run object the scenes share, plus (de)serialisation to the
 // RunState that SaveStore persists. Pure rules live in core/run, core/loot, core/meta.
 import type Phaser from 'phaser';
-import { familyOf, getClass, getSet, getSkill } from '@data/index';
+import { familyOf, getClass, getEnemy, getSet, getSkill } from '@data/index';
+import { CURSED_CHANCE, CURSED_MIN_LEVEL, cursedEnemy, rollCursedTraits } from '@core/variants';
 import type { ClassId, Enemy, EnemyId, Item, SetId, Skill, SkillId, Stats } from '@data/types';
 import { RunRng, newSeed } from '@core/rng';
 import { key, parseScreen, type MapNode, type ScreenMap, type Tile, type TileType } from '@core/map';
@@ -24,9 +25,10 @@ export const SCREEN_COUNT = 2;
 
 export type EncounterKind = 'random' | 'guard' | 'boss' | 'node';
 /** `tile` is where the fight started; the combat backdrop is chosen from it (docs/ART.md). */
-export interface PendingEncounter { kind: EncounterKind; enemyId: EnemyId; guardId?: string; /** Authored map node (kind 'node'). */ nodeId?: string; tile?: TileType; /** Further enemies behind the first (duos, DECISIONS #29). */ extra?: EnemyId[]; /** Full definitions when the fight holds enemies that are not in the roster (a ghost, a boss variant; DECISIONS #36). Front first; overrides enemyId/extra for the engine. */ custom?: Enemy[]; /** Set when your ghost is in this fight. */ ghost?: boolean; }
+export interface PendingEncounter { /** A cursed enemy (DECISIONS #73): 3× gold and EXP and a cursed card offer if won. */ cursed?: boolean; kind: EncounterKind; enemyId: EnemyId; guardId?: string; /** Authored map node (kind 'node'). */ nodeId?: string; tile?: TileType; /** Further enemies behind the first (duos, DECISIONS #29). */ extra?: EnemyId[]; /** Full definitions when the fight holds enemies that are not in the roster (a ghost, a boss variant; DECISIONS #36). Front first; overrides enemyId/extra for the engine. */ custom?: Enemy[]; /** Set when your ghost is in this fight. */ ghost?: boolean; }
 export interface CombatResult { encounter: PendingEncounter; won: boolean; /** What the win already changed (applied in combat, DECISIONS #61); the map only shows it. */ report?: import('@game/story').WinReport; }
-export interface PendingOffer { source: RewardSource; gold?: number; }
+/** A reward to show. `goldMult` scales the rolled gold and `then` is the offer that follows (a cursed win, DECISIONS #73). */
+export interface PendingOffer { source: RewardSource | 'cursed'; gold?: number; goldMult?: number; then?: PendingOffer; }
 
 export interface RunSession {
   seed: string;
@@ -64,6 +66,8 @@ export interface RunSession {
   shop: ShopStock;
   quests: Quest[];
   skillUpgrades: SkillUpgrades;
+  /** What each growing card has gained this run (Cursed Counter, DECISIONS #73). */
+  skillGrowth: Record<SkillId, number>;
   customItems: Item[];
 
   pendingEncounter: PendingEncounter | null;
@@ -150,7 +154,7 @@ export function createSession(classId: ClassId, meta: MetaState, seed = newSeed(
     deck: [], equipment: emptyEquipment(),
     screenIndex: 0, map: undefined as unknown as ScreenMap, playerPos: { x: 0, y: 0 }, threat: 0,
     openedPois: new Set(), usedShrines: new Set(), defeatedGuards: new Set(), clearedNodes: new Set(), lastClearedNode: null, flags: new Set(), special: STORY.enabled && rng.stream('special').chance(WORLD.specialChance ?? 0), bossDefeated: false, encountersWon: 0,
-    newDiscoveries: [], heirloomName: null, shop: { lines: [], healPrice: 0, healPct: 0.5, healUsed: true }, quests: [], skillUpgrades: {}, customItems: [],
+    newDiscoveries: [], heirloomName: null, shop: { lines: [], healPrice: 0, healPct: 0.5, healUsed: true }, quests: [], skillUpgrades: {}, skillGrowth: {}, customItems: [],
     pendingEncounter: null, lastResult: null, pendingOffer: null, heirloomChoices: [],
   };
   s.heirloomChoices = rollHeirloomChoices(meta, classId, rng.stream('meta'));
@@ -250,6 +254,7 @@ export function startScreen(s: RunSession, index: number, meta?: MetaState): voi
   s.lastClearedNode = null;
   s.bossDefeated = false;
   s.shop = rollShopStock(index, poolCtx(s, meta), s.rng.stream('loot'));
+  curseNodes(s, meta ?? createMeta());
   // One quest per screen (DECISIONS #19), chosen from world.json (#57).
   setScreenQuest(s, meta ?? createMeta(), index, quest);
 }
@@ -326,7 +331,25 @@ export const isFightNode = (n: MapNode): boolean => n.kind === 'monster' || n.ki
 /** The fight waiting at a node. */
 export function nodeEncounter(s: RunSession, node: MapNode): PendingEncounter {
   if (node.kind === 'boss') return { kind: 'boss', enemyId: node.enemyId ?? s.map.bossId, nodeId: node.id };
+  // A cursed node is one cursed enemy alone, even on a duo's node (DECISIONS #73).
+  if (node.cursed) return { kind: 'node', enemyId: node.enemyId!, nodeId: node.id, cursed: true, custom: [cursedEnemy(getEnemy(node.enemyId!), node.cursed)] };
   return { kind: 'node', enemyId: node.enemyId!, nodeId: node.id, extra: node.extra ? [...node.extra] : undefined };
+}
+
+/** The player declined a cursed enemy (DECISIONS #73): the node holds its usual encounter from now on. */
+export function liftCurse(_s: RunSession, node: MapNode): void { delete node.cursed; }
+
+/**
+ * Curse a few fight nodes (DECISIONS #73): each one a 5% chance, only for a class at level 3 or
+ * higher. Its own stream, so the rest of the run rolls the same with or without curses.
+ */
+function curseNodes(s: RunSession, meta: MetaState): void {
+  if (classProgress(meta, s.classId).level < CURSED_MIN_LEVEL) return;
+  const rng = s.rng.stream('cursed');
+  for (const n of s.map.nodes ?? []) {
+    if ((n.kind !== 'monster' && n.kind !== 'unknown' && n.kind !== 'elite') || !n.enemyId) continue;
+    if (rng.chance(CURSED_CHANCE)) n.cursed = rollCursedTraits(rng);
+  }
 }
 
 /** A quest sends you back: the last cleared monster node gets a fresh fight, one head bigger than before, with its own words and win flag (#61). */
@@ -412,7 +435,7 @@ export function serialize(s: RunSession): RunState {
     clearedNodes: [...s.clearedNodes], lastClearedNode: s.lastClearedNode, flags: [...s.flags], special: s.special,
     bossDefeated: s.bossDefeated, encountersWon: s.encountersWon, newDiscoveries: [...s.newDiscoveries], heirloomName: s.heirloomName,
     shop: JSON.parse(JSON.stringify(s.shop)) as ShopStock,
-    quests: JSON.parse(JSON.stringify(s.quests)) as Quest[], skillUpgrades: { ...s.skillUpgrades }, customItems: JSON.parse(JSON.stringify(s.customItems)) as Item[],
+    quests: JSON.parse(JSON.stringify(s.quests)) as Quest[], skillUpgrades: { ...s.skillUpgrades }, skillGrowth: { ...s.skillGrowth }, customItems: JSON.parse(JSON.stringify(s.customItems)) as Item[],
   };
 }
 
@@ -428,7 +451,7 @@ export function deserialize(st: RunState, meta: MetaState): RunSession {
     openedPois: new Set(st.openedPois), usedShrines: new Set(st.usedShrines), defeatedGuards: new Set(st.defeatedGuards),
     clearedNodes: new Set(st.clearedNodes ?? []), lastClearedNode: st.lastClearedNode ?? null, flags: new Set(st.flags ?? []), special: st.special ?? false,
     bossDefeated: st.bossDefeated, encountersWon: st.encountersWon, newDiscoveries: [...st.newDiscoveries], heirloomName: st.heirloomName,
-    shop: st.shop, quests: st.quests ?? [], skillUpgrades: st.skillUpgrades ?? {}, customItems: st.customItems ?? [],
+    shop: st.shop, quests: st.quests ?? [], skillUpgrades: st.skillUpgrades ?? {}, skillGrowth: st.skillGrowth ?? {}, customItems: st.customItems ?? [],
     pendingEncounter: null, lastResult: null, pendingOffer: null, heirloomChoices: [],
   };
 }

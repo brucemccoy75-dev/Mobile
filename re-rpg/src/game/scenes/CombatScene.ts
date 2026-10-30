@@ -3,11 +3,11 @@ import { BACKDROP_GROUND, BACKDROP_HORIZON, artKey, backdropKey, reloadArt } fro
 import { describeSkill, getEnemy, getSkill } from '@data/index';
 import type { CardPreview } from '@data/describe';
 import { basicsFor } from '@data/skills';
-import type { Enemy, Intent, Posture } from '@data/types';
+import type { CursedTrait, Enemy, Intent, Posture } from '@data/types';
 import { createCombat, currentIntent, effectsNow, isLocked, isPlayerStunned, playableIndices, previewDamage, resolveTarget, skillInCombat, step, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
 import { getMeta, getSession, getStore, persistMeta, persistRun, setName, setSession, spendConsumedTomes, type PendingEncounter, type RunSession } from '@game/session';
 import { gainExp, ghostOn, layGhost, leaveGhost, nudgeRelation, recordDeath } from '@core/meta';
-import { ghostSpoils } from '@core/variants';
+import { CURSED_REWARD_MULT, ghostSpoils } from '@core/variants';
 import { equipmentToIds } from '@core/run';
 import { applyLevelUp, applyTome } from '@game/session';
 import { expForEnemy } from '@data/progression';
@@ -24,6 +24,10 @@ import { blockSide } from '@game/fx/shapes';
 import { beats } from '@game/playback';
 import { applyWin } from '@game/story';
 import { SELF_VFX, SHIELD_COLOR, blockColor, type VfxKind } from '@core/vfx';
+
+/** A cursed enemy is drawn this much larger, and its traits read like this under its name (DECISIONS #73). */
+const CURSED_SCALE = 1.3;
+const CURSED_LABELS: Record<CursedTrait, string> = { hp: '2× HP', damage: '2× damage', shield: 'shield: half damage', thorns: 'thorns 2', followUp: 'follow-up' };
 
 /**
  * Side-view turn-based combat. Phaser only renders: the engine in core/combat
@@ -105,6 +109,7 @@ export class CombatScene extends Phaser.Scene {
       enemies: this.encounter.custom ?? [this.encounter.enemyId, ...(this.encounter.extra ?? [])],
       rng: this.session.rng.stream('combat'),
       skillUpgrades: this.session.skillUpgrades,
+      growth: this.session.skillGrowth,
     });
 
     this.buildLayout();
@@ -161,7 +166,7 @@ export class CombatScene extends Phaser.Scene {
       let ey = H * 0.54;
       const enemyKey = artKey(this, def.art ?? `enemy_${def.id}`);
       if (enemyKey) {
-        sprite = this.add.image(ex, groundY, enemyKey).setOrigin(0.5, 1).setScale(scale);
+        sprite = this.add.image(ex, groundY, enemyKey).setOrigin(0.5, 1).setScale(def.cursed ? scale * CURSED_SCALE : scale);
         if (def.art?.startsWith('hero_')) (sprite as Phaser.GameObjects.Image).setFlipX(true); // a borrowed hero faces the player
         if (def.tint !== undefined) (sprite as Phaser.GameObjects.Image).setTint(def.tint).setAlpha(0.8);
         ey = groundY - sprite.displayHeight / 2;
@@ -172,6 +177,7 @@ export class CombatScene extends Phaser.Scene {
       }
       sprite.setDepth(n - slot); // front enemy over the rear one
       const nameText = this.add.text(ex, groundY + 12, def.name, text.small).setOrigin(0.5, 0);
+      if (def.cursed) this.add.text(ex, groundY + 30, def.cursed.map((t) => CURSED_LABELS[t]).join(' · '), { ...text.small, color: '#ff6b6b', fontStyle: 'bold' }).setOrigin(0.5, 0);
       // Tap an enemy to make it the target.
       sprite.setInteractive({ useHandCursor: true });
       sprite.on('pointerup', () => this.setTarget(slot));
@@ -182,7 +188,7 @@ export class CombatScene extends Phaser.Scene {
     for (const [s, dir] of [[this.playerSprite, -1] as const, ...this.views.map((v) => [v.sprite, 1] as const)]) {
       const x = s.x;
       s.setAlpha(0).setX(x + 24 * dir);
-      this.tweens.add({ targets: s, alpha: 1, x, duration: 420, ease: 'Quad.Out', onComplete: () => this.breathe(s) });
+      this.tweens.add({ targets: s, alpha: 1, x, duration: 420, ease: 'Quad.Out', onComplete: () => { this.breathe(s); this.curseLook(s); } });
     }
     const eq = Object.values(this.session.equipment).filter(Boolean).map((i) => i!.name).join(' · ');
     this.add.text(this.px, this.py + 58, `${this.session.classId} · ${setName(this.session)}${eq ? `\n${eq}` : ''}`, { ...text.small, align: 'center' }).setOrigin(0.5, 0);
@@ -387,6 +393,20 @@ export class CombatScene extends Phaser.Scene {
     if (this.state.enemies[slot]?.dead) { img.setAlpha(0.15); img.disableInteractive(); return; }
     this.breathe(img);
     if (!this.busy) this.setTarget(this.target, true);
+  }
+
+  /**
+   * A cursed enemy (DECISIONS #73): larger (set at creation), tinted red, fading out toward its
+   * feet, and floating a little off the ground. The fade is per-corner alpha, put on after the
+   * fade-in, which tweens a single alpha.
+   */
+  private curseLook(s: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite) {
+    const v = this.views.find((x) => x.sprite === s);
+    if (!v?.def.cursed || !(s instanceof Phaser.GameObjects.Image) || !s.active) return;
+    s.setTint(0xff5a5a);
+    s.setAlpha(1, 1, 0.08, 0.08);
+    s.y -= 14;
+    this.tweens.add({ targets: s, y: s.y - 9, duration: 1700, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
   }
 
   private breathe(s: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite) {
@@ -750,6 +770,13 @@ export class CombatScene extends Phaser.Scene {
         await floatText(this, this.px, this.py - 60, `${e.result.toUpperCase()}! ${e.won ? 'you called it' : 'wrong call'}`, e.won ? '#ffd166' : '#ff6b6b', 26, 1000);
         return;
       }
+      case 'thorns': {
+        // A cursed enemy's thorns (#73): it hurts to hit.
+        this.showHp('player', -e.amount);
+        this.cameras.main.shake(70, 0.004);
+        await floatText(this, this.px, this.py - 40, `thorns -${e.amount}`, '#ff6b6b', 26, 800);
+        return;
+      }
       case 'blackjack':
         void floatText(this, this.px, this.py - 120, `${e.total} / 21`, e.total >= 17 ? '#ff6b6b' : '#ffd700', 30, 1300);
         return;
@@ -849,6 +876,8 @@ export class CombatScene extends Phaser.Scene {
     const title = won ? (isBoss ? `${names} fall${this.state.enemyDefs.length === 1 ? 's' : ''}!` : 'Victory') : 'You died';
     this.add.text(W / 2, H * 0.34, title, { ...text.title, color: won ? COLORS.gold : '#ff6b6b' }).setOrigin(0.5).setDepth(71);
     recordFight(this, this.session, this.encounter, this.hpBefore, this.state.player.hp, this.state.log, won ? 'won' : 'lost');
+    // What a growing card gained this fight stays with the run (Cursed Counter, DECISIONS #73).
+    if (!this.session.testMode) this.session.skillGrowth = { ...this.state.growth };
 
     if (this.session.testMode) {
       // Sandbox: no spoils, no death, nothing saved. Straight back into the same fight or the setup.
@@ -862,7 +891,9 @@ export class CombatScene extends Phaser.Scene {
     if (spent.length) void persistRun(this);
     if (won) {
       // EXP for the kill(s) goes to this class's progression (DECISIONS #32) and survives the run.
-      const exp = this.state.enemyDefs.reduce((a, d) => a + expForEnemy(d, this.encounter.kind, this.state.enemyDefs.length), 0);
+      // A cursed win pays three times the EXP and gold, and offers the cursed pool after the spoils (DECISIONS #73).
+      const mult = this.encounter.cursed ? CURSED_REWARD_MULT : 1;
+      const exp = mult * this.state.enemyDefs.reduce((a, d) => a + expForEnemy(d, this.encounter.kind, this.state.enemyDefs.length), 0);
       const gained = gainExp(getMeta(this), this.session.classId, exp);
       void persistMeta(this);
       this.add.text(W / 2, H * 0.34 + 74, `+${exp} EXP`, { ...text.body, fontSize: '15px', color: COLORS.gold, fontStyle: 'bold' }).setOrigin(0.5).setDepth(71);
@@ -894,12 +925,13 @@ export class CombatScene extends Phaser.Scene {
         }
       }
       if (this.enemyDef.id === 'wren') { nudgeRelation(getMeta(this), 'wren', 9); this.session.flags.add('wren_beaten'); extra += '  Wren sits down by the giant. "Fine," she says. "Fine."'; void persistMeta(this); }
+      if (this.encounter.cursed) extra += `  The curse lifts: ${CURSED_REWARD_MULT}× gold and EXP.`;
       const sub = (isBoss
         ? 'The way forward opens. You are fully healed.'
         : `${this.session.hp}/${this.session.stats.maxHp} HP. No healing between fights.`) + extra;
       this.add.text(W / 2, H * 0.34 + 46, sub, text.body).setOrigin(0.5).setDepth(71);
       const source = this.encounter.kind === 'random' || this.encounter.kind === 'node' ? (this.encounter.extra?.length ? 'guard' : 'kill') : this.encounter.kind; // a duo (or elite) pays like a guard
-      this.session.pendingOffer = { source };
+      this.session.pendingOffer = this.encounter.cursed ? { source, goldMult: CURSED_REWARD_MULT, then: { source: 'cursed' } } : { source };
       new Button(this, W / 2, H * 0.62, 'Take spoils', () => this.scene.start('Reward'), { width: 220, fill: 0x1f2a44, edge: COLORS.goldHex }).setDepth(72);
     } else {
       this.session.lastResult = { encounter: this.encounter, won: false };

@@ -1,6 +1,6 @@
 import { MOVES } from '@data/enemies';
 import { getSkill } from '@data/index';
-import type { ClassId, Enemy, EnemyMove, SkillId, Slot, Stats } from '@data/types';
+import { CURSED_TRAITS, type ClassId, type CursedTrait, type Enemy, type EnemyMove, type SkillId, type Slot, type Stats } from '@data/types';
 import type { Tile } from '@core/map';
 import { Rng, hashString } from '@core/rng';
 
@@ -89,4 +89,25 @@ export function ghostDef(g: GhostRecord): Enemy {
 export function ghostSpoils(g: GhostRecord): { gold: number; tome: SkillId | null } {
   const tomes = g.deck.filter((id) => getSkill(id).rarity !== 'basic');
   return { gold: Math.min(60, g.gold), tome: tomes.length ? tomes[Math.floor(tomes.length / 2)]! : null };
+}
+
+/**
+ * Cursed enemies (DECISIONS #73): now and then a fight node holds a cursed version of its enemy,
+ * larger, red and drifting, with two of five traits. Only for a class at level 3 or higher.
+ */
+export const CURSED_CHANCE = 0.05;
+export const CURSED_MIN_LEVEL = 3;
+/** A cursed win pays this many times the gold and EXP. */
+export const CURSED_REWARD_MULT = 3;
+
+/** Two different traits. */
+export function rollCursedTraits(rng: Rng): CursedTrait[] {
+  const first = rng.pick(CURSED_TRAITS);
+  return [first, rng.pick(CURSED_TRAITS.filter((t) => t !== first))];
+}
+
+/** The cursed version of an enemy: 2× HP and 2× attack are its stats; shield, thorns and follow-up the engine reads from `cursed`. */
+export function cursedEnemy(def: Enemy, traits: CursedTrait[]): Enemy {
+  const stats = { ...def.stats, maxHp: def.stats.maxHp * (traits.includes('hp') ? 2 : 1), atk: def.stats.atk * (traits.includes('damage') ? 2 : 1) };
+  return { ...def, name: `Cursed ${def.name}`, stats, cursed: [...traits], art: def.art ?? `enemy_${def.id}` };
 }

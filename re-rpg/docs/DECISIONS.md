@@ -794,3 +794,57 @@ quest that was not there and a new run crashed on "Begin". Now no quest means no
 The sim and `npm run playtest` now default the gate to Knight Andre (`--boss wren` for older
 logs). Reaching the gate is unchanged, and beating Andre is 0% in the mirror, as it was for Wren
 (BALANCE.md). Screenshot in `docs/audit/story-off-2026-10-29/`.
+
+## 73. Cursed enemies and the cursed pool
+
+Designer's request: rare cursed versions of the enemies, for a class at level 3 or higher, worth
+fighting for a card you cannot get any other way.
+
+**Where they appear**:
+- Each fight node (monster, unknown, elite) has a 5% chance to hold a cursed enemy. It is rolled
+  with the map, on its own stream, and only when the class is at level 3 or higher.
+- A cursed duo node is one cursed enemy alone, its front species (designer's choice).
+- The node looks ordinary. Entering it asks "Something is off about this one… Are you sure you
+  wish to fight?":
+  - **Yes** is the cursed fight.
+  - **No** lifts the curse, and the node holds its usual encounter, duo and all (designer's
+    choice). Tap it again to fight that, or walk on. The lifted curse is saved with the map.
+
+**What a cursed enemy is**: larger (×1.3), tinted red, fading from the top toward its feet
+(per-corner alpha), and floating a little off the ground with a slow bob. Its name reads "Cursed
+…", with its traits in red underneath. It has two different traits of five:
+- **2× HP** and **2× damage**: its stats.
+- **Shield**: every hit on it is halved, for the whole fight.
+- **Thorns**: every attack on it costs the attacker 2 HP, through any block.
+- **Follow-up**: after each of its attacks, a hit for 25% of its attack (at least 1) that no block
+  stops. A Guard can take the first hit; the follow-up lands anyway.
+
+**Rewards**: 3× EXP and 3× gold. The usual spoils pick comes first; then a second screen,
+"Cursed spoils", offers the cursed pool (designer's choice: on top of the usual pick).
+
+**The cursed pool**: cards with `pool: cursed` in cards.json. They are in no family (the
+validator forbids it) and come only from a cursed win; once taken they are deck cards like any
+other. The first is **Cursed Counter** (100% damage):
+- `grow: 1`: every hit that lands adds +1 damage, kept for the whole run (designer's choice)
+  through saves.
+- `locksCards`: while it is held, no card can be gained by any route. Rewards and the shop offer
+  only gear, and a level-up pays gold instead of a rare card.
+
+The card format gains `pool`, `grow` and `locksCards`, with controls in the card editor and a
+"Cursed pool" group on the Cards tab. Cards from the pool wear a red CURSED tag. Test Mode can
+curse any enemy with any two traits. The run log records each cursed fight's traits, and `npm run
+playtest` counts cursed fights and wins.
+
+Found on the way: a Button container pinned to the screen keeps its child's tap area in map
+space, so on the scrolled overworld the prompt's buttons would not have answered. Pinned children
+and all.
+
+Pinned by:
+- the "cursed enemies and growing cards" tests in `engine.test.ts`;
+- `src/game/cursed.test.ts` (the roll by level and chance, the traits, a duo becoming one, the
+  lift, the pool and the lock);
+- the cursed-pool tests in `data.test.ts`;
+- the cursed count in `telemetry.test.ts`.
+
+The screen mirror plays level 1, where nothing is cursed. Screenshots in
+`docs/audit/cursed-2026-10-30/`.

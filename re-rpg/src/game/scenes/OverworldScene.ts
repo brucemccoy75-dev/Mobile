@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { getEnemy, getSkill } from '@data/index';
 import { SHRINE_HEAL, key, roadBetween, type MapNode, type Tile } from '@core/map';
-import { SCREEN_COUNT, currentNode, currentQuest, questGiverNode, getMeta, getSession, getStore, isCleared, isEscorting, nodeById, nodeEncounter, persistMeta, persistRun, reachableNodes, routeTo, setSession, startScreen, treasureGold, type PendingEncounter, type RunSession } from '@game/session';
+import { SCREEN_COUNT, currentNode, currentQuest, liftCurse, questGiverNode, getMeta, getSession, getStore, isCleared, isEscorting, nodeById, nodeEncounter, persistMeta, persistRun, reachableNodes, routeTo, setSession, startScreen, treasureGold, type PendingEncounter, type RunSession } from '@game/session';
 import { questProgress, questReady } from '@core/quest';
 import { gainExp, ghostOn, recordWin } from '@core/meta';
 import { WREN_GRUDGE, ghostAppears, ghostDef, wrenBoss } from '@core/variants';
@@ -407,6 +407,15 @@ export class OverworldScene extends Phaser.Scene {
       default: {
         if (isCleared(s, n)) { this.locked = false; this.syncRings(); return; }
         if (n.kind === 'unknown' && !n.seen) { n.seen = true; this.drawNode(n); await wait(this, 350); }
+        // A cursed enemy (DECISIONS #73) asks first. No: the curse lifts and the node holds its usual
+        // encounter, to fight now (tap it again) or leave.
+        if (n.cursed && !(await this.askCursed())) {
+          liftCurse(s, n);
+          await persistRun(this);
+          void this.toast('The feeling passes. Whatever waits here now is ordinary.', 1800);
+          this.locked = false; this.syncRings();
+          return;
+        }
         await this.encounterWithWords(nodeEncounter(s, n), n);
       }
     }
@@ -439,6 +448,22 @@ export class OverworldScene extends Phaser.Scene {
     if (!n.dialogue) return;
     const r = await openDialogue(this, this.session, getMeta(this), `id:${n.dialogue}`);
     if (r?.notes.length) { void persistMeta(this); void this.toast(r.notes.join('  ·  '), 1800); this.syncHud(); }
+  }
+
+  /** "Something is off about this one…": Yes to fight the cursed enemy, No to let it pass (#73). */
+  private askCursed(): Promise<boolean> {
+    const W = this.scale.gameSize.width, H = this.scale.gameSize.height;
+    const parts: Phaser.GameObjects.GameObject[] = [];
+    return new Promise((done) => {
+      const close = (yes: boolean) => { for (const p of parts) p.destroy(); done(yes); };
+      parts.push(this.add.rectangle(W / 2, H / 2, W, H, 0x12030a, 0.72).setScrollFactor(0).setDepth(90).setInteractive());
+      parts.push(this.add.text(W / 2, H / 2 - 62, 'Something is off about this one…', { ...text.h2, color: '#ff6b6b' }).setOrigin(0.5).setScrollFactor(0).setDepth(91));
+      parts.push(this.add.text(W / 2, H / 2 - 26, 'Are you sure you wish to fight?', { ...text.body, fontSize: '16px' }).setOrigin(0.5).setScrollFactor(0).setDepth(91));
+      // Pinned to the screen children and all: a Button's tap area is its child, which would otherwise follow the map's scroll.
+      const pin = (b: Button) => { b.setScrollFactor(0).setDepth(91); for (const c of b.list) (c as unknown as Phaser.GameObjects.Components.ScrollFactor).setScrollFactor(0); return b; };
+      parts.push(pin(new Button(this, W / 2 - 110, H / 2 + 34, 'Yes', () => close(true), { width: 180, height: 52, fontSize: '18px', fill: 0x3a0d12, edge: 0xd64545 })));
+      parts.push(pin(new Button(this, W / 2 + 110, H / 2 + 34, 'No', () => close(false), { width: 180, height: 52, fontSize: '18px' })));
+    });
   }
 
   /**

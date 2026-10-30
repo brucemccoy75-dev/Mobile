@@ -56,7 +56,7 @@ for (const classId of classes) {
     const c = sim('clear'), s = sim('short');
     const f1 = (n: number) => n.toFixed(1).padStart(5);
     console.log(`${g.label.padEnd(28)} ${String(g.runs).padStart(3)} ${String(level).padStart(3)} | ${pct(g.reachBossPct)} ${pct(c.reach)} ${pct(s.reach)} | ${pct(g.beatBossPct)} ${pct(c.beat)} ${pct(s.beat)} | ${f1(g.avgFightsWon)} ${f1(c.won)} ${f1(s.won)} | ${pct(g.duoDeathPct)} ${pct(c.duoDeaths)} ${pct(s.duoDeaths)}`);
-    details.push(`${g.label}: real deaths ${top(g.deaths, g.runs) || 'none'}; HP back between fights (median) ${g.medianRegen}; ${g.avgRoundsPerFight.toFixed(1)} rounds a fight; duos ${g.duoFightPct.toFixed(0)}% of fights.`);
+    details.push(`${g.label}: real deaths ${top(g.deaths, g.runs) || 'none'}; HP back between fights (median) ${g.medianRegen}; ${g.avgRoundsPerFight.toFixed(1)} rounds a fight; duos ${g.duoFightPct.toFixed(0)}% of fights${g.cursedFights ? `; cursed fights ${g.cursedFights}, won ${g.cursedWins}` : ''}.`);
     details.push(`${''.padEnd(g.label.length)}  sim clear (${c.fights.toFixed(1)} fights on the route): ${c.deaths}`);
     details.push(`${''.padEnd(g.label.length)}  sim short (${s.fights.toFixed(1)} fights on the route): ${s.deaths}`);
   }

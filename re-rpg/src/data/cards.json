@@ -748,6 +748,27 @@
           "curse_self_2"
         ]
       }
+    },
+    {
+      "id": "cursed_counter",
+      "name": "Cursed Counter",
+      "classId": "any",
+      "rarity": "rare",
+      "uses": null,
+      "damage": {
+        "percent": 100,
+        "bonus": 0,
+        "hits": 1,
+        "type": "physical",
+        "ignoreDef": false,
+        "drain": 0,
+        "targets": "one"
+      },
+      "heal": null,
+      "modifiers": [],
+      "pool": "cursed",
+      "grow": 1,
+      "locksCards": true
     }
   ],
   "families": [

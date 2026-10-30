@@ -24,6 +24,14 @@ export type StatusId = 'exposed' | 'guard' | 'ward' | 'aegis' | 'burn' | 'chill'
 
 export type DamageKind = 'physical' | 'magic';
 
+/**
+ * A cursed enemy's traits (DECISIONS #73), two of these: twice the HP, twice the attack, a
+ * permanent shield that halves every hit, thorns that hurt the attacker, a follow-up hit after its
+ * attack that no block stops.
+ */
+export type CursedTrait = 'hp' | 'damage' | 'shield' | 'thorns' | 'followUp';
+export const CURSED_TRAITS: readonly CursedTrait[] = ['hp', 'damage', 'shield', 'thorns', 'followUp'];
+
 /** A status instance on a combatant. `turns` ticks down at end of round; Guard and Chill are consumed instead. Stun: the player skips their turn while it lasts (turns N = N-1 skipped turns when self-applied). */
 export interface Status {
   id: StatusId;
@@ -71,6 +79,12 @@ export interface Skill {
   vfx?: import('@core/vfx').VfxKind;
   /** fleeting: the tome is destroyed when played (every special tome, DECISIONS #42). once_per_fight: exhausted when played, back next fight; supported by the engine, used by no card today. */
   uses?: SkillUses;
+  /** A card from the cursed pool (DECISIONS #73): never in a family, only won from a cursed enemy. */
+  pool?: 'cursed';
+  /** Flat damage it gains every time it lands a hit, kept for the rest of the run (#73). */
+  grow?: number;
+  /** Holding it, the player can take no other card (#73). */
+  locksCards?: boolean;
 }
 
 export interface SkillSet {
@@ -128,6 +142,8 @@ export interface Enemy {
   art?: string;
   /** Tint over the still (a ghost is pale blue). */
   tint?: number;
+  /** A cursed variant's traits (DECISIONS #73). */
+  cursed?: CursedTrait[];
 }
 
 export type Slot = 'body' | 'weapon' | 'relic';
