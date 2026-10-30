@@ -168,3 +168,16 @@ arena in the east, a northern loop around a lake, a southern loop past a smaller
 paths, dense forest in the corners, rocky cliff edges); each gold dot is an open grassy clearing on
 the road with nothing in it; no text, icons, characters or UI. For screen 2 swap the forest for
 marsh: reeds, standing water, dead trees, mist, the arena half drowned.
+
+## Title screen key art (reference montage)
+
+`art-src/title-reference/` holds the reference for a generated title screen:
+- `montage.jpg`: the hero facing the screen-1 cast and Knight Andre over the forest backdrop,
+  2560x1184, sky left open for the logo;
+- `character-sheet.jpg`: the same cast, labelled;
+- `grok-prompt.md`: the prompts. A is key art with the logo, B is key art without it, C is the
+  logo alone.
+
+Rebuild the reference after new enemies arrive:
+1. Cut each source with `scripts/cut-sprite.py art-src/<name>_styleC.jpg <dir> <name> 1100`.
+2. Run `python3 scripts/title-montage.py <dir> art-src/title-reference`.
