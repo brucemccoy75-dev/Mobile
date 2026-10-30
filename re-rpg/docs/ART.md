@@ -184,3 +184,12 @@ marsh: reeds, standing water, dead trees, mist, the arena half drowned.
 Rebuild the reference after new enemies arrive:
 1. Cut each source with `scripts/cut-sprite.py art-src/<name>_styleC.jpg <dir> <name> 1100`.
 2. Run `python3 scripts/title-montage.py <dir> art-src/title-reference`.
+
+## Opening cutscene (prompts)
+
+`art-src/cutscene/grok-cutscene-prompts.md` has the prompts for the cutscene that plays once
+per run between the heirloom pick and the first map: the hero strolls through the woods, finds a
+clearing full of monsters, and a boar and an imp come flying at him. First the 3D hero is locked
+as a reference, then there is one still and one image-to-video prompt per shot, in 16:9. The
+clips have not been made yet; when they arrive they become a scene the player can tap to skip,
+ending in a white flash into the map.
