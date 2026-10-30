@@ -193,3 +193,12 @@ clearing full of monsters, and a boar and an imp come flying at him. First the 3
 as a reference, then there is one still and one image-to-video prompt per shot, in 16:9. The
 clips have not been made yet; when they arrive they become a scene the player can tap to skip,
 ending in a white flash into the map.
+
+## Overworld hero walk (prompts)
+
+The opening cutscene is on hold. The map hero's walk comes first: a 4-frame side-view cycle,
+made as four Grok edits of `art-src/hero_warrior_styleC.jpg` that change only the legs and arms,
+so he cannot drift. The backups are a one-shot sheet and cut-out parts to rig in code. Prompts:
+`art-src/overworld-walk/grok-walk-prompts.md`. When the frames arrive: cut out, line up on the
+feet, pack as `hero_warrior_walk`, and play it while the hero moves on the map (side view,
+flipped for left).
