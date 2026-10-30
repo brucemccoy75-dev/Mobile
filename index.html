@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0f1a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="description" content="Re-RPG: a roguelike RPG for your phone, played in landscape." />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <title>Re-RPG</title>
+  <style>:root{--lightningcss-light: ;--lightningcss-dark:initial;color-scheme:dark;--bg:#0b0f1a;--fg:#e6e9f2;--muted:#8b93a7}*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}html,body{background:var(--bg);overscroll-behavior:none;height:100%;overflow:hidden}body{color:var(--fg);-webkit-user-select:none;user-select:none;touch-action:none;font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}#game{place-items:center;display:grid;position:fixed;inset:0}#game canvas{touch-action:none;image-rendering:pixelated;display:block}#rotate{z-index:50;text-align:center;padding:max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));background:var(--bg);place-items:center;display:none;position:fixed;inset:0}#rotate .phone{border:3px solid var(--fg);border-radius:8px;width:36px;height:64px;margin:0 auto 18px;animation:1.6s ease-in-out infinite turn}@keyframes turn{0%,30%{transform:rotate(0)}60%,to{transform:rotate(-90deg)}}#rotate p{color:var(--muted);margin-top:6px}@media (orientation:portrait){#rotate{display:grid}}</style>
+  <script type="module" crossorigin src="./assets/main-iq1HCsur.js"></script>
+  <link rel="modulepreload" crossorigin href="./assets/data-Cv-tVzj-.js">
+  <link rel="modulepreload" crossorigin href="./assets/phaser-B_vcVLyb.js">
+  <link rel="modulepreload" crossorigin href="./assets/dialogue-DRWLjEC5.js">
+  <link rel="modulepreload" crossorigin href="./assets/damage-CZwV4NfY.js">
+</head>
+<body>
+  <div id="game"></div>
+  <div id="rotate" aria-live="polite">
+    <div>
+      <div class="phone"></div>
+      <strong>Rotate your phone</strong>
+      <p>Re-RPG is played in landscape.</p>
+    </div>
+  </div>
+</body>
+</html>
