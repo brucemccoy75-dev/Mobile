@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { classProgress, createMeta, gainExp } from '@core/meta';
+import { classProgress, createMeta, gainExp, unlockNode } from '@core/meta';
 import { buildPool, cursedPool } from '@core/loot';
 import { CURSED_CHANCE, CURSED_MIN_LEVEL, cursedEnemy, rollCursedTraits } from '@core/variants';
 import { RunRng } from '@core/rng';
 import { getEnemy, getSkill } from '@data/index';
-import { applyTome, createSession, liftCurse, nodeEncounter, poolCtx } from './session';
+import { applyTome, cardsLocked, createSession, liftCurse, nodeEncounter, poolCtx, takeChoice } from './session';
 
 /** Cursed enemies (DECISIONS #73). */
 const fightKinds = new Set(['monster', 'unknown', 'elite']);
@@ -71,5 +71,20 @@ describe('cursed enemies (DECISIONS #73)', () => {
     expect(buildPool({ ...locked, families: ['warrior_tank'] }).tomes).toEqual([]);
     expect(cursedPool(locked)).toEqual([]);
     expect(buildPool({ ...locked, families: ['warrior_tank'] }).items.length).toBeGreaterThan(0); // gear is still fine
+  });
+
+  it('holding Cursed Counter, a card already on the shop shelf cannot be bought, and no route adds a card', () => {
+    const meta = levelled(3);
+    unlockNode(meta, 'warrior', 'warrior_tank');
+    let s = createSession('warrior', meta, 'SHOP-0');
+    for (let i = 1; !s.shop.lines.some((l) => l.kind === 'tome'); i++) s = createSession('warrior', meta, `SHOP-${i}`);
+    const line = s.shop.lines.find((l) => l.kind === 'tome')!; // stocked before the lock, as in the bug
+    expect(cardsLocked(s)).toBe(false);
+    applyTome(s, getSkill('cursed_counter'));
+    expect(cardsLocked(s)).toBe(true);
+    const before = [...s.deck];
+    takeChoice(s, meta, { kind: 'tome', skill: getSkill(line.id) });
+    applyTome(s, getSkill('bind_wound'));
+    expect(s.deck).toEqual(before);
   });
 });

@@ -14,7 +14,7 @@ import { PAIRS } from '@data/packs';
 import { TOME_COPY_CAP } from '@data/skills';
 import { computeStats, emptyEquipment, equip as equipItem, equipmentFromIds, equipmentToIds, type Equipment, RUN_VERSION, type RunState } from '@core/run';
 import { classProgress, createMeta, deathsOn, discoverItem, discoverSkill, nudgeRelation, rollHeirloomChoices, unlockedSets, type Heirloom, type MetaState } from '@core/meta';
-import { LUCK_RARE_WEIGHT, buildPool, rollShopStock, type RewardChoice, type RewardSource, type ShopStock } from '@core/loot';
+import { LUCK_RARE_WEIGHT, buildPool, locked, rollShopStock, type RewardChoice, type RewardSource, type ShopStock } from '@core/loot';
 import { LEVEL_GOLD, LEVEL_HP, LEVEL_RARE_CHANCE } from '@data/progression';
 import { pickQuestDef, questFromDef, questReady, type Quest, type QuestDef } from '@core/quest';
 import type { DialogueCtx, QuestState, Rearm } from '@core/dialogue';
@@ -383,8 +383,12 @@ export function applyEquip(s: RunSession, item: Item): Item | null {
   return r.replaced;
 }
 
-/** Add a tome; at the deck cap the caller must pass the card to replace. */
+/** True while the deck holds a card that locks out every other card (Cursed Counter, DECISIONS #73). */
+export const cardsLocked = (s: RunSession): boolean => locked({ deck: s.deck });
+
+/** Add a tome; at the deck cap the caller must pass the card to replace. Nothing is added while a lock is held (#73). */
 export function applyTome(s: RunSession, skill: Skill, replaceId?: SkillId): void {
+  if (cardsLocked(s)) return;
   if (s.deck.length >= DECK_CAP) {
     if (!replaceId) throw new Error('Deck full: a replacement is required');
     const i = s.deck.indexOf(replaceId);

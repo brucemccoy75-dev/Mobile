@@ -848,3 +848,12 @@ Pinned by:
 
 The screen mirror plays level 1, where nothing is cursed. Screenshots in
 `docs/audit/cursed-2026-10-30/`.
+
+Fix (designer's report): the shop still sold a card while Cursed Counter was held. Its stock is
+rolled when the screen opens, so a card already on the shelf survived a lock taken later. Now:
+- the shelf checks the lock when it is drawn: a card line reads "cursed: no new cards" and
+  cannot be bought;
+- underneath, `applyTome` adds nothing while a lock is held, so no route can slip a card
+  through.
+
+Pinned in `src/game/cursed.test.ts`; screenshot `docs/audit/cursed-2026-10-30/3-shop-locked.png`.

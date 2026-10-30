@@ -3,7 +3,7 @@ import { describeSkill, getItem, getSkill } from '@data/index';
 import { isLineOwned, type ShopLine } from '@core/loot';
 import { DECK_CAP } from '@core/combat';
 import { recordShop } from '@game/telemetry';
-import { getMeta, getSession, persistMeta, persistRun, takeChoice, type RunSession } from '@game/session';
+import { cardsLocked, getMeta, getSession, persistMeta, persistRun, takeChoice, type RunSession } from '@game/session';
 import { Button } from '@game/ui/Button';
 import { openComparePanel, openSwapPanel } from '@game/ui/panels';
 import { COLORS, FONT, RARITY_COLORS, text } from '@game/ui/theme';
@@ -40,11 +40,13 @@ export class ShopScene extends Phaser.Scene {
     const eq = (['body', 'weapon', 'relic'] as const).map((k) => `${k}: ${s.equipment[k]?.name ?? '—'}`).join('   ');
     this.statusText.setText(`HP ${s.hp}/${s.stats.maxHp}  ATK ${s.stats.atk}  DEF ${s.stats.def}  LUCK ${s.stats.luck ?? 0}   ·   deck ${s.deck.length}/${DECK_CAP}   ·   ${eq}`);
 
-    const entries: { line: ShopLine | null; label: string; title: string; body: string; price: number; sold: boolean; owned?: boolean; rarity: keyof typeof RARITY_COLORS }[] = st.lines.map((line) => {
+    const entries: { line: ShopLine | null; label: string; title: string; body: string; price: number; sold: boolean; owned?: boolean; lockedOut?: boolean; rarity: keyof typeof RARITY_COLORS }[] = st.lines.map((line) => {
       const owned = !line.sold && isLineOwned(line, s.deck, s.equipment);
+      // Stock is rolled when the screen opens; a card that locks (DECISIONS #73) can arrive later, so the shelf checks now.
+      const lockedOut = line.kind === 'tome' && !line.sold && cardsLocked(s);
       return line.kind === 'item'
         ? { line, label: `${getItem(line.id).slot.toUpperCase()} · ${getItem(line.id).rarity}`, title: getItem(line.id).name, body: getItem(line.id).text, price: line.price, sold: line.sold || owned, owned, rarity: getItem(line.id).rarity }
-        : { line, label: 'TOME', title: getSkill(line.id).name, body: describeSkill(getSkill(line.id), s.stats), price: line.price, sold: line.sold || owned, owned, rarity: getSkill(line.id).rarity };
+        : { line, label: 'TOME', title: getSkill(line.id).name, body: describeSkill(getSkill(line.id), s.stats), price: line.price, sold: line.sold || owned || lockedOut, owned, lockedOut, rarity: getSkill(line.id).rarity };
     });
     entries.push({ line: null, label: 'SERVICE', title: 'Mend wounds', body: `Heal ${Math.round(st.healPct * 100)}% of max HP. Once per shop.`, price: st.healPrice, sold: st.healUsed, rarity: 'uncommon' });
 
@@ -59,7 +61,7 @@ export class ShopScene extends Phaser.Scene {
       mk(this.add.text(x, y - ch / 2 + 16, e.label, { fontFamily: FONT, fontSize: '12px', color: '#9aa3b8', fontStyle: 'bold' }).setOrigin(0.5));
       mk(this.add.text(x, y - ch / 2 + 46, e.title, { ...text.h2, fontSize: '19px', wordWrap: { width: cw - 20 }, align: 'center' }).setOrigin(0.5));
       mk(this.add.text(x, y + 2, e.body, { ...text.body, fontSize: '13px', wordWrap: { width: cw - 24 }, align: 'center' }).setOrigin(0.5));
-      mk(this.add.text(x, y + ch / 2 - 18, e.owned ? 'already yours' : e.sold ? 'sold' : `${e.price} gold`, { ...text.body, fontSize: '15px', color: affordable ? COLORS.gold : COLORS.muted, fontStyle: 'bold' }).setOrigin(0.5));
+      mk(this.add.text(x, y + ch / 2 - 18, e.lockedOut ? 'cursed: no new cards' : e.owned ? 'already yours' : e.sold ? 'sold' : `${e.price} gold`, { ...text.body, fontSize: '15px', color: affordable ? COLORS.gold : COLORS.muted, fontStyle: 'bold' }).setOrigin(0.5));
       if (affordable) { bg.setInteractive({ useHandCursor: true }); bg.on('pointerup', () => this.buy(e.line)); }
     });
   }
