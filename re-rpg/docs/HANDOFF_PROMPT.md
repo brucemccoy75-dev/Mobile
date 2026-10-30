@@ -17,10 +17,10 @@ Read, in this order, before doing anything:
 4. `re-rpg/docs/PLAYTESTS.md`: what to do with every run log I send (save it, `npm run playtest`
    against the screen-1 mirror, both sim tables, a "Phone test N" write-up in BALANCE.md). The
    latest reading is the top section of `re-rpg/docs/BALANCE.md`.
-5. `re-rpg/docs/DECISIONS.md` entries #55 to #73 (the world and quest editor, battle effects,
+5. `re-rpg/docs/DECISIONS.md` entries #55 to #74 (the world and quest editor, battle effects,
    ambience, the story-in-data review, blocks, the run-log procedure, one card per enemy,
    branching cards with Regen and Blackjack, three cards before every card, the story switched
-   off, and cursed enemies).
+   off, cursed enemies, and the title art).
    The whole file is the history of why things are the way they are; look up any older number
    you meet.
 

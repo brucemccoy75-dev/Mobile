@@ -177,6 +177,9 @@ marsh: reeds, standing water, dead trees, mist, the arena half drowned.
 - `character-sheet.jpg`: the same cast, labelled;
 - `grok-prompt.md`: the prompts. A is key art with the logo, B is key art without it, C is the
   logo alone.
+- `grok-title.jpg`: the result, from prompt A, shipped as `public/art/c/title.jpg` (DECISIONS
+  #74). A new title image only has to replace that file; keep the logo top centre and the lower
+  middle calm for the buttons.
 
 Rebuild the reference after new enemies arrive:
 1. Cut each source with `scripts/cut-sprite.py art-src/<name>_styleC.jpg <dir> <name> 1100`.

@@ -857,3 +857,17 @@ rolled when the screen opens, so a card already on the shelf survived a lock tak
   through.
 
 Pinned in `src/game/cursed.test.ts`; screenshot `docs/audit/cursed-2026-10-30/3-shop-locked.png`.
+
+## 74. Title screen key art
+
+The designer generated title art in Grok from the reference montage and character sheet
+(`art-src/title-reference/`, docs/ART.md). It is the hero facing the screen-1 cast and Knight
+Andre in a lit forest, with the "Re-RPG" logo in the art. It ships as `public/art/c/title.jpg`;
+the original is `art-src/title-reference/grok-title.jpg`.
+
+The title screen draws it scaled to cover the screen, centred, so a 16:9 phone crops only the
+outer edges and every shape keeps the logo and the cast. The drawn "Re-RPG" text and subtitle
+give way to the art. The run record sits on a dark pill under the logo. "New run" (or "Continue"
+with "New run" under it) stands in the clearing between the hero and the enemies, and a dark band
+along the bottom keeps the small buttons readable. Without the image the old text title draws as
+before. Screenshots (1169x540, a saved run, and 16:9) in `docs/audit/title-2026-10-30/`.

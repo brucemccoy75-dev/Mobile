@@ -42,9 +42,21 @@ export class TitleScene extends Phaser.Scene {
     const cx = width / 2;
     const meta = getMeta(this);
 
-    this.add.text(cx, height * 0.3, 'Re-RPG', { ...text.title, fontSize: '64px' }).setOrigin(0.5);
-    this.add.text(cx, height * 0.3 + 52, 'a roguelike for your pocket', { ...text.body, fontSize: '20px', color: COLORS.muted }).setOrigin(0.5);
-    this.add.text(cx, height * 0.3 + 84, `deaths ${meta.deaths}  ·  wins ${meta.wins}  ·  discovered ${meta.discoveredSkills.length + meta.discoveredItems.length}${legacySummary(meta) ? `  ·  legacy ${legacySummary(meta)}` : ''}`, text.small).setOrigin(0.5);
+    const record = `deaths ${meta.deaths}  ·  wins ${meta.wins}  ·  discovered ${meta.discoveredSkills.length + meta.discoveredItems.length}${legacySummary(meta) ? `  ·  legacy ${legacySummary(meta)}` : ''}`;
+    if (this.textures.exists('title')) {
+      // Key art (DECISIONS #74): the logo is in the picture. Cover the screen, centred, so any phone
+      // shape crops only the sides; a dark band along the bottom keeps the small buttons readable.
+      const art = this.add.image(cx, height / 2, 'title');
+      art.setScale(Math.max(width / art.width, height / art.height));
+      const band = this.add.graphics();
+      band.fillGradientStyle(0x0b0f1a, 0x0b0f1a, 0x0b0f1a, 0x0b0f1a, 0, 0, 0.85, 0.85);
+      band.fillRect(0, height - 110, width, 110);
+      this.add.text(cx, height * 0.36, record, { ...text.small, color: '#f1e6cc', backgroundColor: '#0b0f1acc', padding: { x: 10, y: 4 } }).setOrigin(0.5);
+    } else {
+      this.add.text(cx, height * 0.3, 'Re-RPG', { ...text.title, fontSize: '64px' }).setOrigin(0.5);
+      this.add.text(cx, height * 0.3 + 52, 'a roguelike for your pocket', { ...text.body, fontSize: '20px', color: COLORS.muted }).setOrigin(0.5);
+      this.add.text(cx, height * 0.3 + 84, record, text.small).setOrigin(0.5);
+    }
 
     const newRun = new Button(this, cx, height * 0.66, 'New run', () => this.scene.start('ClassSelect'), { width: 220, fill: 0x1f2a44, edge: COLORS.goldHex });
     void newRun;
