@@ -20,11 +20,28 @@ describe('authored node screens', () => {
       expect(kinds.filter((k) => k === 'boss')).toHaveLength(1);
       expect(kinds.filter((k) => k === 'quest')).toHaveLength(1);
       expect(kinds.filter((k) => k === 'lost')).toHaveLength(1);
-      expect(kinds.filter((k) => k === 'elite')).toHaveLength(2);
+      expect(kinds.filter((k) => k === 'elite')).toHaveLength(i === 0 ? 2 : 4);
       expect(kinds.filter((k) => k === 'shop')).toHaveLength(1);
       expect(kinds.filter((k) => k === 'shrine')).toHaveLength(1);
       expect(kinds.filter((k) => k === 'treasure').length).toBeGreaterThanOrEqual(1);
       expect(kinds.filter((k) => k === 'monster' || k === 'unknown').length).toBeGreaterThanOrEqual(5);
+    }
+  });
+
+  it('screen 2, the Frozen Pass, is about twice screen 1: 40 nodes on 48x27, its tracks crossing (DECISIONS #76)', () => {
+    const one = parse('size', 0), two = parse('size', 1);
+    expect([two.width, two.height]).toEqual([48, 27]);
+    expect(two.nodes).toHaveLength(40);
+    expect(two.nodes!.length).toBeGreaterThanOrEqual(2 * one.nodes!.length);
+    // Crossroads: nodes where three or more roads meet.
+    expect(two.nodes!.filter((n) => n.links.length >= 3).length).toBeGreaterThanOrEqual(10);
+    const boss = two.nodes!.find((n) => n.kind === 'boss')!;
+    expect(boss.links).toHaveLength(1);
+    expect(two.nodes!.find((n) => n.id === boss.links[0])!.kind).toBe('elite');
+    for (let i = 0; i < 10; i++) {
+      const m = parse(`de2-${i}`, 1);
+      const deadEnds = m.nodes!.filter((n) => n.links.length === 1 && n.kind !== 'start' && n.kind !== 'boss' && n.kind !== 'lost');
+      expect(deadEnds.every((n) => ['shop', 'shrine', 'treasure'].includes(n.kind))).toBe(true);
     }
   });
 

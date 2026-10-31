@@ -1,18 +1,19 @@
 # Next session notes
 
-## Start here (updated 2026-10-28)
+## Start here (updated 2026-10-31)
 
 **State.** Branch `claude/re-rpg-mobile-architecture-t26won`, folder `re-rpg/`, live on GitHub
 Pages at https://brucemccoy75-dev.github.io/Mobile/. After a push, poll `origin/gh-pages` for
 "Deploy re-rpg <sha>", **then** poll the live site until its main JS contains your 7-character
 hash; that is the build stamp the title shows at the bottom left. Pages publishes some time after
 the branch updates, so the branch alone is not "live" (#75 follow-up). Fetch with a `?t=<now>`
-query so a cache cannot answer. 299 tests pass (`npm run check`: typecheck,
+query so a cache cannot answer. 303 tests pass (`npm run check`: typecheck,
 cards:validate, world:validate, tests, build). The game today is:
 
 - **Node overworld** (DECISIONS #37): a static node network per screen over an authored terrain,
   contents rolled per run (and shaped by node rules, #55), tap a reachable node to travel, swipe to
-  pan. Screen 1 is painted (`public/art/c/map1.jpg`, #39); screen 2 uses the tileset. Subtle
+  pan. Both screens are painted: screen 1 the Gate Road (`map1.jpg`, #39), screen 2 the Frozen Pass
+  (`map2.jpg`, #76), a tundra on 48x27 tiles with 40 nodes and crossing tracks. Subtle
   ambience: dust behind the hero, ripples on water, birds now and then (#60). `?dev` shows an overlay.
 - **The story is switched off** (#72) while the designer balances: `STORY.enabled = false` in
   `src/data/world.ts`. A run is the fixed start, the map's usual placement, and Knight Andre
@@ -44,6 +45,10 @@ cards:validate, world:validate, tests, build). The game today is:
   Lunch Break, Blackjack and Trickster (#69); Paladin and Weaponmaster are empty. Nothing drops
   without a node (#42).
 
+**Level select** (title screen, dev row; #76): a warrior run straight from screen 1 or 2, off the
+record (never saved, logged or counted; the saved run and the meta are untouched). Use it to test
+screen 2; the run log never sees it.
+
 **Two editors, phone first** (title screen): the **card editor** (`editor.html`, `docs/CARDS.md`)
 and the **world editor** (`world.html`, `docs/WORLD.md`: Nodes, Quests, Words, Enemies). The
 designer edits on the phone and sends an exported `cards.json` or `world.json`; the import is the
@@ -56,7 +61,7 @@ own command → Playwright at 844×390 (the game) or 390×844 (the editors) with
 (Test Mode: set registry `testSetup`, call `TestMode.fight()`, then `Combat.act()` and poll
 `busy`; to answer a dialogue from a script, `scene('Dialogue').choose(d, option)`) → commit with
 the attribution lines → `git push -u origin <branch>` → poll gh-pages. Record decisions in
-`docs/DECISIONS.md` (next number is 76). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
+`docs/DECISIONS.md` (next number is 77). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
 
 **Run logs** (`docs/PLAYTESTS.md`, DECISIONS #67). When the designer sends a run log, always:
 1. save it in `docs/playtests/`;
@@ -114,8 +119,9 @@ frozen by the validator until the warrior is done.
    and `generateQuest` / `GIVERS` are used only by tests; switch those tests to the authored map
    and `questFromDef`, then delete (keep `costField`). `RunState` still carries threat / POI fields
    for old saves.
-5. **Art queue**: screen-2 painting (prompt in `docs/ART.md`, layout in `art-src/layout-screen2.png`),
-   painted node icons, Wren's still, life on the painting.
+5. **Art queue**: the tier-2 enemies and the Warden (still placeholder circles on screen 2),
+   painted node icons, Wren's still, life on the painting. Screen 2's pacing (40 nodes, one shop and
+   one shrine) is a balance question for the designer once screen 1 is settled.
 6. **Story, when the switch goes back on** (#72): each enemy's everyday lines (10–20 each, by
    personality, with the designer), the first special-run quest, and lines for Tam's node on
    screen 2.

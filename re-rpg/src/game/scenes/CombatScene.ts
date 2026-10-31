@@ -5,7 +5,7 @@ import type { CardPreview } from '@data/describe';
 import { basicsFor } from '@data/skills';
 import type { CursedTrait, Enemy, Intent, Posture } from '@data/types';
 import { createCombat, currentIntent, effectsNow, isLocked, isPlayerStunned, playableIndices, previewDamage, resolveTarget, skillInCombat, step, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
-import { getMeta, getSession, getStore, persistMeta, persistRun, setName, setSession, spendConsumedTomes, type PendingEncounter, type RunSession } from '@game/session';
+import { endSavedRun, getMeta, getSession, getStore, persistMeta, persistRun, setName, setSession, spendConsumedTomes, type PendingEncounter, type RunSession } from '@game/session';
 import { gainExp, ghostOn, layGhost, leaveGhost, nudgeRelation, recordDeath } from '@core/meta';
 import { CURSED_REWARD_MULT, ghostSpoils } from '@core/variants';
 import { equipmentToIds } from '@core/run';
@@ -941,7 +941,7 @@ export class CombatScene extends Phaser.Scene {
       if (this.session.map.authored && this.encounter.kind !== 'boss') {
         leaveGhost(getMeta(this), { classId: this.session.classId, screenIndex: this.session.screenIndex, tile: { ...this.session.playerPos }, nodeId: this.encounter.nodeId, guardId: this.encounter.guardId, deck: [...this.session.deck], stats: { ...this.session.stats }, equipment: equipmentToIds(this.session.equipment), killer: this.killerId(), killerName: killer, gold: this.session.gold });
       }
-      void Promise.all([persistMeta(this), getStore(this).clearRun()]);
+      void Promise.all([persistMeta(this), endSavedRun(this)]);
       this.add.text(W / 2, H * 0.34 + 46, `Slain by ${killer} on screen ${this.session.screenIndex + 1}.`, text.body).setOrigin(0.5).setDepth(71);
       new Button(this, W / 2, H * 0.62, 'Continue', () => this.scene.start('RunEnd', { won: false, killedBy: killer }), { width: 220, fill: 0x1f2a44, edge: COLORS.goldHex }).setDepth(72);
     }

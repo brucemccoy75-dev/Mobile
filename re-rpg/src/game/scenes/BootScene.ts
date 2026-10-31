@@ -26,6 +26,7 @@ export const ART_FILES: Record<string, string> = {
   bg_forest: 'art/c/bg_forest.jpg',
   title: 'art/c/title.jpg', // title screen key art with the logo (docs/ART.md, DECISIONS #74)
   map_1: 'art/c/map1.jpg', // painted screen 1 (docs/ART.md); the tileset draws when a screen has no painting
+  map_2: 'art/c/map2.jpg', // painted screen 2, the Frozen Pass (DECISIONS #76)
 };
 
 /** Wires persistence and loads meta before the title shows. Optional art loads here too. */

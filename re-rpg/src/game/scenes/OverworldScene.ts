@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { getEnemy, getSkill } from '@data/index';
 import { SHRINE_HEAL, key, roadBetween, type MapNode, type Tile } from '@core/map';
-import { SCREEN_COUNT, currentNode, currentQuest, liftCurse, questGiverNode, getMeta, getSession, getStore, isCleared, isEscorting, nodeById, nodeEncounter, persistMeta, persistRun, reachableNodes, routeTo, setSession, startScreen, treasureGold, type PendingEncounter, type RunSession } from '@game/session';
+import { SCREEN_COUNT, endSavedRun, currentNode, currentQuest, liftCurse, questGiverNode, getMeta, getSession, getStore, isCleared, isEscorting, nodeById, nodeEncounter, persistMeta, persistRun, reachableNodes, routeTo, setSession, startScreen, treasureGold, type PendingEncounter, type RunSession } from '@game/session';
 import { questProgress, questReady } from '@core/quest';
 import { gainExp, ghostOn, recordWin } from '@core/meta';
 import { WREN_GRUDGE, ghostAppears, ghostDef, wrenBoss } from '@core/variants';
@@ -559,7 +559,7 @@ export class OverworldScene extends Phaser.Scene {
       if (last) {
         recordWin(getMeta(this), SCREEN_COUNT, s.classId);
         if (!s.testMode) gainExp(getMeta(this), s.classId, WIN_EXP); // the win bonus (DECISIONS #32)
-        void Promise.all([persistMeta(this), getStore(this).clearRun()]).then(() => this.scene.start('RunEnd', { won: true }));
+        void Promise.all([persistMeta(this), endSavedRun(this)]).then(() => this.scene.start('RunEnd', { won: true }));
         return;
       }
       startScreen(s, s.screenIndex + 1, getMeta(this));

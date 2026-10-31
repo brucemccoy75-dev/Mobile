@@ -31,14 +31,14 @@ const snapshot = (s: RunSession) => ({ deck: [...s.deck], equipment: equipmentTo
 
 /** Called when a run enters the overworld; idempotent, so continuing a save is fine. Test mode is never logged. */
 export function ensureRun(scene: Phaser.Scene, s: RunSession, meta: MetaState): void {
-  if (s.testMode) return;
+  if (s.testMode || s.levelTest) return; // Test Mode and level-select runs are never logged (DECISIONS #76)
   const t = getTelemetry(scene);
   startRun(t.log, { appVersion: APP_VERSION, seed: s.seed, classId: s.classId, setId: s.setId, families: [...s.families], level: classProgress(meta, s.classId).level, legacy: { ...meta.legacy }, start: snapshot(s), startedAt: Date.now() });
   t.save();
 }
 
 export function recordFight(scene: Phaser.Scene, s: RunSession, e: PendingEncounter, hpBefore: number, hpAfter: number, log: CombatEvent[], outcome: 'won' | 'lost'): void {
-  if (s.testMode) return;
+  if (s.testMode || s.levelTest) return; // Test Mode and level-select runs are never logged (DECISIONS #76)
   const t = getTelemetry(scene);
   const run = t.log.runs.find((r) => r.seed === s.seed);
   if (!run) return;
@@ -49,7 +49,7 @@ export function recordFight(scene: Phaser.Scene, s: RunSession, e: PendingEncoun
 }
 
 export function recordReward(scene: Phaser.Scene, s: RunSession, r: { source: string; offered: string[]; picked?: string; sold?: string; replaced?: string; gold: number }): void {
-  if (s.testMode) return;
+  if (s.testMode || s.levelTest) return; // Test Mode and level-select runs are never logged (DECISIONS #76)
   const t = getTelemetry(scene);
   const run = t.log.runs.find((x) => x.seed === s.seed);
   if (!run) return;
@@ -58,7 +58,7 @@ export function recordReward(scene: Phaser.Scene, s: RunSession, r: { source: st
 }
 
 export function recordShop(scene: Phaser.Scene, s: RunSession, bought: string, price: number): void {
-  if (s.testMode) return;
+  if (s.testMode || s.levelTest) return; // Test Mode and level-select runs are never logged (DECISIONS #76)
   const t = getTelemetry(scene);
   const run = t.log.runs.find((x) => x.seed === s.seed);
   if (!run) return;
@@ -67,7 +67,7 @@ export function recordShop(scene: Phaser.Scene, s: RunSession, bought: string, p
 }
 
 export function recordRunEnd(scene: Phaser.Scene, s: RunSession, outcome: 'won' | 'died', diedTo?: string): void {
-  if (s.testMode) return;
+  if (s.testMode || s.levelTest) return; // Test Mode and level-select runs are never logged (DECISIONS #76)
   const t = getTelemetry(scene);
   endRun(t.log, s.seed, outcome, diedTo);
   t.save();

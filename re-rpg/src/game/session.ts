@@ -77,7 +77,15 @@ export interface RunSession {
   heirloomChoices: Heirloom[];
   /** Test Mode sandbox: never saved, logged or counted. */
   testMode?: boolean;
+  /**
+   * Level select (DECISIONS #76): a normal run started on a chosen screen, played against a copy of the
+   * meta. Never saved, logged or counted; the real meta and the saved run are left as they were.
+   */
+  levelTest?: boolean;
 }
+
+/** A run that leaves no trace: Test Mode or a level-select run. */
+export const offRecord = (s: RunSession): boolean => !!(s.testMode || s.levelTest);
 
 export type Store = SaveStore<MetaState, RunState>;
 
@@ -96,10 +104,41 @@ export const getStore = (scene: Phaser.Scene): Store => scene.registry.get('stor
 
 export async function persistRun(scene: Phaser.Scene): Promise<void> {
   const s = peekSession(scene);
-  if (s && !s.testMode) await getStore(scene).saveRun(serialize(s));
+  if (s && !offRecord(s)) await getStore(scene).saveRun(serialize(s));
 }
 export async function persistMeta(scene: Phaser.Scene): Promise<void> {
+  if (peekSession(scene)?.levelTest) return; // a level-select run plays on a copy of the meta
   await getStore(scene).saveMeta(getMeta(scene));
+}
+/** Clear the saved run when a run ends; a level-select run never replaced it, so it stays. */
+export async function endSavedRun(scene: Phaser.Scene): Promise<void> {
+  if (peekSession(scene)?.levelTest) return;
+  await getStore(scene).clearRun();
+}
+
+/**
+ * Level select (DECISIONS #76): a fresh run of `classId` that starts on screen `screenIndex`, with the
+ * usual heirloom pick. The caller swaps in a copy of the meta (holdMeta) so nothing the run does sticks.
+ */
+export function createLevelTest(classId: ClassId, meta: MetaState, screenIndex: number): RunSession {
+  const s = createSession(classId, meta, `LEVEL${screenIndex + 1}-${Date.now()}`);
+  s.levelTest = true;
+  if (screenIndex !== 0) startScreen(s, screenIndex, meta);
+  return s;
+}
+/** Swap a copy of the meta in for a level-select run; the title screen puts the real one back (restoreMeta). */
+export function holdMeta(scene: Phaser.Scene): MetaState {
+  const real = getMeta(scene);
+  if (!scene.registry.get('metaHeld')) scene.registry.set('metaHeld', real);
+  const copy = structuredClone(real);
+  setMeta(scene, copy);
+  return copy;
+}
+export function restoreMeta(scene: Phaser.Scene): void {
+  const real = scene.registry.get('metaHeld') as MetaState | undefined;
+  if (!real) return;
+  setMeta(scene, real);
+  scene.registry.remove('metaHeld');
 }
 
 // ---------------------------------------------------------------- creation & screens

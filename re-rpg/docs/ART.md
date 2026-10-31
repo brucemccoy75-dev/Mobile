@@ -166,8 +166,15 @@ cel-shaded style with thick clean outlines and a limited saturated palette, cons
 from the top left; keep the exact layout of the reference (winding dirt road west to a walled stone
 arena in the east, a northern loop around a lake, a southern loop past a smaller lake, short spur
 paths, dense forest in the corners, rocky cliff edges); each gold dot is an open grassy clearing on
-the road with nothing in it; no text, icons, characters or UI. For screen 2 swap the forest for
-marsh: reeds, standing water, dead trees, mist, the arena half drowned.
+the road with nothing in it; no text, icons, characters or UI.
+
+**Screen 2, the Frozen Pass** (DECISIONS #76) went the other way round, painting first:
+1. `grok.py image` with a text prompt only (in `art-src/map2/d-3.jpg.json`): a tundra with winding
+   brown roads, crossroads, frozen lakes and an ice fortress. Image-to-image from a grid layout
+   came out as city blocks (`art-src/map2/compare-layout-first.jpg`).
+2. Upscale the pick to 72 px per tile (`public/art/c/map2.jpg`, 48x27 tiles).
+3. Trace the roads as corner-point paths in `scripts/author-map.py tundra`, every junction a node,
+   and check with `?dev`. Diagonal roads become staircases.
 
 ## Title screen key art (reference montage)
 

@@ -909,3 +909,51 @@ Follow-up (designer's report: "he bobs but the animation does not play"):
   version it runs.
 - **The walk also had to read better at 60 px:** the contact frames were remade with a wide
   stride, and the cycle runs at 12 fps (was 8), so even a short 3-tile walk shows the legs move.
+
+## 76. Screen 2 is the Frozen Pass, painted first; a level select to test it
+
+Designer's request: start screen 2 as a frozen tundra, roughly twice screen 1's nodes, paths
+crossing a few times, the same art style; and a title-screen button to jump straight to it.
+
+**How the map was made: paint first, then trace.** Two ways were tried with Grok (`art-src/map2/`):
+- *Layout first* (as screen 1 began): a 40-node grid layout fed to image-to-image. Grok copied
+  the grid, so the result read as city blocks, with faint roads and dropped spurs.
+- *Painting first*: the tundra from a text prompt alone, then the node network traced onto the
+  painting. The designer picked **d-3**. It ships as `public/art/c/map2.jpg`, upscaled from
+  1280x720 to 3456x1944 (so a little softer than screen 1).
+
+**The network** (`scripts/author-map.py tundra`, `src/data/maps/screen2.ts`):
+- 48x27 tiles (screen 1 is 36x18), traced on the painting's own grid of 26.7 px per tile.
+  The engine and camera already read the size from the ASCII.
+- 40 nodes (screen 1 has 20): the start on the west edge, Tam's node and the lost one's node,
+  4 elites (screen 1 has 2), and the Warden in the ice fortress in the north-east, behind an
+  elite at its gate.
+- 15 painted clearings; 12 nodes where three or more roads meet; 5 dead-end spurs, which get
+  the calm kinds first.
+- Roads are corner-point paths. Painted diagonals become staircases of tiles, so on a diagonal
+  the hero walks a few pixels off the painted road. No two roads touch except at a node.
+- A rolled run holds about 13 monsters, 9 unknowns, 4 elites, 8 treasures, 1 shop and 1 shrine.
+  The bag still has one shop and one shrine whatever the size, so screen 2 is long between
+  heals. That is a balance question for the designer, and node rules can change it.
+- Tier-2 enemies (ogre, harpies, witch, iron knight) and the Warden still have no art, so they
+  draw as placeholders.
+
+**world.json**: the two screen-2 quests (story off, #72) named the old layout's node ids, so
+the validator refused them once the layout changed. They now name the same roles on the new map:
+Tam's node `node_15` (the giver) and the lost one's node `node_35` (where the escort waits). No
+story text changed.
+
+**Level select** (title screen, dev row): it opens a panel with Screen 1 and Screen 2, and starts
+a warrior run from that screen, heirloom pick and all.
+- The run is **off the record**: a `levelTest` session plays on a copy of the meta.
+- It is never saved, logged or counted: no EXP, deaths, ghosts, wins or discoveries.
+- When it ends, the saved real run stays where it was. The title screen puts the real meta back.
+
+Pinned by:
+- `src/core/map/authored.test.ts`: screen 2's size, node count, crossroads, the boss behind an
+  elite, and calm dead ends;
+- `src/game/levelTest.test.ts`: the run starts on the chosen screen; nothing is saved, the saved
+  run is not cleared, and the meta copy is thrown away.
+
+Fixed on the way: `grok.py` sent several reference images in a shape the API refuses.
+Screenshots in `docs/audit/screen2-2026-10-31/`; the `dev-` shots carry the road overlay.

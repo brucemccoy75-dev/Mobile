@@ -142,7 +142,7 @@
       "id": "marrow_errand",
       "name": "Old Marrow's errand",
       "screen": 1,
-      "giver": "node_6",
+      "giver": "node_15",
       "type": "rolled",
       "voice": {
         "name": "Old Marrow",
@@ -165,7 +165,7 @@
         "need": 2
       },
       "escort": {
-        "node": "node_17"
+        "node": "node_35"
       },
       "reward": {}
     },
@@ -173,7 +173,7 @@
       "id": "vell_errand",
       "name": "Sister Vell's errand",
       "screen": 1,
-      "giver": "node_6",
+      "giver": "node_15",
       "type": "rolled",
       "voice": {
         "name": "Sister Vell",
@@ -196,7 +196,7 @@
         "need": 2
       },
       "escort": {
-        "node": "node_17"
+        "node": "node_35"
       },
       "reward": {}
     }
