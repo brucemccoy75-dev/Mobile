@@ -1,6 +1,5 @@
 import type Phaser from 'phaser';
 import { ART_FILES } from '@game/scenes/BootScene';
-import type { TileType } from '@core/map';
 
 /**
  * Art style switch. Style C (flat vector, cel-shaded) is the chosen look (docs/ART.md);
@@ -40,14 +39,10 @@ export function artKey(scene: Phaser.Scene, base: string): string | null {
   return null;
 }
 
-/** Combat backdrop texture per overworld tile. Only the forest exists so far; everything falls back to it. */
-const BACKDROPS: Partial<Record<TileType, string>> = { forest: 'bg_forest' };
-export function backdropKey(tile?: TileType): string {
-  return (tile && BACKDROPS[tile]) ?? 'bg_forest';
-}
+/** Combat backdrop choice and ground colour: `@game/backdrops` (DECISIONS #80). */
+export { backdropGround, backdropKey } from '@game/backdrops';
 /** Fraction of the backdrop's height where the flat ground begins; combatants' feet sit on this line. */
 export const BACKDROP_HORIZON = 0.84;
-export const BACKDROP_GROUND = 0x8b8d45;
 
 /**
  * A texture that failed to load at boot (a dropped fetch, or a Pages deploy in progress) would

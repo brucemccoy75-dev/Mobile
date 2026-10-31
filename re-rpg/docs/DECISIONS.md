@@ -1074,3 +1074,31 @@ Checked in a real browser:
 - the Adept Necromancer's real curse cast in a fight.
 
 Screenshots in `docs/audit/curse-skull-2026-10-31/`.
+
+## 80. Screen 2 fights on a tundra backdrop
+
+Designer's request: the battle backdrop has the right feel; screen 2's battles should have an icy
+tundra one in the same style, to match the Frozen Pass.
+
+**The art**: an edit of `bg_forest.jpg`, so Grok kept its composition:
+- the framing trees left and right, the layered depth, and the open middle;
+- the flat ground starting on the line the fighters stand on (`BACKDROP_HORIZON`, 0.84).
+
+The trees became snow-laden pines and a few bare icy trees, the far forest became ice cliffs, and
+the sky is pale with light snowfall. Three came back at 2k (3200x1280, `--aspect 5:2`), contact
+sheet `art-src/backdrop-tundra/compare.jpg` with the feet line drawn. The pick is #2, whose
+treeline sits on that line. It ships as `public/art/c/bg_tundra.jpg` (2400x960).
+
+**The choice** moved to `src/game/backdrops.ts`, which has no Phaser import so it can be tested:
+- screen 2 uses `bg_tundra` whatever the tile;
+- screen 1 still picks by tile, falling back to the forest;
+- each backdrop has its own ground colour, carried on under the cards and sampled from its ground
+  band: forest `0x8b8d45` (the old constant, which the same sampling reproduces), tundra `0xd0deef`.
+
+**Readability**: the small grey labels over the backdrop (the enemy's name, your class line, the
+"AFTER YOUR MOVE" header) were faint on bright snow. They now carry a thin dark outline, which
+reads on both backdrops.
+
+Pinned in `src/game/backdrops.test.ts`. Checked in real fights, reached by walking each map from
+level select: an ogre on screen 2 on the tundra, and an Adept Necromancer on screen 1 in the
+forest. Screenshots in `docs/audit/tundra-battle-2026-10-31/`.

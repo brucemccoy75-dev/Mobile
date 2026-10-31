@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { BACKDROP_GROUND, BACKDROP_HORIZON, artKey, backdropKey, reloadArt } from '@game/art';
+import { BACKDROP_HORIZON, artKey, backdropGround, backdropKey, reloadArt } from '@game/art';
 import { describeSkill, getEnemy, getSkill } from '@data/index';
 import type { CardPreview } from '@data/describe';
 import { basicsFor } from '@data/skills';
@@ -50,6 +50,9 @@ interface EnemyView {
   intentNum: Phaser.GameObjects.Text;
   postureText: Phaser.GameObjects.Text;
 }
+
+/** A thin dark outline for small labels over the backdrop, so they read on the snow too (DECISIONS #80). */
+const LABEL_OUTLINE = { stroke: '#0b0f1a', strokeThickness: 3 };
 
 export class CombatScene extends Phaser.Scene {
   private session!: RunSession;
@@ -133,13 +136,13 @@ export class CombatScene extends Phaser.Scene {
     const slotX = (slot: number) => (n === 1 ? W * 0.73 : slot === 0 ? W * 0.62 : W * 0.84);
 
     const groundY = this.py + 46;
-    const bgKey = backdropKey(this.encounter.tile);
+    const bgKey = backdropKey(this.encounter.tile, this.session.screenIndex);
     if (this.textures.exists(bgKey)) {
       // backdrop: its ground band starts on the combatants' feet line, sides crop on narrow screens
       const src = this.textures.get(bgKey).getSourceImage() as { width: number; height: number };
       const scale = Math.max(W / src.width, groundY / (src.height * BACKDROP_HORIZON));
       this.add.image(W / 2, groundY, bgKey).setOrigin(0.5, BACKDROP_HORIZON).setScale(scale).setDepth(-3);
-      this.add.rectangle(W / 2, groundY + (1 - BACKDROP_HORIZON) * src.height * scale - 1, W, H, BACKDROP_GROUND).setOrigin(0.5, 0).setDepth(-3);
+      this.add.rectangle(W / 2, groundY + (1 - BACKDROP_HORIZON) * src.height * scale - 1, W, H, backdropGround(bgKey)).setOrigin(0.5, 0).setDepth(-3);
       // dark fades keep the HUD and the hand legible over the art
       const g = this.add.graphics().setDepth(-2);
       g.fillStyle(0x000000, 0.1); g.fillRect(0, 0, W, H);
@@ -180,7 +183,7 @@ export class CombatScene extends Phaser.Scene {
         reloadArt(this, def.art ?? `enemy_${def.id}`, (key) => this.swapEnemyArt(slot, key, groundY, scale, def));
       }
       sprite.setDepth(n - slot); // front enemy over the rear one
-      const nameText = this.add.text(ex, groundY + 12, def.name, text.small).setOrigin(0.5, 0);
+      const nameText = this.add.text(ex, groundY + 12, def.name, { ...text.small, ...LABEL_OUTLINE }).setOrigin(0.5, 0);
       const stats = new StatLine(this, ex, groundY + 38, 'center');
       // Tap an enemy to make it the target.
       sprite.setInteractive({ useHandCursor: true });
@@ -195,7 +198,7 @@ export class CombatScene extends Phaser.Scene {
       this.tweens.add({ targets: s, alpha: 1, x, duration: 420, ease: 'Quad.Out', onComplete: () => { this.breathe(s); this.curseLook(s); } });
     }
     const eq = Object.values(this.session.equipment).filter(Boolean).map((i) => i!.name).join(' · ');
-    this.add.text(this.px, this.py + 58, `${this.session.classId} · ${setName(this.session)}${eq ? `\n${eq}` : ''}`, { ...text.small, align: 'center' }).setOrigin(0.5, 0);
+    this.add.text(this.px, this.py + 58, `${this.session.classId} · ${setName(this.session)}${eq ? `\n${eq}` : ''}`, { ...text.small, ...LABEL_OUTLINE, align: 'center' }).setOrigin(0.5, 0);
 
     // HP bars + status rows: the player's on the left; one per enemy on the right, stacked for a duo.
     const barW = Math.min(300, W * 0.3);
@@ -223,7 +226,7 @@ export class CombatScene extends Phaser.Scene {
       v.intentBg = this.add.rectangle(ix, iy, pw, 64, COLORS.panel, 0.9).setStrokeStyle(2, COLORS.panelEdge).setInteractive({ useHandCursor: true });
       v.intentBg.on('pointerup', () => this.explainIntent(v.slot));
       // The panel is a promise, not a state: the enemy does this after your move.
-      v.intentHead = this.add.text(ix - half, iy - 34, n === 1 ? 'AFTER YOUR MOVE, IT WILL' : `${v.def.name.toUpperCase()} WILL`, { fontFamily: FONT, fontSize: '10px', color: '#9aa3b8', fontStyle: 'bold' }).setOrigin(0, 1);
+      v.intentHead = this.add.text(ix - half, iy - 34, n === 1 ? 'AFTER YOUR MOVE, IT WILL' : `${v.def.name.toUpperCase()} WILL`, { fontFamily: FONT, fontSize: '10px', color: '#9aa3b8', fontStyle: 'bold', ...LABEL_OUTLINE }).setOrigin(0, 1);
       v.intentText = this.add.text(ix - half, iy - 10, '', { ...text.body, fontSize: n === 1 ? '14px' : '12px', fontStyle: 'bold', wordWrap: { width: pw - 60 } }).setOrigin(0, 0.5);
       v.intentNum = this.add.text(ix + half, iy - 10, '', { ...text.h2, fontSize: n === 1 ? '26px' : '22px' }).setOrigin(1, 0.5);
       v.postureText = this.add.text(ix, iy + 16, '', { ...text.small, fontSize: n === 1 ? text.small.fontSize : '11px' }).setOrigin(0.5);

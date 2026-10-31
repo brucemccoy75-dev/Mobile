@@ -20,7 +20,7 @@ Next assets in order: Boar (screen 1 enemy, facing left) and the forest backdrop
 
 ### Combat backdrops
 
-One per overworld tile type, 1280×540-ish landscape, stored as `public/art/c/bg_<tile>.jpg` (source JPG under `art-src/`). The flat ground must start at a fixed fraction of the height (`BACKDROP_HORIZON`, 0.84 after cropping the dark bottom strip); CombatScene puts the combatants' feet on that line, extends the ground colour under the hand, and lays dark fades under the HUD and the cards. The fight picks `bg_<tile>` from the tile the encounter started on (`PendingEncounter.tile`); only `bg_forest` exists, so every tile falls back to it. Next: grass/road clearing, swamp, and the two boss arenas, same prompt with the biome swapped.
+One per overworld tile type, 1280×540-ish landscape, stored as `public/art/c/bg_<tile>.jpg` (source JPG under `art-src/`). The flat ground must start at a fixed fraction of the height (`BACKDROP_HORIZON`, 0.84 after cropping the dark bottom strip); CombatScene puts the combatants' feet on that line, extends the ground colour under the hand, and lays dark fades under the HUD and the cards. The choice is `src/game/backdrops.ts`: screen 2 always fights on `bg_tundra` (DECISIONS #80); screen 1 picks `bg_<tile>` from the tile the encounter started on (`PendingEncounter.tile`), and only `bg_forest` exists there. A new backdrop is easiest as a `grok.py edit` of `bg_forest.jpg` with the biome swapped (`--resolution 2k --aspect 5:2`): the edit keeps the framing and the ground line. Sample its ground band for its entry in `GROUND`. Next: the two boss arenas.
 
 ### Animation from generated video (parked)
 

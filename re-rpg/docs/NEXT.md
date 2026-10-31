@@ -7,13 +7,14 @@ Pages at https://brucemccoy75-dev.github.io/Mobile/. After a push, poll `origin/
 "Deploy re-rpg <sha>", **then** poll the live site until its main JS contains your 7-character
 hash; that is the build stamp the title shows at the bottom left. Pages publishes some time after
 the branch updates, so the branch alone is not "live" (#75 follow-up). Fetch with a `?t=<now>`
-query so a cache cannot answer. 311 tests pass (`npm run check`: typecheck,
+query so a cache cannot answer. 313 tests pass (`npm run check`: typecheck,
 cards:validate, world:validate, tests, build). The game today is:
 
 - **Node overworld** (DECISIONS #37): a static node network per screen over an authored terrain,
   contents rolled per run (and shaped by node rules, #55), tap a reachable node to travel, swipe to
   pan. Both screens are painted: screen 1 the Gate Road (`map1.jpg`, #39), screen 2 the Frozen Pass
-  (`map2.jpg`, #76), a tundra on 48x27 tiles with 40 nodes and crossing tracks. Subtle
+  (`map2.jpg`, #76), a tundra on 48x27 tiles with 40 nodes and crossing tracks; its battles use
+  the tundra backdrop (`bg_tundra.jpg`, #80). Subtle
   ambience: dust behind the hero, ripples on water, birds now and then (#60). `?dev` shows an overlay.
 - **The story is switched off** (#72) while the designer balances: `STORY.enabled = false` in
   `src/data/world.ts`. A run is the fixed start, the map's usual placement, and Knight Andre
@@ -64,7 +65,7 @@ own command → Playwright at 844×390 (the game) or 390×844 (the editors) with
 (Test Mode: set registry `testSetup`, call `TestMode.fight()`, then `Combat.act()` and poll
 `busy`; to answer a dialogue from a script, `scene('Dialogue').choose(d, option)`) → commit with
 the attribution lines → `git push -u origin <branch>` → poll gh-pages. Record decisions in
-`docs/DECISIONS.md` (next number is 80). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
+`docs/DECISIONS.md` (next number is 81). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
 
 **Run logs** (`docs/PLAYTESTS.md`, DECISIONS #67). When the designer sends a run log, always:
 1. save it in `docs/playtests/`;
