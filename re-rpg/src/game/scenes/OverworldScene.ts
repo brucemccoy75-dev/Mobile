@@ -15,6 +15,7 @@ import { tween, wait } from '@game/ui/tween';
 import { groundIndices, propsFor } from '@game/tiles';
 import { ensureRun } from '@game/telemetry';
 import { STORY } from '@data/world';
+import ANIMS from '@data/anims.json';
 
 /** World pixels per tile: about 11×5 tiles on a phone, close enough to read the ground. */
 export const TILE = 72;
@@ -31,7 +32,9 @@ const STEP_MS = 105;
  */
 export class OverworldScene extends Phaser.Scene {
   private session!: RunSession;
-  private player!: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image;
+  private player!: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite;
+  /** The hero is drawn art (a still or the walk sheet), not the placeholder square. */
+  private get heroArt(): boolean { return this.player instanceof Phaser.GameObjects.Image || this.player instanceof Phaser.GameObjects.Sprite; }
   private follower: Phaser.GameObjects.Rectangle | null = null;
   private markers = new Map<string, Phaser.GameObjects.Container>();
   private rings = new Map<string, Phaser.GameObjects.Arc>();
@@ -229,11 +232,15 @@ export class OverworldScene extends Phaser.Scene {
     const c = this.centre(this.session.playerPos);
     const k = artKey(this, `hero_${this.session.classId}`);
     this.add.ellipse(c.x, c.y + TILE * 0.36, TILE * 0.8, TILE * 0.3, 0x070a12, 0.45).setDepth(5.5);
-    if (k) { const src = this.textures.get(k).getSourceImage() as { height: number }; this.player = this.add.image(c.x, c.y + TILE * 0.42, k).setOrigin(0.5, 1).setScale((TILE * 1.25) / src.height).setDepth(6); }
+    const walk = (ANIMS as Record<string, { frameHeight: number; height?: number }>)[`hero_${this.session.classId}_walk`];
+    if (walk && this.anims.exists(`anim_hero_${this.session.classId}_walk`)) {
+      // The walk sheet (DECISIONS #75): frame 0 is the standing pose; its feet sit 8 px above the frame's bottom.
+      this.player = this.add.sprite(c.x, c.y + TILE * 0.42, `hero_${this.session.classId}_walk_c`, 0).setOrigin(0.5, (walk.frameHeight - 8) / walk.frameHeight).setScale((TILE * 1.25) / (walk.height ?? walk.frameHeight)).setDepth(6);
+    } else if (k) { const src = this.textures.get(k).getSourceImage() as { height: number }; this.player = this.add.image(c.x, c.y + TILE * 0.42, k).setOrigin(0.5, 1).setScale((TILE * 1.25) / src.height).setDepth(6); }
     else this.player = this.add.rectangle(c.x, c.y, 26 * K, 38 * K, CLASS_COLORS[this.session.classId] ?? COLORS.player).setStrokeStyle(2, 0xffffff, 0.6).setDepth(6);
     if (isEscorting(this.session)) this.follower = this.add.rectangle(c.x - 22 * K, c.y + 6 * K, 18 * K, 26 * K, 0x9fb3c8).setStrokeStyle(2, 0xffffff, 0.6).setDepth(6);
   }
-  private playerPosFor(t: Tile) { const c = this.centre(t); return { x: c.x, y: this.player instanceof Phaser.GameObjects.Image ? c.y + TILE * 0.42 : c.y }; }
+  private playerPosFor(t: Tile) { const c = this.centre(t); return { x: c.x, y: this.heroArt ? c.y + TILE * 0.42 : c.y }; }
 
   /** Rings under the nodes you can travel to from here. */
   private syncRings() {
@@ -332,6 +339,7 @@ export class OverworldScene extends Phaser.Scene {
       s.playerPos = { ...n.pos };
       from = n;
     }
+    if (this.player instanceof Phaser.GameObjects.Sprite) this.player.stop().setFrame(0); // standing pose
     this.locked = false;
     await this.enterNode(from);
   }
@@ -342,9 +350,11 @@ export class OverworldScene extends Phaser.Scene {
     for (const t of path) {
       const c = this.playerPosFor(t);
       const prev = { x: this.player.x, y: this.player.y };
-      this.ambience?.dust(prev.x, this.player instanceof Phaser.GameObjects.Image ? prev.y - 4 : prev.y + TILE * 0.2);
-      if (this.player instanceof Phaser.GameObjects.Image) this.player.setFlipX(c.x < prev.x);
-      this.tweens.add({ targets: this.player, scaleY: this.player.scaleY * 0.94, duration: STEP_MS / 2, yoyo: true, ease: 'Sine.InOut' });
+      this.ambience?.dust(prev.x, this.heroArt ? prev.y - 4 : prev.y + TILE * 0.2);
+      if (this.player instanceof Phaser.GameObjects.Image || this.player instanceof Phaser.GameObjects.Sprite) { if (c.x !== prev.x) this.player.setFlipX(c.x < prev.x); }
+      // The walk sheet animates the stride (#75); the still gets a squash per step instead.
+      if (this.player instanceof Phaser.GameObjects.Sprite) this.player.play(`anim_hero_${this.session.classId}_walk`, true);
+      else this.tweens.add({ targets: this.player, scaleY: this.player.scaleY * 0.94, duration: STEP_MS / 2, yoyo: true, ease: 'Sine.InOut' });
       await tween(this, { targets: this.player, x: c.x, y: c.y, duration: STEP_MS, ease: 'Linear' });
       if (this.follower) void tween(this, { targets: this.follower, x: prev.x, y: prev.y + 6, duration: STEP_MS, ease: 'Linear' });
     }

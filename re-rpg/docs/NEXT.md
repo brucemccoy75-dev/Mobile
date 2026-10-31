@@ -53,7 +53,7 @@ own command → Playwright at 844×390 (the game) or 390×844 (the editors) with
 (Test Mode: set registry `testSetup`, call `TestMode.fight()`, then `Combat.act()` and poll
 `busy`; to answer a dialogue from a script, `scene('Dialogue').choose(d, option)`) → commit with
 the attribution lines → `git push -u origin <branch>` → poll gh-pages. Record decisions in
-`docs/DECISIONS.md` (next number is 75). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
+`docs/DECISIONS.md` (next number is 76). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
 
 **Run logs** (`docs/PLAYTESTS.md`, DECISIONS #67). When the designer sends a run log, always:
 1. save it in `docs/playtests/`;
@@ -72,12 +72,17 @@ Since then: one card per enemy alive (#68). In the mirror, duo deaths fell to 35
 shortest road reaches Wren 6–37%. A full clear still almost never does. The next run log is the
 first real test of #68.
 
-**Art by API** (docs/ART.md, "Generating art with the API"): `scripts/grok.py` calls Grok
-Imagine (images, edits of a reference image, video) with `XAI_API_KEY`. If the environment has
-no key, ask the designer to paste it and save it to `re-rpg/.env.local` (git ignores it). Never
-commit it. Next art job: the overworld walk. Frame 1 is in `art-src/overworld-walk/`; make
-frames 2–4 with the same edit prompt (`art-src/overworld-walk/grok-walk-prompts.md`), then cut,
-align on the feet, and play it on the map.
+**Art by API** (#75; docs/ART.md, "Generating art with the API"): make art yourself.
+- `scripts/grok.py` calls Grok Imagine: images, edits of a reference image (the way to keep a
+  character on-model), and video.
+- `scripts/frames-to-sheet.py` turns frames into a sprite sheet and an `anims.json` entry.
+
+The key arrives in the designer's first message. Save it to `re-rpg/.env.local` (git ignores it)
+before anything else, and never write it into a commit or a doc.
+
+Done: the hero's 4-frame overworld walk. Art ideas, none started: walk sheets for the other
+classes the same way; front and back walk views; screen 2's painting; the opening cutscene, now
+possible with `grok.py video` (prompts in `art-src/cutscene/`).
 
 **Scope.** Only the warrior is being balanced. Wizard and shaman cards, families and trees are
 frozen by the validator until the warrior is done.

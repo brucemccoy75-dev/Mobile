@@ -45,7 +45,7 @@ export class BootScene extends Phaser.Scene {
   private createAnims() {
     for (const [key, a] of Object.entries(ART_ANIMS)) {
       if (!this.textures.exists(`${key}_c`)) continue;
-      this.anims.create({ key: `anim_${key}`, frames: this.anims.generateFrameNumbers(`${key}_c`, { start: 0, end: a.frames - 1 }), frameRate: a.fps, repeat: a.loop ? -1 : 0, repeatDelay: a.pause ?? 0 });
+      this.anims.create({ key: `anim_${key}`, frames: this.anims.generateFrameNumbers(`${key}_c`, { start: (a as { start?: number }).start ?? 0, end: a.frames - 1 }), frameRate: a.fps, repeat: a.loop ? -1 : 0, repeatDelay: a.pause ?? 0 });
     }
   }
 

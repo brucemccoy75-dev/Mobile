@@ -17,10 +17,10 @@ Read, in this order, before doing anything:
 4. `re-rpg/docs/PLAYTESTS.md`: what to do with every run log I send (save it, `npm run playtest`
    against the screen-1 mirror, both sim tables, a "Phone test N" write-up in BALANCE.md). The
    latest reading is the top section of `re-rpg/docs/BALANCE.md`.
-5. `re-rpg/docs/DECISIONS.md` entries #55 to #74 (the world and quest editor, battle effects,
+5. `re-rpg/docs/DECISIONS.md` entries #55 to #75 (the world and quest editor, battle effects,
    ambience, the story-in-data review, blocks, the run-log procedure, one card per enemy,
    branching cards with Regen and Blackjack, three cards before every card, the story switched
-   off, cursed enemies, and the title art).
+   off, cursed enemies, the title art, and art by API with the hero's walk).
    The whole file is the history of why things are the way they are; look up any older number
    you meet.
 
@@ -33,9 +33,11 @@ Ground rules:
 - When I send a run log, follow `docs/PLAYTESTS.md` every time. Run the simulator, and compare
   how often it reaches and beats the boss with how often I did. Write the result as the next
   "Phone test" in BALANCE.md. Recommend changes; make them only when I say so.
-- Art: generate it yourself with `scripts/grok.py` (xAI Grok Imagine). The key is `XAI_API_KEY`
-  in the environment, or `re-rpg/.env.local`. If neither is there, ask me to paste the key and
-  save it to `re-rpg/.env.local`, never in a commit or a doc.
+- Art: generate it yourself with `scripts/grok.py` (xAI Grok Imagine; docs/ART.md, "Generating
+  art with the API"). My xAI key is at the end of this message, or `XAI_API_KEY` is set in the
+  environment. **First thing**, save it to `re-rpg/.env.local` as `XAI_API_KEY=<key>` (git
+  ignores that file; mode 600). Never put the key in a commit, a doc or the chat output: the repo
+  is public.
 - Only the warrior is being balanced; wizard and shaman data are frozen by the validator.
 - Every change: `npm run check` green, commit with the attribution lines the session gives you,
   `git push -u origin claude/re-rpg-mobile-architecture-t26won`, then poll `origin/gh-pages` until
@@ -48,6 +50,13 @@ Ground rules:
 - Report what was actually wrong and what you verified, not just what you changed. If a step
   fails, say so with the output.
 
-First task: confirm the branch, run `npm run check`, and tell me the test count and the latest
-commit hash. Then wait: the focus is balance, with the story switched off (DECISIONS #72). I
-will send run logs (follow PLAYTESTS.md) and card exports (follow CARDS.md).
+First task:
+1. Save my xAI key to `re-rpg/.env.local` and check that `python3 scripts/grok.py models` lists
+   the Grok Imagine models.
+2. Confirm the branch and run `npm run check`.
+3. Tell me the test count, the latest commit hash, and whether the key works.
+
+Then wait. The focus is balance, with the story switched off (DECISIONS #72). I will send run
+logs (follow PLAYTESTS.md) and card exports (follow CARDS.md), and may ask for art.
+
+xAI key (my copy of this prompt has it on the next line; the repo copy does not):

@@ -224,3 +224,20 @@ commit a key** (the repo feeds a public site). A session that finds no key asks 
 paste it and saves it as `XAI_API_KEY=<key>` in `re-rpg/.env.local` (mode 600).
 
 The image host turns away Python's default user agent, so the script sends its own.
+
+### Sprite sheets from frames (scripts/frames-to-sheet.py)
+
+`python3 scripts/frames-to-sheet.py <name> <anim> <char_height@2x> <fps> <frame>... [--start N]`
+does five things:
+- brings every source to the same canvas height;
+- keys the plain background and shares one scale;
+- stands the frames on one baseline, centred on the upper body;
+- writes `public/art/c/<name>_<anim>@2x.png`;
+- records the frame size, count, fps, `start` and the character's height in `src/data/anims.json`.
+
+BootScene builds `anim_<name>_<anim>`. Frame 0 can be a standing pose with `--start 1`.
+
+The hero walk was made like this:
+`frames-to-sheet.py hero_warrior walk 150 8 art-src/hero_warrior_styleC.jpg art-src/overworld-walk/frame1..4.jpg --start 1`.
+The four frames are edits made with `grok.py edit`, using the prompts in
+`art-src/overworld-walk/grok-walk-prompts.md`.

@@ -871,3 +871,31 @@ give way to the art. The run record sits on a dark pill under the logo. "New run
 with "New run" under it) stands in the clearing between the hero and the enemies, and a dark band
 along the bottom keeps the small buttons readable. Without the image the old text title draws as
 before. Screenshots (1169x540, a saved run, and 16:9) in `docs/audit/title-2026-10-30/`.
+
+## 75. Art by API, and the hero walks the map
+
+Designer's request: generate the art directly, not by hand through Grok and back. Sessions now
+call xAI's Grok Imagine with `scripts/grok.py`:
+- images, edits of a reference image, and video;
+- every output gets a JSON note beside it with the prompt, model, references and cost.
+
+The key is the designer's, with a low spending limit. It lives in `XAI_API_KEY` (the environment
+settings) or in `re-rpg/.env.local`, which git ignores. It is **never committed**: the repo is
+public and feeds GitHub Pages, and a leaked key is flagged or revoked. The designer pastes it in
+the first message of a session, and the session saves it to `.env.local` before anything else
+(HANDOFF_PROMPT.md).
+
+The first job is the overworld walk:
+- **The frames:** four edits of `art-src/hero_warrior_styleC.jpg` that change only the legs and
+  arms, so he stays on-model (about $0.07 each).
+- **The sheet:** `scripts/frames-to-sheet.py` brings the sources to one canvas height, keys the
+  background, shares one scale, aligns the frames on the feet and centres them on the upper body.
+  It writes `public/art/c/hero_warrior_walk@2x.png` and an `anims.json` entry. Frame 0 is the
+  standing still; the walk loops over frames 1–4 at 8 fps (the new `start` field).
+- **On the map:** the hero is a sprite when the sheet exists. He plays the walk while moving,
+  holds his facing on up and down moves, and stands on frame 0 when he arrives. The still keeps
+  its old squash-per-step when there is no sheet.
+
+Found on the way: xAI's image host turns away Python's default user agent, so the script sends
+its own. Checked in a real run: frames 1→4 cycle on the road and he is back on frame 0 at the
+node.
