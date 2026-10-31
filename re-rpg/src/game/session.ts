@@ -1,20 +1,20 @@
 // The live run object the scenes share, plus (de)serialisation to the
 // RunState that SaveStore persists. Pure rules live in core/run, core/loot, core/meta.
 import type Phaser from 'phaser';
-import { familyOf, getClass, getEnemy, getSet, getSkill } from '@data/index';
+import { enemiesOfTier, familyOf, getClass, getEnemy, getSet, getSkill } from '@data/index';
 import { CURSED_CHANCE, CURSED_MIN_LEVEL, cursedEnemy, rollCursedTraits } from '@core/variants';
 import type { ClassId, Enemy, EnemyId, Item, SetId, Skill, SkillId, Stats } from '@data/types';
 import { RunRng, newSeed } from '@core/rng';
-import { key, parseScreen, type MapNode, type ScreenMap, type Tile, type TileType } from '@core/map';
+import { SHRINE_HEAL, key, parseScreen, rollSurprises, type MapNode, type ScreenMap, type Tile, type TileType } from '@core/map';
 import { SCREEN1 } from '@data/maps/screen1';
 import { SCREEN2 } from '@data/maps/screen2';
 import { STORY, WORLD, nodeRules } from '@data/world';
 import { DECK_CAP } from '@core/combat';
 import { PAIRS } from '@data/packs';
-import { TOME_COPY_CAP } from '@data/skills';
+import { TOME_COPY_CAP, basicsFor } from '@data/skills';
 import { computeStats, emptyEquipment, equip as equipItem, equipmentFromIds, equipmentToIds, type Equipment, RUN_VERSION, type RunState } from '@core/run';
 import { classProgress, createMeta, deathsOn, discoverItem, discoverSkill, nudgeRelation, rollHeirloomChoices, unlockedSets, type Heirloom, type MetaState } from '@core/meta';
-import { LUCK_RARE_WEIGHT, buildPool, locked, rollShopStock, type RewardChoice, type RewardSource, type ShopStock } from '@core/loot';
+import { LUCK_RARE_WEIGHT, buildPool, locked, rollShopStock, sellValue, type RewardChoice, type RewardSource, type ShopStock } from '@core/loot';
 import { LEVEL_GOLD, LEVEL_HP, LEVEL_RARE_CHANCE } from '@data/progression';
 import { pickQuestDef, questFromDef, questReady, type Quest, type QuestDef } from '@core/quest';
 import type { DialogueCtx, QuestState, Rearm } from '@core/dialogue';
@@ -25,7 +25,7 @@ export const SCREEN_COUNT = 2;
 
 export type EncounterKind = 'random' | 'guard' | 'boss' | 'node';
 /** `tile` is where the fight started; the combat backdrop is chosen from it (docs/ART.md). */
-export interface PendingEncounter { /** A cursed enemy (DECISIONS #73): 3× gold and EXP and a cursed card offer if won. */ cursed?: boolean; kind: EncounterKind; enemyId: EnemyId; guardId?: string; /** Authored map node (kind 'node'). */ nodeId?: string; tile?: TileType; /** Further enemies behind the first (duos, DECISIONS #29). */ extra?: EnemyId[]; /** Full definitions when the fight holds enemies that are not in the roster (a ghost, a boss variant; DECISIONS #36). Front first; overrides enemyId/extra for the engine. */ custom?: Enemy[]; /** Set when your ghost is in this fight. */ ghost?: boolean; }
+export interface PendingEncounter { /** A cursed enemy (DECISIONS #73): 3× gold and EXP and a cursed card offer if won. */ cursed?: boolean; kind: EncounterKind; enemyId: EnemyId; guardId?: string; /** Authored map node (kind 'node'). */ nodeId?: string; tile?: TileType; /** Further enemies behind the first (duos, DECISIONS #29). */ extra?: EnemyId[]; /** Full definitions when the fight holds enemies that are not in the roster (a ghost, a boss variant; DECISIONS #36). Front first; overrides enemyId/extra for the engine. */ custom?: Enemy[]; /** Set when your ghost is in this fight. */ ghost?: boolean; /** The enemy the map showed when this one is a surprise (DECISIONS #81). */ surprise?: EnemyId; }
 export interface CombatResult { encounter: PendingEncounter; won: boolean; /** What the win already changed (applied in combat, DECISIONS #61); the map only shows it. */ report?: import('@game/story').WinReport; }
 /** A reward to show. `goldMult` scales the rolled gold and `then` is the offer that follows (a cursed win, DECISIONS #73). */
 export interface PendingOffer { source: RewardSource | 'cursed'; gold?: number; goldMult?: number; then?: PendingOffer; }
@@ -68,6 +68,8 @@ export interface RunSession {
   skillUpgrades: SkillUpgrades;
   /** What each growing card has gained this run (Cursed Counter, DECISIONS #73). */
   skillGrowth: Record<SkillId, number>;
+  /** Starting cards sold at a shop this run, one entry per copy (DECISIONS #81). */
+  soldBasics: SkillId[];
   customItems: Item[];
 
   pendingEncounter: PendingEncounter | null;
@@ -193,7 +195,7 @@ export function createSession(classId: ClassId, meta: MetaState, seed = newSeed(
     deck: [], equipment: emptyEquipment(),
     screenIndex: 0, map: undefined as unknown as ScreenMap, playerPos: { x: 0, y: 0 }, threat: 0,
     openedPois: new Set(), usedShrines: new Set(), defeatedGuards: new Set(), clearedNodes: new Set(), lastClearedNode: null, flags: new Set(), special: STORY.enabled && rng.stream('special').chance(WORLD.specialChance ?? 0), bossDefeated: false, encountersWon: 0,
-    newDiscoveries: [], heirloomName: null, shop: { lines: [], healPrice: 0, healPct: 0.5, healUsed: true }, quests: [], skillUpgrades: {}, skillGrowth: {}, customItems: [],
+    newDiscoveries: [], heirloomName: null, shop: { lines: [], healPrice: 0, healPct: 0.5, healUsed: true }, quests: [], skillUpgrades: {}, skillGrowth: {}, soldBasics: [], customItems: [],
     pendingEncounter: null, lastResult: null, pendingOffer: null, heirloomChoices: [],
   };
   s.heirloomChoices = rollHeirloomChoices(meta, classId, rng.stream('meta'));
@@ -294,6 +296,8 @@ export function startScreen(s: RunSession, index: number, meta?: MetaState): voi
   s.bossDefeated = false;
   s.shop = rollShopStock(index, poolCtx(s, meta), s.rng.stream('loot'));
   curseNodes(s, meta ?? createMeta());
+  // About one fight in seven is not what the map shows (DECISIONS #81). After the curses, which it skips.
+  rollSurprises(s.map.nodes ?? [], enemiesOfTier(screenTier(s)).map((e) => e.id), s.rng.stream('surprise'), { ...nodeRules(index), ...(quest?.nodes ?? {}) });
   // One quest per screen (DECISIONS #19), chosen from world.json (#57).
   setScreenQuest(s, meta ?? createMeta(), index, quest);
 }
@@ -345,6 +349,21 @@ export const currentNode = (s: RunSession): MapNode => { const n = nodeAt(s, s.p
 export const isCleared = (s: RunSession, n: MapNode): boolean => s.clearedNodes.has(n.id);
 
 /**
+ * The shrine (DECISIONS #81): visiting opens the road through it (cleared), healing spends it
+ * (`usedShrines`). It heals SHRINE_HEAL of max HP, never past full.
+ */
+export const shrineUsed = (s: RunSession, n: MapNode): boolean => s.usedShrines.has(n.id);
+export const shrineHeal = (s: RunSession): number => Math.max(0, Math.min(s.stats.maxHp - s.hp, Math.round(s.stats.maxHp * SHRINE_HEAL)));
+export function useShrine(s: RunSession, n: MapNode): number {
+  if (shrineUsed(s, n)) return 0;
+  const heal = shrineHeal(s);
+  s.hp += heal;
+  s.usedShrines.add(n.id);
+  s.clearedNodes.add(n.id);
+  return heal;
+}
+
+/**
  * Nodes you can travel to now: anything linked through cleared nodes. The destination itself need
  * not be cleared (that is how you reach a fight), but nothing beyond an uncleared node is open.
  */
@@ -372,6 +391,8 @@ export function nodeEncounter(s: RunSession, node: MapNode): PendingEncounter {
   if (node.kind === 'boss') return { kind: 'boss', enemyId: node.enemyId ?? s.map.bossId, nodeId: node.id };
   // A cursed node is one cursed enemy alone, even on a duo's node (DECISIONS #73).
   if (node.cursed) return { kind: 'node', enemyId: node.enemyId!, nodeId: node.id, cursed: true, custom: [cursedEnemy(getEnemy(node.enemyId!), node.cursed)] };
+  // A surprise (DECISIONS #81): the map showed `enemyId`; this is who waits.
+  if (node.surprise) return { kind: 'node', enemyId: node.surprise, nodeId: node.id, surprise: node.enemyId };
   return { kind: 'node', enemyId: node.enemyId!, nodeId: node.id, extra: node.extra ? [...node.extra] : undefined };
 }
 
@@ -399,6 +420,7 @@ export function rearmLastFight(s: RunSession, rearm: Rearm = {}): MapNode | null
   if (!isFightNode(n) || n.kind === 'boss') return null;
   s.clearedNodes.delete(n.id);
   n.seen = true;
+  delete n.surprise; // the re-armed fight is the one the map shows
   if (!n.extra?.length) {
     const pair = PAIRS[screenTier(s)].find(([front]) => front === n.enemyId) ?? s.rng.stream('encounter').pick(PAIRS[screenTier(s)]);
     n.enemyId = pair[0]; n.extra = [pair[1]];
@@ -478,7 +500,7 @@ export function serialize(s: RunSession): RunState {
     clearedNodes: [...s.clearedNodes], lastClearedNode: s.lastClearedNode, flags: [...s.flags], special: s.special,
     bossDefeated: s.bossDefeated, encountersWon: s.encountersWon, newDiscoveries: [...s.newDiscoveries], heirloomName: s.heirloomName,
     shop: JSON.parse(JSON.stringify(s.shop)) as ShopStock,
-    quests: JSON.parse(JSON.stringify(s.quests)) as Quest[], skillUpgrades: { ...s.skillUpgrades }, skillGrowth: { ...s.skillGrowth }, customItems: JSON.parse(JSON.stringify(s.customItems)) as Item[],
+    quests: JSON.parse(JSON.stringify(s.quests)) as Quest[], skillUpgrades: { ...s.skillUpgrades }, skillGrowth: { ...s.skillGrowth }, soldBasics: [...s.soldBasics], customItems: JSON.parse(JSON.stringify(s.customItems)) as Item[],
   };
 }
 
@@ -494,7 +516,36 @@ export function deserialize(st: RunState, meta: MetaState): RunSession {
     openedPois: new Set(st.openedPois), usedShrines: new Set(st.usedShrines), defeatedGuards: new Set(st.defeatedGuards),
     clearedNodes: new Set(st.clearedNodes ?? []), lastClearedNode: st.lastClearedNode ?? null, flags: new Set(st.flags ?? []), special: st.special ?? false,
     bossDefeated: st.bossDefeated, encountersWon: st.encountersWon, newDiscoveries: [...st.newDiscoveries], heirloomName: st.heirloomName,
-    shop: st.shop, quests: st.quests ?? [], skillUpgrades: st.skillUpgrades ?? {}, skillGrowth: st.skillGrowth ?? {}, customItems: st.customItems ?? [],
+    shop: st.shop, quests: st.quests ?? [], skillUpgrades: st.skillUpgrades ?? {}, skillGrowth: st.skillGrowth ?? {}, soldBasics: (st.soldBasics ?? []) as SkillId[], customItems: st.customItems ?? [],
     pendingEncounter: null, lastResult: null, pendingOffer: null, heirloomChoices: [],
   };
+}
+
+// ---------------------------------------------------------------- selling a card (DECISIONS #81)
+
+/** The starting cards this run deals every fight: the class's, less any sold at a shop. */
+export function runBasics(s: RunSession): SkillId[] {
+  const out = [...basicsFor(s.classId)];
+  for (const id of s.soldBasics) { const i = out.indexOf(id); if (i >= 0) out.splice(i, 1); }
+  return out;
+}
+/** A fight deals three cards at a time, so a run keeps at least this many. */
+export const MIN_CARDS = 3;
+export interface SellableCard { id: SkillId; from: 'deck' | 'basic'; value: number }
+/** What a shop will buy: any card held, once per shop, while more than MIN_CARDS are held. */
+export function sellableCards(s: RunSession): SellableCard[] {
+  const basics = runBasics(s);
+  if (s.shop.cardSold || s.deck.length + basics.length <= MIN_CARDS) return [];
+  const value = (id: SkillId) => sellValue(getSkill(id).rarity, s.screenIndex);
+  return [...s.deck.map((id) => ({ id, from: 'deck' as const, value: value(id) })), ...basics.map((id) => ({ id, from: 'basic' as const, value: value(id) }))];
+}
+/** Sell one copy of a card to this screen's shop: gold now, the card gone for the run. */
+export function sellCard(s: RunSession, id: SkillId, from: 'deck' | 'basic'): number {
+  const card = sellableCards(s).find((c) => c.id === id && c.from === from);
+  if (!card) throw new Error(`sellCard: ${id} (${from}) cannot be sold here`);
+  if (from === 'deck') s.deck.splice(s.deck.indexOf(id), 1);
+  else s.soldBasics.push(id);
+  s.gold += card.value;
+  s.shop.cardSold = true;
+  return card.value;
 }

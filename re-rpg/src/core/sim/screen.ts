@@ -1,12 +1,12 @@
 import { basicsFor } from '@data/skills';
-import { SETS, getClass } from '@data/index';
+import { SETS, enemiesOfTier, getClass } from '@data/index';
 import { nodeRules } from '@data/world';
 import { SCREEN1 } from '@data/maps/screen1';
 import { SCREEN2 } from '@data/maps/screen2';
 import type { ClassId, Enemy, SetId, SkillId } from '@data/types';
 import { RunRng, type Rng } from '@core/rng';
 import { createCombat } from '@core/combat';
-import { SHRINE_HEAL, parseScreen, type MapNode, type ScreenMap } from '@core/map';
+import { SHRINE_HEAL, parseScreen, rollSurprises, type MapNode, type ScreenMap } from '@core/map';
 import { HEIRLOOM_OFFER, HEIRLOOM_PICKS } from '@core/meta';
 import { wrenBoss } from '@core/variants';
 import type { Policy } from './policy';
@@ -45,7 +45,10 @@ export interface ScreenResult extends GauntletResult {
 const FIGHTS = new Set(['monster', 'unknown', 'elite']);
 
 export function buildScreen(seed: string, screenIndex: 0 | 1 = 0): ScreenMap {
-  return parseScreen(screenIndex === 0 ? SCREEN1 : SCREEN2, new RunRng(seed).stream('map'), { seed, screenIndex, rules: nodeRules(screenIndex) });
+  const map = parseScreen(screenIndex === 0 ? SCREEN1 : SCREEN2, new RunRng(seed).stream('map'), { seed, screenIndex, rules: nodeRules(screenIndex) });
+  // The same surprises a run rolls from this seed (DECISIONS #81).
+  rollSurprises(map.nodes ?? [], enemiesOfTier(screenIndex === 0 ? 1 : 2).map((e) => e.id), new RunRng(seed).stream('surprise'), nodeRules(screenIndex));
+  return map;
 }
 
 /** The nodes a route visits before the gate, nearest first: fights and the shrine. */
@@ -100,7 +103,7 @@ export function runScreen(o: ScreenOptions): ScreenResult {
 
   for (const n of route) {
     if (n.kind === 'shrine') { shrine = true; if (hp <= stats.maxHp / 2) useShrine(); continue; }
-    const enemies = [n.enemyId!, ...(n.extra ?? [])];
+    const enemies = n.surprise ? [n.surprise] : [n.enemyId!, ...(n.extra ?? [])];
     if (enemies.length > 1) duos++;
     if (!fight(enemies)) return { reachedBoss: false, beatBoss: false, fightsWon, hpAtBoss: 0, rounds, deathBy: enemies.join('+'), fights, duos, deathInDuo: enemies.length > 1 };
     fightsWon++;

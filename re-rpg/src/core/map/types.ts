@@ -43,6 +43,8 @@ export interface MapNode {
   rearm?: { trigger?: string; winFlag?: string };
   /** A cursed enemy waits here (DECISIONS #73): its two traits. Gone once the player declines it. */
   cursed?: CursedTrait[];
+  /** Not what the map shows (DECISIONS #81): the enemy actually met here. The map shows `enemyId`. */
+  surprise?: EnemyId;
 }
 
 /** Kinds a designer may put on a content slot (world editor, DECISIONS #55). */

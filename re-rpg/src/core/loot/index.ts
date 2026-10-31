@@ -127,6 +127,8 @@ export interface ShopStock {
   healPrice: number;
   healPct: number;
   healUsed: boolean;
+  /** This shop has bought its one card (DECISIONS #81); absent in older saves. */
+  cardSold?: boolean;
 }
 
 const PRICE: Record<Rarity, number> = { basic: 10, common: 20, uncommon: 35, rare: 60, boss: 90 };

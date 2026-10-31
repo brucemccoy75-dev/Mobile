@@ -1102,3 +1102,64 @@ reads on both backdrops.
 Pinned in `src/game/backdrops.test.ts`. Checked in real fights, reached by walking each map from
 level select: an ogre on screen 2 on the tundra, and an Adept Necromancer on screen 1 in the
 forest. Screenshots in `docs/audit/tundra-battle-2026-10-31/`.
+
+## 81. Enemies on the map as themselves, surprise fights, a shrine that asks, selling a card
+
+Designer's requests, in one go:
+
+**1. Enemy nodes are just the enemies.** The dark plate, the name, the skulls (elite, boss) and
+the "?" with a skull (unknown) read as clutter. A fight node now shows the small still of its
+enemy and nothing else:
+- a duo shows both, the second a step behind and up so both read;
+- the boss stands tallest;
+- a cleared fight is its skeleton, as before;
+- camp, shop, chest and shrine keep their icons, plates and labels.
+
+Unknown nodes show their enemy too (they keep their 35% chance of being a duo). Their uncertainty
+moves to point 2.
+
+**2. Surprise fights** (`src/core/map/surprise.ts`): about 15% (`SURPRISE_CHANCE`) of single-enemy
+fight nodes hide another species from the same screen's roster.
+- The map shows the expected enemy. The fight opens with "That's no Boar!" and "A Rat Pack was
+  waiting instead.", and cards wait until it is said.
+- Never the boss, an elite, a duo, a cursed node, or a node whose enemy or pair the designer set.
+- Rolled with the map on its own `surprise` stream, after the curses, and saved on the node, so a
+  reload cannot re-roll it. A re-armed fight (#61) drops its surprise.
+- The run log records it (`surprise`: the enemy the map showed).
+- The screen mirror rolls the same surprises from the same seed (BALANCE.md).
+
+**3. The shrine asks.** Arriving asks "Rest here and heal N HP (now → after of max)? It works
+once." with Heal N or Not now.
+- Not now leaves it lit. The node still counts as visited, so the road through it is open, and it
+  asks again whenever you come back.
+- Healing spends it (`usedShrines`, a field the save already had and nothing used) and fades it.
+- At full HP it says so and keeps.
+- It heals half of max HP (`SHRINE_HEAL`), never past full; the prompt shows the real amount.
+- The screen mirror always assumed a player could save the shrine; now the game agrees.
+
+**4. Shops buy one card**: a "Sell a card" tile next to Mend wounds.
+- It opens a list of every card held, deck and starting cards alike, each with its price, and one
+  tap sells. Once per shop (`shop.cardSold`).
+- It pays what selling a reward pays (`sellValue`: a quarter of the shop price, times the screen):
+  3 gold for a starting card on screen 1.
+- A sold starting card is gone for the run (`soldBasics`; fights deal `runBasics`).
+- A run keeps at least 3 cards (`MIN_CARDS`; a hand is 3).
+- "Any card" includes a cursed one: selling Cursed Counter lifts its lock on new cards (#73).
+
+Older saves: a shrine used before this change was recorded only as cleared, so it reads as unused
+and offers one more heal. Harmless in a dev build, and only for a run already in progress.
+
+Pinned by:
+- `src/core/map/surprise.test.ts`: the share, never the excluded nodes, the same seed rolls the
+  same;
+- `src/game/mapShopShrine.test.ts`: the encounter and a save round trip for surprises, the
+  shrine's heal, decline and spend, and selling deck and starting cards, once, through a reload,
+  with the 3-card floor.
+
+Checked in a real browser at 844x390:
+- markers on both screens, a duo included;
+- a boar node that was a Rat Pack;
+- a shrine declined at 9 HP, which asked again on return and then healed to 22/25;
+- a shop that sold a starting Attack for 3 gold.
+
+Screenshots in `docs/audit/map-shop-shrine-2026-10-31/`.

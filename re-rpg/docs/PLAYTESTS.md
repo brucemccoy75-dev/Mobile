@@ -40,7 +40,7 @@ how often did the designer?" (DECISIONS #67).
 
 - **Screen mirror** (`src/core/sim/screen.ts`, `--screen`):
   - plays the real authored map, rolled from the seed with the designer's node rules
-    (`world.json`), so its duos, unknowns and shrine are the ones a player meets;
+    (`world.json`), so its duos, unknowns, surprises (#81) and shrine are the ones a player meets;
   - opens with two heirlooms drawn the way a run draws them, and carries HP over;
   - saves the shrine for when HP is at half or less, or for the gate;
   - fights the gate as the designer meets it: Knight Andre while the story is off (DECISIONS #72).

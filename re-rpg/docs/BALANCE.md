@@ -4,6 +4,39 @@ Newest first. Run logs are read with the procedure in `docs/PLAYTESTS.md` (`npm 
 
 Loadouts: **fresh** = Attack/Defend only, empty deck. **Set** = the two set tomes in the deck. **gearN** = a full three-slot kit for screen N (`GEAR_KIT` in `src/core/sim/gauntlet.ts`). The sim does not model loot choice, relics or 4-card decks, so these are floors, not expectations.
 
+## Surprise fights and the shrine that asks 2026-10-31 (DECISIONS #81)
+
+The screen mirror now rolls the same surprises a run does (about 15% of single-enemy fight nodes
+are another species from the roster). `npm run sim -- --screen --class warrior --runs 1000`:
+
+```
+full clear                     reach boss  beat boss  hp@boss fights rounds  deaths
+warrior fresh                        0.0%       0.0%      0.0   2.58   21.4  adept_necromancer 29%, boar 19%, adept_necromancer+boar 11%
+warrior Bulwark                      0.0%       0.0%      0.0   2.55   23.8  adept_necromancer 30%, boar 21%, adept_necromancer+boar 11%
+warrior Berserker                    0.2%       0.0%      4.0   2.71   20.0  adept_necromancer 29%, boar 18%, adept_necromancer+boar 11%
+warrior Shadow Knight                3.5%       0.0%      7.7   4.50   29.9  boar 20%, adept_necromancer 15%, boar+hex_imp 15%
+warrior Berserker+Bulwark            0.2%       0.0%     12.5   2.77   22.8  adept_necromancer 29%, boar 19%, adept_necromancer+boar 12%
+warrior Shadow Knight+Bulwark        0.6%       0.0%      9.7   3.16   25.8  adept_necromancer 26%, boar 21%, rat_pack 11%
+warrior Berserker+Shadow Knight       1.2%       0.0%      8.3   3.19   22.6  adept_necromancer 25%, boar 17%, adept_necromancer+boar 14%
+
+shortest road                  reach boss  beat boss  hp@boss fights rounds  deaths
+warrior fresh                        6.6%       0.0%      5.5   2.24   19.4  adept_necromancer 18%, adept_necromancer+boar 16%, boar 13%
+warrior Bulwark                     10.6%       0.0%      8.3   2.20   21.6  adept_necromancer 21%, adept_necromancer+boar 13%, boar 13%
+warrior Berserker                   15.5%       0.0%      9.4   2.31   18.2  adept_necromancer 20%, gatekeeper 16%, adept_necromancer+boar 13%
+warrior Shadow Knight               40.0%       0.0%      9.9   3.19   22.8  gatekeeper 40%, boar+hex_imp 15%, adept_necromancer+boar 15%
+warrior Berserker+Bulwark           13.2%       0.0%      9.2   2.31   20.0  adept_necromancer 21%, adept_necromancer+boar 15%, gatekeeper 13%
+warrior Shadow Knight+Bulwark       17.5%       0.0%      8.1   2.55   22.1  gatekeeper 18%, adept_necromancer+boar 17%, adept_necromancer 15%
+warrior Berserker+Shadow Knight      22.3%       0.0%     10.4   2.55   19.2  gatekeeper 22%, adept_necromancer 16%, adept_necromancer+boar 15%
+```
+
+Reading:
+- Against the story-off baseline (#72) the table moved by noise: the shortest road reaches the
+  gate 6.6–40.0% (was 6.9–42.4%), and Andre is still beaten 0%.
+- A surprise swaps one enemy of the roster for another, so on average it costs nothing. What it
+  takes away is the plan: a player who routes around the boar can still meet one.
+- The shrine prompt changes nothing here: the mirror already saved the shrine for half HP or the
+  gate. Selling a card is not modelled; the mirror has no shop.
+
 ## Cursed enemies 2026-10-30 (DECISIONS #73)
 
 No sim table changes:

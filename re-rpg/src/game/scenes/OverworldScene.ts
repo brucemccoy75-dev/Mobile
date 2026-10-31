@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { getEnemy, getSkill } from '@data/index';
-import { SHRINE_HEAL, key, roadBetween, type MapNode, type Tile } from '@core/map';
-import { SCREEN_COUNT, endSavedRun, currentNode, currentQuest, liftCurse, questGiverNode, getMeta, getSession, getStore, isCleared, isEscorting, nodeById, nodeEncounter, persistMeta, persistRun, reachableNodes, routeTo, setSession, startScreen, treasureGold, type PendingEncounter, type RunSession } from '@game/session';
+import { key, roadBetween, type MapNode, type Tile } from '@core/map';
+import { SCREEN_COUNT, endSavedRun, shrineHeal, shrineUsed, useShrine, currentNode, currentQuest, liftCurse, questGiverNode, getMeta, getSession, getStore, isCleared, isEscorting, nodeById, nodeEncounter, persistMeta, persistRun, reachableNodes, routeTo, setSession, startScreen, treasureGold, type PendingEncounter, type RunSession } from '@game/session';
 import { questProgress, questReady } from '@core/quest';
 import { gainExp, ghostOn, recordWin } from '@core/meta';
 import { WREN_GRUDGE, ghostAppears, ghostDef, wrenBoss } from '@core/variants';
@@ -137,9 +137,6 @@ export class OverworldScene extends Phaser.Scene {
   private label(y: number, str: string, color = '#e6e9f2', size = 12) {
     return this.add.text(0, y, str, { fontFamily: FONT, fontSize: `${size}px`, color, stroke: '#000000', strokeThickness: 3, fontStyle: size > 12 ? 'bold' : 'normal' }).setOrigin(0.5, 0);
   }
-  private skull(y: number, size: number, color = '#ffffff') {
-    return this.add.text(0, y, '☠', { fontFamily: FONT, fontSize: `${size}px`, color, stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5);
-  }
   private creature(cont: Phaser.GameObjects.Container, enemyId: string, height: number, color: number) {
     const k = artKey(this, `enemy_${enemyId}`);
     if (k) { const src = this.textures.get(k).getSourceImage() as { height: number }; cont.add(this.add.image(0, height * 0.45, k).setOrigin(0.5, 1).setScale(height / src.height)); }
@@ -160,10 +157,10 @@ export class OverworldScene extends Phaser.Scene {
     this.rings.set(n.id, ring);
     const cont = this.add.container(c.x, c.y).setDepth(5);
     const cleared = isCleared(s, n);
-    const names = [n.enemyId, ...(n.extra ?? [])].filter((id): id is string => !!id).map((id) => getEnemy(id).name);
-    // A dark ground plate under every marker: stills and icons read as tokens on the painting (DECISIONS #39).
-    const big = n.kind === 'boss' ? 1.5 : n.kind === 'elite' ? 1.25 : 1;
-    cont.add(this.add.ellipse(0, TILE * 0.22, TILE * 1.15 * big, TILE * 0.58 * big, 0x070a12, cleared ? 0.3 : 0.55).setStrokeStyle(2, 0xffffff, cleared ? 0.12 : 0.28));
+    const fightNode = n.kind === 'monster' || n.kind === 'unknown' || n.kind === 'elite' || n.kind === 'boss';
+    // A dark ground plate under the icons (camp, shop, chest, shrine) so they read as tokens on the painting
+    // (DECISIONS #39). Enemies stand on the map as themselves, with nothing under them (#81).
+    if (!fightNode) cont.add(this.add.ellipse(0, TILE * 0.22, TILE * 1.15, TILE * 0.58, 0x070a12, cleared ? 0.3 : 0.55).setStrokeStyle(2, 0xffffff, cleared ? 0.12 : 0.28));
     // The quest giver's node carries the !/…/✓ mark (DECISIONS #57; Wren's start node unless the quest says otherwise).
     const giverHere = questGiverNode(s) === n.id;
     if (giverHere) {
@@ -187,21 +184,16 @@ export class OverworldScene extends Phaser.Scene {
       }
       case 'shop': this.prop(cont, 'tent', 0.5, 14 * K, () => [this.add.rectangle(0, 2, 34 * K, 30 * K, 0x7a3fb9)]); cont.add(this.label(20 * K, 'shop')); break;
       case 'treasure': this.prop(cont, 'chest', 0.4, 14 * K, () => [this.add.rectangle(0, 4, 30 * K, 20 * K, 0xc9a227)]); cont.add(this.label(20 * K, cleared ? 'emptied' : 'treasure', cleared ? '#8b93a7' : '#ffd166')); if (cleared) cont.setAlpha(0.45); break;
-      case 'shrine': this.prop(cont, 'tower', 0.5, 18 * K, () => [this.add.rectangle(0, 0, 26 * K, 26 * K, 0x7dd3fc).setAngle(45)]); cont.add(this.label(20 * K, cleared ? 'shrine, faded' : 'shrine', cleared ? '#8b93a7' : '#bfe8ff')); if (cleared) cont.setAlpha(0.45); break;
+      case 'shrine': { const used = shrineUsed(s, n); this.prop(cont, 'tower', 0.5, 18 * K, () => [this.add.rectangle(0, 0, 26 * K, 26 * K, 0x7dd3fc).setAngle(45)]); cont.add(this.label(20 * K, used ? 'shrine, faded' : 'shrine', used ? '#8b93a7' : '#bfe8ff')); if (used) cont.setAlpha(0.45); break; }
       case 'monster': case 'unknown': case 'elite': case 'boss': {
         if (cleared) { this.prop(cont, 'skeleton', 0.4, 10 * K, () => [this.add.circle(0, 0, 6 * K, 0x8b93a7)]); cont.setAlpha(0.7); break; }
-        if (n.kind === 'unknown' && !n.seen) {
-          cont.add(this.add.text(-6 * K, -4 * K, '?', { fontFamily: FONT, fontSize: `${30 * K}px`, color: '#e6e9f2', fontStyle: 'bold', stroke: '#000000', strokeThickness: 5 }).setOrigin(0.5));
-          cont.add(this.skull(10 * K, 16 * K, '#ffb4b4').setX(10 * K));
-          cont.add(this.label(18 * K, 'something', '#ffb4b4'));
-          break;
-        }
-        const h = n.kind === 'boss' ? TILE * 1.6 : n.kind === 'elite' ? TILE * 1.15 : TILE * 1.05;
-        if (n.extra?.length) { const before = cont.length; this.creature(cont, n.extra[0]!, h * 0.85, 0xd64545); for (const o of cont.list.slice(before)) (o as Phaser.GameObjects.Image).x += TILE * 0.28; }
+        // Just the enemies, small (DECISIONS #81): a duo shows both, the boss stands tallest. What the
+        // map shows is not always what waits (a surprise shows `enemyId`, not who is really there).
+        const h = n.kind === 'boss' ? TILE * 1.6 : n.extra?.length ? TILE * 1.1 : TILE * 1.05;
+        // A duo stands apart, the second a step behind and up, so both read at a glance.
+        if (n.extra?.length) { const before = cont.length; this.creature(cont, n.extra[0]!, h * 0.85, 0xd64545); for (const o of cont.list.slice(before)) { const im = o as Phaser.GameObjects.Image; im.x += TILE * 0.36; im.y -= TILE * 0.12; } }
         this.creature(cont, n.enemyId!, h, n.kind === 'boss' ? COLORS.boss : 0xd64545);
-        if (n.kind === 'elite') cont.add(this.skull(-h * 0.62, 26 * K, '#e0b4ff'));
-        if (n.kind === 'boss') cont.add(this.skull(-h * 0.6, 40 * K, '#e0b4ff'));
-        cont.add(this.label(h * 0.5, n.kind === 'boss' ? getEnemy(s.map.bossId).name : names.join(' & '), n.kind === 'monster' ? '#ffb4b4' : '#e0b4ff', n.kind === 'boss' ? 13 : 12));
+        if (n.extra?.length) for (const o of cont.list.slice(-1)) (o as Phaser.GameObjects.Image).x -= TILE * 0.26;
         break;
       }
     }
@@ -408,15 +400,20 @@ export class OverworldScene extends Phaser.Scene {
         await persistRun(this); this.scene.start('Reward'); return;
       }
       case 'shrine': {
-        if (isCleared(s, n)) { void this.toast('The shrine is dark now.', 900); this.locked = false; this.syncRings(); return; }
-        await this.nodeWords(n);
-        s.hp = Math.min(s.stats.maxHp, s.hp + Math.round(s.stats.maxHp * SHRINE_HEAL));
-        void this.toast('Shrine: half your wounds close. It fades.');
+        // The shrine asks (DECISIONS #81): heal now, or leave it lit and come back. Visiting it opens the
+        // road through either way; only healing spends it.
+        if (shrineUsed(s, n)) { void this.toast('The shrine is dark now.', 900); this.locked = false; this.syncRings(); return; }
+        if (!isCleared(s, n)) await this.nodeWords(n);
+        const heal = shrineHeal(s);
+        if (heal <= 0) { void this.toast('You are unhurt. The shrine will keep.', 1600); await done(); return; }
+        const yes = await this.ask({ title: 'A healing shrine', titleColor: '#bfe8ff', body: `Rest here and heal ${heal} HP (${s.hp} → ${s.hp + heal} of ${s.stats.maxHp})? It works once.`, yes: `Heal ${heal}`, no: 'Not now', veil: 0x06121c, yesFill: 0x0d2a3a, yesEdge: 0x7dd3fc });
+        if (yes) { useShrine(s, n); void this.toast('Half your wounds close. The shrine fades.'); }
+        else void this.toast('The shrine will keep. Come back when you need it.', 1600);
         await done(); return;
       }
       default: {
         if (isCleared(s, n)) { this.locked = false; this.syncRings(); return; }
-        if (n.kind === 'unknown' && !n.seen) { n.seen = true; this.drawNode(n); await wait(this, 350); }
+        n.seen = true;
         // A cursed enemy (DECISIONS #73) asks first. No: the curse lifts and the node holds its usual
         // encounter, to fight now (tap it again) or leave.
         if (n.cursed && !(await this.askCursed())) {
@@ -462,17 +459,22 @@ export class OverworldScene extends Phaser.Scene {
 
   /** "Something is off about this one…": Yes to fight the cursed enemy, No to let it pass (#73). */
   private askCursed(): Promise<boolean> {
+    return this.ask({ title: 'Something is off about this one…', titleColor: '#ff6b6b', body: 'Are you sure you wish to fight?', yes: 'Yes', no: 'No', veil: 0x12030a, yesFill: 0x3a0d12, yesEdge: 0xd64545 });
+  }
+
+  /** A yes / no question pinned over the map (the cursed prompt, #73; the shrine, #81). */
+  private ask(o: { title: string; titleColor: string; body: string; yes: string; no: string; veil: number; yesFill?: number; yesEdge?: number }): Promise<boolean> {
     const W = this.scale.gameSize.width, H = this.scale.gameSize.height;
     const parts: Phaser.GameObjects.GameObject[] = [];
     return new Promise((done) => {
       const close = (yes: boolean) => { for (const p of parts) p.destroy(); done(yes); };
-      parts.push(this.add.rectangle(W / 2, H / 2, W, H, 0x12030a, 0.72).setScrollFactor(0).setDepth(90).setInteractive());
-      parts.push(this.add.text(W / 2, H / 2 - 62, 'Something is off about this one…', { ...text.h2, color: '#ff6b6b' }).setOrigin(0.5).setScrollFactor(0).setDepth(91));
-      parts.push(this.add.text(W / 2, H / 2 - 26, 'Are you sure you wish to fight?', { ...text.body, fontSize: '16px' }).setOrigin(0.5).setScrollFactor(0).setDepth(91));
+      parts.push(this.add.rectangle(W / 2, H / 2, W, H, o.veil, 0.72).setScrollFactor(0).setDepth(90).setInteractive());
+      parts.push(this.add.text(W / 2, H / 2 - 62, o.title, { ...text.h2, color: o.titleColor }).setOrigin(0.5).setScrollFactor(0).setDepth(91));
+      parts.push(this.add.text(W / 2, H / 2 - 26, o.body, { ...text.body, fontSize: '16px', align: 'center', wordWrap: { width: W - 120 } }).setOrigin(0.5).setScrollFactor(0).setDepth(91));
       // Pinned to the screen children and all: a Button's tap area is its child, which would otherwise follow the map's scroll.
       const pin = (b: Button) => { b.setScrollFactor(0).setDepth(91); for (const c of b.list) (c as unknown as Phaser.GameObjects.Components.ScrollFactor).setScrollFactor(0); return b; };
-      parts.push(pin(new Button(this, W / 2 - 110, H / 2 + 34, 'Yes', () => close(true), { width: 180, height: 52, fontSize: '18px', fill: 0x3a0d12, edge: 0xd64545 })));
-      parts.push(pin(new Button(this, W / 2 + 110, H / 2 + 34, 'No', () => close(false), { width: 180, height: 52, fontSize: '18px' })));
+      parts.push(pin(new Button(this, W / 2 - 110, H / 2 + 34, o.yes, () => close(true), { width: 180, height: 52, fontSize: '18px', ...(o.yesFill !== undefined ? { fill: o.yesFill } : {}), ...(o.yesEdge !== undefined ? { edge: o.yesEdge } : {}) })));
+      parts.push(pin(new Button(this, W / 2 + 110, H / 2 + 34, o.no, () => close(false), { width: 180, height: 52, fontSize: '18px' })));
     });
   }
 

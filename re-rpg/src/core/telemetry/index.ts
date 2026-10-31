@@ -17,6 +17,8 @@ export interface FightRecord {
   enemies?: string[];
   /** A cursed enemy's traits (DECISIONS #73). */
   cursed?: string[];
+  /** A surprise fight (DECISIONS #81): the enemy the map showed instead. */
+  surprise?: string;
   kind: 'random' | 'guard' | 'boss' | 'node';
   tile?: string;
   rounds: number;

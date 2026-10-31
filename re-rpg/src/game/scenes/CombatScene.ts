@@ -2,14 +2,13 @@ import Phaser from 'phaser';
 import { BACKDROP_HORIZON, artKey, backdropGround, backdropKey, reloadArt } from '@game/art';
 import { describeSkill, getEnemy, getSkill } from '@data/index';
 import type { CardPreview } from '@data/describe';
-import { basicsFor } from '@data/skills';
 import type { CursedTrait, Enemy, Intent, Posture } from '@data/types';
 import { createCombat, currentIntent, effectsNow, isLocked, isPlayerStunned, playableIndices, previewDamage, resolveTarget, skillInCombat, statRatings, step, CURSED_TRAIT_INFO, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
 import { endSavedRun, getMeta, getSession, getStore, persistMeta, persistRun, setName, setSession, spendConsumedTomes, type PendingEncounter, type RunSession } from '@game/session';
 import { gainExp, ghostOn, layGhost, leaveGhost, nudgeRelation, recordDeath } from '@core/meta';
 import { CURSED_REWARD_MULT, ghostSpoils } from '@core/variants';
 import { equipmentToIds } from '@core/run';
-import { applyLevelUp, applyTome } from '@game/session';
+import { applyLevelUp, applyTome, runBasics } from '@game/session';
 import { expForEnemy } from '@data/progression';
 import { recordFight } from '@game/telemetry';
 import { Button } from '@game/ui/Button';
@@ -112,7 +111,7 @@ export class CombatScene extends Phaser.Scene {
     this.target = 0;
     this.views = [];
     this.state = createCombat({
-      player: { name: this.session.classId, stats: this.session.stats, hp: this.session.hp, deck: this.session.deck, basics: basicsFor(this.session.classId) },
+      player: { name: this.session.classId, stats: this.session.stats, hp: this.session.hp, deck: this.session.deck, basics: runBasics(this.session) },
       enemies: this.encounter.custom ?? [this.encounter.enemyId, ...(this.encounter.extra ?? [])],
       rng: this.session.rng.stream('combat'),
       skillUpgrades: this.session.skillUpgrades,
@@ -245,6 +244,17 @@ export class CombatScene extends Phaser.Scene {
     this.banner = this.add.text(W / 2, H * 0.3, '', { ...text.title, fontSize: '34px' }).setOrigin(0.5).setAlpha(0).setDepth(60);
 
     new Button(this, W / 2, H * 0.66 + 22, 'Quit', () => this.quit(), { width: 70, height: 28, fontSize: '12px' }).setDepth(5).setAlpha(0.6);
+    if (this.encounter.surprise) void this.surpriseIntro(getEnemy(this.encounter.surprise).name, this.state.enemyDefs[0]!.name);
+  }
+
+  /** A surprise fight (DECISIONS #81): the map showed one enemy and another is here. Cards wait until it is said. */
+  private async surpriseIntro(shown: string, actual: string) {
+    this.busy = true;
+    await wait(this, 450); // the fighters fade in first
+    const W = this.scale.gameSize.width;
+    void floatText(this, W / 2, this.scale.gameSize.height * 0.3 + 40, `${/^[AEIOU]/i.test(actual) ? 'An' : 'A'} ${actual} was waiting instead.`, '#ffd166', 18, 1300);
+    await this.bannerShow(`That's no ${shown}!`);
+    this.busy = false;
   }
 
   // ---------------------------------------------------------------- sync

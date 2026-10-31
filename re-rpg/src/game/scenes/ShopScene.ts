@@ -3,7 +3,7 @@ import { describeSkill, getItem, getSkill } from '@data/index';
 import { isLineOwned, type ShopLine } from '@core/loot';
 import { DECK_CAP } from '@core/combat';
 import { recordShop } from '@game/telemetry';
-import { cardsLocked, getMeta, getSession, persistMeta, persistRun, takeChoice, type RunSession } from '@game/session';
+import { MIN_CARDS, cardsLocked, getMeta, getSession, persistMeta, persistRun, sellCard, sellableCards, takeChoice, type RunSession } from '@game/session';
 import { Button } from '@game/ui/Button';
 import { openComparePanel, openSwapPanel } from '@game/ui/panels';
 import { COLORS, FONT, RARITY_COLORS, text } from '@game/ui/theme';
@@ -40,7 +40,7 @@ export class ShopScene extends Phaser.Scene {
     const eq = (['body', 'weapon', 'relic'] as const).map((k) => `${k}: ${s.equipment[k]?.name ?? '—'}`).join('   ');
     this.statusText.setText(`HP ${s.hp}/${s.stats.maxHp}  ATK ${s.stats.atk}  DEF ${s.stats.def}  LUCK ${s.stats.luck ?? 0}   ·   deck ${s.deck.length}/${DECK_CAP}   ·   ${eq}`);
 
-    const entries: { line: ShopLine | null; label: string; title: string; body: string; price: number; sold: boolean; owned?: boolean; lockedOut?: boolean; rarity: keyof typeof RARITY_COLORS }[] = st.lines.map((line) => {
+    const entries: { line: ShopLine | null; label: string; title: string; body: string; price: number; sold: boolean; owned?: boolean; lockedOut?: boolean; rarity: keyof typeof RARITY_COLORS; action?: () => void; status?: string }[] = st.lines.map((line) => {
       const owned = !line.sold && isLineOwned(line, s.deck, s.equipment);
       // Stock is rolled when the screen opens; a card that locks (DECISIONS #73) can arrive later, so the shelf checks now.
       const lockedOut = line.kind === 'tome' && !line.sold && cardsLocked(s);
@@ -49,21 +49,52 @@ export class ShopScene extends Phaser.Scene {
         : { line, label: 'TOME', title: getSkill(line.id).name, body: describeSkill(getSkill(line.id), s.stats), price: line.price, sold: line.sold || owned || lockedOut, owned, lockedOut, rarity: getSkill(line.id).rarity };
     });
     entries.push({ line: null, label: 'SERVICE', title: 'Mend wounds', body: `Heal ${Math.round(st.healPct * 100)}% of max HP. Once per shop.`, price: st.healPrice, sold: st.healUsed, rarity: 'uncommon' });
+    // Selling (DECISIONS #81): any one card, deck or starting, once per shop.
+    const sellable = sellableCards(s);
+    const tooFew = !st.cardSold && sellable.length === 0;
+    entries.push({ line: null, label: 'SERVICE', title: 'Sell a card', body: 'Any one card you hold, starting cards too. Once per shop.', price: 0, sold: !!st.cardSold || tooFew, rarity: 'common', action: () => this.openSell(), status: st.cardSold ? 'sold one' : tooFew ? `keep ${MIN_CARDS} cards` : 'for gold' });
 
-    const n = entries.length, cw = 220, ch = 180, gap = 16;
+    const n = entries.length, gap = 16, cw = Math.min(220, Math.floor((W - 32 - (n - 1) * gap) / n)), ch = 180;
     const startX = W / 2 - ((n * cw + (n - 1) * gap) / 2) + cw / 2;
     entries.forEach((e, i) => {
       const x = startX + i * (cw + gap), y = H / 2 - 10;
-      const affordable = s.gold >= e.price && !e.sold;
+      const affordable = (e.action ? true : s.gold >= e.price) && !e.sold;
       const bg = this.add.rectangle(x, y, cw, ch, COLORS.panel).setStrokeStyle(3, RARITY_COLORS[e.rarity]).setAlpha(e.sold ? 0.35 : affordable ? 1 : 0.6);
       const mk = (o: Phaser.GameObjects.GameObject) => { this.cards.push(o); return o; };
       mk(bg);
       mk(this.add.text(x, y - ch / 2 + 16, e.label, { fontFamily: FONT, fontSize: '12px', color: '#9aa3b8', fontStyle: 'bold' }).setOrigin(0.5));
       mk(this.add.text(x, y - ch / 2 + 46, e.title, { ...text.h2, fontSize: '19px', wordWrap: { width: cw - 20 }, align: 'center' }).setOrigin(0.5));
       mk(this.add.text(x, y + 2, e.body, { ...text.body, fontSize: '13px', wordWrap: { width: cw - 24 }, align: 'center' }).setOrigin(0.5));
-      mk(this.add.text(x, y + ch / 2 - 18, e.lockedOut ? 'cursed: no new cards' : e.owned ? 'already yours' : e.sold ? 'sold' : `${e.price} gold`, { ...text.body, fontSize: '15px', color: affordable ? COLORS.gold : COLORS.muted, fontStyle: 'bold' }).setOrigin(0.5));
-      if (affordable) { bg.setInteractive({ useHandCursor: true }); bg.on('pointerup', () => this.buy(e.line)); }
+      mk(this.add.text(x, y + ch / 2 - 18, e.status ?? (e.lockedOut ? 'cursed: no new cards' : e.owned ? 'already yours' : e.sold ? 'sold' : `${e.price} gold`), { ...text.body, fontSize: '15px', color: affordable ? COLORS.gold : COLORS.muted, fontStyle: 'bold' }).setOrigin(0.5));
+      if (affordable) { bg.setInteractive({ useHandCursor: true }); bg.on('pointerup', () => (e.action ? e.action() : this.buy(e.line))); }
     });
+  }
+
+  /** The sell list (DECISIONS #81): every card held, with what it fetches. One tap sells it. */
+  private openSell() {
+    if (this.busy) return;
+    const s = this.session;
+    const { width: W, height: H } = this.scale.gameSize;
+    const parts: Phaser.GameObjects.GameObject[] = [];
+    const close = () => parts.forEach((p) => p.destroy());
+    parts.push(this.add.rectangle(W / 2, H / 2, W, H, 0x0b0f1a, 0.95).setInteractive().setDepth(100));
+    parts.push(this.add.text(W / 2, 34, 'Sell which card?', text.h2).setOrigin(0.5).setDepth(101));
+    parts.push(this.add.text(W / 2, 62, 'One per shop. A starting card sold is gone for the rest of the run.', { ...text.small, color: COLORS.muted }).setOrigin(0.5).setDepth(101));
+    const cards = sellableCards(s);
+    const cols = Math.min(4, Math.max(1, Math.floor((W - 40) / 230))), bw = Math.min(220, Math.floor((W - 40 - (cols - 1) * 12) / cols)), bh = 46;
+    const x0 = W / 2 - ((cols * bw + (cols - 1) * 12) / 2) + bw / 2;
+    cards.forEach((c, i) => {
+      const x = x0 + (i % cols) * (bw + 12), y = 100 + Math.floor(i / cols) * (bh + 10);
+      const sk = getSkill(c.id);
+      const b = new Button(this, x, y, `${sk.name}${c.from === 'basic' ? ' (start)' : ''} · ${c.value} g`, () => {
+        close();
+        sellCard(s, c.id, c.from);
+        recordShop(this, s, `sell:${c.id}`, -c.value);
+        void persistRun(this); this.render();
+      }, { width: bw, height: bh, fontSize: '13px', edge: RARITY_COLORS[sk.rarity] }).setDepth(101);
+      parts.push(b);
+    });
+    parts.push(new Button(this, W / 2, H - 40, 'Keep my cards', close, { width: 180, height: 40, fontSize: '14px' }).setDepth(101));
   }
 
   private buy(line: ShopLine | null) {
