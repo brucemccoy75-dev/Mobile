@@ -1,0 +1,13 @@
+{
+  "when": "2026-10-31T20:23:44",
+  "cmd": "image",
+  "model": "grok-imagine-image-2.0",
+  "prompt": "Top-down three-quarter view fantasy game world map painting, 2:1 wide landscape, of a frozen tundra pass in deep winter. Flat vector cel-shaded style with thick clean outlines and a limited palette of snow whites, icy blues, slate greys and dark pine greens, soft light from the top left, rich hand-made game map detail like a top-down RPG overworld. A network of clearly visible brown dirt roads trodden through the snow, about as wide as a cart, winding across the whole map: one main road from the far west edge to a walled fortress of ice and dark stone in the east (its gate at the road's end), and several side roads that loop north and south, cross each other at four or five crossroads, and end in short dead-end spurs near the edges. Small round snowy clearings on the roads at every crossing and at regular intervals along them. Between the roads: three or four frozen lakes of cracked blue ice, a frozen stream, clumps of snow-laden pine forest, jagged ice crags, frosted boulders, icicle-hung dead trees, snowdrifts; dense pines and rock cliffs framing the map edges. No text, icons, characters or UI.",
+  "refs": [],
+  "revised_prompt": null,
+  "reply": {
+    "usage": {
+      "cost_in_usd_ticks": 1600000000
+    }
+  }
+}

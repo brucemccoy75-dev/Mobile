@@ -1,0 +1,16 @@
+{
+  "when": "2026-10-31T20:22:57",
+  "cmd": "edit",
+  "model": "grok-imagine-image-2.0",
+  "prompt": "Top-down three-quarter view fantasy game world map painting of a frozen tundra pass in deep winter, the second region of the same world as the forest map. Flat vector cel-shaded style with thick clean outlines and a limited palette of snow whites, icy blues, slate greys and dark pine greens, soft light from the top left, rich detail like a hand-made game map. Keep the layout of the first reference: winding packed-snow roads exactly along the brown lines (they may curve and meander gently, but every crossing, corner and dead end stays where it is), frozen lakes of cracked blue ice in the pale blue patches, dense snow-laden pine forest in the dark green patches, jagged ice crags and frosted rock in the grey patches, and in the east a walled fortress of ice and dark stone with a snowy courtyard, its gate facing the end of the main road. Each yellow dot is a small open snowy clearing on the road with nothing in it. Snowdrifts, frosted boulders, icicle-hung dead trees, frozen stumps, a frozen stream or two. No text, icons, characters, dots or UI. Match the painting style, line weight and level of detail of the second reference image, the forest map of the same world, but in winter.",
+  "refs": [
+    "art-src/map2/layout-soft-1728.jpg",
+    "art-src/map1-grok.jpg"
+  ],
+  "revised_prompt": null,
+  "reply": {
+    "usage": {
+      "cost_in_usd_ticks": 1300000000
+    }
+  }
+}

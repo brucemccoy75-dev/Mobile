@@ -1,0 +1,15 @@
+{
+  "when": "2026-10-31T20:21:54",
+  "cmd": "edit",
+  "model": "grok-imagine-image-2.0",
+  "prompt": "top-down three-quarter view fantasy map painting of a frozen tundra pass in deep winter, flat vector cel-shaded style with thick clean outlines and a limited palette of snow whites, icy blues and dark pine greens, consistent soft light from the top left; keep the exact layout of the reference: packed-snow and frozen dirt roads exactly where the brown roads are (straight runs may curve gently, every corner and crossing stays where it is), frozen lakes of cracked blue ice where the light blue rectangles are, snow-laden pine forest where the dark green blocks are, jagged ice crags and grey rock where the grey blocks are, and in the east a walled fortress of ice and dark stone with a snowy courtyard where the pale blue square is, its gate on the main road; each gold dot is an open snowy clearing on the road with nothing in it; snowdrifts, frosted boulders, a few icicle-hung dead trees, drifting snow; no text, icons, characters, dots or UI",
+  "refs": [
+    "art-src/map2/layout-1728.jpg"
+  ],
+  "revised_prompt": null,
+  "reply": {
+    "usage": {
+      "cost_in_usd_ticks": 1300000000
+    }
+  }
+}

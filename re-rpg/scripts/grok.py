@@ -86,8 +86,8 @@ def main() -> None:
         body: dict = {'model': model, 'prompt': a.prompt, 'n': a.n}
         if a.cmd == 'edit':
             if not a.ref: sys.exit('edit needs --ref')
-            imgs = [{'url': data_uri(r), 'type': 'image_url'} for r in a.ref]
-            body['image'] = imgs[0] if len(imgs) == 1 else imgs
+            # One reference goes as an object; several go as a list of URL strings (the API refuses objects there).
+            body['image'] = {'url': data_uri(a.ref[0]), 'type': 'image_url'} if len(a.ref) == 1 else [data_uri(r) for r in a.ref]
         reply = call('POST', '/images/generations' if a.cmd == 'image' else '/images/edits', body)
         items = reply.get('data', [])
         for i, item in enumerate(items):

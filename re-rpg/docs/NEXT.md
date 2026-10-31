@@ -83,7 +83,7 @@ first real test of #68.
 The key arrives in the designer's first message. Save it to `re-rpg/.env.local` (git ignores it)
 before anything else, and never write it into a commit or a doc.
 
-Done: the hero's 4-frame overworld walk (12 fps, wide stride). The title screen shows `build <commit>` at the bottom left: ask the designer to check it when a change "isn't there". Art ideas, none started: walk sheets for the other
+Done: the hero's 4-frame overworld walk (12 fps, wide stride). **Revisit later** (designer, 2026-10-31): the walk "looks kind of weird" on the map; think it through again, not now. The title screen shows `build <commit>` at the bottom left: ask the designer to check it when a change "isn't there". Art ideas, none started: walk sheets for the other
 classes the same way; front and back walk views; screen 2's painting; the opening cutscene, now
 possible with `grok.py video` (prompts in `art-src/cutscene/`).
 
