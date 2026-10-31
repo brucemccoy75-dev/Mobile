@@ -1011,3 +1011,33 @@ Designer's report: screen 2 "looks very low res and pixels".
   low-zoom check had missed it. It is re-traced, so the lost one's node is now `node_34`, and the
   two screen-2 quests' escort points there. Every other stretch was checked against the painting
   at full size and is on its road.
+
+## 78. A cursed enemy's traits are chips; a dead enemy does nothing to you
+
+Designer's report on cursed enemies (#73):
+1. Their traits should sit on the status bar like any buff, and a tap should say what each does.
+2. "Once they die they should no longer negatively affect the player": a thorned enemy still
+   hurt you after you killed it.
+
+**What was wrong with thorns**: thorns were charged after a card's damage, for every enemy the
+card struck, without asking whether the blow had killed it. So the killing blow on a thorned enemy
+cost 2 HP, and so did a sweep that killed it. The engine now skips a struck enemy at 0 HP. Brace's
+counter already followed this rule ("a killing blow is never countered"); thorns was the one that
+did not. A dead enemy cannot be struck again or act, so nothing else reaches you after death.
+
+**The chips**: each trait is a chip at the front of the enemy's status row, with a red edge, for
+the whole fight: 2× HP, 2× DMG, SHIELD, THORNS 2, FOLLOW-UP.
+- A tap names the trait and says what it does, with the engine's own numbers
+  (`CURSED_TRAIT_INFO`, `src/core/combat/traits.ts`). Thorns adds that the blow that kills it
+  costs nothing.
+- They replace the red trait line that sat under a cursed enemy's name.
+- Like every chip, they clear once the enemy's death has played.
+
+Pinned by:
+- `engine.test.ts`: a thorned enemy killed by a single blow or a sweep costs nothing; one that
+  lives still bites;
+- `traits.test.ts`: every trait has a chip that quotes the engine numbers.
+
+Checked in a real cursed fight (thorns and follow-up): the chips show from round 1, THORNS
+explains itself, and a killing Attack at 1 HP leaves you at 25/25 with no thorns in the log.
+Screenshots in `docs/audit/cursed-chips-2026-10-31/`.

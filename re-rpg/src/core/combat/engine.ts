@@ -166,9 +166,10 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
       tagWho(events, f, target.slot);
     }
     // Thorns (DECISIONS #73): every attack on a thorned enemy costs the attacker, through any block.
+    // A dead enemy does nothing to you (#78): the blow that kills it costs nothing.
     if (effects.some((e) => e.type === 'damage')) {
       for (const v of struck) {
-        if (!v.cursed?.includes('thorns') || state.player.hp <= 0) continue;
+        if (!v.cursed?.includes('thorns') || v.hp <= 0 || state.player.hp <= 0) continue;
         const amount = Math.min(state.player.hp, CURSED_THORNS);
         state.player.hp -= amount;
         events.push({ t: 'thorns', amount, who: v.slot });

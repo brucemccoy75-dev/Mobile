@@ -964,6 +964,24 @@ describe('cursed enemies and growing cards (DECISIONS #73)', () => {
     expect(s.player.hp).toBe(23);
   });
 
+  it('a thorned enemy your blow kills does not hurt you: a dead enemy does nothing to you (designer, 2026-10-31)', () => {
+    const frail = (traits: Enemy['cursed']): Enemy => ({ ...quietCursed(traits), stats: { ...PASSIVE.stats, maxHp: 1 } });
+    const s = fight([], frail(['thorns']));
+    const ev = play(s, 'attack');
+    expect(s.enemies[0]!.hp).toBe(0);
+    expect(ev.some((e) => e.t === 'thorns')).toBe(false);
+    expect(s.player.hp).toBe(25);
+    // A sweep that kills it is the same.
+    const sw = fight([], frail(['thorns']));
+    const ev2 = play(sw, 'bellow');
+    expect(sw.enemies[0]!.hp).toBe(0);
+    expect(ev2.some((e) => e.t === 'thorns')).toBe(false);
+    expect(sw.player.hp).toBe(25);
+    // One that lives through the blow still bites.
+    const tough = fight([], quietCursed(['thorns']));
+    expect(play(tough, 'bellow').some((e) => e.t === 'thorns')).toBe(true);
+  });
+
   it('a follow-up hits for 25% of its attack right after its attack, and Guard does not stop it', () => {
     const s = fight([], cursed(['followUp']));
     s.player.statuses.push({ id: 'guard', turns: 99, magnitude: 1 });

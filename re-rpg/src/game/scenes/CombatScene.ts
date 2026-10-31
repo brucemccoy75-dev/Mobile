@@ -4,7 +4,7 @@ import { describeSkill, getEnemy, getSkill } from '@data/index';
 import type { CardPreview } from '@data/describe';
 import { basicsFor } from '@data/skills';
 import type { CursedTrait, Enemy, Intent, Posture } from '@data/types';
-import { createCombat, currentIntent, effectsNow, isLocked, isPlayerStunned, playableIndices, previewDamage, resolveTarget, skillInCombat, statRatings, step, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
+import { createCombat, currentIntent, effectsNow, isLocked, isPlayerStunned, playableIndices, previewDamage, resolveTarget, skillInCombat, statRatings, step, CURSED_TRAIT_INFO, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
 import { endSavedRun, getMeta, getSession, getStore, persistMeta, persistRun, setName, setSession, spendConsumedTomes, type PendingEncounter, type RunSession } from '@game/session';
 import { gainExp, ghostOn, layGhost, leaveGhost, nudgeRelation, recordDeath } from '@core/meta';
 import { CURSED_REWARD_MULT, ghostSpoils } from '@core/variants';
@@ -28,7 +28,6 @@ import { SELF_VFX, SHIELD_COLOR, blockColor, type VfxKind } from '@core/vfx';
 
 /** A cursed enemy is drawn this much larger, and its traits read like this under its name (DECISIONS #73). */
 const CURSED_SCALE = 1.3;
-const CURSED_LABELS: Record<CursedTrait, string> = { hp: '2× HP', damage: '2× damage', shield: 'shield: half damage', thorns: 'thorns 2', followUp: 'follow-up' };
 
 /**
  * Side-view turn-based combat. Phaser only renders: the engine in core/combat
@@ -43,6 +42,8 @@ interface EnemyView {
   hp: HpBar;
   chips: StatusChips;
   stats: StatLine;
+  /** Its death has played: the HUD row stays empty from here. */
+  slain?: boolean;
   intentBg: Phaser.GameObjects.Rectangle;
   intentHead: Phaser.GameObjects.Text;
   intentText: Phaser.GameObjects.Text;
@@ -181,7 +182,6 @@ export class CombatScene extends Phaser.Scene {
       sprite.setDepth(n - slot); // front enemy over the rear one
       const nameText = this.add.text(ex, groundY + 12, def.name, text.small).setOrigin(0.5, 0);
       const stats = new StatLine(this, ex, groundY + 38, 'center');
-      if (def.cursed) this.add.text(ex, groundY + 50, def.cursed.map((t) => CURSED_LABELS[t]).join(' · '), { ...text.small, color: '#ff6b6b', fontStyle: 'bold' }).setOrigin(0.5, 0);
       // Tap an enemy to make it the target.
       sprite.setInteractive({ useHandCursor: true });
       sprite.on('pointerup', () => this.setTarget(slot));
@@ -248,8 +248,19 @@ export class CombatScene extends Phaser.Scene {
 
   private syncChips() {
     this.playerChips.set(this.dispStatus.player, (s) => this.explainStatus(s, 'you'));
-    for (const v of this.views) v.chips.set(this.dispStatus.enemies[v.slot] ?? [], (s) => this.explainStatus(s, v.def.name));
+    for (const v of this.views) {
+      if (v.slain) continue; // a slain enemy's row stays empty once its death has played
+      v.chips.set(this.dispStatus.enemies[v.slot] ?? [], (s) => this.explainStatus(s, v.def.name), this.traitChips(v));
+    }
     this.syncStats();
+  }
+
+  /** A cursed enemy's traits, as chips that last the fight (DECISIONS #78). */
+  private traitChips(v: EnemyView) {
+    return (this.state.enemies[v.slot]?.cursed ?? []).map((t) => {
+      const info = CURSED_TRAIT_INFO[t];
+      return { label: info.label, color: '#ff8a8a', tap: () => this.showInfo(`${info.label} on ${v.def.name}  ·  the whole fight`, info.desc, '#ff8a8a') };
+    });
   }
 
   /** ATK and DEF under each bar, from the statuses playback has shown so far (DECISIONS #77). */
@@ -826,7 +837,7 @@ export class CombatScene extends Phaser.Scene {
         const s = sprite(e.side);
         if (s instanceof Phaser.GameObjects.Sprite) s.anims.stop();
         this.tweens.killTweensOf(s); // the breathing stops with the body
-        if (e.side === 'enemy') { s.disableInteractive(); this.hideIntent(who); view.hp.setDead(); view.chips.set([]); view.stats.setVisible(false); view.nameText.setAlpha(0.4); }
+        if (e.side === 'enemy') { s.disableInteractive(); this.hideIntent(who); view.slain = true; view.hp.setDead(); view.chips.set([]); view.stats.setVisible(false); view.nameText.setAlpha(0.4); }
         await tween(this, { targets: s, alpha: 0.15, y: s.y + 10, duration: 350 });
         if (e.side === 'enemy' && this.target === who) this.setTarget(-1, true);
         return;
