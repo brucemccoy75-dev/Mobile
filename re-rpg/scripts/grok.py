@@ -2,7 +2,7 @@
 """Call xAI's Grok Imagine API from the repo (docs/ART.md, "Generating art with the API").
 
 usage:
-  grok.py image "<prompt>" --out art-src/x.jpg [--n 1] [--model grok-imagine-image-2.0]
+  grok.py image "<prompt>" --out art-src/x.jpg [--n 1] [--model grok-imagine-image-2.0] [--resolution 2k] [--quality high] [--aspect 16:9]
   grok.py edit  "<prompt>" --ref art-src/hero_warrior_styleC.jpg [--ref ...] --out art-src/x.jpg
   grok.py video "<prompt>" [--ref still.jpg] --out art-src/x.mp4 [--duration 6]
   grok.py models
@@ -76,6 +76,10 @@ def main() -> None:
     p.add_argument('--n', type=int, default=1)
     p.add_argument('--model')
     p.add_argument('--duration', type=int, default=6)
+    # Image size and finish (the API's own names): 1k is the default; 2k is about twice as wide.
+    p.add_argument('--resolution', choices=['1k', '1.5k', '2k'])
+    p.add_argument('--quality', choices=['low', 'medium', 'high', 'auto'])
+    p.add_argument('--aspect', help='aspect_ratio, e.g. 16:9, 2:1, auto')
     a = p.parse_args()
     if a.cmd == 'models':
         print('\n'.join(m['id'] for m in call('GET', '/models')['data'])); return
@@ -84,6 +88,9 @@ def main() -> None:
     if a.cmd in ('image', 'edit'):
         model = a.model or 'grok-imagine-image-2.0'
         body: dict = {'model': model, 'prompt': a.prompt, 'n': a.n}
+        if a.resolution: body['resolution'] = a.resolution
+        if a.quality: body['quality'] = a.quality
+        if a.aspect: body['aspect_ratio'] = a.aspect
         if a.cmd == 'edit':
             if not a.ref: sys.exit('edit needs --ref')
             # One reference goes as an object; several go as a list of URL strings (the API refuses objects there).

@@ -991,3 +991,23 @@ Pinned in `src/core/combat/ratings.test.ts`. Screenshots in `docs/audit/stats-20
 - Adept Necromancer in a duo;
 - Knight Andre;
 - a cursed boar.
+
+## 76 follow-up. Screen 2 at 2k, and one spur re-traced
+
+Designer's report: screen 2 "looks very low res and pixels".
+- **What was wrong:** the source painting was Grok's default 1k output, 1280x720, stretched 2.7x
+  to 3456x1944. That is about 27 source pixels per tile, against screen 1's 55.
+- **The fix:**
+  - the API takes `resolution` (1k, 1.5k, 2k), `quality` and `aspect_ratio`, which `grok.py` now
+    passes (`--resolution 2k --aspect 16:9`);
+  - an edit of d-3 asked to "recreate this exact image at higher resolution" came back at
+    2816x1584 with the layout unchanged, so the trace still fits;
+  - it ships as `map2.jpg`, stretched only 1.23x (screen 1 is 1.3x). The source is
+    `art-src/map2/hd-a.jpg`.
+  - The `grok-imagine-image-quality` model at `quality high` (`hd-q.jpg`) came out softer, and the
+    default model refuses `quality high`.
+- **Found on the way:** a full-size overlay showed that the south-east spur (Q to the treasure at
+  the bottom edge) ran about a tile below the painted road. It was wrong in d-3 too; the
+  low-zoom check had missed it. It is re-traced, so the lost one's node is now `node_34`, and the
+  two screen-2 quests' escort points there. Every other stretch was checked against the painting
+  at full size and is on its road.

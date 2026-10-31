@@ -172,7 +172,10 @@ the road with nothing in it; no text, icons, characters or UI.
 1. `grok.py image` with a text prompt only (in `art-src/map2/d-3.jpg.json`): a tundra with winding
    brown roads, crossroads, frozen lakes and an ice fortress. Image-to-image from a grid layout
    came out as city blocks (`art-src/map2/compare-layout-first.jpg`).
-2. Upscale the pick to 72 px per tile (`public/art/c/map2.jpg`, 48x27 tiles).
+2. Get it at 2k: `grok.py edit "Recreate this exact image at higher resolution..." --ref <pick>
+   --resolution 2k --aspect 16:9` keeps the layout and returns 2816x1584 (the default 1k is
+   1280x720, too soft once stretched). Upscale that to 72 px per tile (`public/art/c/map2.jpg`,
+   48x27 tiles).
 3. Trace the roads as corner-point paths in `scripts/author-map.py tundra`, every junction a node,
    and check with `?dev`. Diagonal roads become staircases.
 
@@ -220,6 +223,9 @@ uploaded:
 - `python3 scripts/grok.py video "<prompt>" [--ref still.jpg] --out ....mp4 [--duration 6]`
   submits a video and waits for it.
 - `python3 scripts/grok.py models` lists the models.
+- `--resolution 1k|1.5k|2k`, `--aspect 16:9|2:1|…` and `--quality` go to the API as they are. The
+  default is 1k (1280x720 at 16:9); use 2k for anything shown large, like a map. The default image
+  model refuses `--quality high`.
 
 Each output gets a `<out>.json` beside it: the prompt, model, references and the reply, including
 `usage.cost_in_usd_ticks`. An edit cost 700,000,000 ticks (about $0.07). Keep the outputs and
