@@ -4,7 +4,7 @@ import { describeSkill, getEnemy, getSkill } from '@data/index';
 import type { CardPreview } from '@data/describe';
 import { basicsFor } from '@data/skills';
 import type { CursedTrait, Enemy, Intent, Posture } from '@data/types';
-import { createCombat, currentIntent, effectsNow, isLocked, isPlayerStunned, playableIndices, previewDamage, resolveTarget, skillInCombat, step, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
+import { createCombat, currentIntent, effectsNow, isLocked, isPlayerStunned, playableIndices, previewDamage, resolveTarget, skillInCombat, statRatings, step, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
 import { endSavedRun, getMeta, getSession, getStore, persistMeta, persistRun, setName, setSession, spendConsumedTomes, type PendingEncounter, type RunSession } from '@game/session';
 import { gainExp, ghostOn, layGhost, leaveGhost, nudgeRelation, recordDeath } from '@core/meta';
 import { CURSED_REWARD_MULT, ghostSpoils } from '@core/variants';
@@ -16,6 +16,7 @@ import { Button } from '@game/ui/Button';
 import { Card, CARD_W } from '@game/ui/Card';
 import { HpBar } from '@game/ui/HpBar';
 import { StatusChips } from '@game/ui/StatusChips';
+import { StatLine } from '@game/ui/StatLine';
 import { CLASS_COLORS, COLORS, FONT, POSTURE_TEXT, STATUS_LABELS, describeIntent, text } from '@game/ui/theme';
 import type { Status } from '@data/types';
 import { floatText, tween, wait } from '@game/ui/tween';
@@ -41,6 +42,7 @@ interface EnemyView {
   nameText: Phaser.GameObjects.Text;
   hp: HpBar;
   chips: StatusChips;
+  stats: StatLine;
   intentBg: Phaser.GameObjects.Rectangle;
   intentHead: Phaser.GameObjects.Text;
   intentText: Phaser.GameObjects.Text;
@@ -66,6 +68,7 @@ export class CombatScene extends Phaser.Scene {
   private views: EnemyView[] = [];
   private targetArrow!: Phaser.GameObjects.Text;
   private playerHp!: HpBar;
+  private playerStats!: StatLine;
   /** HP as the playback has shown it so far; bars never read live state mid-step. */
   private dispHp: { player: number; enemies: number[] } = { player: 0, enemies: [] };
   private hpBefore = 0;
@@ -177,11 +180,12 @@ export class CombatScene extends Phaser.Scene {
       }
       sprite.setDepth(n - slot); // front enemy over the rear one
       const nameText = this.add.text(ex, groundY + 12, def.name, text.small).setOrigin(0.5, 0);
-      if (def.cursed) this.add.text(ex, groundY + 30, def.cursed.map((t) => CURSED_LABELS[t]).join(' · '), { ...text.small, color: '#ff6b6b', fontStyle: 'bold' }).setOrigin(0.5, 0);
+      const stats = new StatLine(this, ex, groundY + 38, 'center');
+      if (def.cursed) this.add.text(ex, groundY + 50, def.cursed.map((t) => CURSED_LABELS[t]).join(' · '), { ...text.small, color: '#ff6b6b', fontStyle: 'bold' }).setOrigin(0.5, 0);
       // Tap an enemy to make it the target.
       sprite.setInteractive({ useHandCursor: true });
       sprite.on('pointerup', () => this.setTarget(slot));
-      this.views.push({ slot, def, sprite, x: ex, y: ey, nameText } as EnemyView);
+      this.views.push({ slot, def, sprite, x: ex, y: ey, nameText, stats } as EnemyView);
     }
     // Stills come alive cheaply: everyone fades in from a step back (the mirror of the death fade),
     // then breathes with a slow scale bob. Frame animation (docs/ART.md) is parked until the loop is fun.
@@ -196,6 +200,8 @@ export class CombatScene extends Phaser.Scene {
     // HP bars + status rows: the player's on the left; one per enemy on the right, stacked for a duo.
     const barW = Math.min(300, W * 0.3);
     this.playerHp = new HpBar(this, 24, 40, barW, this.session.classId.toUpperCase(), this.session.stats.maxHp);
+    // ATK / DEF (DECISIONS #77): yours leads your status row; an enemy's sits under its name.
+    this.playerStats = new StatLine(this, 24, 70);
     this.playerChips = new StatusChips(this, 24, 70);
     // Duo bars sit side by side in the same left-to-right order as the enemies, so each bar is over its owner.
     for (const v of this.views) {
@@ -243,6 +249,19 @@ export class CombatScene extends Phaser.Scene {
   private syncChips() {
     this.playerChips.set(this.dispStatus.player, (s) => this.explainStatus(s, 'you'));
     for (const v of this.views) v.chips.set(this.dispStatus.enemies[v.slot] ?? [], (s) => this.explainStatus(s, v.def.name));
+    this.syncStats();
+  }
+
+  /** ATK and DEF under each bar, from the statuses playback has shown so far (DECISIONS #77). */
+  private syncStats() {
+    const p = statRatings(this.state.player.stats, this.dispStatus.player);
+    this.playerChips.x = this.playerStats.x + this.playerStats.set(p.atk, p.def) + 14;
+    for (const v of this.views) {
+      const e = this.state.enemies[v.slot];
+      if (!e || e.dead) { v.stats.setVisible(false); continue; }
+      const r = statRatings(e.stats, this.dispStatus.enemies[v.slot] ?? []);
+      v.stats.set(r.atk, r.def);
+    }
   }
 
   /** Reset the displayed statuses from the engine (end of playback). */
@@ -807,7 +826,7 @@ export class CombatScene extends Phaser.Scene {
         const s = sprite(e.side);
         if (s instanceof Phaser.GameObjects.Sprite) s.anims.stop();
         this.tweens.killTweensOf(s); // the breathing stops with the body
-        if (e.side === 'enemy') { s.disableInteractive(); this.hideIntent(who); view.hp.setDead(); view.chips.set([]); view.nameText.setAlpha(0.4); }
+        if (e.side === 'enemy') { s.disableInteractive(); this.hideIntent(who); view.hp.setDead(); view.chips.set([]); view.stats.setVisible(false); view.nameText.setAlpha(0.4); }
         await tween(this, { targets: s, alpha: 0.15, y: s.y + 10, duration: 350 });
         if (e.side === 'enemy' && this.target === who) this.setTarget(-1, true);
         return;

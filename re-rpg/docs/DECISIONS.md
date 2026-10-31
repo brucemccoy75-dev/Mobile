@@ -957,3 +957,37 @@ Pinned by:
 
 Fixed on the way: `grok.py` sent several reference images in a shape the API refuses.
 Screenshots in `docs/audit/screen2-2026-10-31/` (the panel, the start, and two contact sheets of the whole map, one with the `?dev` road overlay).
+
+## 77. ATK and DEF on the battle screen, green when buffed and red when debuffed
+
+Designer's request: show the player's and each enemy's attack and defense in battle, in green or
+red when a buff or debuff is on.
+
+**What the numbers are** (`statRatings` in `src/core/combat/ratings.ts`, from the same statuses the
+chips show at that moment of playback):
+- **ATK** is the attack the fighter hits with now. Weak halves it and Blackjack multiplies it, the
+  same arithmetic as `computeHit`. A Weak warrior reads ATK 2 ▼ (red).
+- **DEF** is the defence stat. The shields block hits or halve them; they don't add armour, so
+  the number stays the same and only its colour moves:
+  - green ▲ under Guard, Ward, Aegis, Harden, Brace or Scatter;
+  - red ▼ when Exposed;
+  - gold ▲▼ when both apply.
+- Statuses that touch neither stat (Burn, Chill, Stun, Curse, Regen) leave both white.
+- A cursed enemy's traits are what it *is*, not buffs. A 2× damage boar reads ATK 10 in white,
+  and its shield stays on its red trait line.
+- The arrows repeat the colour, so the line reads without colour too.
+
+**Where**:
+- Yours leads your status row under your HP bar (ATK, DEF, then the chips).
+- An enemy's sits under its name at its feet, so a duo's narrow HUD and intent panels keep their
+  room. A cursed enemy's trait line moved one line down.
+- A slain enemy's line hides.
+- A first try put a separate line under every bar. In duos that pushed the chips into the intent
+  panels and the panels onto the target arrow, so it was dropped.
+
+Pinned in `src/core/combat/ratings.test.ts`. Screenshots in `docs/audit/stats-2026-10-31/`:
+- a single fight with Guard up;
+- a duo with red, green and gold;
+- Adept Necromancer in a duo;
+- Knight Andre;
+- a cursed boar.
