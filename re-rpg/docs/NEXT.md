@@ -3,8 +3,11 @@
 ## Start here (updated 2026-10-28)
 
 **State.** Branch `claude/re-rpg-mobile-architecture-t26won`, folder `re-rpg/`, live on GitHub
-Pages at https://brucemccoy75-dev.github.io/Mobile/ (deploys ~70 s after a push; poll
-`origin/gh-pages` for "Deploy re-rpg <sha>"). 299 tests pass (`npm run check`: typecheck,
+Pages at https://brucemccoy75-dev.github.io/Mobile/. After a push, poll `origin/gh-pages` for
+"Deploy re-rpg <sha>", **then** poll the live site until its main JS contains your 7-character
+hash; that is the build stamp the title shows at the bottom left. Pages publishes some time after
+the branch updates, so the branch alone is not "live" (#75 follow-up). Fetch with a `?t=<now>`
+query so a cache cannot answer. 299 tests pass (`npm run check`: typecheck,
 cards:validate, world:validate, tests, build). The game today is:
 
 - **Node overworld** (DECISIONS #37): a static node network per screen over an authored terrain,

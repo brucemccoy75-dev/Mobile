@@ -41,7 +41,9 @@ Ground rules:
 - Only the warrior is being balanced; wizard and shaman data are frozen by the validator.
 - Every change: `npm run check` green, commit with the attribution lines the session gives you,
   `git push -u origin claude/re-rpg-mobile-architecture-t26won`, then poll `origin/gh-pages` until
-  its latest commit message contains your hash.
+  its latest commit message contains your hash, then poll the live site until it serves that
+  build: the title screen's `build <hash>`, which is in the live main JS. Only then say it is
+  live.
 - Record any design decision as the next numbered entry in DECISIONS.md and keep NEXT.md's "Start
   here" true when you finish a task. NEXT.md is the current state only, no history.
 - Verify UI in a real browser: build, start `npx vite preview --port 4174 --strictPort` in its own
