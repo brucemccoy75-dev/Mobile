@@ -956,4 +956,4 @@ Pinned by:
   run is not cleared, and the meta copy is thrown away.
 
 Fixed on the way: `grok.py` sent several reference images in a shape the API refuses.
-Screenshots in `docs/audit/screen2-2026-10-31/`; the `dev-` shots carry the road overlay.
+Screenshots in `docs/audit/screen2-2026-10-31/` (the panel, the start, and two contact sheets of the whole map, one with the `?dev` road overlay).
