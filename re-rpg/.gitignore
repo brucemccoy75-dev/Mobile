@@ -8,3 +8,4 @@ dist/
 !.env.example
 smoke-out/
 art-src/packs/
+__pycache__/

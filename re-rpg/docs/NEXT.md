@@ -72,6 +72,13 @@ Since then: one card per enemy alive (#68). In the mirror, duo deaths fell to 35
 shortest road reaches Wren 6–37%. A full clear still almost never does. The next run log is the
 first real test of #68.
 
+**Art by API** (docs/ART.md, "Generating art with the API"): `scripts/grok.py` calls Grok
+Imagine (images, edits of a reference image, video) with `XAI_API_KEY`. If the environment has
+no key, ask the designer to paste it and save it to `re-rpg/.env.local` (git ignores it). Never
+commit it. Next art job: the overworld walk. Frame 1 is in `art-src/overworld-walk/`; make
+frames 2–4 with the same edit prompt (`art-src/overworld-walk/grok-walk-prompts.md`), then cut,
+align on the feet, and play it on the map.
+
 **Scope.** Only the warrior is being balanced. Wizard and shaman cards, families and trees are
 frozen by the validator until the warrior is done.
 

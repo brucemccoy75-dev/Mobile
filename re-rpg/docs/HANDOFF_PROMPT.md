@@ -33,6 +33,9 @@ Ground rules:
 - When I send a run log, follow `docs/PLAYTESTS.md` every time. Run the simulator, and compare
   how often it reaches and beats the boss with how often I did. Write the result as the next
   "Phone test" in BALANCE.md. Recommend changes; make them only when I say so.
+- Art: generate it yourself with `scripts/grok.py` (xAI Grok Imagine). The key is `XAI_API_KEY`
+  in the environment, or `re-rpg/.env.local`. If neither is there, ask me to paste the key and
+  save it to `re-rpg/.env.local`, never in a commit or a doc.
 - Only the warrior is being balanced; wizard and shaman data are frozen by the validator.
 - Every change: `npm run check` green, commit with the attribution lines the session gives you,
   `git push -u origin claude/re-rpg-mobile-architecture-t26won`, then poll `origin/gh-pages` until
