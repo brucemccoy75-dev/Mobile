@@ -1163,3 +1163,56 @@ Checked in a real browser at 844x390:
 - a shop that sold a starting Attack for 3 gold.
 
 Screenshots in `docs/audit/map-shop-shrine-2026-10-31/`.
+
+## 82. Every fight is shuffled (checked); the Earthen set from Knight Andre
+
+**The shuffle.** Designer's report: cursed cards never seem to come up early, so are fights shuffled?
+They are, fully, every fight. `createCombat` runs a Fisher–Yates shuffle over the starting cards and
+the deck together, on the run's `combat` stream. That stream carries on from fight to fight and is
+saved with the run.
+
+Measured over 6,000 fights (400 runs of 15) with the real warrior basics plus Cursed Counter and
+Shield Bash:
+- Cursed Counter was in the opening hand 38.0% of the time; with 8 cards and a hand of 3, the even
+  share is 37.5%;
+- its place in the deal was 11.9–13.0% at each of the 8 positions (even: 12.5%).
+
+The one way to see the same order twice: the run is saved before a fight, so quitting a fight or
+reloading and fighting it again replays the same seed and the same deal. That is deliberate
+(nothing can be re-rolled by reloading). With 8–10 cards and 3 in hand, a given card misses the
+opening hand about five fights in eight, which reads as "never". Pinned in
+`src/core/combat/gear.test.ts`: every position within 3 points of even across consecutive fights.
+
+**The Earthen set**: three boss items that only Knight Andre's loot can offer.
+
+| Item | Slot | Does |
+|---|---|---|
+| Earthen Armor | body | +2 DEF, −2 ATK; Weak never lands on you (an enemy's, or your own Shield Bash's Tiring) |
+| Earthen Blade | weapon | +2 ATK; each hit has a 50% chance to go through Guard, Ward or Aegis, and the block stays up |
+| Earthen Relic | relic | once per fight, pay 20 gold to shuffle hand, deck and discard together and deal a fresh hand |
+
+Engine changes, with tests first:
+- **`Gear`** on the player (`immune`, `pierce`, `redraw`), read from the worn items by `gearOf`.
+- **Immunity** is checked before Ward, so it never spends a Ward stack. It shows "IMMUNE: WEAK".
+- **Pierce** rolls once per blocked hit and shows "PIERCE". With no piercing gear nothing extra is
+  rolled, so every existing seed plays the same.
+- **The reshuffle** is `redrawHand`, not a play: the turn, the round and the plays left are
+  untouched, and once-per-fight cards already used stay out. The Reshuffle button (above Hold)
+  shows its price, greys out without the gold, and reads "Reshuffled" once used. It is free in
+  Test Mode, so the designer can try it.
+- **Items gain `from`:** an item tied to a boss is only in that boss's loot pool; never a fight, a
+  chest, the shop or the other boss. The boss's win passes its id with the offer (`bossId`).
+
+Knight Andre's loot (3 choices, the existing boss weights) offered at least one Earthen piece in
+28% of 400 rolls. Gatekeeper's Eye and Warden's Seal are unchanged and still drop from either
+boss.
+
+Pinned by `gear.test.ts` (Weak-proof, pierce at 100% and about 50%, the reshuffle once and only
+with the relic) and `src/core/loot/earthen.test.ts` (only Andre's loot, the powers each piece
+gives). Checked in Test Mode against Knight Andre, who guards, with all three worn:
+- ATK 4 and DEF 3;
+- the reshuffle dealt a fresh hand and locked;
+- 5 Weak attempts were refused;
+- 3 of 7 hits into his Guard pierced.
+
+A boss reward in a real run offered the Earthen Relic. Screenshots in `docs/audit/earthen-2026-10-31/`.

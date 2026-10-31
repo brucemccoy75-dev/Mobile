@@ -37,7 +37,7 @@ export class RewardScene extends Phaser.Scene {
     this.session.pendingOffer = null;
     this.next = pending.then ?? null;
     const meta = getMeta(this);
-    const ctx = { classId: this.session.classId, families: this.session.families, meta, deck: this.session.deck, equipment: this.session.equipment };
+    const ctx = { classId: this.session.classId, families: this.session.families, meta, deck: this.session.deck, equipment: this.session.equipment, ...(pending.bossId ? { bossId: pending.bossId } : {}) };
     const rng = this.session.rng.stream('loot');
     if (pending.source === 'cursed') {
       this.offer = cursedOffer(ctx);

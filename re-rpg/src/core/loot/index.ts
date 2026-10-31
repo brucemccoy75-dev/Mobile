@@ -25,6 +25,8 @@ export interface PoolContext {
   equipment: Equipment;
   /** The hero's luck (DECISIONS #50): raises the rare odds of rewards and the shop. */
   luck?: number;
+  /** The boss whose loot this is (DECISIONS #82): items `from` that boss join the pool only then. */
+  bossId?: string;
 }
 
 /**
@@ -42,7 +44,8 @@ export function buildPool(ctx: PoolContext): { tomes: Skill[]; items: Item[] } {
   const tomes = locked(ctx) ? [] : SKILLS.filter((s) => tomeIds.has(s.id) && s.rarity !== 'basic' && s.pool !== 'cursed' && (s.classId === ctx.classId || s.classId === 'any') && copies(s.id) < TOME_COPY_CAP);
   // Rarity gating lives in the source weights (a kill almost never rolls rare), so the
   // item pool is simply everything this class can use and does not already hold.
-  const items = ITEMS.filter((i) => (!i.classes || i.classes.includes(ctx.classId)) && !held.has(i.id));
+  // An item tied to one boss (the Earthen set, DECISIONS #82) is only in that boss's loot.
+  const items = ITEMS.filter((i) => (!i.classes || i.classes.includes(ctx.classId)) && !held.has(i.id) && (!i.from || i.from === ctx.bossId));
   return { tomes, items };
 }
 

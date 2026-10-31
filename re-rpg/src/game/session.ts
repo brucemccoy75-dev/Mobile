@@ -28,7 +28,7 @@ export type EncounterKind = 'random' | 'guard' | 'boss' | 'node';
 export interface PendingEncounter { /** A cursed enemy (DECISIONS #73): 3× gold and EXP and a cursed card offer if won. */ cursed?: boolean; kind: EncounterKind; enemyId: EnemyId; guardId?: string; /** Authored map node (kind 'node'). */ nodeId?: string; tile?: TileType; /** Further enemies behind the first (duos, DECISIONS #29). */ extra?: EnemyId[]; /** Full definitions when the fight holds enemies that are not in the roster (a ghost, a boss variant; DECISIONS #36). Front first; overrides enemyId/extra for the engine. */ custom?: Enemy[]; /** Set when your ghost is in this fight. */ ghost?: boolean; /** The enemy the map showed when this one is a surprise (DECISIONS #81). */ surprise?: EnemyId; }
 export interface CombatResult { encounter: PendingEncounter; won: boolean; /** What the win already changed (applied in combat, DECISIONS #61); the map only shows it. */ report?: import('@game/story').WinReport; }
 /** A reward to show. `goldMult` scales the rolled gold and `then` is the offer that follows (a cursed win, DECISIONS #73). */
-export interface PendingOffer { source: RewardSource | 'cursed'; gold?: number; goldMult?: number; then?: PendingOffer; }
+export interface PendingOffer { source: RewardSource | 'cursed'; gold?: number; goldMult?: number; then?: PendingOffer; /** A boss's loot (DECISIONS #82): that boss's own items may be offered. */ bossId?: string; }
 
 export interface RunSession {
   seed: string;

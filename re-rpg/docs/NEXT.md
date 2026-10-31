@@ -7,7 +7,7 @@ Pages at https://brucemccoy75-dev.github.io/Mobile/. After a push, poll `origin/
 "Deploy re-rpg <sha>", **then** poll the live site until its main JS contains your 7-character
 hash; that is the build stamp the title shows at the bottom left. Pages publishes some time after
 the branch updates, so the branch alone is not "live" (#75 follow-up). Fetch with a `?t=<now>`
-query so a cache cannot answer. 321 tests pass (`npm run check`: typecheck,
+query so a cache cannot answer. 327 tests pass (`npm run check`: typecheck,
 cards:validate, world:validate, tests, build). The game today is:
 
 - **Node overworld** (DECISIONS #37): a static node network per screen over an authored terrain,
@@ -46,6 +46,9 @@ cards:validate, world:validate, tests, build). The game today is:
   - sandwich, playing cards and coin (#69);
   - a quick coloured shield per status, and a fast deflection on a block that stops the slash
     or spell at the shield (#63, #66).
+- **Gear**: small flat items, plus boss items that break the caps. Knight Andre's loot alone can
+  offer the Earthen set (#82): Armor (+2 DEF, −2 ATK, Weak-proof), Blade (+2 ATK, 50% to pierce
+  blocks) and Relic (a 20-gold reshuffle, once per fight).
 - **Progression**: levels 1–10 per class, +1 max HP per level and a rare card or gold (#49);
   warrior tree Bulwark, Berserker → Paladin, Shadow Knight → Weaponmaster (#46); Shadow Knight
   holds Minor leech, Leech, Death Touch; Bulwark gained Desperation and Utility Knife, Berserker
@@ -68,7 +71,7 @@ own command → Playwright at 844×390 (the game) or 390×844 (the editors) with
 (Test Mode: set registry `testSetup`, call `TestMode.fight()`, then `Combat.act()` and poll
 `busy`; to answer a dialogue from a script, `scene('Dialogue').choose(d, option)`) → commit with
 the attribution lines → `git push -u origin <branch>` → poll gh-pages. Record decisions in
-`docs/DECISIONS.md` (next number is 82). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
+`docs/DECISIONS.md` (next number is 83). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
 
 **Run logs** (`docs/PLAYTESTS.md`, DECISIONS #67). When the designer sends a run log, always:
 1. save it in `docs/playtests/`;

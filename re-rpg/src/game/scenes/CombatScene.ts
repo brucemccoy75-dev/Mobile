@@ -3,11 +3,11 @@ import { BACKDROP_HORIZON, artKey, backdropGround, backdropKey, reloadArt } from
 import { describeSkill, getEnemy, getSkill } from '@data/index';
 import type { CardPreview } from '@data/describe';
 import type { CursedTrait, Enemy, Intent, Posture } from '@data/types';
-import { createCombat, currentIntent, effectsNow, isLocked, isPlayerStunned, playableIndices, previewDamage, resolveTarget, skillInCombat, statRatings, step, CURSED_TRAIT_INFO, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
+import { createCombat, redrawHand, currentIntent, effectsNow, isLocked, isPlayerStunned, playableIndices, previewDamage, resolveTarget, skillInCombat, statRatings, step, CURSED_TRAIT_INFO, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
 import { endSavedRun, getMeta, getSession, getStore, persistMeta, persistRun, setName, setSession, spendConsumedTomes, type PendingEncounter, type RunSession } from '@game/session';
 import { gainExp, ghostOn, layGhost, leaveGhost, nudgeRelation, recordDeath } from '@core/meta';
 import { CURSED_REWARD_MULT, ghostSpoils } from '@core/variants';
-import { equipmentToIds } from '@core/run';
+import { equipmentToIds, gearOf, redrawCost } from '@core/run';
 import { applyLevelUp, applyTome, runBasics } from '@game/session';
 import { expForEnemy } from '@data/progression';
 import { recordFight } from '@game/telemetry';
@@ -90,6 +90,7 @@ export class CombatScene extends Phaser.Scene {
   private dispStatus: { player: Status[]; enemies: Status[][] } = { player: [], enemies: [] };
   private handHint!: Phaser.GameObjects.Text;
   private holdBtn!: Button;
+  private redrawBtn?: Button;
   private holdMode = false;
   private handY = 0;
   private px = 0; private py = 0;
@@ -111,7 +112,7 @@ export class CombatScene extends Phaser.Scene {
     this.target = 0;
     this.views = [];
     this.state = createCombat({
-      player: { name: this.session.classId, stats: this.session.stats, hp: this.session.hp, deck: this.session.deck, basics: runBasics(this.session) },
+      player: { name: this.session.classId, stats: this.session.stats, hp: this.session.hp, deck: this.session.deck, basics: runBasics(this.session), gear: gearOf(this.session.equipment) },
       enemies: this.encounter.custom ?? [this.encounter.enemyId, ...(this.encounter.extra ?? [])],
       rng: this.session.rng.stream('combat'),
       skillUpgrades: this.session.skillUpgrades,
@@ -239,6 +240,9 @@ export class CombatScene extends Phaser.Scene {
     this.handHint = this.add.text(W / 2, this.handY, '', { ...text.body, color: '#ffd166', fontStyle: 'bold' }).setOrigin(0.5).setDepth(4);
     // Hold back: discard a card to pass the turn (the out for a trap turn).
     this.holdBtn = new Button(this, W - 70, this.handY, 'Hold', () => this.toggleHold(), { width: 100, height: 48, fontSize: '15px', fill: 0x2a2416, edge: 0x8a6a2b });
+    // The Earthen Relic (DECISIONS #82): a paid reshuffle, once per fight. Free in Test Mode.
+    const cost = redrawCost(this.session.equipment);
+    if (cost !== null) this.redrawBtn = new Button(this, W - 70, this.handY - 60, `Reshuffle\n${this.redrawPrice(cost)}`, () => void this.redraw(), { width: 100, height: 52, fontSize: '13px', fill: 0x1d2a1a, edge: 0x8a7a4a });
 
     // banner for big moments
     this.banner = this.add.text(W / 2, H * 0.3, '', { ...text.title, fontSize: '34px' }).setOrigin(0.5).setAlpha(0).setDepth(60);
@@ -522,7 +526,27 @@ export class CombatScene extends Phaser.Scene {
   private setInputEnabled(on: boolean) {
     for (const c of this.hand) c.setEnabled(on && !isLocked(this.state, c.skillId));
     this.holdBtn.setEnabled(on);
+    this.syncRedraw(on);
     if (!on) this.toggleHold(false);
+  }
+
+  /** The reshuffle's price: the relic's gold, nothing in Test Mode. */
+  private redrawPrice(cost: number) { return this.session.testMode ? 'free (test)' : `${cost} gold`; }
+  private syncRedraw(on: boolean) {
+    const cost = redrawCost(this.session.equipment);
+    if (!this.redrawBtn || cost === null) return;
+    const afford = this.session.testMode || this.session.gold >= cost;
+    this.redrawBtn.setEnabled(on && afford && !this.state.redrawUsed);
+    this.redrawBtn.setAlpha(this.state.redrawUsed ? 0.35 : afford ? 1 : 0.6);
+    this.redrawBtn.label.setText(this.state.redrawUsed ? 'Reshuffled' : `Reshuffle\n${afford ? this.redrawPrice(cost) : `need ${cost} gold`}`);
+  }
+  /** Pay, shuffle every card back in, and deal a fresh hand (DECISIONS #82). Not a play: the turn goes on. */
+  private async redraw() {
+    const cost = redrawCost(this.session.equipment);
+    if (this.busy || cost === null || this.state.redrawUsed || this.state.outcome !== 'ongoing') return;
+    if (!this.session.testMode) { if (this.session.gold < cost) return; this.session.gold -= cost; }
+    this.toggleHold(false);
+    await this.playEvents(redrawHand(this.state));
   }
 
   private toggleHold(force?: boolean) {
@@ -669,6 +693,20 @@ export class CombatScene extends Phaser.Scene {
       case 'reshuffle':
         await this.toast('deck reshuffled');
         return;
+      case 'redraw': {
+        // Every card goes back in: the hand empties, and the deals that follow fill it again.
+        for (const c of this.hand) this.tweens.add({ targets: c, y: c.y + 70, alpha: 0, duration: 160, ease: 'Quad.In' });
+        await wait(this, 180);
+        this.displayHand = [];
+        this.rebuildHand();
+        await this.toast('Earthen Relic: every card shuffled, a fresh hand');
+        return;
+      }
+      case 'pierce': {
+        const p = pos('enemy');
+        await floatText(this, p.x, p.y - 60, 'PIERCE', '#e0c080', 26, 700);
+        return;
+      }
       case 'intent':
         this.showIntent(e.intent, e.posture, e.predictedDamage, e.moveName, who);
         return;
@@ -771,6 +809,7 @@ export class CombatScene extends Phaser.Scene {
         const shielded = this.cast && this.cast.side !== e.side ? await this.castAt(e.side, who, p, guard) : false;
         if (guard && !shielded) this.fx.deflect(guard.target, guard.color, blockSide(this.cast?.kind ?? 'none', guard.fromRight));
         if (e.warded) { this.dispGuardHit(e.side, 'ward', who); this.syncChips(); await floatText(this, p.x, p.y - 30, 'WARDED', COLORS.block, 30, 900); return; }
+        if (e.immune) { await floatText(this, p.x, p.y - 30, `IMMUNE: ${e.status.toUpperCase()}`, '#c9b27a', 24, 900); return; }
         await floatText(this, p.x, p.y - 30, 'resisted', '#c7b3ff', 26, 900);
         return;
       }
@@ -974,7 +1013,7 @@ export class CombatScene extends Phaser.Scene {
         : `${this.session.hp}/${this.session.stats.maxHp} HP. No healing between fights.`) + extra;
       this.add.text(W / 2, H * 0.34 + 46, sub, text.body).setOrigin(0.5).setDepth(71);
       const source = this.encounter.kind === 'random' || this.encounter.kind === 'node' ? (this.encounter.extra?.length ? 'guard' : 'kill') : this.encounter.kind; // a duo (or elite) pays like a guard
-      this.session.pendingOffer = this.encounter.cursed ? { source, goldMult: CURSED_REWARD_MULT, then: { source: 'cursed' } } : { source };
+      this.session.pendingOffer = this.encounter.cursed ? { source, goldMult: CURSED_REWARD_MULT, then: { source: 'cursed' } } : { source, ...(isBoss ? { bossId: this.enemyDef.id } : {}) };
       new Button(this, W / 2, H * 0.62, 'Take spoils', () => this.scene.start('Reward'), { width: 220, fill: 0x1f2a44, edge: COLORS.goldHex }).setDepth(72);
     } else {
       this.session.lastResult = { encounter: this.encounter, won: false };

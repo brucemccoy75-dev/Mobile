@@ -11,6 +11,18 @@ export interface Combatant {
   statuses: Status[];
   /** A cursed enemy's combat traits (DECISIONS #73): shield, thorns, followUp. */
   cursed?: CursedTrait[];
+  /** What the player's equipment does in a fight beyond stats (DECISIONS #82). */
+  gear?: Gear;
+}
+
+/** Equipment powers in combat (DECISIONS #82): statuses that never land, a chance to pierce blocks, a paid reshuffle. */
+export interface Gear {
+  /** These statuses never land on the wearer (Earthen Armor: Weak). */
+  immune?: StatusId[];
+  /** Chance per hit to go straight through Guard, Ward or Aegis, leaving the block up (Earthen Blade: 0.5). */
+  pierce?: number;
+  /** Once per fight: shuffle hand, deck and discard together and deal a fresh hand (Earthen Relic). */
+  redraw?: boolean;
 }
 
 export interface PlayerCombatant extends Combatant {
@@ -58,6 +70,8 @@ export interface CombatState {
   playsLeft: number;
   /** Flat damage each growing card has gained this run (DECISIONS #73), carried in and out of the fight. */
   growth: Record<SkillId, number>;
+  /** The Earthen Relic's reshuffle has been used this fight (DECISIONS #82). */
+  redrawUsed?: boolean;
   /** Blackjack's running total (DECISIONS #69, #71): the drawn cards plus the damage dealt since. */
   blackjackTotal?: number;
   /** Aces in that total still counted as 11 (each can drop to 1 rather than bust). */
@@ -108,7 +122,11 @@ export type CombatEvent =
   | { t: 'backfire'; amount: number }
   | { t: 'heal'; side: Side; amount: number; who?: number }
   | { t: 'statusApplied'; side: Side; status: StatusId; turns: number; magnitude: number; who?: number }
-  | { t: 'statusResisted'; side: Side; status: StatusId; warded?: boolean; who?: number }
+  | { t: 'statusResisted'; side: Side; status: StatusId; warded?: boolean; /** Gear made the wearer immune (DECISIONS #82). */ immune?: boolean; who?: number }
+  /** A hit went through a block (Earthen Blade, DECISIONS #82); the block stays. */
+  | { t: 'pierce'; who?: number }
+  /** The Earthen Relic's reshuffle (DECISIONS #82): every card back in, shuffled, a fresh hand. */
+  | { t: 'redraw'; count: number }
   | { t: 'statusExpired'; side: Side; status: StatusId; stripped?: boolean; who?: number; volley?: number }
   | { t: 'burn'; side: Side; amount: number; status: 'burn' | 'curse'; who?: number }
   | { t: 'chilled'; side: Side; who?: number }

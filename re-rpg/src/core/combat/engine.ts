@@ -8,7 +8,7 @@ import { advanceMoves, pickMove } from './ai';
 import { computeHit, predictDamage } from './damage';
 import { HAND_CAP, dealOne, playCard } from './deck';
 import { applyStatus, consumeBlock, consumeBrace, consumeChill, getStatus, hasStatus, removeStatus, tickStatuses } from './status';
-import type { Combatant, CombatEvent, CombatState, EnemyCombatant, PlayerAction, PlayerCombatant } from './types';
+import type { Combatant, CombatEvent, CombatState, EnemyCombatant, Gear, PlayerAction, PlayerCombatant } from './types';
 
 export interface PlayerSetup {
   name?: string;
@@ -17,6 +17,8 @@ export interface PlayerSetup {
   deck: SkillId[];
   /** Cards added to every fight's deck; defaults to BASIC_DECK (scenes pass the class's basics). Tests pass [] for control. */
   basics?: SkillId[];
+  /** What the equipment does beyond stats (DECISIONS #82). */
+  gear?: Gear;
 }
 
 export interface CombatOptions {
@@ -59,6 +61,7 @@ export function createCombat(opts: CombatOptions): CombatState {
     side: 'player', name: opts.player.name ?? 'Hero',
     stats: { ...opts.player.stats }, hp: opts.player.hp ?? opts.player.stats.maxHp,
     statuses: [], deck: opts.rng.shuffle([...(opts.player.basics ?? BASIC_DECK), ...opts.player.deck]), hand: [], discard: [], exhausted: [], consumed: [],
+    ...(opts.player.gear ? { gear: { ...opts.player.gear } } : {}),
   };
   const enemies = defs.map((def, slot) => {
     const base = { side: 'enemy' as const, name: def.name, enemyId: def.id, slot, dead: false, stats: { ...def.stats }, hp: def.stats.maxHp, statuses: [], phase: 0, seqIndex: 0, ...(def.cursed ? { cursed: [...def.cursed] } : {}) };
@@ -148,7 +151,7 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
     if (crit) events.push({ t: 'crit' });
     const struck = effects.some((e) => e.type === 'damage' && e.targets === 'all') ? livingEnemies(state) : [target];
     for (const e of effects) {
-      if (e.type === 'damage' && e.targets === 'all') { sweep(state, e, events, crit); continue; }
+      if (e.type === 'damage' && e.targets === 'all') { sweep(state, e, events, roll, crit); continue; }
       // Backfire (DECISIONS #51): compiled last, so the damage has landed; a survivor among those struck turns it on you.
       if (e.type === 'backfire') {
         if (struck.some((v) => v.hp > 0)) {
@@ -303,7 +306,7 @@ function checkDeaths(state: CombatState, events: CombatEvent[]): boolean {
  * A sweep (DECISIONS #44, #47) lands on every living enemy at once: hit 1 on all of them front to back,
  * then hit 2, and so on. Every event of hit N carries `volley: N` so the scene can play a volley together.
  */
-function sweep(state: CombatState, e: Extract<Effect, { type: 'damage' }>, events: CombatEvent[], crit = false): void {
+function sweep(state: CombatState, e: Extract<Effect, { type: 'damage' }>, events: CombatEvent[], roll: () => number, crit = false): void {
   const victims = livingEnemies(state);
   const hits = e.hits ?? 1;
   const dealt = victims.map(() => 0);
@@ -311,7 +314,7 @@ function sweep(state: CombatState, e: Extract<Effect, { type: 'damage' }>, event
     victims.forEach((v, k) => {
       if (v.hp <= 0) return;
       const f = events.length;
-      dealt[k]! += applyHit(state.player, v, e, i, hits, events, crit);
+      dealt[k]! += applyHit(state.player, v, e, i, hits, events, roll, crit);
       tagWho(events, f, v.slot);
       for (let j = f; j < events.length; j++) (events[j] as CombatEvent & { volley?: number }).volley = i + 1;
     });
@@ -409,14 +412,20 @@ export const LUCK_PER_POINT = 0.002;
 export const CRIT_MULT = 1.5;
 
 /** One hit of a damage effect: blocks, the damage, Brace's counter. Returns the damage that landed. */
-function applyHit(self: Combatant, other: Combatant, e: Extract<Effect, { type: 'damage' }>, i: number, hits: number, events: CombatEvent[], crit = false): number {
+function applyHit(self: Combatant, other: Combatant, e: Extract<Effect, { type: 'damage' }>, i: number, hits: number, events: CombatEvent[], roll: () => number, crit = false): number {
   const base = computeHit(self, other, e.mult, e.ignoreDef, e.flat ?? 0, hits);
   // A critical hit (DECISIONS #50) is +50% of what would land, rounded up.
   const amount = crit ? Math.ceil(base * CRIT_MULT) : base;
   // Aegis stops everything; Guard stops physical; Ward stops magic.
-  if (hasStatus(other, 'aegis') || consumeBlock(other, e.kind === 'magic' ? 'ward' : 'guard', events)) {
-    events.push({ t: 'damage', source: self.side, target: other.side, amount: 0, blocked: true, hit: i + 1, hits, kind: e.kind ?? 'physical' });
-    return 0;
+  const block = e.kind === 'magic' ? 'ward' : 'guard';
+  if (hasStatus(other, 'aegis') || (getStatus(other, block)?.magnitude ?? 0) > 0) {
+    // A piercing weapon (Earthen Blade, DECISIONS #82) may go straight through, and the block stays up.
+    if (self.gear?.pierce && roll() < self.gear.pierce) events.push({ t: 'pierce' });
+    else {
+      if (!hasStatus(other, 'aegis')) consumeBlock(other, block, events);
+      events.push({ t: 'damage', source: self.side, target: other.side, amount: 0, blocked: true, hit: i + 1, hits, kind: e.kind ?? 'physical' });
+      return 0;
+    }
   }
   const applied = Math.min(other.hp, amount);
   other.hp -= applied;
@@ -445,7 +454,7 @@ export function applyEffects(effects: Effect[], self: Combatant, other: Combatan
         let dealt = 0;
         for (let i = 0; i < hits; i++) {
           if (other.hp <= 0) break;
-          dealt += applyHit(self, other, e, i, hits, events, crit);
+          dealt += applyHit(self, other, e, i, hits, events, roll, crit);
         }
         afterHits(self, other, e, hits, dealt, events);
         break;
@@ -465,6 +474,11 @@ export function applyEffects(effects: Effect[], self: Combatant, other: Combatan
       }
       case 'status': {
         const target = e.target === 'self' ? self : other;
+        // Gear immunity (Earthen Armor, DECISIONS #82) comes first, so it never spends a Ward.
+        if (target.gear?.immune?.includes(e.status)) {
+          events.push({ t: 'statusResisted', side: target.side, status: e.status, immune: true });
+          break;
+        }
         // A hostile spell-status (curse, hex) is a magic hit for blocking purposes: Aegis or one Ward stack stops it.
         if (target !== self && e.kind === 'magic' && (hasStatus(target, 'aegis') || consumeBlock(target, 'ward', events))) {
           events.push({ t: 'statusResisted', side: target.side, status: e.status, warded: true });
@@ -487,4 +501,26 @@ function heal(c: Combatant, amount: number, events: CombatEvent[]): void {
   if (applied === 0) return;
   c.hp += applied;
   events.push({ t: 'heal', side: c.side, amount: applied });
+}
+
+/**
+ * The Earthen Relic (DECISIONS #82): once per fight, hand, deck and discard are shuffled together and
+ * a fresh hand is dealt. It is not a play: the turn, the round and the plays left are untouched.
+ * Once-per-fight cards already used stay out. The gold it costs is the scene's to take.
+ */
+export function redrawHand(state: CombatState): CombatEvent[] {
+  if (state.outcome !== 'ongoing') throw new Error('Combat is over');
+  if (!state.player.gear?.redraw) throw new Error('redrawHand: no relic that allows it');
+  if (state.redrawUsed) throw new Error('redrawHand: once per fight');
+  const rng = new Rng(state.rngState);
+  const p = state.player;
+  const events: CombatEvent[] = [];
+  p.deck = rng.shuffle([...p.hand, ...p.deck, ...p.discard]);
+  p.hand = []; p.discard = [];
+  events.push({ t: 'redraw', count: p.deck.length });
+  for (let i = 0; i < HAND_CAP; i++) dealOne(p, (a) => rng.shuffle(a), events);
+  state.redrawUsed = true;
+  state.rngState = rng.getState();
+  state.log.push(...events);
+  return events;
 }

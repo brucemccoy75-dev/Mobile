@@ -1,4 +1,5 @@
 import type { Item, Slot, Stats } from '@data/types';
+import type { Gear } from '@core/combat/types';
 
 export type Equipment = Record<Slot, Item | null>;
 
@@ -43,3 +44,15 @@ export function equip(base: Stats, eq: Equipment, hp: number, next: Item): { equ
   const newHp = Math.max(1, Math.min(after.maxHp, delta > 0 ? hp + delta : hp));
   return { equipment, hp: newHp, replaced: eq[next.slot] };
 }
+
+/** What the worn items do in a fight beyond stats (DECISIONS #82): immunities, pierce, the paid reshuffle. */
+export function gearOf(eq: Equipment): Gear | undefined {
+  const items = Object.values(eq).filter((i): i is NonNullable<typeof i> => !!i);
+  const immune = [...new Set(items.flatMap((i) => i.immune ?? []))];
+  const pierce = Math.max(0, ...items.map((i) => i.pierce ?? 0));
+  const redraw = items.some((i) => i.redraw);
+  if (!immune.length && !pierce && !redraw) return undefined;
+  return { ...(immune.length ? { immune } : {}), ...(pierce ? { pierce } : {}), ...(redraw ? { redraw } : {}) };
+}
+/** Gold the worn relic asks for its reshuffle (DECISIONS #82), or null without one. */
+export const redrawCost = (eq: Equipment): number | null => Object.values(eq).find((i) => i?.redraw)?.redraw?.gold ?? null;

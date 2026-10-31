@@ -164,4 +164,12 @@ export interface Item {
   /** Set ids this item synergises with; doubles its weight while that set is active. */
   tags?: SetId[];
   mods: Modifier[];
+  /** Only this boss's loot offers it (DECISIONS #82); never a fight, chest or shop. */
+  from?: EnemyId;
+  /** Combat powers beyond stats (DECISIONS #82): statuses that never land on the wearer, */
+  immune?: StatusId[];
+  /** a chance per hit to go through Guard, Ward or Aegis, */
+  pierce?: number;
+  /** a once-per-fight reshuffle that costs this much gold. */
+  redraw?: { gold: number };
 }

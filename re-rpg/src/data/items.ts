@@ -38,4 +38,8 @@ export const ITEMS: Item[] = [
   // Boss relics: the caps do not apply, and they only drop from a boss.
   { id: 'gatekeepers_eye', name: "Gatekeeper's Eye", slot: 'relic', rarity: 'boss', text: '+2 ATK, +2 DEF', mods: stat({ atk: 2, def: 2 }) },
   { id: 'wardens_seal', name: "Warden's Seal", slot: 'relic', rarity: 'boss', text: '+3 DEF, +8 max HP', mods: stat({ def: 3, maxHp: 8 }) },
+  // The Earthen set (DECISIONS #82): only Knight Andre's loot offers them, one slot each.
+  { id: 'earthen_armor', name: 'Earthen Armor', slot: 'body', rarity: 'boss', from: 'gatekeeper', text: '+2 DEF, −2 ATK. Weak never lands on you.', mods: stat({ def: 2, atk: -2 }), immune: ['weak'] },
+  { id: 'earthen_blade', name: 'Earthen Blade', slot: 'weapon', rarity: 'boss', from: 'gatekeeper', text: '+2 ATK. Each hit has a 50% chance to go through Guard, Ward or Aegis.', mods: stat({ atk: 2 }), pierce: 0.5 },
+  { id: 'earthen_relic', name: 'Earthen Relic', slot: 'relic', rarity: 'boss', from: 'gatekeeper', text: 'Once per fight: pay 20 gold to shuffle every card and draw a fresh hand.', mods: [], redraw: { gold: 20 } },
 ];
