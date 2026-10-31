@@ -1041,3 +1041,36 @@ Pinned by:
 Checked in a real cursed fight (thorns and follow-up): the chips show from round 1, THORNS
 explains itself, and a killing Attack at 1 HP leaves you at 25/25 with no thorns in the log.
 Screenshots in `docs/audit/cursed-chips-2026-10-31/`.
+
+## 79. The curse is a skull and crossbones from Grok
+
+Designer's request: the curse's purple skull looked weird. Now that art comes from Grok, make it a
+more sinister skull and crossbones.
+
+**The art**:
+- four Grok images from one prompt, on a flat green background (`art-src/curse-skull/`, contact
+  sheet `compare.jpg`); the pick is `skull-1`: an angry, cracked skull with fangs, eyes glowing
+  violet, crossed femurs, in the game's flat cel-shaded style with thick outlines;
+- cut with the new `scripts/cut-green.py`, which keys green, removes green spill from the
+  outline and clears enclosed gaps (between skull and bones) that `cut-sprite.py` would keep;
+- it ships as `public/art/c/fx_curse_skull.png` (256 px square, shown about 96 px tall).
+
+**The effect** (`BattleFx.skullSprite`):
+- a dark shadow and a violet halo open over the target's head, and dark purple smoke is drawn in
+  from a ring to wreathe it;
+- the skull swells out of the smoke (dim at first, a slight tilt, a small overshoot) and its eyes
+  flare violet twice;
+- it hangs a breath, then rises and comes apart into the smoke;
+- warded (#66): it forms higher, dives onto the dome, and shatters, with bone chips and the smoke
+  flung aside;
+- the curse lands at the same moment as before (480 ms in), so playback timing is unchanged.
+
+The smoke-only skull (#65) stays as the fallback if the image is missing, so `skullPoints` and its
+test stay.
+
+Checked in a real browser:
+- frames of a curse over the boar;
+- a warded curse on the player;
+- the Adept Necromancer's real curse cast in a fight.
+
+Screenshots in `docs/audit/curse-skull-2026-10-31/`.

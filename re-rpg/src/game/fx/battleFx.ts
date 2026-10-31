@@ -303,6 +303,7 @@ export class BattleFx {
    * Warded (#66), it forms higher, lunges down onto a dome at `stopY` and breaks apart against it.
    */
   private async skull(head: Pt, stopY?: number, shield?: () => void) {
+    if (this.scene.textures.exists('fx_curse_skull')) return this.skullSprite(head, stopY, shield);
     const k = 1.9, cx = head.x, cy = stopY === undefined ? head.y - 36 : stopY - 20 * k - 16;
     const pts = skullPoints(5);
     const glow = this.scene.add.image(cx, cy, 'fx_dot').setTint(0x7a3fbf).setScale(3.4).setAlpha(0).setDepth(DEPTH).setBlendMode(Phaser.BlendModes.ADD);
@@ -341,6 +342,56 @@ export class BattleFx {
         onComplete: () => o.destroy(),
       });
     }
+  }
+
+  /**
+   * The curse with its art (DECISIONS #79): dark smoke gathers, and a skull and crossbones swells
+   * out of it over the head, a shadow behind it and its eyes flaring violet. It hangs a breath, then
+   * rises and comes apart into smoke. Warded, it forms higher, dives onto the dome and shatters.
+   * Resolves when the curse lands, at the same moment as the smoke-only version.
+   */
+  private async skullSprite(head: Pt, stopY?: number, shield?: () => void) {
+    const size = 96, cx = head.x, cy = stopY === undefined ? head.y - 40 : stopY - size / 2 - 22;
+    const s = this.scene;
+    // A shadow first (normal blend, so it darkens), then a violet halo that adds light.
+    const shadow = s.add.image(cx, cy, 'fx_dot').setTint(0x1a0626).setScale(4.2).setAlpha(0).setDepth(DEPTH);
+    const halo = s.add.image(cx, cy, 'fx_dot').setTint(0x7a3fbf).setScale(3.6).setAlpha(0).setDepth(DEPTH).setBlendMode(Phaser.BlendModes.ADD);
+    s.tweens.add({ targets: shadow, alpha: 0.75, duration: 320 });
+    s.tweens.add({ targets: halo, alpha: 0.3, duration: 360 });
+    // Smoke drawn in from a loose ring.
+    const puffs = Array.from({ length: 30 }, () => {
+      const a = Math.random() * Math.PI * 2, r = 60 + Math.random() * 40;
+      const o = s.add.image(cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.7, 'fx_dot').setTint(Math.random() < 0.4 ? 0x5a2a94 : 0x24103a).setScale(0.3).setAlpha(0).setDepth(DEPTH + 1);
+      // Dark smoke wreathes the skull: more of it around the edge than over the face.
+      const a2 = Math.random() * Math.PI * 2, r2 = size * (0.32 + Math.random() * 0.3);
+      s.tweens.add({ targets: o, x: cx + Math.cos(a2) * r2, y: cy + Math.sin(a2) * r2 * 0.85, alpha: 0.6, scale: 0.8 + Math.random() * 0.5, duration: 300 + Math.random() * 120, ease: 'Sine.Out' });
+      return o;
+    });
+    // The skull swells out of the smoke, a little dark at first, with a slight tilt.
+    const img = s.add.image(cx, cy + 6, 'fx_curse_skull').setDepth(DEPTH + 2).setAlpha(0).setRotation(-0.12);
+    const full = size / img.height;
+    img.setScale(full * 0.55).setTint(0x9a86b8);
+    s.tweens.add({ targets: img, alpha: 1, scale: full, y: cy, rotation: 0, duration: 300, delay: 120, ease: 'Back.Out' });
+    s.time.delayedCall(260, () => img.clearTint());
+    // The eyes flare.
+    const eyes = [-1, 1].map((d) => s.add.image(cx + d * size * 0.14, cy - size * 0.02, 'fx_dot').setTint(0xc08aff).setScale(0.2).setAlpha(0).setDepth(DEPTH + 3).setBlendMode(Phaser.BlendModes.ADD));
+    s.tweens.add({ targets: eyes, alpha: 0.95, scale: 0.75, duration: 180, delay: 300, yoyo: true, hold: 180, repeat: 1 });
+    await wait(s, 480);
+    const clear = () => { [shadow, halo, ...eyes].forEach((o) => s.tweens.add({ targets: o, alpha: 0, duration: 260, onComplete: () => o.destroy() })); };
+    if (stopY !== undefined) {
+      // It dives at the head, meets the dome and shatters; the smoke is flung off to the sides.
+      await tween(s, { targets: [img, ...eyes], y: `+=${18}`, duration: 110, ease: 'Quad.In' });
+      shield?.();
+      clear();
+      s.tweens.add({ targets: img, scaleX: full * 1.35, scaleY: full * 0.7, alpha: 0, duration: 220, ease: 'Quad.Out', onComplete: () => img.destroy() });
+      this.burst({ x: cx, y: cy + 18 }, 0xd8cbb0, 12, 90, 420, 0.3); // bone chips
+      for (const o of puffs) s.tweens.add({ targets: o, x: o.x + Math.sign(o.x - cx || 1) * (40 + Math.random() * 40), y: o.y - 10 - Math.random() * 30, alpha: 0, scale: o.scale * 1.6, duration: 420, ease: 'Quad.Out', onComplete: () => o.destroy() });
+      return;
+    }
+    // It hangs a breath, then rises and comes apart into smoke from the top down.
+    clear();
+    s.tweens.add({ targets: img, y: cy - 22, alpha: 0, scale: full * 1.12, duration: 520, delay: 160, ease: 'Sine.In', onComplete: () => img.destroy() });
+    for (const o of puffs) s.tweens.add({ targets: o, y: o.y - 30 - Math.random() * 24, x: o.x + (Math.random() - 0.5) * 30, alpha: 0, scale: o.scale * 1.8, duration: 620 + Math.random() * 200, delay: 160 + Math.random() * 120, ease: 'Sine.In', onComplete: () => o.destroy() });
   }
 
   private flash(at: Pt, color: number) {

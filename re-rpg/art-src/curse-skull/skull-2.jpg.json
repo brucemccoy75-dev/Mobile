@@ -1,0 +1,13 @@
+{
+  "when": "2026-10-31T21:53:59",
+  "cmd": "image",
+  "model": "grok-imagine-image-2.0",
+  "prompt": "A sinister skull and crossbones emblem for a fantasy game curse spell effect, front view, centred. A cracked, menacing human skull with deep hollow eye sockets that glow with a faint sickly violet light, a jagged broken grin with sharp uneven teeth, heavy brow, a crack running across the cranium, two long crossed femur bones behind it. Flat vector cel-shaded style matching a mobile RPG: thick uniform dark outline, flat fills, two tones per material (aged bone ivory with a cold grey-violet shadow), no texture, no gradients except the eye glow. Isolated on a flat solid pure bright green (#00ff00) background, nothing else in the image: no smoke, no text, no frame, no shadow on the ground.",
+  "refs": [],
+  "revised_prompt": null,
+  "reply": {
+    "usage": {
+      "cost_in_usd_ticks": 1600000000
+    }
+  }
+}

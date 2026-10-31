@@ -38,7 +38,7 @@ cards:validate, world:validate, tests, build). The game today is:
 - **Battle effects** (#59, #62), chosen from what a card does or named per card in the card
   editor:
   - slash, fireball, lightning, frost, arcane, heal;
-  - poison cloud over the head, and a curse skull of smoke (#65);
+  - poison cloud over the head, and the curse: a Grok skull and crossbones wreathed in smoke (#79);
   - sandwich, playing cards and coin (#69);
   - a quick coloured shield per status, and a fast deflection on a block that stops the slash
     or spell at the shield (#63, #66).
@@ -64,7 +64,7 @@ own command → Playwright at 844×390 (the game) or 390×844 (the editors) with
 (Test Mode: set registry `testSetup`, call `TestMode.fight()`, then `Combat.act()` and poll
 `busy`; to answer a dialogue from a script, `scene('Dialogue').choose(d, option)`) → commit with
 the attribution lines → `git push -u origin <branch>` → poll gh-pages. Record decisions in
-`docs/DECISIONS.md` (next number is 79). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
+`docs/DECISIONS.md` (next number is 80). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
 
 **Run logs** (`docs/PLAYTESTS.md`, DECISIONS #67). When the designer sends a run log, always:
 1. save it in `docs/playtests/`;

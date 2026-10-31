@@ -238,6 +238,14 @@ paste it and saves it as `XAI_API_KEY=<key>` in `re-rpg/.env.local` (mode 600).
 
 The image host turns away Python's default user agent, so the script sends its own.
 
+### Effect sprites (scripts/cut-green.py)
+
+For a battle effect image (the curse skull, DECISIONS #79), generate it on a flat solid green
+(#00ff00) background with nothing else in the picture, then
+`python3 scripts/cut-green.py <src.jpg> public/art/c/fx_<name>.png 256`: it keys the green with a soft
+edge, removes green spill from the outline, clears enclosed gaps, and fits the shape in a
+transparent square. Load it in `BootScene.ART_FILES`, and keep a drawn fallback in the effect.
+
 ### Sprite sheets from frames (scripts/frames-to-sheet.py)
 
 `python3 scripts/frames-to-sheet.py <name> <anim> <char_height@2x> <fps> <frame>... [--start N]`
