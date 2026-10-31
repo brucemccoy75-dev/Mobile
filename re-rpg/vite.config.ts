@@ -1,8 +1,13 @@
 import { defineConfig } from 'vite';
 import { fileURLToPath, URL } from 'node:url';
+import { execSync } from 'node:child_process';
+
+// The commit a build came from, shown on the title screen so a phone can tell which build it runs.
+const build = (() => { try { return (process.env.GITHUB_SHA ?? execSync('git rev-parse HEAD').toString()).trim().slice(0, 7); } catch { return 'dev'; } })();
 
 export default defineConfig({
   base: './',
+  define: { __BUILD__: JSON.stringify(build) },
   resolve: {
     alias: {
       '@core': fileURLToPath(new URL('./src/core', import.meta.url)),

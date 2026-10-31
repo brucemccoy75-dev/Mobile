@@ -1,10 +1,10 @@
 {
   "hero_warrior_walk": {
     "file": "art/c/hero_warrior_walk@2x.png",
-    "frameWidth": 170,
+    "frameWidth": 172,
     "frameHeight": 166,
     "frames": 5,
-    "fps": 8,
+    "fps": 12,
     "loop": true,
     "start": 1,
     "height": 150

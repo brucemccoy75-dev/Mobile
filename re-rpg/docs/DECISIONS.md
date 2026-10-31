@@ -899,3 +899,13 @@ The first job is the overworld walk:
 Found on the way: xAI's image host turns away Python's default user agent, so the script sends
 its own. Checked in a real run: frames 1→4 cycle on the road and he is back on frame 0 at the
 node.
+
+Follow-up (designer's report: "he bobs but the animation does not play"):
+- **The live site was correct.** The same test against GitHub Pages showed the walk sheet
+  cycling. The phone most likely still had the old build, since Pages lets the page be cached for
+  up to 10 minutes.
+- **The title screen now shows the build** ("v0.0.1 · build <commit>", bottom left; the commit
+  comes from `GITHUB_SHA` or `git rev-parse` in `vite.config.ts`), so a phone can tell which
+  version it runs.
+- **The walk also had to read better at 60 px:** the contact frames were remade with a wide
+  stride, and the cycle runs at 12 fps (was 8), so even a short 3-tile walk shows the legs move.

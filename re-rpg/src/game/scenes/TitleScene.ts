@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { RUN_VERSION } from '@core/run';
 import { createMeta } from '@core/meta';
-import { APP_VERSION } from '@game/version';
+import { APP_VERSION, BUILD } from '@game/version';
 import { deserialize, getMeta, getStore, setMeta, setSession } from '@game/session';
 import { legacySummary } from '@core/meta';
 import { Button } from '@game/ui/Button';
@@ -70,7 +70,7 @@ export class TitleScene extends Phaser.Scene {
       }, { width: 320, fill: 0x1f2a44, edge: COLORS.goldHex });
     });
 
-    this.add.text(12, height - 12, `v${APP_VERSION}  ${width}x${height}`, text.mono).setOrigin(0, 1);
+    this.add.text(12, height - 12, `v${APP_VERSION} · build ${BUILD}  ${width}x${height}`, text.mono).setOrigin(0, 1);
     this.cloudLine(cx, height - 16);
     // Re-enter fullscreen after the browser's back gesture dropped it.
     new Button(this, width - 170, height - 24, 'fullscreen', () => {
