@@ -24,3 +24,12 @@ describe('card frames by theme, colour by kind (DECISIONS #85)', () => {
     expect(cardFace(getSkill('ward'), { maxHp: 25, atk: 4, def: 1 }).kind).toBe('defense'); // a magic frame on a blue card
   });
 });
+
+describe('written card text (DECISIONS #93)', () => {
+  it('the validator wants 1-140 characters when set', async () => {
+    const { CARDS_DATA, validateCards } = await import('./index');
+    const bad = JSON.parse(JSON.stringify(CARDS_DATA)); bad.cards.find((c: { id: string }) => c.id === 'doom').text = '';
+    expect(validateCards(bad)).toContain('card doom: card text must be 1-140 characters (or absent)');
+    expect(validateCards(JSON.parse(JSON.stringify(CARDS_DATA)))).toEqual([]);
+  });
+});

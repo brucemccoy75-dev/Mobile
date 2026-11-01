@@ -18,6 +18,7 @@ export function baseHit(stats: Stats, e: Extract<Effect, { type: 'damage' }>): n
  * "160%"). Deliberately ignores the enemy: what the card does, not what will land.
  */
 export function describeSkill(skill: Skill, stats: Stats): string {
+  if (skill.fixedText) return skill.fixedText; // written by hand (DECISIONS #93)
   const parts = describeEffects(skill.effects, stats);
   if (skill.grow) parts.push(`+${skill.grow} damage every time it lands, for the run.`);
   if (skill.locksCards) parts.push('While you hold it, you can take no other card.');

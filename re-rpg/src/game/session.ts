@@ -95,6 +95,8 @@ export interface RunSession {
    * meta. Never saved, logged or counted; the real meta and the saved run are left as they were.
    */
   levelTest?: boolean;
+  /** Demo mode (DECISIONS #93): only Doom cards, dealt instead of the starting cards. */
+  demo?: boolean;
 }
 
 /** A run that leaves no trace: Test Mode or a level-select run. */
@@ -137,6 +139,19 @@ export function createLevelTest(classId: ClassId, meta: MetaState, screenIndex: 
   const s = createSession(classId, meta, `LEVEL${screenIndex + 1}-${Date.now()}`);
   s.levelTest = true;
   if (screenIndex !== 0) startScreen(s, screenIndex, meta);
+  return s;
+}
+/**
+ * Demo mode (DECISIONS #93): a level-select run whose whole hand is Doom, which kills every enemy.
+ * No heirlooms and no starting cards; Doom locks out every other card (`locksCards`), so rewards, the
+ * shop and level-ups add none. Off the record like any level-select run.
+ */
+export const DEMO_CARD = 'doom', DEMO_COPIES = 3;
+export function createDemo(classId: ClassId, meta: MetaState, screenIndex: number): RunSession {
+  const s = createLevelTest(classId, meta, screenIndex);
+  s.demo = true;
+  s.heirloomChoices = [];
+  s.deck = Array<SkillId>(DEMO_COPIES).fill(DEMO_CARD);
   return s;
 }
 /** Swap a copy of the meta in for a level-select run; the title screen puts the real one back (restoreMeta). */
@@ -543,6 +558,7 @@ export function deserialize(st: RunState, meta: MetaState): RunSession {
 
 /** The starting cards this run deals every fight: the class's, less any sold at a shop. */
 export function runBasics(s: RunSession): SkillId[] {
+  if (s.demo) return []; // a demo hand is Doom alone (#93)
   const out = [...basicsFor(s.classId)];
   for (const id of s.soldBasics) { const i = out.indexOf(id); if (i >= 0) out.splice(i, 1); }
   return out;

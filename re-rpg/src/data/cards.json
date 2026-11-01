@@ -185,6 +185,12 @@
       "status": "stun",
       "rounds": 1,
       "text": "The enemy is stunned: it skips its next action."
+    },
+    {
+      "id": "strip_all_buffs",
+      "name": "Strip all buffs",
+      "target": "enemy",
+      "status": "remove_buffs"
     }
   ],
   "cards": [
@@ -806,6 +812,30 @@
       "pool": "cursed",
       "grow": 1,
       "locksCards": true
+    },
+    {
+      "id": "doom",
+      "name": "Doom",
+      "classId": "any",
+      "rarity": "rare",
+      "uses": null,
+      "damage": {
+        "percent": 500,
+        "bonus": 30,
+        "hits": 6,
+        "type": "physical",
+        "ignoreDef": true,
+        "drain": 0,
+        "targets": "all"
+      },
+      "heal": null,
+      "modifiers": [
+        "strip_all_buffs"
+      ],
+      "vfx": "lightning",
+      "locksCards": true,
+      "note": "Demo mode only (DECISIONS #93): the whole hand of a demo run. In no family and no pool, so it never drops.",
+      "text": "Every enemy dies. Demo mode only."
     }
   ],
   "families": [

@@ -75,6 +75,8 @@ export interface Skill {
   id: SkillId;
   name: string;
   text: string;
+  /** The designer's own card text (cards.json `text`), shown on the card face instead of the generated line (DECISIONS #93). */
+  fixedText?: string;
   classId: ClassId | 'any';
   setId?: SetId;
   rarity: Rarity;

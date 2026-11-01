@@ -1635,3 +1635,48 @@ Checked in a browser, measuring every panel against every sprite for overlaps (n
 - lone bosses: The Frost Warden and Knight Andre, beside as before.
 
 Screenshots in `docs/audit/duo-panels-2026-11-01/`.
+
+## 93. Demo mode: a hand of Doom, off the record
+
+Designer's request: a demo mode in which the player has only instant-death cards for all enemies.
+It replaces the level-select button on the title screen, still lets the player pick the map, and
+keeps level select's rules: isolated, no saving, no log.
+
+**The button**: the title's dev-row "level select" (#76) is now "demo mode". Its panel picks Screen 1
+or Screen 2 and starts a demo run there (`createDemo`): a level-select run (`levelTest`, so a copy of
+the meta, never saved, logged or counted, the saved run left alone) with `demo` set. Plain level
+select no longer has a button; `scene('Title').startLevel(i)` still starts one for scripts and tests.
+
+**The hand**: three Doom cards and nothing else.
+- No heirloom pick, no starting cards (`runBasics` is empty in a demo).
+- Doom locks out every other card (`locksCards`), so rewards, the shop and level-ups add none, and
+  the 3-card floor means none can be sold.
+
+**Doom** (`doom` in cards.json, plain data, no engine change):
+- it removes every enemy's buffs first (Guard, Ward, Aegis, Harden, Brace, Scatter), then lands 6
+  hits of 500% + 30 on every enemy, ignoring defence: 300 to each at ATK 4;
+- halved by a cursed shield or a Weak hero, that is still 150, above any enemy (the Frost Warden has
+  62);
+- it is in no family and no pool, so it never drops outside a demo.
+
+**Cards may carry written text**: Doom's generated line was long and shrank to tiny type, so cards
+gain an optional `text` in cards.json.
+- When set, the card face shows it instead of the generated line ("Every enemy dies. Demo mode
+  only.").
+- The card editor has a "card text" field (empty = generated); the validator wants 1–140
+  characters when it is set.
+- No existing card has one, so nothing else changed.
+
+Pinned in `src/game/demo.test.ts`:
+- the run is off the record, holds only Doom and can gain or sell nothing;
+- Doom wins in one play against every case: the bosses, a screen-2 duo, cursed 2×HP + shield
+  enemies, and all five dungeon enemies at +50%, each also guarded, under Aegis and hardened,
+  with the hero Weak;
+- written text.
+
+The validator rule is in `cardTheme.test.ts`.
+
+Checked by tapping in a real browser: the button, the panel, a screen-2 map, an Ogre and Witch duo
+dead in one tap of Doom, spoils offering items only, and browser storage unchanged. Knight Andre's
+fight shows the Doom hand; the card editor shows the new field at 390×844. Screenshots in
+`docs/audit/demo-2026-11-01/`.

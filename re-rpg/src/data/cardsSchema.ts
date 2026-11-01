@@ -40,6 +40,8 @@ export interface CardBranch { damage: CardDamage | null; heal: CardHeal | null; 
 export interface CardDef {
   id: string;
   name: string;
+  /** Written card text (DECISIONS #93): shown instead of the generated line. Leave empty to generate. */
+  text?: string;
   classId: ClassId | 'any';
   rarity: Rarity;
   uses: SkillUses | null;
@@ -218,7 +220,8 @@ export function compileCards(data: CardsData): Compiled {
     let effects = branch(c, c.id);
     // A branching card is one effect holding both sides (DECISIONS #69).
     if (c.condition) effects = [{ type: 'if', cond: conditionOf(c.condition), then: effects, else: c.else ? branch(c.else, c.id) : [] }];
-    const sk: Skill = { id: c.id, name: c.name, text: cardText(c, mods), classId: c.classId, rarity: c.rarity, effects };
+    const sk: Skill = { id: c.id, name: c.name, text: c.text ?? cardText(c, mods), classId: c.classId, rarity: c.rarity, effects };
+    if (c.text) sk.fixedText = c.text;
     const fam = familyOfClassCard.get(c.id);
     if (fam) sk.setId = fam;
     if (c.uses) sk.uses = c.uses;
@@ -307,6 +310,7 @@ export function validateCards(data: CardsData, shipped?: CardsData): string[] {
     if (c.grow !== undefined && !isInt(c.grow, 1, 9)) bad(`${w}: grow must be 1-9`);
     if (c.grow && !c.damage && !c.else?.damage) bad(`${w}: grow needs damage`);
     if (c.locksCards !== undefined && typeof c.locksCards !== 'boolean') bad(`${w}: locksCards must be true or false`);
+    if (c.text !== undefined && (typeof c.text !== 'string' || !c.text.trim() || c.text.length > 140)) bad(`${w}: card text must be 1-140 characters (or absent)`);
     checkBranch(c, w, '', mods, bad);
     if (c.condition !== undefined) {
       if (!CONDITION_KINDS.includes(c.condition.kind)) bad(`${w}: unknown condition ${(c.condition as { kind: string }).kind}`);

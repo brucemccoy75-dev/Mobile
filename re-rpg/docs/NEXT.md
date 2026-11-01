@@ -7,7 +7,7 @@ Pages at https://brucemccoy75-dev.github.io/Mobile/. After a push, poll `origin/
 "Deploy re-rpg <sha>", **then** poll the live site until its main JS contains your 7-character
 hash; that is the build stamp the title shows at the bottom left. Pages publishes some time after
 the branch updates, so the branch alone is not "live" (#75 follow-up). Fetch with a `?t=<now>`
-query so a cache cannot answer. 351 tests pass (`npm run check`: typecheck,
+query so a cache cannot answer. 355 tests pass (`npm run check`: typecheck,
 cards:validate, world:validate, tests, build). The game today is:
 
 - **Node overworld** (DECISIONS #37): a static node network per screen over an authored terrain,
@@ -67,9 +67,10 @@ cards:validate, world:validate, tests, build). The game today is:
   Lunch Break, Blackjack and Trickster (#69); Paladin and Weaponmaster are empty. Nothing drops
   without a node (#42).
 
-**Level select** (title screen, dev row; #76): a warrior run straight from screen 1 or 2, off the
-record (never saved, logged or counted; the saved run and the meta are untouched). Use it to test
-screen 2; the run log never sees it.
+**Demo mode** (title screen, dev row; #93, was level select #76): pick screen 1 or 2 and play it with
+a hand of Doom (every play kills every enemy), off the record: never saved, logged or counted, and
+the saved run and the meta are untouched. `scene('Title').startLevel(i)` still starts a plain
+level-select run for scripts.
 
 **Two editors, phone first** (title screen): the **card editor** (`editor.html`, `docs/CARDS.md`)
 and the **world editor** (`world.html`, `docs/WORLD.md`: Nodes, Quests, Words, Enemies). The
@@ -83,7 +84,7 @@ own command → Playwright at 844×390 (the game) or 390×844 (the editors) with
 (Test Mode: set registry `testSetup`, call `TestMode.fight()`, then `Combat.act()` and poll
 `busy`; to answer a dialogue from a script, `scene('Dialogue').choose(d, option)`) → commit with
 the attribution lines → `git push -u origin <branch>` → poll gh-pages. Record decisions in
-`docs/DECISIONS.md` (next number is 93). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
+`docs/DECISIONS.md` (next number is 94). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
 
 **Run logs** (`docs/PLAYTESTS.md`, DECISIONS #67). When the designer sends a run log, always:
 1. save it in `docs/playtests/`;

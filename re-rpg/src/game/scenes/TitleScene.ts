@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { RUN_VERSION } from '@core/run';
 import { createMeta } from '@core/meta';
 import { APP_VERSION, BUILD } from '@game/version';
-import { SCREEN_COUNT, createLevelTest, deserialize, getMeta, getStore, holdMeta, restoreMeta, setMeta, setSession } from '@game/session';
+import { SCREEN_COUNT, createDemo, createLevelTest, deserialize, getMeta, getStore, holdMeta, restoreMeta, setMeta, setSession } from '@game/session';
 import { legacySummary } from '@core/meta';
 import { Button } from '@game/ui/Button';
 import { ART_STYLE_LABEL, getArtStyle, nextArtStyle, setArtStyle } from '@game/art';
@@ -80,7 +80,7 @@ export class TitleScene extends Phaser.Scene {
     // Dev row: sandbox fights and the run log export (DECISIONS #26).
     new Button(this, width - 80, height - 58, 'test mode', () => this.scene.start('TestMode'), { width: 120, height: 28, fontSize: '12px' }).setAlpha(0.7);
     new Button(this, width - 340, height - 58, 'card editor', () => { window.location.href = './editor.html'; }, { width: 120, height: 28, fontSize: '12px' }).setAlpha(0.7);
-    new Button(this, width - 600, height - 58, 'level select', () => this.levelSelect(), { width: 120, height: 28, fontSize: '12px' }).setAlpha(0.7);
+    new Button(this, width - 600, height - 58, 'demo mode', () => this.levelSelect(), { width: 120, height: 28, fontSize: '12px' }).setAlpha(0.7);
     new Button(this, width - 470, height - 58, 'world editor', () => { window.location.href = './world.html'; }, { width: 120, height: 28, fontSize: '12px' }).setAlpha(0.7);
     const logBtn = new Button(this, width - 210, height - 58, 'run log', () => void shareRunLog(this).then((m) => { logBtn.label.setText(m); logBtn.bg.width = Math.max(120, logBtn.label.width + 24); }), { width: 120, height: 28, fontSize: '12px' }).setAlpha(0.7);
     // Art style A/B switch (docs/ART.md): C is the chosen look, A stays for comparison.
@@ -97,24 +97,30 @@ export class TitleScene extends Phaser.Scene {
     }, { width: 100, height: 28, fontSize: '12px' }).setAlpha(0.5);
   }
 
-  /** Level select (DECISIONS #76): pick a screen and play a warrior run from it, off the record. */
+  /** Demo mode (DECISIONS #93; was level select, #76): pick a screen, play it with a hand of Doom, off the record. */
   private levelSelect() {
     const { width, height } = this.scale.gameSize;
     const cx = width / 2, cy = height / 2;
     const parts: Phaser.GameObjects.GameObject[] = [];
     const close = () => parts.forEach((p) => p.destroy());
     parts.push(this.add.rectangle(cx, cy, width, height, 0x0b0f1a, 0.94).setInteractive().setDepth(200));
-    parts.push(this.add.text(cx, cy - 92, 'Level select', { ...text.title, fontSize: '30px' }).setOrigin(0.5).setDepth(201));
-    parts.push(this.add.text(cx, cy - 58, 'A warrior run from that screen. Not saved, logged or counted.', { ...text.small, color: COLORS.muted }).setOrigin(0.5).setDepth(201));
+    parts.push(this.add.text(cx, cy - 92, 'Demo mode', { ...text.title, fontSize: '30px' }).setOrigin(0.5).setDepth(201));
+    parts.push(this.add.text(cx, cy - 58, 'Your hand is Doom: every play kills every enemy. Not saved, logged or counted.', { ...text.small, color: COLORS.muted }).setOrigin(0.5).setDepth(201));
     const names = ['Screen 1 · Gate Road', 'Screen 2 · Frozen Pass'];
     for (let i = 0; i < SCREEN_COUNT; i++) {
       const x = cx + (i - (SCREEN_COUNT - 1) / 2) * 260;
-      parts.push(new Button(this, x, cy + 4, names[i] ?? `Screen ${i + 1}`, () => this.startLevel(i), { width: 240, fill: 0x1f2a44, edge: COLORS.goldHex }).setDepth(202));
+      parts.push(new Button(this, x, cy + 4, names[i] ?? `Screen ${i + 1}`, () => this.startDemo(i), { width: 240, fill: 0x1f2a44, edge: COLORS.goldHex }).setDepth(202));
     }
     parts.push(new Button(this, cx, cy + 120, 'Cancel', close, { width: 140, height: 40, fontSize: '14px' }).setDepth(202));
   }
 
-  /** Start a level-select run on screen `index` (also reachable from scripts as scene('Title').startLevel(i)). */
+  /** A demo run on screen `index` (DECISIONS #93): straight to the map, no heirlooms. */
+  startDemo(index: number) {
+    setSession(this, createDemo('warrior', holdMeta(this), index));
+    this.scene.start('Overworld');
+  }
+
+  /** A plain level-select run on screen `index` (#76): no button any more, but scripts and tests use it. */
   startLevel(index: number) {
     const s = createLevelTest('warrior', holdMeta(this), index);
     setSession(this, s);
