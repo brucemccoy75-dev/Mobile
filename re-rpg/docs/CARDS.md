@@ -32,7 +32,7 @@ change first: add it with tests, expose it in the schema and the editor, then bu
 
 ## The editor
 
-Title screen → **card editor** (`editor.html`). It loads the shipped cards, keeps a draft in the
+`editor.html` (or the title screen with `?dev` → **card editor**, DECISIONS #95). It loads the shipped cards, keeps a draft in the
 browser while you work, and never changes the game: the game only reads what is committed.
 
 - The header's **test attack**, **test gear** and **target DEF** drive the computed number on

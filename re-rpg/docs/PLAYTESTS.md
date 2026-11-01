@@ -1,7 +1,7 @@
 # Playtests: reading a run log against the simulator
 
-Every real run writes a record (DECISIONS #26). After a session of play the designer taps **run
-log** on the title or end screen and sends the JSON. Each run log is read the same way, every
+Every real run writes a record (DECISIONS #26). After a session of play the designer taps **export run
+log** on the title or **share run log** on the end screen (DECISIONS #95) and sends the JSON. Each run log is read the same way, every
 time, against the simulator. The question is always "how often does the sim get to the boss, and
 how often did the designer?" (DECISIONS #67).
 

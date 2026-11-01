@@ -67,12 +67,12 @@ cards:validate, world:validate, tests, build). The game today is:
   Lunch Break, Blackjack and Trickster (#69); Paladin and Weaponmaster are empty. Nothing drops
   without a node (#42).
 
-**Demo mode** (title screen, dev row; #93, was level select #76): pick screen 1 or 2 and play it with
+**Demo mode** (title screen; #93, was level select #76): pick screen 1 or 2 and play it with
 a hand of Doom (every play kills every enemy), off the record: never saved, logged or counted, and
 the saved run and the meta are untouched. `scene('Title').startLevel(i)` still starts a plain
 level-select run for scripts.
 
-**Two editors, phone first** (title screen): the **card editor** (`editor.html`, `docs/CARDS.md`)
+**Two editors, phone first** (title screen with `?dev`, or `editor.html` / `world.html` directly; #95): the **card editor** (`editor.html`, `docs/CARDS.md`)
 and the **world editor** (`world.html`, `docs/WORLD.md`: Nodes, Quests, Words, Enemies). The
 designer edits on the phone and sends an exported `cards.json` or `world.json`; the import is the
 fixed procedure in the matching doc (validate, check, pinned tests only, commit). Never hand-edit
@@ -84,7 +84,7 @@ own command → Playwright at 844×390 (the game) or 390×844 (the editors) with
 (Test Mode: set registry `testSetup`, call `TestMode.fight()`, then `Combat.act()` and poll
 `busy`; to answer a dialogue from a script, `scene('Dialogue').choose(d, option)`) → commit with
 the attribution lines → `git push -u origin <branch>` → poll gh-pages. Record decisions in
-`docs/DECISIONS.md` (next number is 95). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
+`docs/DECISIONS.md` (next number is 96). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
 
 **Run logs** (`docs/PLAYTESTS.md`, DECISIONS #67). When the designer sends a run log, always:
 1. save it in `docs/playtests/`;

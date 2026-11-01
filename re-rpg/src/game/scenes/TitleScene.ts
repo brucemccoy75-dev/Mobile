@@ -7,6 +7,7 @@ import { legacySummary } from '@core/meta';
 import { Button } from '@game/ui/Button';
 import { ART_STYLE_LABEL, getArtStyle, nextArtStyle, setArtStyle } from '@game/art';
 import { shareRunLog } from '@game/telemetry';
+import { devMode } from '@game/scenes/OverworldScene';
 import type { FirebaseCloud } from '@save/firebase';
 import type { SyncedSaveStore } from '@save/SyncedSaveStore';
 import type { MetaState } from '@core/meta';
@@ -73,28 +74,34 @@ export class TitleScene extends Phaser.Scene {
 
     this.add.text(12, height - 12, `v${APP_VERSION} · build ${BUILD}  ${width}x${height}`, text.mono).setOrigin(0, 1);
     this.cloudLine(cx, height - 16);
-    // Re-enter fullscreen after the browser's back gesture dropped it.
-    new Button(this, width - 170, height - 24, 'fullscreen', () => {
-      try { if (this.scale.fullscreen.available) this.scale.isFullscreen ? this.scale.stopFullscreen() : this.scale.startFullscreen(); } catch { /* ignore */ }
-    }, { width: 100, height: 28, fontSize: '12px' }).setAlpha(0.5);
-    // Dev row: sandbox fights and the run log export (DECISIONS #26).
-    new Button(this, width - 80, height - 58, 'test mode', () => this.scene.start('TestMode'), { width: 120, height: 28, fontSize: '12px' }).setAlpha(0.7);
-    new Button(this, width - 340, height - 58, 'card editor', () => { window.location.href = './editor.html'; }, { width: 120, height: 28, fontSize: '12px' }).setAlpha(0.7);
-    new Button(this, width - 600, height - 58, 'demo mode', () => this.levelSelect(), { width: 120, height: 28, fontSize: '12px' }).setAlpha(0.7);
-    new Button(this, width - 470, height - 58, 'world editor', () => { window.location.href = './world.html'; }, { width: 120, height: 28, fontSize: '12px' }).setAlpha(0.7);
-    const logBtn = new Button(this, width - 210, height - 58, 'run log', () => void shareRunLog(this).then((m) => { logBtn.label.setText(m); logBtn.bg.width = Math.max(120, logBtn.label.width + 24); }), { width: 120, height: 28, fontSize: '12px' }).setAlpha(0.7);
-    // Art style A/B switch (docs/ART.md): C is the chosen look, A stays for comparison.
-    const artBtn = new Button(this, width - 290, height - 24, `art ${ART_STYLE_LABEL[getArtStyle()]}`, () => {
-      setArtStyle(nextArtStyle(getArtStyle()));
-      artBtn.label.setText(`art ${ART_STYLE_LABEL[getArtStyle()]}`);
-    }, { width: 120, height: 28, fontSize: '12px' }).setAlpha(0.5);
-    new Button(this, width - 80, height - 24, 'wipe save', async () => {
+    // The player's row (DECISIONS #95): demo mode, the run log, wipe save, fullscreen.
+    new Button(this, width - 104, height - 60, 'Demo mode', () => this.levelSelect(), { width: 176, height: 36, fontSize: '15px', fill: 0x1f2a44, edge: COLORS.goldHex });
+    const logBtn = new Button(this, width - 290, height - 60, 'export run log', () => void shareRunLog(this).then((m) => { logBtn.label.setText(m); logBtn.bg.width = Math.max(150, logBtn.label.width + 24); }), { width: 150, height: 30, fontSize: '12px' }).setAlpha(0.8);
+    // Wiping asks for a second tap: it is one of only three buttons now.
+    let armed = false;
+    const wipe = new Button(this, width - 80, height - 22, 'wipe save', async () => {
+      if (!armed) { armed = true; wipe.label.setText('tap again to wipe'); wipe.bg.width = 150; this.time.delayedCall(3000, () => { armed = false; wipe.label.setText('wipe save'); wipe.bg.width = 110; }); return; }
       await getStore(this).clearRun();
       const fresh = createMeta();
       setMeta(this, fresh);
       await getStore(this).saveMeta(fresh);
       this.scene.restart();
+    }, { width: 110, height: 28, fontSize: '12px' }).setAlpha(0.6);
+    // Re-enter fullscreen after the browser's back gesture dropped it.
+    new Button(this, width - 216, height - 22, 'fullscreen', () => {
+      try { if (this.scale.fullscreen.available) this.scale.isFullscreen ? this.scale.stopFullscreen() : this.scale.startFullscreen(); } catch { /* ignore */ }
     }, { width: 100, height: 28, fontSize: '12px' }).setAlpha(0.5);
+    // Designer tools only with `?dev` (or localStorage rerpg:dev = 1): Test Mode, the two editors, the art switch.
+    if (devMode()) {
+      const dev = { width: 110, height: 26, fontSize: '11px' };
+      new Button(this, 70, 30, 'test mode', () => this.scene.start('TestMode'), dev).setAlpha(0.7);
+      new Button(this, 190, 30, 'card editor', () => { window.location.href = './editor.html'; }, dev).setAlpha(0.7);
+      new Button(this, 70, 60, 'world editor', () => { window.location.href = './world.html'; }, dev).setAlpha(0.7);
+      const artBtn = new Button(this, 190, 60, `art ${ART_STYLE_LABEL[getArtStyle()]}`, () => {
+        setArtStyle(nextArtStyle(getArtStyle()));
+        artBtn.label.setText(`art ${ART_STYLE_LABEL[getArtStyle()]}`);
+      }, dev).setAlpha(0.6);
+    }
   }
 
   /** Demo mode (DECISIONS #93; was level select, #76): pick a screen, play it with a hand of Doom, off the record. */

@@ -94,7 +94,7 @@ applied the moment the fight is won, before any save.
 
 ## The editor
 
-Title screen → **world editor** (`world.html`), phone first. It keeps a draft in the browser and
+`world.html` (or the title screen with `?dev` → **world editor**, DECISIONS #95), phone first. It keeps a draft in the browser and
 never changes the game.
 
 - **Nodes**: pick a screen; the map scrolls sideways on a phone, and the list under it picks any

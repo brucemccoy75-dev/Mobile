@@ -1712,3 +1712,39 @@ Checked by tapping in a real browser:
 - Begin started the run with exactly the two kept cards in the deck.
 
 About $0.40. Screenshots in `docs/audit/run-start-2026-11-01/`.
+
+## 95. A cleaner title screen; designer tools behind ?dev
+
+Designer's request: remove the test buttons from the title screen except demo mode, wipe save and
+the run-log export. Also: "I am not seeing demo mode; that build didn't push."
+
+**Demo mode was live.** The live main JS for build 5641c45 contained it. The likely reasons it was
+not seen:
+- the page is served with `cache-control: max-age=600`, and a home-screen copy can hold an old
+  build until fully closed (there is no service worker);
+- the button was one of six small faded buttons, at the far left of the row.
+
+The fix to the second is below. For the first, the title's `build <hash>` (#75) says which build a
+phone is running.
+
+**The title screen now shows**:
+- **New run** (and Continue);
+- **Demo mode**, larger, with a gold edge;
+- **export run log** (was "run log");
+- **wipe save**, which now asks "tap again to wipe" within 3 seconds, since it is one of only
+  three buttons;
+- fullscreen.
+
+Checked at 844×390 and 667×375.
+
+**Designer tools only with `?dev`** (or `localStorage rerpg:dev = 1`, the same switch as the map
+overlay): Test Mode, the card editor, the world editor and the art-style switch sit in a 2×2 block
+top left. The editors also still open directly at `editor.html` and `world.html`.
+
+Checked in a real browser:
+- the buttons at both sizes;
+- one tap on wipe save only arms it;
+- Demo mode → Screen 1 starts a demo run (Doom ×3);
+- `?dev` shows the four tools.
+
+Screenshots in `docs/audit/title-clean-2026-11-01/`.
