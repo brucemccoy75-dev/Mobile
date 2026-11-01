@@ -1,0 +1,15 @@
+{
+  "when": "2026-11-01T13:45:46",
+  "cmd": "edit",
+  "model": "grok-imagine-image-2.0",
+  "prompt": "Replace only the plain white background of this picture with one flat solid pure bright green (#00ff00), filling everything around the character edge to edge. Keep the character exactly the same: same pose, shape, colours, outline, size and position; every white or pale part of the character (feathers, fur, snow, beard, armour highlights) stays white. No shadow, no ground, nothing else.",
+  "refs": [
+    "art-src/frost-enemies/iron_knight_styleC.jpg"
+  ],
+  "revised_prompt": null,
+  "reply": {
+    "usage": {
+      "cost_in_usd_ticks": 700000000
+    }
+  }
+}

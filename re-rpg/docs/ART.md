@@ -250,6 +250,13 @@ the top centre). `python3 scripts/cut-green.py <src> public/art/c/frame_<theme>.
 the green and keeps the whole frame at card size. Avoid "death" wording for the curse frame:
 moderation refused it, and a cartoon Halloween prompt passed.
 
+### Pale characters: green, not white (DECISIONS #91)
+
+`cut-sprite.py` removes a white background by colour, so it also eats white feathers, fur and snow.
+Generate a pale character on flat green (#00ff00), or edit an existing picture to put it on green
+("replace only the white background with flat green, keep the character exactly the same"), and cut
+it with `cut-green.py`.
+
 ### Effect sprites (scripts/cut-green.py)
 
 For a battle effect image (the curse skull, DECISIONS #79), generate it on a flat solid green

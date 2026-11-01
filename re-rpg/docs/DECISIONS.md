@@ -1579,3 +1579,31 @@ method). Every node and road is on its painted road, so `screen2.ts` is unchange
 run on screen 2 panned the whole map and walked to the first node.
 
 About $0.40. Screenshots in `docs/audit/map2-twilight-2026-11-01/`.
+
+## 91. The frost five cut out on green: no more see-through feathers
+
+Designer's report (a screenshot): the Snow Harpies had holes; the frozen lake showed through
+their white feathers.
+
+**What was wrong**: the frost five (#84) were drawn on white and cut with `cut-sprite.py`, which
+takes the background colour from the corners and removes it two ways. It floods in from the
+border, and it clears large enclosed pockets of that colour. On white and pale figures both eat
+the figure: white feathers, fur trim and snowflakes match the background. Measured enclosed holes:
+- Snow Harpies: 2.5% of the figure;
+- Icy Witch: 1.6%, which included her snowflake swirl.
+
+Holes that open to the edge do not show in that count, so all five were redone.
+
+**The fix**: each existing picture went back to Grok with one instruction, to replace only the
+white background with flat green, keeping the character exactly the same
+(`art-src/frost-enemies/<id>_green.jpg`). They were cut with `cut-green.py`, which keys green, so
+nothing white in a figure can be taken for background. Each new cut was scaled to the old figure's
+height and bottom line, so every enemy stands exactly where it did (the harpies' canvas is 16 px
+wider).
+
+What is see-through now is a real gap: between an arm and a staff, between legs. Side by side over
+the frozen lake (`0-old-vs-green.jpg`), the harpies are whole, the knight's cape is solid, and the
+witch has her snowflake swirl back.
+
+**From now on**: generate any pale or white character on flat green from the start and cut it
+with `cut-green.py` (docs/ART.md). About $0.35.
