@@ -47,7 +47,8 @@ cards:validate, world:validate, tests, build). The game today is:
     and a dead enemy does nothing to you: the blow that kills a thorned enemy is free (#78).
 - **Cards** are parchment (#86), tinted by kind with dark ink, 212×126, in a Grok frame by theme
   (#85): swords for attacks, shields for blocks, subtle magic for magic, Ward and heals, bones for
-  curses. Tags (ONCE, FLEETING, CURSED) sit on the top edge.
+  curses. Tags (ONCE, FLEETING, CURSED) sit on the top edge. The parchment fills the card and the
+  frame is tinted to match, so it reads as one piece; press and hold a card to read it at 2× (#87).
 - **Battle effects** (#59, #62), chosen from what a card does or named per card in the card
   editor:
   - slash, fireball, lightning, frost, arcane, heal;
@@ -80,7 +81,7 @@ own command → Playwright at 844×390 (the game) or 390×844 (the editors) with
 (Test Mode: set registry `testSetup`, call `TestMode.fight()`, then `Combat.act()` and poll
 `busy`; to answer a dialogue from a script, `scene('Dialogue').choose(d, option)`) → commit with
 the attribution lines → `git push -u origin <branch>` → poll gh-pages. Record decisions in
-`docs/DECISIONS.md` (next number is 87). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
+`docs/DECISIONS.md` (next number is 88). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
 
 **Run logs** (`docs/PLAYTESTS.md`, DECISIONS #67). When the designer sends a run log, always:
 1. save it in `docs/playtests/`;

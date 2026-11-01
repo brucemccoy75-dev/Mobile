@@ -1444,3 +1444,36 @@ Without the parchment the old dark card draws, with outlined light text.
 
 Checked in real hands at 844x390 and 3× density: the forest, the tundra, the dungeon, and a hand
 with every frame. About $1.20 in Grok images. Screenshots in `docs/audit/card-parchment-2026-11-01/`.
+
+## 87. Cards as one piece; press and hold to read
+
+Designer's report on #86: the background bleeding through around the borders still looked cheesy,
+the frame like a bolt-on. Also: holding a card should show it much larger to read, without playing
+it.
+
+**One piece** (`src/game/ui/Card.ts`):
+- the parchment now fills the whole card. The ornaments' gaps used to show the battle scene, and
+  a dark rim of the old card colour showed at the edge; neither does now;
+- the frame takes a warm aged tint (`AGED`, 0xf0dfc0), so its steel, enamel and bone sit on the
+  same paper instead of popping in raw colour;
+- a soft shadow (35%, offset 3,4) seats the card in the scene;
+- the old dark rectangle is now only the clear tap area, kept on top so parchment and frame never
+  take the touch, and the card drawn when the art is missing.
+
+**Press and hold** to read:
+- a press of at least 320 ms (`PEEK_MS`) lifts the card to the middle of the screen at twice its
+  size (`PEEK_SCALE`), over everything;
+- letting go anywhere puts it back, and it is not played;
+- a press shorter than that is a tap, which plays the card as before.
+
+Found on the way: once the card has moved out from under the pointer, Phaser does not always report
+the release, so the card stayed big. The release now also listens for the browser's own pointer-up
+and touch-end.
+
+Checked in a real browser at 844x390 with real touch events:
+- a hold enlarges the card to 2× and nothing is played;
+- the release returns it to its place;
+- a 90 ms tap plays the card;
+- the hands look right on the forest, the tundra and the dungeon.
+
+Screenshots in `docs/audit/card-unified-2026-11-01/`.
