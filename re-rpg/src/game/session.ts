@@ -9,6 +9,8 @@ import { SHRINE_HEAL, key, parseScreen, rollSurprises, type MapNode, type Screen
 import { SCREEN1 } from '@data/maps/screen1';
 import { SCREEN2 } from '@data/maps/screen2';
 import { DUNGEON1 } from '@data/maps/dungeon1';
+import { TRAINING1 } from '@data/maps/training';
+import { TRAINING, TRAINING_GOLD, roadOrder, stopIndex, type TrainingStop } from '@core/tutorial';
 import { DUNGEON_ROSTER } from '@data/enemies';
 import { STORY, WORLD, nodeRules } from '@data/world';
 import { DECK_CAP } from '@core/combat';
@@ -97,6 +99,8 @@ export interface RunSession {
   levelTest?: boolean;
   /** Demo mode (DECISIONS #93): only Doom cards, dealt instead of the starting cards. */
   demo?: boolean;
+  /** The training run (DECISIONS #96): the lessons shown so far. Off the record like level select. */
+  training?: { shown: string[] };
 }
 
 /** A run that leaves no trace: Test Mode or a level-select run. */
@@ -154,6 +158,45 @@ export function createDemo(classId: ClassId, meta: MetaState, screenIndex: numbe
   s.deck = Array<SkillId>(DEMO_COPIES).fill(DEMO_CARD);
   return s;
 }
+/**
+ * The training run (DECISIONS #96): a warrior on the Training Grounds, off the record like a
+ * level-select run, with no heirlooms and a little gold. Each stop's fight is set (TRAINING), and so
+ * is its hand; the hero cannot die (`trainingCombat`).
+ */
+export function createTraining(meta: MetaState): RunSession {
+  const s = createLevelTest('warrior', meta, 0);
+  s.training = { shown: [] };
+  s.heirloomChoices = [];
+  s.gold = TRAINING_GOLD;
+  const map = parseScreen(TRAINING1, s.rng.stream('training'), { seed: s.seed, screenIndex: 0, sub: { roster: enemiesOfTier(1).map((e) => e.id), pairs: PAIRS[1] } });
+  delete map.dungeon;
+  map.training = true;
+  map.paint = 'map_training';
+  map.bossId = '';
+  roadOrder(map).forEach((n, i) => {
+    const stop = TRAINING[i];
+    if (!stop || stop.kind !== n.kind) throw new Error(`createTraining: stop ${i} is ${n.kind}, the script says ${stop?.kind}`);
+    if (stop.enemies) { n.enemyId = stop.enemies[0]; if (stop.enemies.length > 1) n.extra = stop.enemies.slice(1); else delete n.extra; }
+  });
+  s.map = map;
+  s.playerPos = { ...map.entry };
+  s.clearedNodes = new Set();
+  s.usedShrines = new Set();
+  s.lastClearedNode = null;
+  return s;
+}
+export const inTraining = (s: RunSession | null | undefined): boolean => !!s?.training;
+/** The training stop at a node, if this is the training run. */
+export const trainingStop = (s: RunSession, nodeId: string | undefined): TrainingStop | undefined => (s.training && nodeId ? TRAINING[stopIndex(s.map, nodeId)] : undefined);
+/** The last training stop is cleared: training is over. */
+export const trainingFinished = (s: RunSession): boolean => !!s.training && roadOrder(s.map).every((n, i) => TRAINING[i]!.kind !== 'monster' || s.clearedNodes.has(n.id));
+/** What a training fight changes in createCombat: a set deal where the script gives one, and an HP floor of 1. */
+export function trainingCombat(s: RunSession, nodeId: string | undefined): { basics?: SkillId[]; ordered?: boolean; floor?: number } {
+  if (!s.training) return {};
+  const stop = trainingStop(s, nodeId);
+  return { floor: 1, ...(stop?.hand ? { basics: [...stop.hand], ordered: true } : {}) };
+}
+
 /** Swap a copy of the meta in for a level-select run; the title screen puts the real one back (restoreMeta). */
 export function holdMeta(scene: Phaser.Scene): MetaState {
   const real = getMeta(scene);

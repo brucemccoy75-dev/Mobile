@@ -14,17 +14,25 @@ import { PAIRS } from '@data/packs';
 import { QUEST_STATES, type Cond, type DEffect, type Dialogue, type DOption, type QuestState } from '@core/dialogue';
 import type { QuestDef } from '@core/quest';
 import { ITEMS } from '@data/index';
+import { LESSONS, LESSON_MAX } from '@core/tutorial';
 
 const DRAFT_KEY = 'rerpg:world-draft';
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
 const SHIPPED: WorldData = clone(WORLD);
 
-type Tab = 'nodes' | 'quests' | 'dialogue' | 'enemies';
+type Tab = 'nodes' | 'quests' | 'dialogue' | 'enemies' | 'tutorial';
 interface State { data: WorldData; tab: Tab; screen: number; node: string | null; dlg: string | null; quest: string | null; pin: string | null; search: string; }
 const state: State = { data: loadDraft(), tab: 'nodes', screen: 0, node: null, dlg: null, quest: null, pin: null, search: '' };
 
 function loadDraft(): WorldData {
-  try { const raw = localStorage.getItem(DRAFT_KEY); if (raw) { const d = JSON.parse(raw) as WorldData; if (d.version === SHIPPED.version && Array.isArray(d.dialogue) && Array.isArray(d.screens)) return d; } } catch { /* fresh */ }
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (raw) {
+      const d = JSON.parse(raw) as WorldData;
+      // A draft from before the tutorial (DECISIONS #96) takes the shipped lessons; nothing else in it changes.
+      if (d.version === SHIPPED.version && Array.isArray(d.dialogue) && Array.isArray(d.screens)) { d.tutorial ??= clone(SHIPPED.tutorial); return d; }
+    }
+  } catch { /* fresh */ }
   return clone(SHIPPED);
 }
 function saveDraft() { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(state.data)); } catch { /* ignore */ } }
@@ -89,9 +97,9 @@ function render() {
     ),
     problems.length ? h('div', { class: 'problems' }, problems.join('\n')) : h('div', { class: 'ok' }, changes.length ? `${changes.length} change${changes.length === 1 ? '' : 's'} from shipped` : 'No changes from the shipped world.'),
     h('div', { class: 'tabs sticky', role: 'tablist' },
-      ...(['nodes', 'quests', 'dialogue', 'enemies'] as const).map((t) => h('button', { role: 'tab', 'aria-selected': state.tab === t, onclick: () => { state.tab = t; render(); window.scrollTo(0, 0); } }, t === 'nodes' ? 'Nodes' : t === 'quests' ? 'Quests' : t === 'dialogue' ? 'Words' : 'Enemies')),
+      ...(['nodes', 'quests', 'dialogue', 'enemies', 'tutorial'] as const).map((t) => h('button', { role: 'tab', 'aria-selected': state.tab === t, onclick: () => { state.tab = t; render(); window.scrollTo(0, 0); } }, t === 'nodes' ? 'Nodes' : t === 'quests' ? 'Quests' : t === 'dialogue' ? 'Words' : t === 'enemies' ? 'Enemies' : 'Tutorial')),
     ),
-    state.tab === 'nodes' ? nodesTab() : state.tab === 'quests' ? questsTab() : state.tab === 'dialogue' ? dialogueTab() : enemiesTab(),
+    state.tab === 'nodes' ? nodesTab() : state.tab === 'quests' ? questsTab() : state.tab === 'dialogue' ? dialogueTab() : state.tab === 'enemies' ? enemiesTab() : tutorialTab(),
   );
   window.scrollTo(0, scrollY);
 }
@@ -538,6 +546,27 @@ function enemiesTab(): HTMLElement {
     }
     el.append(list);
   }
+  return el;
+}
+
+// ---------------------------------------------------------------- tutorial
+
+/** The training run's lesson lines (DECISIONS #96): one per lesson, in the order a player meets them. When and where each shows is fixed in the game. */
+function tutorialTab(): HTMLElement {
+  const lessons = (state.data.tutorial ??= { lessons: {} }).lessons;
+  const el = h('div', {}, h('div', { class: 'muted', style: 'margin:6px 0' }, `What each tutorial lesson says. A line shows over the dimmed screen, pointing at one thing; keep it short (at most ${LESSON_MAX} characters, two lines on a phone). Shown in the training run, which a new player gets on their first New run and anyone can replay from the title.`));
+  const list = h('div', { class: 'list' });
+  LESSONS.forEach((l, i) => {
+    const v = lessons[l.id] ?? '';
+    const shipped = SHIPPED.tutorial?.lessons?.[l.id] ?? '';
+    list.append(h('div', { class: 'form', id: `t-${l.id}` },
+      h('div', { class: 'name' }, `${i + 1}. ${l.id}  `, h('span', { class: 'muted' }, l.where)),
+      h('textarea', { rows: 3, maxlength: LESSON_MAX, 'aria-label': `lesson ${l.id}`, onchange: (ev: Event) => { lessons[l.id] = (ev.target as HTMLTextAreaElement).value; render(); } }, v),
+      h('div', { class: 'muted' }, `${v.length} / ${LESSON_MAX}${v !== shipped ? '  ·  changed' : ''}`),
+      v !== shipped ? h('button', { onclick: () => { lessons[l.id] = shipped; render(); } }, 'Back to shipped') : null,
+    ));
+  });
+  el.append(list);
   return el;
 }
 

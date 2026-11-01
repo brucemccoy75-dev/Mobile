@@ -7,6 +7,7 @@ import { MIN_CARDS, cardsLocked, getMeta, getSession, persistMeta, persistRun, s
 import { Button } from '@game/ui/Button';
 import { openComparePanel, openSwapPanel } from '@game/ui/panels';
 import { COLORS, FONT, RARITY_COLORS, text } from '@game/ui/theme';
+import { trainingLesson } from '@game/tutorial';
 
 /** The gold sink: two items, maybe a tome, one expensive heal. Stock is per screen. */
 export class ShopScene extends Phaser.Scene {
@@ -29,6 +30,7 @@ export class ShopScene extends Phaser.Scene {
     this.statusText = this.add.text(W / 2, H - 92, '', text.small).setOrigin(0.5);
     new Button(this, W / 2, H - 46, 'Leave', () => void persistRun(this).then(() => this.scene.start('Overworld')), { width: 160, height: 44, fontSize: '15px' });
     this.render();
+    if (this.session.training) void trainingLesson(this, 'shop'); // the training shop (DECISIONS #96)
   }
 
   private render() {

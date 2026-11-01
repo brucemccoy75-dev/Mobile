@@ -10,6 +10,7 @@ import { discoverItem, discoverSkill } from '@core/meta';
 import { Button } from '@game/ui/Button';
 import { openComparePanel, openSwapPanel } from '@game/ui/panels';
 import { COLORS, FONT, RARITY_COLORS, text } from '@game/ui/theme';
+import { trainingLesson } from '@game/tutorial';
 import { tween, wait } from '@game/ui/tween';
 
 const TITLES = { kill: 'Spoils', guard: 'Spoils', chest: 'Chest', boss: 'Boss hoard', cursed: 'Cursed spoils' } as const;
@@ -57,6 +58,7 @@ export class RewardScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(0x0b0f1a);
     this.add.text(W / 2, 30, pending.title ?? TITLES[this.offer.source], text.h2).setOrigin(0.5);
     this.add.text(W / 2, 60, this.offer.gold > 0 ? `+${this.offer.gold} gold  ·  choose one` : 'choose one', { ...text.small, fontSize: '14px', color: COLORS.gold }).setOrigin(0.5);
+    if (this.session.training) void trainingLesson(this, 'reward'); // the first spoils of the training run (DECISIONS #96)
 
     const n = this.offer.choices.length;
     const cw = 250, ch = 170, gap = 20;

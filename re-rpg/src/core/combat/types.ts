@@ -20,6 +20,8 @@ export interface Combatant {
   traits?: EnemyTraits;
   /** Extra damage share right now (a Vespa's frenzy, DECISIONS #83); kept current by the engine. */
   boost?: number;
+  /** HP never drops below this (the training run's hero, DECISIONS #96). */
+  floor?: number;
 }
 
 /** Equipment powers in combat (DECISIONS #82): statuses that never land, a chance to pierce blocks, a paid reshuffle. */

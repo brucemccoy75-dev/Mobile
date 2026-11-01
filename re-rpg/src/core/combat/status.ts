@@ -86,7 +86,7 @@ export function tickStatuses(c: Combatant, events: CombatEvent[]): void {
     const st = getStatus(c, dot);
     if (st && c.hp > 0) {
       // Some enemies burn worse (DECISIONS #83).
-      const amount = Math.min(c.hp, st.magnitude * (dot === 'burn' ? (c.traits?.burnVuln ?? 1) : 1));
+      const amount = Math.min(room(c), st.magnitude * (dot === 'burn' ? (c.traits?.burnVuln ?? 1) : 1));
       c.hp -= amount;
       events.push({ t: 'burn', side: c.side, amount, status: dot });
     }
@@ -106,3 +106,6 @@ export function tickStatuses(c: Combatant, events: CombatEvent[]): void {
     if (s.turns <= 0) removeStatus(c, s.id, events);
   }
 }
+
+/** HP a combatant can still lose: down to its floor (the training run's hero, DECISIONS #96), else to 0. */
+export const room = (c: Combatant): number => Math.max(0, c.hp - (c.floor ?? 0));

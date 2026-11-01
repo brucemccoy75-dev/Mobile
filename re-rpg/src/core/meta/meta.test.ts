@@ -77,7 +77,7 @@ describe('meta', () => {
 
   it('v5 saves lose the warrior families they were given for free, and keep their points', () => {
     const old = migrateMeta({ version: 5, deaths: 4, progress: { warrior: { level: 3, exp: 90, points: 2, unlocked: ['warrior_tank', 'warrior_dps'] }, wizard: { level: 1, exp: 0, points: 0, unlocked: ['wizard_fire', 'wizard_frost'] } } })!;
-    expect(old.version).toBe(6);
+    expect(old.version).toBe(7);
     expect(old.progress.warrior).toEqual({ level: 3, exp: 90, points: 2, unlocked: [] });
     expect(old.progress.wizard?.unlocked).toEqual(['wizard_fire', 'wizard_frost']);
     expect(unlockNode(old, 'warrior', 'warrior_tank')).toBe(true); // two points buy one family now
@@ -94,7 +94,7 @@ describe('meta', () => {
     recordWin(m, 2, 'warrior');
     expect(classUnlocked(m, 'wizard')).toBe(true);
     const old = migrateMeta({ version: 1, updatedAt: 1, deaths: 3, wins: 1, bestScreen: 2, discoveredSkills: ['x'], discoveredItems: [] })!;
-    expect(old.version).toBe(6);
+    expect(old.version).toBe(7);
     expect(old.relations).toEqual({});
     expect(old.winsByClass).toEqual({ warrior: 1 });
     expect(old.legacyUnspent).toBe(1); // the earlier win becomes a point to spend

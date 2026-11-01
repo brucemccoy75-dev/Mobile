@@ -1748,3 +1748,106 @@ Checked in a real browser:
 - `?dev` shows the four tools.
 
 Screenshots in `docs/audit/title-clean-2026-11-01/`.
+
+## 96. A tutorial: the Training Grounds, a short run with set lessons
+
+Designer's request: teach new players the game. The designer chose (Q&A before starting):
+- **a separate training run**, not hints over a real run;
+- it teaches everything in the proposal: the map, the hand and plays, the intent panel, Guard and
+  Ward, statuses and the ATK / DEF colours, press and hold, duos, rewards, the shrine and the shop;
+- a new player's first **New run goes straight into it**; Skip leaves it, and a **Tutorial** button
+  on the title replays it;
+- a **new small map**, painted by Grok;
+- **set fights and set hands, and you cannot die**;
+- **off the record**, ending at class select;
+- plain text (no speaker), with the words in **world.json** and editable in the world editor.
+
+**The map** (`src/data/maps/training.ts`, `public/art/c/map_training.jpg`). Four Grok paintings
+(`art-src/training/`, contact sheet `compare.jpg`): two from a text prompt and two with the Gate Road
+map as the style reference. The designer picked `t-2`: a dirt road winding past a village, a fenced
+yard of practice dummies, a shrine, a market stall, a chest on a stump, a stream with a bridge and a
+stone arena. The network was traced onto its painted clearings, 40×16 tiles at 80 source px per tile,
+and checked at full size. It ships at 72 px per tile. Eight nodes on one road:
+
+| Stop | Node | What it teaches |
+|---|---|---|
+| 0 | start (the village) | welcome; tap the next clearing |
+| 1 | Boar, hand Defend · Attack · Attack | your hand; the intent panel; Defend against Tusk; Attack |
+| 2 | Hex Imp, hand Ward · Attack · Attack | Ward against Hex (magic); press and hold a card |
+| 3 | shrine | it heals once, and can be saved |
+| 4 | shop | buying, mending and selling one card |
+| 5 | chest | (spoils again) |
+| 6 | Shell Beetle + Rat Pack | one play per enemy; tap an enemy to aim |
+| 7 | Adept Necromancer | "no more hints" |
+
+Two more lessons show when they come up: **statuses** on the first turn that opens with a chip on
+the hero, usually the Imp's Weak, where ATK, DEF and the chips share a row (from the duo on, an
+enemy's chips do too); and **reward**, on the first spoils screen. **Ready** closes training with
+"Start a real run". One lesson belongs to real runs: **heirlooms**, the first time a run offers
+heirlooms, once ever. A new player has none at first (no families unlocked), so it waits.
+
+The last clearing painted on the road (x38) is scenery: from the duo it was off screen on a small
+phone. The last fight is on the x34 clearing. On the training map the camera also looks halfway
+toward the next stop, so it is always in view.
+
+**The lesson overlay** (`src/game/ui/TutorialOverlay.ts`):
+- the screen dims except the target, which gets a pulsing gold outline; the line sits in a box on
+  the side away from it;
+- a lesson either waits for "Got it" (the target is shown but cannot be tapped) or waits for the
+  player to do the thing (play Defend, play Ward, tap the clearing, hold a card), and only the
+  target takes the tap;
+- "Skip tutorial" is on every training lesson but the last. It counts as done and goes to class
+  select;
+- it draws at depth 250, under a held card (300), so the hold lesson shows the card it asked for.
+
+**Engine changes, tests first** (`src/core/combat/training.test.ts`):
+- `PlayerSetup.ordered`: the starting cards, then the deck, are dealt in the order given instead of
+  shuffled. Training uses it for the set hands. Unset, every seed shuffles as before.
+- `PlayerSetup.floor` / `Combatant.floor`: HP never drops below it. Every place the hero loses HP
+  goes through `room()`: hits, the Brace counter, burn and curse, thorns, recoil, backfire and the
+  cursed follow-up. Training sets 1, so a fight cannot be lost.
+
+**The session** (`createTraining` in `src/game/session.ts`):
+- a level-select run (`levelTest`, so off the record on a copy of the meta) with `training` set;
+- no heirlooms, 30 gold, the training map with its enemies placed by `TRAINING`
+  (`src/core/tutorial`);
+- no words, no EXP and no level-ups, and the start node says nothing;
+- `trainingCombat` gives each fight its set hand and the floor.
+
+**The flags** (`meta.tutorial`, META_VERSION 7): `done` once training is finished or skipped,
+`heirlooms` once that lesson is seen. They merge as a union across devices.
+- New run on a meta without `done` starts training.
+- A save from before this version that has played (deaths, wins, discoveries or class progress)
+  is migrated as past both, so the designer's own save is not sent to training.
+- The flags are written to the real meta, even though training plays on a copy.
+- Wipe save starts a player over, tutorial and all.
+
+**The words** (`world.json` → `tutorial.lessons`, one line per lesson id, at most 200 characters):
+- `world:validate` wants every lesson, no strays, and no empty or long line, and lists changed
+  lines in the import's change list;
+- the world editor has a **Tutorial** tab: each lesson with where it shows, its line, a count, and
+  "Back to shipped";
+- an older draft in the editor takes the shipped lines;
+- with five tabs, the editors' tab buttons now share the row, so "Tutorial" fits at 390 px.
+
+Pinned by `src/game/training.test.ts`:
+- the road's order and enemies on any seed, with no dungeon toughness, curse or surprise;
+- the set hands, and Ward stopping the Hex;
+- the floor, and that training ends when every fight is won;
+- the flags (new, marked, merged, migrated);
+- the shipped lines and the validator.
+
+`meta.test.ts`'s two migration pins moved from version 6 to 7.
+
+Checked in a real browser:
+- a fresh save, tapping New run, played the whole training run at 844×390 and at 667×375: all
+  fifteen training lessons in order, no page errors, and the real meta saved with `done` at the end;
+- Skip from the first lesson goes to class select with `done` saved, and New run on that save
+  goes straight to class select;
+- the Tutorial button replays training on the training map;
+- the heirloom lesson shows on the first real run with heirlooms and not on the second;
+- demo mode is unchanged (Doom ×3, no lessons);
+- the world editor's Tutorial tab at 390×844, an edit counted as a change, and an emptied line
+  shown as a problem.
+
+About $0.58 in Grok images. Screenshots in `docs/audit/tutorial-2026-11-01/`.

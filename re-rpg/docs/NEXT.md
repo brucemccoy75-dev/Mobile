@@ -2,10 +2,11 @@
 
 ## Start here (updated 2026-11-01)
 
-**Next session: a tutorial system for new players.** The designer wants first-time players taught
-the game. Before building, ask the designer the questions that shape it (backlog item 1 has the
-open questions and a starting proposal), then design it as data and engine with tests, like
-everything else.
+**Just shipped: the tutorial (#96).** A new player's first New run is the Training Grounds, a short
+off-the-record run with set fights, set hands and no death, and fifteen lessons over a dimmed
+screen. Skip leaves it; the title's Tutorial button replays it. The words are `tutorial.lessons` in
+`world.json` (world editor → Tutorial tab). Wait for the designer's phone verdict on it; then
+backlog item 1 (pacing and balance) is next, starting from the next run log.
 
 **State.** Branch `claude/re-rpg-mobile-architecture-t26won`, folder `re-rpg/`, live on GitHub
 Pages at https://brucemccoy75-dev.github.io/Mobile/ (designer tools: add `?dev`). After a push,
@@ -14,12 +15,22 @@ contains your 7-character hash; that is the build stamp the title shows at the b
 publishes some time after the branch updates, and the page is cached for 10 minutes
 (`max-age=600`; there is no service worker), so ask the designer to check the title's
 `build <hash>` when a change "isn't there" (#75, #95). Fetch with a `?t=<now>` query so a cache
-cannot answer. 355 tests pass (`npm run check`: typecheck, cards:validate, world:validate, tests,
+cannot answer. 369 tests pass (`npm run check`: typecheck, cards:validate, world:validate, tests,
 build). The game today is:
 
-- **Title** (#95): New run / Continue, **Demo mode**, export run log, wipe save (asks twice),
-  fullscreen. With `?dev` (or `localStorage rerpg:dev = 1`) a 2×2 block top left adds Test Mode,
+- **Title** (#95): New run / Continue, **Tutorial** (#96), **Demo mode**, export run log, wipe save
+  (asks twice), fullscreen. With `?dev` (or `localStorage rerpg:dev = 1`) a 2×2 block top left adds Test Mode,
   the card editor, the world editor and the art-style switch.
+- **Tutorial** (#96): a new player's first New run (no `done` in `meta.tutorial`) goes to the
+  Training Grounds (`map_training.jpg`, `src/data/maps/training.ts`). It is a warrior run, off the
+  record on a copy of the meta, with 30 gold and no heirlooms:
+  - the road: start, a Boar, a Hex Imp, the shrine, the shop, the chest, a Shell Beetle and Rat
+    Pack duo, an Adept Necromancer;
+  - the fights deal set hands (`ordered`) and the hero cannot drop below 1 HP (`floor`);
+  - lessons dim the screen but one target and wait for "Got it" or for the thing itself;
+  - Skip, or finishing, saves `done` and goes to class select;
+  - the heirloom lesson shows once, on the first real run that offers heirlooms;
+  - saves from before #96 that have played count as done.
 - **Run start** (#94): class select and heirlooms over a muted Grok valley (`menu_valley.jpg`); the
   heirloom choices are the real cards (tap to keep two, press and hold to read).
 - **Node overworld** (#37): a static node network per screen over an authored terrain, contents
@@ -78,11 +89,16 @@ saved run and the meta are untouched. `scene('Title').startLevel(i)` still start
 level-select run, and `startDemo(i)` a demo, for scripts.
 
 **Two editors, phone first** (title screen with `?dev`, or `editor.html` / `world.html` directly; #95): the **card editor** (`editor.html`, `docs/CARDS.md`)
-and the **world editor** (`world.html`, `docs/WORLD.md`: Nodes, Quests, Words, Enemies). The
+and the **world editor** (`world.html`, `docs/WORLD.md`: Nodes, Quests, Words, Enemies, Tutorial). The
 designer edits on the phone and sends an exported `cards.json` or `world.json`; the import is the
 fixed procedure in the matching doc (validate, check, pinned tests only, commit). Never hand-edit
 card numbers or story in TypeScript. A new mechanic or story capability is an engine change with
 tests first, then a schema field, an editor control and a validator rule.
+
+**Scripts for the tutorial**: `scene('Title').startTraining()` starts a training run. A lesson is a
+16 px Text at depth 250 in the active scene; its "Got it" is a Text you can click by position.
+Clicks must be scaled from game coordinates to the canvas (the game is 1169×540 inside an
+844×390 page).
 
 **Working loop.** Edit → `npm run check` → start `npx vite preview --port 4174 --strictPort` in its
 own command → Playwright at 844×390 (the game) or 390×844 (the editors) with `window.__rerpg`
@@ -93,7 +109,7 @@ a fight) → commit with
 the attribution lines → `git push -u origin <branch>` → poll gh-pages and the live JS. The preview
 server is stopped after 2 hours in the background; start it again when a check needs it. Record
 decisions in
-`docs/DECISIONS.md` (next number is 96). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
+`docs/DECISIONS.md` (next number is 97). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
 
 **Run logs** (`docs/PLAYTESTS.md`, DECISIONS #67). When the designer sends a run log, always:
 1. save it in `docs/playtests/`;
@@ -136,28 +152,7 @@ frozen by the validator until the warrior is done.
 
 ## Backlog, in order
 
-1. **A tutorial for new players** (next session). Ask the designer first; open questions:
-   - **Form**: a guided first run (scripted fights on screen 1), or coach marks over a normal
-     first run, or a separate short "training" run from the title?
-   - **What it teaches**, in order: tap a node to travel; a fight's hand and plays; the intent
-     panel (what the enemy will do after your move); Guard and Ward; statuses and the ATK / DEF
-     colours; press and hold to read a card; duos (one card per enemy); rewards and heirlooms; the
-     shrine and shop.
-   - **When**: only the first run (a meta flag), with Skip, and replayable from the title?
-   - **Words**: who speaks (a character, or plain text), and should the lines be data in
-     `world.json` so the world editor can edit them?
-
-   A starting proposal to put to the designer:
-   - `meta.tutorial` flags per lesson, so it shows once and Skip sets them all;
-   - lessons are data (trigger: first map / first fight / first duo / first reward…, a highlight
-     target and a line), shown by a small overlay that dims everything but the target and waits
-     for the expected tap;
-   - a "Tutorial" button on the title replays it;
-   - off in demo mode and Test Mode.
-
-   Engine and tests first, then the data, then real-browser checks of every lesson at 844×390 and
-   a smaller phone.
-2. **Pacing and balance** (the story stays off for it, #72):
+1. **Pacing and balance** (the story stays off for it, #72; next):
    - the latest real reading is still Phone test 8 (2026-10-28; BALANCE.md). Since then: one card
      per enemy (#68), the shrine prompt and selling (#81), the Earthen set (#82), the dungeon door
      (#84), and #88's card redesigns;
@@ -169,22 +164,22 @@ frozen by the validator until the warrior is done.
      one shrine);
    - sim: model loot and the shop in the screen mirror, so it predicts a run instead of flooring
      it.
-3. **Remaining hard-coded story → data** (from the #61 review):
+2. **Remaining hard-coded story → data** (from the #61 review):
    - Wren at the gate (`OverworldScene` encounter, `WREN_GRUDGE`) as `screens[i].gate: [{when, boss, trigger}]`.
    - Her boss-win payoff (`CombatScene`: +9 relation, `wren_beaten`) as an on-kill hook for a
      custom boss (the validator allows only roster ids today).
    - The start node's words per screen (`giver:wren` only on screen 1) as `screens[i].start`.
    - Node labels ("camp", "a voice", "someone") as a node-rule `label`.
    - One variable set (`{weapon}`, `{species}`…) for every dialogue, not only before fights.
-4. **World editor performance**: every change rebuilds the page and re-runs validate and diff.
+3. **World editor performance**: every change rebuilds the page and re-runs validate and diff.
    Re-render only the edited panel; validate, diff and save the draft when idle. Matters once the
    library holds ~300 entries.
-5. **Dead code**: the generated-map path (`src/core/map/generate.ts`, `encounter.ts`, `findPath`)
+4. **Dead code**: the generated-map path (`src/core/map/generate.ts`, `encounter.ts`, `findPath`)
    and `generateQuest` / `GIVERS` are used only by tests; switch those tests to the authored map
    and `questFromDef`, then delete (keep `costField`). `RunState` still carries threat / POI fields
    for old saves. The #69/#71 running-total Blackjack status is in the engine but no card uses it
    since #88.
-6. **Story, when the switch goes back on** (#72): each enemy's everyday lines (10–20 each, by
+5. **Story, when the switch goes back on** (#72): each enemy's everyday lines (10–20 each, by
    personality, with the designer), the first special-run quest, and lines for Tam's node on
    screen 2.
 7. Small:

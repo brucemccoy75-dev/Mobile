@@ -16,6 +16,9 @@ import { groundIndices, propsFor } from '@game/tiles';
 import { ensureRun } from '@game/telemetry';
 import { STORY } from '@data/world';
 import ANIMS from '@data/anims.json';
+import { roadOrder } from '@core/tutorial';
+import { endTraining, lessonShown, trainingLesson } from '@game/tutorial';
+import { peekSession, trainingFinished, trainingStop } from '@game/session';
 
 /** World pixels per tile: about 11×5 tiles on a phone, close enough to read the ground. */
 export const TILE = 72;
@@ -83,11 +86,41 @@ export class OverworldScene extends Phaser.Scene {
     const fresh = !this.session.lastResult && this.session.clearedNodes.size === 0;
     void this.applyLastResult().then(async () => {
       await persistRun(this);
+      if (this.session.training) { await this.trainingBeat(fresh); return; }
       // The first node is the story node: arriving on the screen is arriving there.
       // A special run says so as the screen opens (DECISIONS #58).
       if (fresh && currentQuest(this.session)?.special) void this.toast('Something is different on this road today.', 2400);
       if (fresh) { await wait(this, 350); await this.enterNode(currentNode(this.session)); }
     });
+  }
+
+  // ---------------------------------------------------------------- training (DECISIONS #96)
+
+  /** What the training map says as it opens: welcome and the walk at first, the end once every fight is won. */
+  private async trainingBeat(fresh: boolean) {
+    const s = this.session;
+    if (trainingFinished(s)) {
+      if (await trainingLesson(this, 'ready', { ok: 'Start a real run', noSkip: true })) await endTraining(this);
+      return;
+    }
+    if (fresh) {
+      if (!(await trainingLesson(this, 'welcome'))) return;
+      await this.enterNode(currentNode(s));
+    }
+    const next = roadOrder(s.map).find((n) => !s.clearedNodes.has(n.id));
+    if (!next) return;
+    // Look halfway to the next stop, so it is on screen on any phone (the last fight is far from the duo).
+    const here = this.centre(s.playerPos), there = this.centre(next.pos);
+    this.cameras.main.setFollowOffset((here.x - there.x) / 2, (here.y - there.y) / 2);
+    if (lessonShown(this, 'travel')) return;
+    await trainingLesson(this, 'travel', { target: () => this.nodeRect(next), until: new Promise((r) => this.events.once('tutorial:travel', r)) });
+  }
+
+  /** A node's marker on screen, for a lesson to point at. */
+  private nodeRect(n: MapNode) {
+    const c = this.centre(n.pos), cam = this.cameras.main;
+    const x = (c.x - cam.scrollX) * cam.zoom, y = (c.y - cam.scrollY) * cam.zoom;
+    return { x: x - 46, y: y - 74, w: 92, h: 110 };
   }
 
   // ---------------------------------------------------------------- drawing
@@ -277,12 +310,12 @@ export class OverworldScene extends Phaser.Scene {
     hud.add(this.hpFill);
     this.hpText = this.add.text(182, 36, '', { fontFamily: FONT, fontSize: '13px', color: COLORS.muted }).setOrigin(0, 0.5);
     hud.add(this.hpText);
-    hud.add(this.add.text(W / 2, 14, inDungeon(s) ? 'Treasure Dungeon' : `Screen ${s.screenIndex + 1} of ${SCREEN_COUNT}`, { fontFamily: FONT, fontSize: '14px', color: COLORS.text, fontStyle: 'bold' }).setOrigin(0.5, 0));
+    hud.add(this.add.text(W / 2, 14, s.map.training ? 'Training Grounds' : inDungeon(s) ? 'Treasure Dungeon' : `Screen ${s.screenIndex + 1} of ${SCREEN_COUNT}`, { fontFamily: FONT, fontSize: '14px', color: COLORS.text, fontStyle: 'bold' }).setOrigin(0.5, 0));
     hud.add(this.add.text(W / 2, 34, `seed ${s.seed}`, text.mono).setOrigin(0.5, 0));
     this.goldText = this.add.text(W - 60, 26, '', { fontFamily: FONT, fontSize: '15px', color: COLORS.gold, fontStyle: 'bold' }).setOrigin(1, 0.5);
     hud.add(this.goldText);
     const pts = getMeta(this).progress[s.classId]?.points ?? 0;
-    if (pts > 0 && !s.testMode) {
+    if (pts > 0 && !s.testMode && !s.training) {
       const t = this.add.text(W - 60, 44, `★ ${pts} skill point${pts === 1 ? '' : 's'} · tap to spend`, { fontFamily: FONT, fontSize: '12px', color: '#8ff0b8', fontStyle: 'bold', backgroundColor: '#0b0f1acc', padding: { x: 6, y: 3 } }).setOrigin(1, 0.5).setScrollFactor(0).setDepth(101).setInteractive({ useHandCursor: true });
       t.on('pointerup', () => { void persistRun(this); this.scene.start('SkillTree', { classId: s.classId, returnTo: 'Overworld' }); });
     }
@@ -335,6 +368,8 @@ export class OverworldScene extends Phaser.Scene {
     if (currentNode(s).id === id) { await this.enterNode(currentNode(s)); return; }
     const route = routeTo(s, id);
     if (!route) { void this.toast('No open road there yet.', 900); return; }
+    this.events.emit('tutorial:travel');
+    this.cameras.main.setFollowOffset(0, 0);
     this.locked = true;
     this.syncRings();
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
@@ -381,6 +416,12 @@ export class OverworldScene extends Phaser.Scene {
     this.locked = true;
     this.syncRings();
     const done = async () => { s.clearedNodes.add(n.id); this.drawNode(n); await persistRun(this); this.locked = false; this.syncRings(); this.syncHud(); };
+    // The training run (DECISIONS #96): a stop may teach something as you arrive; its start has no words.
+    if (s.training) {
+      const stop = trainingStop(s, n.id);
+      if (stop?.arrive && !isCleared(s, n)) { await trainingLesson(this, stop.arrive); if (peekSession(this) !== s) return; }
+      if (n.kind === 'start') { await done(); return; }
+    }
     // Back at the Treasure Dungeon's entrance: up to screen 1, at the door, which seals (DECISIONS #84).
     if (inDungeon(s) && n.kind === 'start') {
       leaveDungeon(s);
@@ -533,7 +574,7 @@ export class OverworldScene extends Phaser.Scene {
       trigger = 'pre_fight:ghost';
     }
     const firstTome = ghost?.deck.find((id) => getSkill(id).rarity !== 'basic');
-    const r = await openDialogue(this, s, meta, trigger, { species: (e.custom?.[0]?.name ?? getEnemy(e.enemyId).name).toLowerCase(), weapon: s.equipment.weapon?.name ?? 'fists', killer: ghost?.killerName ?? '', ghostClass: ghost?.classId ?? '', ghostCard: firstTome ? getSkill(firstTome).name : 'nothing' });
+    const r = s.training ? null : await openDialogue(this, s, meta, trigger, { species: (e.custom?.[0]?.name ?? getEnemy(e.enemyId).name).toLowerCase(), weapon: s.equipment.weapon?.name ?? 'fists', killer: ghost?.killerName ?? '', ghostClass: ghost?.classId ?? '', ghostCard: firstTome ? getSkill(firstTome).name : 'nothing' });
     if (r?.notes.length) { void persistMeta(this); void this.toast(r.notes.join('  ·  '), 1800); this.syncHud(); }
     if (r && r.skip && !r.fight) {
       s.clearedNodes.add(node.id);

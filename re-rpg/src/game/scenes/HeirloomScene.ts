@@ -6,6 +6,8 @@ import { Button } from '@game/ui/Button';
 import { COLORS, FONT, text } from '@game/ui/theme';
 import { Card, CARD_H, CARD_W } from '@game/ui/Card';
 import { menuBackdrop } from '@game/ui/menuBackdrop';
+import { heirloomLesson } from '@game/tutorial';
+import { around, boundsOf } from '@game/ui/TutorialOverlay';
 
 /** Run start: a random spread of tomes from the class's unlocked families; keep two, their families fill the run (DECISIONS #32). */
 export class HeirloomScene extends Phaser.Scene {
@@ -46,6 +48,8 @@ export class HeirloomScene extends Phaser.Scene {
     this.counter = this.add.text(W / 2, H - 92, '', { ...text.small, stroke: '#0b0f1a', strokeThickness: 3 }).setOrigin(0.5);
     this.begin = new Button(this, W / 2, H - 46, 'Begin', () => this.finish(), { width: 200, fill: 0x1f2a44, edge: COLORS.goldHex });
     this.sync();
+    // The first real run's heirloom screen explains itself, once (DECISIONS #96).
+    void heirloomLesson(this, () => around(this.cards.map((c) => boundsOf(c.card))));
   }
 
   private toggle(i: number) {

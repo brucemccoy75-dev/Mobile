@@ -24,6 +24,10 @@ import { blockSide } from '@game/fx/shapes';
 import { beats } from '@game/playback';
 import { applyWin } from '@game/story';
 import { SELF_VFX, SHIELD_COLOR, blockColor, type VfxKind } from '@core/vfx';
+import { stopIndex, type LessonId } from '@core/tutorial';
+import { trainingCombat } from '@game/session';
+import { lessonShown, trainingLesson } from '@game/tutorial';
+import { around, boundsOf, type Rect } from '@game/ui/TutorialOverlay';
 
 /** A cursed enemy is drawn this much larger, and its traits read like this under its name (DECISIONS #73). */
 const CURSED_SCALE = 1.3;
@@ -122,7 +126,8 @@ export class CombatScene extends Phaser.Scene {
     this.target = 0;
     this.views = [];
     this.state = createCombat({
-      player: { name: this.session.classId, stats: this.session.stats, hp: this.session.hp, deck: this.session.deck, basics: runBasics(this.session), gear: gearOf(this.session.equipment) },
+      // The training run (DECISIONS #96) deals some fights a set hand, and the hero cannot die there.
+      player: { name: this.session.classId, stats: this.session.stats, hp: this.session.hp, deck: this.session.deck, basics: runBasics(this.session), gear: gearOf(this.session.equipment), ...trainingCombat(this.session, this.encounter.nodeId) },
       enemies: this.encounter.custom ?? [this.encounter.enemyId, ...(this.encounter.extra ?? [])],
       rng: this.session.rng.stream('combat'),
       skillUpgrades: this.session.skillUpgrades,
@@ -640,8 +645,46 @@ export class CombatScene extends Phaser.Scene {
       const id = this.state.player.hand[action.index];
       if (id && skillInCombat(this.state, id).effects.some((e) => e.type === 'if' && e.cond.kind === 'blackjack')) { this.askBlackjack((bjHits) => this.act({ ...action, bjHits })); return; }
     }
+    if (action.type === 'card') this.events.emit('tutorial:play', this.state.player.hand[action.index]);
     const events = step(this.state, action);
     void this.playEvents(events);
+  }
+
+  // ---------------------------------------------------------------- training (DECISIONS #96)
+
+  /** The lessons a training fight teaches, each once, as the player's turn opens. */
+  private async trainingTurn() {
+    const stop = stopIndex(this.session.map, this.encounter.nodeId ?? '');
+    const go = (id: LessonId, o: { target?: () => Rect | null; until?: Promise<unknown> } = {}) => trainingLesson(this, id, o);
+    const shown = (id: LessonId) => lessonShown(this, id);
+    const card = (id: string) => () => boundsOf(this.hand.find((c) => c.skillId === id));
+    const played = (id: string) => new Promise<void>((done) => { const on = (k: string) => { if (k === id) { this.events.off('tutorial:play', on); done(); } }; this.events.on('tutorial:play', on); });
+    const has = (id: string) => this.state.player.hand.includes(id);
+    // Statuses: the first turn that opens with a chip on the hero (the Hex Imp's Weak, usually), where ATK, DEF and the
+    // chips share one row. From the duo on, an enemy's chips will do (an enemy's ATK and DEF sit apart, at its feet).
+    const live = this.views.filter((v) => !v.slain);
+    const chipped = this.statusList('player').length ? 'player' : stop >= 6 ? live.find((v) => this.statusList('enemy', v.slot).length) : undefined;
+    if (chipped && !shown('statuses')) {
+      const r = chipped === 'player' ? () => around([boundsOf(this.playerStats), boundsOf(this.playerChips)]) : () => around([boundsOf(chipped.chips)]);
+      if (!(await go('statuses', { target: r }))) return;
+    }
+    if (stop === 1 && !shown('guard') && has('defend')) {
+      if (!(await go('hand', { target: () => around(this.hand.map(boundsOf)) }))) return;
+      if (!(await go('intent', { target: () => this.intentRect(0) }))) return;
+      await go('guard', { target: card('defend'), until: played('defend') });
+    } else if (stop === 1 && shown('guard') && !shown('attack') && has('attack')) {
+      await go('attack', { target: card('attack'), until: played('attack') });
+    } else if (stop === 2 && !shown('ward') && has('ward')) {
+      await go('ward', { target: card('ward'), until: played('ward') });
+    } else if (stop === 2 && shown('ward') && !shown('hold')) {
+      await go('hold', { target: () => around(this.hand.map(boundsOf)), until: new Promise((r) => this.events.once('card:peek', r)) });
+    } else if (stop === 6 && !shown('duo')) {
+      await go('duo', { target: () => around(this.views.flatMap((v) => [boundsOf(v.sprite as unknown as Phaser.GameObjects.Image), this.intentRect(v.slot)])) });
+    }
+  }
+  private intentRect(slot: number): Rect | null {
+    const v = this.views[slot];
+    return v ? around([boundsOf(v.intentBg), boundsOf(v.intentHead), boundsOf(v.postureText)], 4) : null;
   }
 
   /** Heads or tails, over the hand; Cancel puts the card back. */
@@ -721,6 +764,7 @@ export class CombatScene extends Phaser.Scene {
       this.syncAll();
       if (isPlayerStunned(this.state) || playableIndices(this.state).length === 0) { void this.autoPass(); return; }
       this.setInputEnabled(true);
+      if (this.session.training) void this.trainingTurn();
     } else {
       this.syncAll();
       this.setInputEnabled(false);
@@ -1084,9 +1128,10 @@ export class CombatScene extends Phaser.Scene {
       // A cursed win pays three times the EXP and gold, and offers the cursed pool after the spoils (DECISIONS #73).
       const mult = this.encounter.cursed ? CURSED_REWARD_MULT : 1;
       const exp = mult * this.state.enemyDefs.reduce((a, d) => a + expForEnemy(d, this.encounter.kind, this.state.enemyDefs.length), 0);
-      const gained = gainExp(getMeta(this), this.session.classId, exp);
+      // Training (DECISIONS #96) pays no EXP: it is off the record, and a level-up there would only confuse.
+      const gained = this.session.training ? { from: 0, to: 0, points: 0 } : gainExp(getMeta(this), this.session.classId, exp);
       void persistMeta(this);
-      this.add.text(W / 2, H * 0.34 + 74, `+${exp} EXP`, { ...text.body, fontSize: '15px', color: COLORS.gold, fontStyle: 'bold' }).setOrigin(0.5).setDepth(71);
+      if (!this.session.training) this.add.text(W / 2, H * 0.34 + 74, `+${exp} EXP`, { ...text.body, fontSize: '15px', color: COLORS.gold, fontStyle: 'bold' }).setOrigin(0.5).setDepth(71);
       this.session.hp = this.state.player.hp;
       if (gained.to > gained.from) {
         // Each level: +1 max HP for good, and a rare card or gold (DECISIONS #49).

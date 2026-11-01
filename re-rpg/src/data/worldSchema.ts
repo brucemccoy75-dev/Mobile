@@ -1,5 +1,6 @@
 import type { Cond, DEffect, Dialogue } from '@core/dialogue';
 import type { QuestDef } from '@core/quest';
+import { LESSON_IDS, validateTutorial, type TutorialData } from '@core/tutorial';
 import { CONTENT_GLYPHS, listSlots } from '@core/map/authored';
 import { RULE_KINDS, type NodeRule } from '@core/map/types';
 import { ENEMIES, ITEMS, SKILLS } from './index';
@@ -17,6 +18,7 @@ import { SCREEN2 } from './maps/screen2';
  *   screens    per screen index, node rules by node id (kind or odds, species or pair, dialogue)
  *   quests     the quests a screen can offer (DECISIONS #57): giver node, type and targets, the
  *              giver's lines, rewards, conditions, special-run only, and the next in a chain
+ *   tutorial   the training run's lesson lines by lesson id (DECISIONS #96)
  */
 export const WORLD_VERSION = 2;
 
@@ -28,6 +30,8 @@ export interface WorldData {
   screens: { nodes: Record<string, NodeRule> }[];
   quests: QuestDef[];
   dialogue: Dialogue[];
+  /** The tutorial's words (DECISIONS #96): one line per lesson. */
+  tutorial: TutorialData;
 }
 
 /** Glyphs a quest giver or an escort can stand at: the story nodes, never a fight. */
@@ -102,6 +106,7 @@ export function validateWorld(w: WorldData): string[] {
   (w.screens ?? []).forEach((sc, i) => out.push(...validateRules(i, sc.nodes ?? {}, `screen ${i + 1}`, ids)));
   out.push(...validateQuests(w));
   for (const q of w.quests ?? []) if (q.nodes) out.push(...validateRules(q.screen, q.nodes, `quest ${q.id}`, ids));
+  out.push(...validateTutorial(w.tutorial));
   return out;
 }
 
@@ -235,5 +240,6 @@ export function diffWorld(a: WorldData, b: WorldData): string[] {
     const before = a.screens[i]?.nodes ?? {};
     for (const id of new Set([...Object.keys(before), ...Object.keys(sc.nodes)])) if (!same(before[id], sc.nodes[id])) out.push(`screen ${i + 1} ${id}: ${JSON.stringify(before[id] ?? {})} -> ${JSON.stringify(sc.nodes[id] ?? {})}`);
   });
+  for (const id of LESSON_IDS) if ((a.tutorial?.lessons?.[id] ?? '') !== (b.tutorial?.lessons?.[id] ?? '')) out.push(`tutorial ${id}: "${b.tutorial?.lessons?.[id] ?? ''}"`);
   return out;
 }

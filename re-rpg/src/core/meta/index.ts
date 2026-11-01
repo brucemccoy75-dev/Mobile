@@ -4,7 +4,7 @@ import type { Rng } from '@core/rng';
 import { LEVEL_CAP, POINTS_PER_LEVEL, TREES, levelForExp } from '@data/progression';
 import type { GhostRecord } from '@core/variants';
 
-export const META_VERSION = 6;
+export const META_VERSION = 7;
 
 /** Cross-run progress. Persisted; merged across devices by union/max (ARCHITECTURE §8). */
 export interface MetaState {
@@ -33,6 +33,8 @@ export interface MetaState {
   ghosts: Record<string, GhostRecord>;
   /** Story flags remembered across runs (the `remember` effect, DECISIONS #61). */
   memory: string[];
+  /** Tutorial flags (DECISIONS #96): `done` once the training run is finished or skipped, `heirlooms` once that lesson is seen. */
+  tutorial: string[];
 }
 
 export interface ClassProgress {
@@ -45,7 +47,7 @@ export interface ClassProgress {
 export type LegacyChoice = 'atk' | 'def' | 'maxHp';
 export const LEGACY_GRANT: Record<LegacyChoice, number> = { atk: 1, def: 1, maxHp: 5 };
 
-export const createMeta = (): MetaState => ({ version: META_VERSION, updatedAt: Date.now(), deaths: 0, wins: 0, bestScreen: 0, discoveredSkills: [], discoveredItems: [], winsByClass: {}, legacy: { atk: 0, def: 0, maxHp: 0 }, legacyUnspent: 0, progress: {}, relations: {}, deathsByScreen: [], ghosts: {}, memory: [] });
+export const createMeta = (): MetaState => ({ version: META_VERSION, updatedAt: Date.now(), deaths: 0, wins: 0, bestScreen: 0, discoveredSkills: [], discoveredItems: [], winsByClass: {}, legacy: { atk: 0, def: 0, maxHp: 0 }, legacyUnspent: 0, progress: {}, relations: {}, deathsByScreen: [], ghosts: {}, memory: [], tutorial: [] });
 
 /** Bring an older saved meta up to date; returns null if it cannot be read. */
 export function migrateMeta(raw: unknown): MetaState | null {
@@ -71,9 +73,13 @@ export function migrateMeta(raw: unknown): MetaState | null {
     lastKiller: m.lastKiller,
     ghosts: m.ghosts ?? {},
     memory: m.memory ?? [],
+    // v6 had no tutorial (DECISIONS #96): a save that has played is past it, so only a new player is sent to training.
+    tutorial: m.tutorial ?? (played(m) ? ['done', 'heirlooms'] : []),
   };
   return out;
 }
+
+const played = (m: Partial<MetaState>): boolean => !!(m.deaths || m.wins || m.bestScreen || m.discoveredSkills?.length || m.discoveredItems?.length || Object.keys(m.progress ?? {}).length);
 
 /** Spend one Legacy point. Returns false if there is nothing to spend. */
 export function allocateLegacy(meta: MetaState, choice: LegacyChoice): boolean {
@@ -229,6 +235,7 @@ export function mergeMeta(a: MetaState, b: MetaState): MetaState {
     ghosts: { ...((a.updatedAt >= b.updatedAt ? b : a).ghosts ?? {}), ...((a.updatedAt >= b.updatedAt ? a : b).ghosts ?? {}) },
     // What the world remembers only grows.
     memory: [...new Set([...(a.memory ?? []), ...(b.memory ?? [])])],
+    tutorial: [...new Set([...(a.tutorial ?? []), ...(b.tutorial ?? [])])],
   };
 }
 

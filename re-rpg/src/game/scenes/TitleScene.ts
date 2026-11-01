@@ -13,6 +13,8 @@ import type { SyncedSaveStore } from '@save/SyncedSaveStore';
 import type { MetaState } from '@core/meta';
 import type { RunState } from '@core/run';
 import { COLORS, text } from '@game/ui/theme';
+import { tutorialDone } from '@core/tutorial';
+import { startTraining } from '@game/tutorial';
 
 export class TitleScene extends Phaser.Scene {
   constructor() { super('Title'); }
@@ -60,7 +62,8 @@ export class TitleScene extends Phaser.Scene {
       this.add.text(cx, height * 0.3 + 84, record, text.small).setOrigin(0.5);
     }
 
-    const newRun = new Button(this, cx, height * 0.66, 'New run', () => this.scene.start('ClassSelect'), { width: 220, fill: 0x1f2a44, edge: COLORS.goldHex });
+    // A new player's first New run is the training run (DECISIONS #96); its Skip leads on to class select.
+    const newRun = new Button(this, cx, height * 0.66, 'New run', () => (tutorialDone(getMeta(this)) ? this.scene.start('ClassSelect') : startTraining(this)), { width: 220, fill: 0x1f2a44, edge: COLORS.goldHex });
     void newRun;
 
     void getStore(this).loadRun().then((run) => {
@@ -76,6 +79,7 @@ export class TitleScene extends Phaser.Scene {
     this.cloudLine(cx, height - 16);
     // The player's row (DECISIONS #95): demo mode, the run log, wipe save, fullscreen.
     new Button(this, width - 104, height - 60, 'Demo mode', () => this.levelSelect(), { width: 176, height: 36, fontSize: '15px', fill: 0x1f2a44, edge: COLORS.goldHex });
+    new Button(this, width - 440, height - 60, 'Tutorial', () => this.startTraining(), { width: 130, height: 30, fontSize: '13px' }).setAlpha(0.85);
     const logBtn = new Button(this, width - 290, height - 60, 'export run log', () => void shareRunLog(this).then((m) => { logBtn.label.setText(m); logBtn.bg.width = Math.max(150, logBtn.label.width + 24); }), { width: 150, height: 30, fontSize: '12px' }).setAlpha(0.8);
     // Wiping asks for a second tap: it is one of only three buttons now.
     let armed = false;
@@ -126,6 +130,9 @@ export class TitleScene extends Phaser.Scene {
     setSession(this, createDemo('warrior', holdMeta(this), index));
     this.scene.start('Overworld');
   }
+
+  /** Replay the training run (DECISIONS #96), from the title's Tutorial button or a script. */
+  startTraining() { startTraining(this); }
 
   /** A plain level-select run on screen `index` (#76): no button any more, but scripts and tests use it. */
   startLevel(index: number) {

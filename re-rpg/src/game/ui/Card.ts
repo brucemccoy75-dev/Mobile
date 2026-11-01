@@ -131,6 +131,7 @@ export class Card extends Phaser.GameObjects.Container {
   private peek() {
     if (this.peeking || !this.scene) return;
     this.peeking = true;
+    this.scene.events.emit('card:peek', this.skillId); // the tutorial's hold lesson (DECISIONS #96)
     const { width: W, height: H } = this.scene.scale.gameSize;
     this.home = { x: this.x, y: this.y, depth: this.depth, scale: this.restScale, alpha: this.alpha };
     this.setAlpha(1); // a dimmed card (#94) reads at full strength while held

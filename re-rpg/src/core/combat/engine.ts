@@ -7,7 +7,7 @@ import { vfxForEffects, vfxForSkill } from '@core/vfx';
 import { advanceMoves, pickMove } from './ai';
 import { computeHit, predictDamage } from './damage';
 import { HAND_CAP, dealOne, playCard } from './deck';
-import { addMomentum, applyStatus, consumeBlock, consumeBrace, consumeChill, getStatus, hasStatus, removeStatus, tickStatuses } from './status';
+import { addMomentum, applyStatus, consumeBlock, consumeBrace, consumeChill, getStatus, hasStatus, removeStatus, room, tickStatuses } from './status';
 import type { Combatant, CombatEvent, CombatState, EnemyCombatant, Gear, PlayerAction, PlayerCombatant, PlayingCard } from './types';
 
 export interface PlayerSetup {
@@ -19,6 +19,10 @@ export interface PlayerSetup {
   basics?: SkillId[];
   /** What the equipment does beyond stats (DECISIONS #82). */
   gear?: Gear;
+  /** Deal the basics, then the deck, in the order given instead of shuffled (the training run's set hands, DECISIONS #96). */
+  ordered?: boolean;
+  /** HP never drops below this (the training run: the hero cannot die, DECISIONS #96). */
+  floor?: number;
 }
 
 export interface CombatOptions {
@@ -60,8 +64,9 @@ export function createCombat(opts: CombatOptions): CombatState {
   const player: PlayerCombatant = {
     side: 'player', name: opts.player.name ?? 'Hero',
     stats: { ...opts.player.stats }, hp: opts.player.hp ?? opts.player.stats.maxHp,
-    statuses: [], deck: opts.rng.shuffle([...(opts.player.basics ?? BASIC_DECK), ...opts.player.deck]), hand: [], discard: [], exhausted: [], consumed: [],
+    statuses: [], deck: opts.player.ordered ? [...(opts.player.basics ?? BASIC_DECK), ...opts.player.deck] : opts.rng.shuffle([...(opts.player.basics ?? BASIC_DECK), ...opts.player.deck]), hand: [], discard: [], exhausted: [], consumed: [],
     ...(opts.player.gear ? { gear: { ...opts.player.gear } } : {}),
+    ...(opts.player.floor ? { floor: opts.player.floor } : {}),
   };
   const enemies = defs.map((def, slot) => {
     const base = { side: 'enemy' as const, name: def.name, enemyId: def.id, slot, dead: false, stats: { ...def.stats }, hp: def.stats.maxHp, statuses: [], phase: 0, seqIndex: 0, ...(def.cursed ? { cursed: [...def.cursed] } : {}), ...(def.traits ? { traits: { ...def.traits } } : {}) };
@@ -155,7 +160,7 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
       // Backfire (DECISIONS #51): compiled last, so the damage has landed; a survivor among those struck turns it on you.
       if (e.type === 'backfire') {
         if (struck.some((v) => v.hp > 0)) {
-          const amount = Math.min(state.player.hp, Math.round(e.pct * state.player.stats.maxHp));
+          const amount = Math.min(room(state.player), Math.round(e.pct * state.player.stats.maxHp));
           state.player.hp -= amount;
           events.push({ t: 'backfire', amount });
         }
@@ -173,7 +178,7 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
     if (effects.some((e) => e.type === 'damage')) {
       for (const v of struck) {
         if (!v.cursed?.includes('thorns') || v.hp <= 0 || state.player.hp <= 0) continue;
-        const amount = Math.min(state.player.hp, CURSED_THORNS);
+        const amount = Math.min(room(state.player), CURSED_THORNS);
         state.player.hp -= amount;
         events.push({ t: 'thorns', amount, who: v.slot });
       }
@@ -181,7 +186,7 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
     // Doomsday gear (DECISIONS #84): every attack costs the wearer, through any block.
     const recoil = state.player.gear?.selfDamage ?? 0;
     if (recoil > 0 && effects.some((e) => e.type === 'damage') && state.player.hp > 0) {
-      const amount = Math.min(state.player.hp, recoil);
+      const amount = Math.min(room(state.player), recoil);
       state.player.hp -= amount;
       events.push({ t: 'recoil', amount });
     }
@@ -252,7 +257,7 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
       }
       // A cursed follow-up (DECISIONS #73): a quarter of its attack right after, and no block stops it.
       if (e.cursed?.includes('followUp') && move.effects.some((m) => m.type === 'damage') && state.player.hp > 0) {
-        const amount = Math.min(state.player.hp, Math.max(1, computeHit(e, state.player, CURSED_FOLLOW_UP)));
+        const amount = Math.min(room(state.player), Math.max(1, computeHit(e, state.player, CURSED_FOLLOW_UP)));
         state.player.hp -= amount;
         events.push({ t: 'damage', source: 'enemy', target: 'player', amount, blocked: false, hit: 1, hits: 1, kind: 'physical', followUp: true });
       }
@@ -493,7 +498,7 @@ function applyHit(self: Combatant, other: Combatant, e: Extract<Effect, { type: 
       return 0;
     }
   }
-  const applied = Math.min(other.hp, amount);
+  const applied = Math.min(room(other), amount);
   other.hp -= applied;
   events.push({ t: 'damage', source: self.side, target: other.side, amount: applied, blocked: false, hit: i + 1, hits, kind: e.kind ?? 'physical', ...(crit ? { crit: true } : {}) });
   // Brace: the first hit that lands is thrown back at the attacker (blockable by Guard, ignores def).
@@ -501,7 +506,7 @@ function applyHit(self: Combatant, other: Combatant, e: Extract<Effect, { type: 
   if (i === 0 && applied > 0 && other.hp > 0 && consumeBrace(other, events)) {
     // The counter is a physical blow: Guard or Aegis stop it.
     if (hasStatus(self, 'aegis') || consumeBlock(self, 'guard', events)) events.push({ t: 'counter', amount: 0, blocked: true });
-    else { const back = Math.min(self.hp, applied); self.hp -= back; events.push({ t: 'counter', amount: back, blocked: false }); }
+    else { const back = Math.min(room(self), applied); self.hp -= back; events.push({ t: 'counter', amount: back, blocked: false }); }
   }
   return applied;
 }

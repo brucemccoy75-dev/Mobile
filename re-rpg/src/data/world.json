@@ -1614,5 +1614,25 @@
         }
       ]
     }
-  ]
+  ],
+  "tutorial": {
+    "lessons": {
+      "welcome": "Welcome to the Training Grounds. A short walk teaches the basics, and you can't die here.",
+      "travel": "Tap the glowing clearing to walk there. A clearing with an enemy on it starts a fight.",
+      "hand": "This is your hand. Each turn you play one card for each enemy still standing, then draw back up to three.",
+      "intent": "This panel shows what the enemy will do after your move. Plan around it.",
+      "guard": "The Boar is about to attack. Play Defend: Guard blocks the next physical hit.",
+      "attack": "Now strike back: tap Attack. The number on a card is what it will deal.",
+      "statuses": "Statuses show as chips by the health bars. ATK and DEF turn green when buffed and red when debuffed. Tap a chip any time to read it.",
+      "reward": "Spoils! Choose one to keep for this run. Cards join your deck; gear is worn at once.",
+      "ward": "The imp is casting magic. Guard won't stop a spell, but Ward will. Play Ward.",
+      "hold": "Press and hold any card to read it up close. Let go and it goes back, unplayed.",
+      "shrine": "A shrine heals you once. You can save it for later and come back when you need it.",
+      "shop": "The shop sells cards and gear and mends wounds. It will also buy one card you no longer want.",
+      "duo": "Two enemies: you get one play for each of them. Tap an enemy to aim your next card at it.",
+      "final": "Last fight of training. No more hints: show what you've learned.",
+      "ready": "You're ready. A real run starts by choosing your class. Good luck out there.",
+      "heirlooms": "Heirlooms: keep two cards to start this run with. Their families decide which cards can drop. Press and hold one to read it."
+    }
+  }
 }

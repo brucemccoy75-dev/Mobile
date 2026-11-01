@@ -73,6 +73,8 @@ export interface ScreenMap {
   seed: string;
   /** A sub-map entered from a screen (the Treasure Dungeon, DECISIONS #84): it has no boss, and leaving it returns to the screen. */
   dungeon?: boolean;
+  /** The Training Grounds (DECISIONS #96): the tutorial's map. */
+  training?: boolean;
   /** The painting to draw (texture key); default `map_<screenIndex + 1>`. */
   paint?: string;
   /** True for hand-authored layouts (core/map/authored.ts): play happens on `nodes`. */

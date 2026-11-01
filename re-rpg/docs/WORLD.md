@@ -1,7 +1,7 @@
 # World: the map rules, the dialogue and the import procedure
 
 > **Switched off for now** (DECISIONS #72): `STORY.enabled` in `src/data/world.ts` is `false`
-> while the designer balances. The game reads only the node rules (placement) from this file:
+> while the designer balances. The game reads only the node rules (placement) and the tutorial's lines (DECISIONS #96) from this file:
 > no quests, no dialogue, no on-kill hooks, no Wren, and Knight Andre always at the gate. The editor and the file work as
 > described below; set the switch to `true` to bring it back.
 
@@ -18,6 +18,7 @@ phone, exports it, and a session imports it by the fixed procedure below.
 | screens | per screen, nodes by id: kind, odds, enemy, pair, dialogue | the designer's rules for one node; anything unset is rolled as before |
 | specialChance | 0–1 | the share of runs that are special (DECISIONS #58; 0.2) |
 | quests | id, name, screen, giver, type, voice, fetch, hunt, escort, reward, when, special, then, nodes | a quest a screen can offer (DECISIONS #57): see below |
+| tutorial | lessons: one line per lesson id | the training run's words (DECISIONS #96): see below |
 
 **Quests.** Each run, each screen offers one quest: one of its quests whose `when` holds (special
 ones only on a special run), picked at random if several qualify. `giver` is the node it is
@@ -92,6 +93,13 @@ them for a default line. A fight with no line just starts.
 killed, the first entry whose conditions hold runs its effects (Wren's rats live here). Wins are
 applied the moment the fight is won, before any save.
 
+**The tutorial** (DECISIONS #96) is not part of the story, so it plays with the story switched
+off. `tutorial.lessons` holds one line per lesson (`welcome`, `travel`, `hand`, `intent`, `guard`,
+`attack`, `statuses`, `reward`, `ward`, `hold`, `shrine`, `shop`, `duo`, `final`, `ready`,
+`heirlooms`), at most 200 characters each. When and where each lesson shows is fixed in the game
+(`LESSONS` in `src/core/tutorial`); only the words are data. The validator wants every lesson and
+no others.
+
 ## The editor
 
 `world.html` (or the title screen with `?dev` → **world editor**, DECISIONS #95), phone first. It keeps a draft in the browser and
@@ -111,6 +119,8 @@ never changes the game.
   The tab also sets the share of special runs. New, Duplicate, and Delete for a quest that did not ship.
 - **Enemies**: each enemy's entries for its own trigger, with a tick for the everyday ones and
   "+ New everyday line" (it opens the new entry in the Dialogue tab, already ticked).
+- **Tutorial**: each lesson's line, in the order a player meets them, with where it shows, a
+  character count and "Back to shipped".
 - The green line counts changes from shipped; a red box lists rule breaks. **Export world.json**
   downloads it (the share sheet on iOS).
 
