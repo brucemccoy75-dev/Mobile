@@ -11,7 +11,7 @@ describe('combat backdrops (DECISIONS #80)', () => {
 
   it('each backdrop carries its own ground colour under the cards', () => {
     expect(backdropGround('bg_forest')).toBe(0x8b8d45);
-    expect(backdropGround('bg_tundra')).toBe(0xd0deef);
+    expect(backdropGround('bg_tundra')).toBe(0x082976); // the frozen lake (#89)
     expect(backdropGround('bg_unknown')).toBe(0x8b8d45);
     // The Treasure Dungeon fights in its own hall, whatever the screen (DECISIONS #84).
     expect(backdropKey('road', 0, true)).toBe('bg_dungeon');

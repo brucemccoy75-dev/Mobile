@@ -1526,3 +1526,31 @@ Checked in a real fight:
   Boar).
 
 Screenshots in `docs/audit/cards88-2026-11-01/`.
+
+## 89. Screen 2 fights on a frozen lake at twilight
+
+Designer's report: screen 2's enemies are whitish and blend into the snowy backdrop. Make the
+backdrop a large blue frozen lake with an ice golem or something interesting on it, rather than
+redrawing the enemies.
+
+**What was wrong**: #80's tundra was white snow and a pale sky, and the frost five (#84) are white
+and pale blue. Their bodies stand above the feet line, so what sits behind them is the middle of
+the backdrop, which was snow, pale trees and sky.
+
+**The fix**: two rounds of Grok edits of the backdrop (`art-src/backdrop-tundra2/`), each tried in
+real fights against the palest enemies (Snow Harpies with the Icy Witch, The Frost Warden, the
+Frost Ogre with the Frozen Knight):
+- *Daylight lake* (`lake-*`): the floor became blue ice, but the bodies were still against pale
+  sky and snowy trees. Only the Warden improved.
+- *Twilight lake* (`dusk-*`): a deep navy and cobalt lake fills the middle of the frame up to a far
+  shore, under a violet night sky with stars. A huge mound of glowing ice blocks (the "golem")
+  sits out on the ice. Every frost enemy stands out against it. The pick is `dusk-2`, whose lake
+  rises highest; it ships as `public/art/c/bg_tundra.jpg`.
+
+The ground colour under the cards is the lake's (`0x082976`, sampled as before), not snow white.
+
+Grok drew the golem as a towering heap of ice blocks rather than a figure with a face. A clearer
+golem would be one more edit.
+
+About $0.55. Screenshots, old against the two twilight options, in
+`docs/audit/tundra-lake-2026-11-01/`.
