@@ -85,8 +85,8 @@ export function validateWorld(w: WorldData): string[] {
   const rearmTriggers = (w.dialogue ?? []).flatMap((d) => d.options.flatMap((o) => o.effects.flatMap((e) => ('rearm' in e && e.rearm !== true && e.rearm.trigger ? [e.rearm.trigger] : []))));
   for (const t of new Set([...STORY_TRIGGERS, ...rearmTriggers])) if (!always(t)) bad(`trigger ${t}: needs an entry with no conditions`);
   for (const e of ENEMIES) {
-    // The crawl roster (DECISIONS #83) speaks in battle barks, not world lines; a fight with no line just starts.
-    if (e.set === 'crawl') continue;
+    // The dungeon's enemies (DECISIONS #83, #84) speak in battle barks, not world lines; a fight with no line just starts.
+    if (e.set === 'dungeon') continue;
     const trig = enemyTrigger(e.id);
     const defs = w.enemies?.[e.id]?.defaults ?? [];
     if (!defs.length && !always(trig)) bad(`enemy ${e.id}: needs a default line (or an entry for ${trig} with no conditions)`);

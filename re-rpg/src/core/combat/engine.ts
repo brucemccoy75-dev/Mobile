@@ -178,6 +178,13 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
         events.push({ t: 'thorns', amount, who: v.slot });
       }
     }
+    // Doomsday gear (DECISIONS #84): every attack costs the wearer, through any block.
+    const recoil = state.player.gear?.selfDamage ?? 0;
+    if (recoil > 0 && effects.some((e) => e.type === 'damage') && state.player.hp > 0) {
+      const amount = Math.min(state.player.hp, recoil);
+      state.player.hp -= amount;
+      events.push({ t: 'recoil', amount });
+    }
     // A growing card (#73) gains for every hit that landed, for the rest of the run.
     if (skill.grow) {
       const landed = events.slice(from).filter((e) => e.t === 'damage' && e.source === 'player' && e.amount > 0).length;

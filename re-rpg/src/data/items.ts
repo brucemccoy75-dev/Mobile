@@ -41,5 +41,9 @@ export const ITEMS: Item[] = [
   // The Earthen set (DECISIONS #82): only Knight Andre's loot offers them, one slot each.
   { id: 'earthen_armor', name: 'Earthen Armor', slot: 'body', rarity: 'boss', from: 'gatekeeper', text: '+2 DEF, −2 ATK. Weak never lands on you.', mods: stat({ def: 2, atk: -2 }), immune: ['weak'] },
   { id: 'earthen_blade', name: 'Earthen Blade', slot: 'weapon', rarity: 'boss', from: 'gatekeeper', text: '+2 ATK. Each hit has a 50% chance to go through Guard, Ward or Aegis.', mods: stat({ atk: 2 }), pierce: 0.5 },
+  // The Treasure Dungeon's chest (DECISIONS #84): one of these three, at random. `from: 'dungeon'` keeps them out of every other pool.
+  { id: 'doomsday_armor', name: 'Doomsday Armor', slot: 'body', rarity: 'boss', from: 'dungeon', text: '+5 DEF. Every card that deals damage costs you 1 HP.', mods: stat({ def: 5 }), selfDamage: 1 },
+  { id: 'doomsday_device', name: 'Doomsday Device', slot: 'relic', rarity: 'boss', from: 'dungeon', text: '+5 ATK. Every card that deals damage costs you 1 HP.', mods: stat({ atk: 5 }), selfDamage: 1 },
+  { id: 'the_goat', name: 'A Goat', slot: 'weapon', rarity: 'common', from: 'dungeon', text: '−15 ATK, −15 damage. It is a goat. Sells for 150 gold.', mods: stat({ atk: -15 }), sellPrice: 150 },
   { id: 'earthen_relic', name: 'Earthen Relic', slot: 'relic', rarity: 'boss', from: 'gatekeeper', text: 'Once per fight: pay 20 gold to shuffle every card and draw a fresh hand.', mods: [], redraw: { gold: 20 } },
 ];

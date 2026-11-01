@@ -7,7 +7,7 @@ Pages at https://brucemccoy75-dev.github.io/Mobile/. After a push, poll `origin/
 "Deploy re-rpg <sha>", **then** poll the live site until its main JS contains your 7-character
 hash; that is the build stamp the title shows at the bottom left. Pages publishes some time after
 the branch updates, so the branch alone is not "live" (#75 follow-up). Fetch with a `?t=<now>`
-query so a cache cannot answer. 336 tests pass (`npm run check`: typecheck,
+query so a cache cannot answer. 341 tests pass (`npm run check`: typecheck,
 cards:validate, world:validate, tests, build). The game today is:
 
 - **Node overworld** (DECISIONS #37): a static node network per screen over an authored terrain,
@@ -19,10 +19,12 @@ cards:validate, world:validate, tests, build). The game today is:
   Fight nodes show just their enemies (a duo both); about 15% are a surprise, another enemy waits
   ("That's no Boar!"). The shrine asks before it heals, so it can be saved for later. Shops buy
   one card, starting cards too (#81).
-- **The crawl roster is on screen 1** (#83, `ROSTER.crawl` in `src/data/enemies.ts`): Rage Elemental,
-  The Hoarder, Porkchop Express, Bad Llama and Brindled Vespa, from the designer's wife's favourite
-  books, with Grok art, weaknesses as traits (sweeps, momentum, frenzy, chill, burn) and battle
-  barks. Turn the switch off to bring the original five back.
+- **The Treasure Dungeon** (#84): the south spur's end on map 1 is its door. It asks first, and
+  you get one visit a run. Inside is a straight hall: three fights from its own five (Wrath Wraith,
+  The Midden Queen, The Hogpile, Spiteful Alpaca, Bramble Hornet; #83's traits and barks) at +50%,
+  then a chest with Doomsday Armor, Doomsday Device or a goat (sells for 150). Screen 2's enemies
+  are the frost five (Frost Ogre, Frozen Knight, Icy Witch, Snow Harpies, The Frost Warden), now
+  with art.
 - **The story is switched off** (#72) while the designer balances: `STORY.enabled = false` in
   `src/data/world.ts`. A run is the fixed start, the map's usual placement, and Knight Andre
   always at the gate. There are no quests, special runs, dialogue, on-kill hooks or Wren, and the
@@ -75,7 +77,7 @@ own command → Playwright at 844×390 (the game) or 390×844 (the editors) with
 (Test Mode: set registry `testSetup`, call `TestMode.fight()`, then `Combat.act()` and poll
 `busy`; to answer a dialogue from a script, `scene('Dialogue').choose(d, option)`) → commit with
 the attribution lines → `git push -u origin <branch>` → poll gh-pages. Record decisions in
-`docs/DECISIONS.md` (next number is 84). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
+`docs/DECISIONS.md` (next number is 85). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
 
 **Run logs** (`docs/PLAYTESTS.md`, DECISIONS #67). When the designer sends a run log, always:
 1. save it in `docs/playtests/`;

@@ -9,7 +9,7 @@ const ctx = (over: Partial<DialogueCtx> = {}): DialogueCtx => ({ flags: new Set(
 describe('dialogue data', () => {
   it('every enemy and both gates have a pre-fight entry that always matches', () => {
     for (const e of ENEMIES) {
-      if (e.set === 'crawl') continue; // the crawl roster speaks in battle barks (DECISIONS #83)
+      if (e.set === 'dungeon') continue; // the dungeon's enemies speak in battle barks (DECISIONS #83, #84)
       const trig = e.archetype === 'boss' ? `gate:${e.id}` : `pre_fight:${e.id}`;
       expect(pickDialogue(DIALOGUE, trig, ctx()), trig).not.toBeNull();
     }

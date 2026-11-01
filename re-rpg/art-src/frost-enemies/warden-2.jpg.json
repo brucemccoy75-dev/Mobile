@@ -1,0 +1,13 @@
+{
+  "when": "2026-11-01T03:17:04",
+  "cmd": "image",
+  "model": "grok-imagine-image-2.0",
+  "prompt": "The Frost Warden: a towering boss, a grim armoured jailer of a frozen fortress, heavy dark iron armour crusted with ice, a frost-white beard, a crown of icicles, a great frozen key on a chain and a huge frost-covered mace, imposing and cold. Full-body game enemy character, flat vector cel-shaded style, chunky stylised proportions, thick uniform dark outline, flat fills, two tones per material (base plus one shadow), no texture, no gradients, strict side view facing left, light from the top left, centred with space around it, plain flat white background, nothing else in the picture: no text, no ground, no shadow, no frame. A touch of winter: a little frost and snow, not over the top.",
+  "refs": [],
+  "revised_prompt": null,
+  "reply": {
+    "usage": {
+      "cost_in_usd_ticks": 800000000
+    }
+  }
+}

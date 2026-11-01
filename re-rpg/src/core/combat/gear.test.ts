@@ -87,3 +87,18 @@ describe('Earthen gear (DECISIONS #82)', () => {
     expect(() => redrawHand(plain)).toThrow(/relic/);
   });
 });
+
+describe('Doomsday recoil (DECISIONS #84)', () => {
+  it('each card that deals damage costs the wearer this much HP, through any block; others cost nothing', () => {
+    const s = createCombat({ player: { ...WARRIOR, deck: [], basics: [], gear: { selfDamage: 2 } }, enemy: PASSIVE, rng: new Rng(7) });
+    s.player.statuses.push({ id: 'guard', turns: 99, magnitude: 3 });
+    const hp = s.player.hp;
+    const ev = play(s, 'attack');
+    expect(ev.find((e) => e.t === 'recoil')).toMatchObject({ amount: 2 });
+    expect(s.player.hp).toBe(hp - 2);
+    play(s, 'defend');
+    expect(s.player.hp).toBe(hp - 2);
+    const plain = createCombat({ player: { ...WARRIOR, deck: [], basics: [] }, enemy: PASSIVE, rng: new Rng(7) });
+    expect(play(plain, 'attack').some((e) => e.t === 'recoil')).toBe(false);
+  });
+});

@@ -139,7 +139,7 @@ export class CombatScene extends Phaser.Scene {
     const slotX = (slot: number) => (n === 1 ? W * 0.73 : slot === 0 ? W * 0.62 : W * 0.84);
 
     const groundY = this.py + 46;
-    const bgKey = backdropKey(this.encounter.tile, this.session.screenIndex);
+    const bgKey = backdropKey(this.encounter.tile, this.session.screenIndex, !!this.session.map.dungeon);
     if (this.textures.exists(bgKey)) {
       // backdrop: its ground band starts on the combatants' feet line, sides crop on narrow screens
       const src = this.textures.get(bgKey).getSourceImage() as { width: number; height: number };

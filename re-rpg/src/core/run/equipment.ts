@@ -51,8 +51,9 @@ export function gearOf(eq: Equipment): Gear | undefined {
   const immune = [...new Set(items.flatMap((i) => i.immune ?? []))];
   const pierce = Math.max(0, ...items.map((i) => i.pierce ?? 0));
   const redraw = items.some((i) => i.redraw);
-  if (!immune.length && !pierce && !redraw) return undefined;
-  return { ...(immune.length ? { immune } : {}), ...(pierce ? { pierce } : {}), ...(redraw ? { redraw } : {}) };
+  const selfDamage = items.reduce((a, i) => a + (i.selfDamage ?? 0), 0);
+  if (!immune.length && !pierce && !redraw && !selfDamage) return undefined;
+  return { ...(immune.length ? { immune } : {}), ...(pierce ? { pierce } : {}), ...(redraw ? { redraw } : {}), ...(selfDamage ? { selfDamage } : {}) };
 }
 /** Gold the worn relic asks for its reshuffle (DECISIONS #82), or null without one. */
 export const redrawCost = (eq: Equipment): number | null => Object.values(eq).find((i) => i?.redraw)?.redraw?.gold ?? null;

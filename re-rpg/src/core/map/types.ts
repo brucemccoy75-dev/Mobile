@@ -22,7 +22,9 @@ export interface Guard {
   poiId: string;
 }
 
-export type NodeKind = 'start' | 'quest' | 'lost' | 'monster' | 'unknown' | 'elite' | 'shop' | 'treasure' | 'shrine' | 'boss';
+export type NodeKind = 'start' | 'quest' | 'lost' | 'monster' | 'unknown' | 'elite' | 'shop' | 'treasure' | 'shrine' | 'boss'
+  /** The Treasure Dungeon's door on screen 1 (DECISIONS #84). */
+  | 'dungeon';
 
 /**
  * A clearing in the node overworld (DECISIONS #37). The network is authored; the kind of each open
@@ -45,6 +47,8 @@ export interface MapNode {
   cursed?: CursedTrait[];
   /** Not what the map shows (DECISIONS #81): the enemy actually met here. The map shows `enemyId`. */
   surprise?: EnemyId;
+  /** The Treasure Dungeon's chest (DECISIONS #84): the item it holds, rolled when the dungeon opens. */
+  prize?: string;
 }
 
 /** Kinds a designer may put on a content slot (world editor, DECISIONS #55). */
@@ -67,6 +71,10 @@ export interface NodeRule {
 
 export interface ScreenMap {
   seed: string;
+  /** A sub-map entered from a screen (the Treasure Dungeon, DECISIONS #84): it has no boss, and leaving it returns to the screen. */
+  dungeon?: boolean;
+  /** The painting to draw (texture key); default `map_<screenIndex + 1>`. */
+  paint?: string;
   /** True for hand-authored layouts (core/map/authored.ts): play happens on `nodes`. */
   authored?: boolean;
   nodes?: MapNode[];

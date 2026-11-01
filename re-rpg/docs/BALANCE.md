@@ -4,6 +4,38 @@ Newest first. Run logs are read with the procedure in `docs/PLAYTESTS.md` (`npm 
 
 Loadouts: **fresh** = Attack/Defend only, empty deck. **Set** = the two set tomes in the deck. **gearN** = a full three-slot kit for screen N (`GEAR_KIT` in `src/core/sim/gauntlet.ts`). The sim does not model loot choice, relics or 4-card decks, so these are floors, not expectations.
 
+## Map 1 back to its five, with the dungeon door 2026-11-01 (DECISIONS #84)
+
+The crawl five moved to the Treasure Dungeon. Map 1 has its original roster again, and the south
+spur's end is the dungeon door instead of an open slot. `npm run sim -- --screen --class warrior --runs 1000`:
+
+```
+full clear                     reach boss  beat boss  hp@boss fights rounds  deaths
+warrior fresh                        0.0%       0.0%      0.0   2.69   22.3  adept_necromancer 25%, boar 19%, rat_pack 12%
+warrior Bulwark                      0.4%       0.0%      9.8   2.71   25.0  adept_necromancer 27%, boar 19%, adept_necromancer+boar 13%
+warrior Berserker                    1.3%       0.0%     12.5   2.84   21.3  adept_necromancer 25%, boar 17%, boar+hex_imp 13%
+warrior Shadow Knight                5.2%       0.0%      7.4   4.59   30.9  boar+hex_imp 19%, boar 18%, adept_necromancer+boar 17%
+warrior Berserker+Bulwark            1.0%       0.0%      6.5   2.81   23.2  adept_necromancer 25%, boar 18%, adept_necromancer+boar 13%
+warrior Shadow Knight+Bulwark        1.8%       0.0%      5.8   3.19   26.5  adept_necromancer 21%, boar 18%, boar+hex_imp 16%
+warrior Berserker+Shadow Knight       2.3%       0.0%      9.2   3.30   23.5  adept_necromancer 22%, boar 17%, boar+hex_imp 15%
+
+shortest road                  reach boss  beat boss  hp@boss fights rounds  deaths
+warrior fresh                       11.8%       0.0%      8.2   2.19   19.4  adept_necromancer+boar 17%, adept_necromancer 15%, rat_pack+hex_imp 14%
+warrior Bulwark                     15.5%       0.0%      9.3   2.16   21.4  adept_necromancer 18%, gatekeeper 16%, boar+hex_imp 15%
+warrior Berserker                   18.9%       0.0%     10.8   2.17   17.7  gatekeeper 19%, adept_necromancer 18%, boar+hex_imp 15%
+warrior Shadow Knight               48.6%       0.0%     10.5   3.02   22.3  gatekeeper 49%, adept_necromancer+boar 15%, boar+hex_imp 14%
+warrior Berserker+Bulwark           19.0%       0.0%     11.0   2.17   19.6  gatekeeper 19%, adept_necromancer 17%, adept_necromancer+boar 15%
+warrior Shadow Knight+Bulwark       24.8%       0.0%     11.0   2.41   21.7  gatekeeper 25%, boar+hex_imp 15%, adept_necromancer+boar 14%
+warrior Berserker+Shadow Knight      27.1%       0.0%     11.0   2.37   18.7  gatekeeper 27%, boar+hex_imp 15%, adept_necromancer 14%
+```
+
+Reading:
+- One open slot fewer reshuffles every seed's bag, so these are new rolls of the same map, not
+  the #81 table again. The shortest road reaches Knight Andre 11.8–48.6% (was 6.6–40.0%), and he
+  is still beaten 0%.
+- The dungeon is optional and not modelled by the mirror. Its fights are the #83 five at +50%,
+  for a prize that is as likely to be a goat as armour.
+
 ## The crawl roster on screen 1 2026-11-01 (DECISIONS #83)
 
 Screen 1's five swapped for the crawl roster (`ROSTER.crawl`). Each alone, a fresh warrior, 1000

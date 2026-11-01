@@ -7,10 +7,11 @@ import type { TileType } from '@core/map';
  */
 const BY_TILE: Partial<Record<TileType, string>> = { forest: 'bg_forest' };
 const BY_SCREEN: Record<number, string> = { 1: 'bg_tundra' };
-export function backdropKey(tile?: TileType, screenIndex = 0): string {
+export function backdropKey(tile?: TileType, screenIndex = 0, dungeon = false): string {
+  if (dungeon) return 'bg_dungeon'; // the Treasure Dungeon (DECISIONS #84)
   return BY_SCREEN[screenIndex] ?? (tile && BY_TILE[tile]) ?? 'bg_forest';
 }
 
 /** The ground colour carried on under the hand, sampled from each backdrop's ground band. */
-const GROUND: Record<string, number> = { bg_forest: 0x8b8d45, bg_tundra: 0xd0deef };
+const GROUND: Record<string, number> = { bg_forest: 0x8b8d45, bg_tundra: 0xd0deef, bg_dungeon: 0x312d2c };
 export const backdropGround = (key: string): number => GROUND[key] ?? GROUND.bg_forest!;

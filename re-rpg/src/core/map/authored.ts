@@ -19,10 +19,14 @@ import { TILE_COST, key, type MapNode, type NodeKind, type NodeRule, type RuleKi
  * without passing through a third node.
  */
 const TERRAIN: Record<string, TileType> = { '.': 'grass', '#': 'forest', '=': 'road', '~': 'water', '^': 'rock', '%': 'swamp', 'A': 'arena' };
-const SLOT: Record<string, NodeKind | 'open'> = { E: 'start', B: 'boss', o: 'open', x: 'elite', q: 'quest', n: 'lost', f: 'monster', u: 'unknown', c: 'treasure', s: 'shop', h: 'shrine' };
+const SLOT: Record<string, NodeKind | 'open'> = { E: 'start', B: 'boss', o: 'open', x: 'elite', q: 'quest', n: 'lost', f: 'monster', u: 'unknown', c: 'treasure', s: 'shop', h: 'shrine', D: 'dungeon' };
 const DIRS4 = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
 
-export interface AuthoredOptions { seed: string; screenIndex: number; /** Designer rules by node id (world.json, DECISIONS #55). */ rules?: Record<string, NodeRule>; }
+export interface AuthoredOptions {
+  seed: string; screenIndex: number; /** Designer rules by node id (world.json, DECISIONS #55). */ rules?: Record<string, NodeRule>;
+  /** A sub-map (the Treasure Dungeon, DECISIONS #84): no boss or lost one, and its own roster and duos. */
+  sub?: { roster: readonly EnemyId[]; pairs: readonly [EnemyId, EnemyId][] };
+}
 
 /** Glyphs whose slot takes a kind rule: everything but the story nodes and the boss. */
 export const CONTENT_GLYPHS = 'oxfucsh';
@@ -58,15 +62,18 @@ export function parseScreen(ascii: string, rng: Rng, opts: AuthoredOptions): Scr
     tiles[y * W + x] = ch === 'B' ? 'arena' : 'road';
     slots.push({ ch, pos: { x, y } });
   }
-  const start = slots.find((s) => s.ch === 'E'), boss = slots.find((s) => s.ch === 'B'), lost = slots.find((s) => s.ch === 'n');
+  const start = slots.find((s) => s.ch === 'E');
+  // A sub-map has no gate: its "boss" and lost-one spots are the entry, which nothing reads there.
+  const boss = slots.find((s) => s.ch === 'B') ?? (opts.sub ? start : undefined), lost = slots.find((s) => s.ch === 'n') ?? (opts.sub ? start : undefined);
   if (!start || !boss || !lost) throw new Error('parseScreen: needs E, B and n');
 
   const tier = opts.screenIndex === 0 ? 1 : 2;
-  const roster = enemiesOfTier(tier).map((e) => e.id);
+  const roster: readonly EnemyId[] = opts.sub?.roster ?? enemiesOfTier(tier).map((e) => e.id);
+  const pairs: readonly [EnemyId, EnemyId][] = opts.sub?.pairs ?? PAIRS[tier];
   const nodes: MapNode[] = slots.map((s, i) => ({ id: `node_${i}`, kind: SLOT[s.ch] === 'open' ? 'monster' : (SLOT[s.ch] as NodeKind), pos: s.pos, links: [] }));
   const map: ScreenMap = {
     seed: opts.seed, screenIndex: opts.screenIndex, authored: true, width: W, height: H, tiles, entry: start.pos, boss: boss.pos,
-    bossId: opts.screenIndex === 0 ? 'gatekeeper' : 'warden', pois: [], guards: [], questGiver: start.pos, npcSpot: lost.pos, nodes,
+    bossId: opts.sub ? '' : opts.screenIndex === 0 ? 'gatekeeper' : 'warden', ...(opts.sub ? { dungeon: true } : {}), pois: [], guards: [], questGiver: start.pos, npcSpot: lost.pos, nodes,
   };
 
   // Links: walk the roads from each node; the first node met in each direction is a neighbour.
@@ -115,8 +122,8 @@ export function parseScreen(ascii: string, rng: Rng, opts: AuthoredOptions): Scr
     if (r?.pair && (n.kind === 'monster' || n.kind === 'unknown' || n.kind === 'elite')) { n.enemyId = r.pair[0]; n.extra = [r.pair[1]]; continue; }
     if (r?.enemy && (n.kind === 'monster' || n.kind === 'unknown' || n.kind === 'boss')) { n.enemyId = r.enemy; continue; }
     if (n.kind === 'monster') n.enemyId = rng.pick(roster);
-    else if (n.kind === 'unknown') { n.enemyId = rng.pick(roster); if (rng.chance(BAG.unknownDuoChance)) { const [a, b] = rng.pick(PAIRS[tier]); n.enemyId = a; n.extra = [b]; } }
-    else if (n.kind === 'elite') { const [a, b] = rng.pick(PAIRS[tier]); n.enemyId = a; n.extra = [b]; }
+    else if (n.kind === 'unknown') { n.enemyId = rng.pick(roster); if (rng.chance(BAG.unknownDuoChance)) { const [a, b] = rng.pick(pairs); n.enemyId = a; n.extra = [b]; } }
+    else if (n.kind === 'elite') { const [a, b] = rng.pick(pairs); n.enemyId = a; n.extra = [b]; }
     else if (n.kind === 'boss') n.enemyId = map.bossId;
   }
 
@@ -133,7 +140,7 @@ export function parseScreen(ascii: string, rng: Rng, opts: AuthoredOptions): Scr
 /** Glyph view of a parsed screen, for debugging and tests. */
 export function renderAscii(m: ScreenMap): string {
   const back: Record<TileType, string> = { grass: '.', forest: '#', road: '=', water: '~', rock: '^', swamp: '%', arena: 'A' };
-  const glyph: Record<NodeKind, string> = { start: 'E', boss: 'B', elite: 'x', quest: 'q', lost: 'n', monster: 'f', unknown: 'u', treasure: 'c', shop: 's', shrine: 'h' };
+  const glyph: Record<NodeKind, string> = { start: 'E', boss: 'B', elite: 'x', quest: 'q', lost: 'n', monster: 'f', unknown: 'u', treasure: 'c', shop: 's', shrine: 'h', dungeon: 'D' };
   const g = new Map<string, string>();
   for (const n of m.nodes ?? []) g.set(key(n.pos), glyph[n.kind]);
   const rows: string[] = [];

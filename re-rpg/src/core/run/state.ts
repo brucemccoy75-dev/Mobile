@@ -13,6 +13,9 @@ import type { Versioned } from '@save/SaveStore';
 
 export const RUN_VERSION = 4;
 
+/** A screen's state kept while the player is in a sub-map (DECISIONS #84). */
+export interface SurfaceState { map: ScreenMap; playerPos: Tile; clearedNodes: string[]; usedShrines: string[]; lastClearedNode: string | null; doorNode: string }
+
 export interface RunState extends Versioned {
   seed: string;
   rngStates: Record<string, number>;
@@ -38,6 +41,10 @@ export interface RunState extends Versioned {
   /** Node overworld (DECISIONS #37). */
   clearedNodes?: string[];
   lastClearedNode?: string | null;
+  /** In the Treasure Dungeon (DECISIONS #84): the screen's own state, put back on the way out. */
+  surface?: SurfaceState;
+  /** The Treasure Dungeon was entered and left this run: its door is sealed. */
+  dungeonDone?: boolean;
   flags?: string[];
   bossDefeated: boolean;
   encountersWon: number;

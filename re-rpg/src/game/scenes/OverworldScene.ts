@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { getEnemy, getSkill } from '@data/index';
 import { key, roadBetween, type MapNode, type Tile } from '@core/map';
-import { SCREEN_COUNT, endSavedRun, shrineHeal, shrineUsed, useShrine, currentNode, currentQuest, liftCurse, questGiverNode, getMeta, getSession, getStore, isCleared, isEscorting, nodeById, nodeEncounter, persistMeta, persistRun, reachableNodes, routeTo, setSession, startScreen, treasureGold, type PendingEncounter, type RunSession } from '@game/session';
+import { SCREEN_COUNT, endSavedRun, enterDungeon, inDungeon, leaveDungeon, shrineHeal, shrineUsed, useShrine, currentNode, currentQuest, liftCurse, questGiverNode, getMeta, getSession, getStore, isCleared, isEscorting, nodeById, nodeEncounter, persistMeta, persistRun, reachableNodes, routeTo, setSession, startScreen, treasureGold, type PendingEncounter, type RunSession } from '@game/session';
 import { questProgress, questReady } from '@core/quest';
 import { gainExp, ghostOn, recordWin } from '@core/meta';
 import { WREN_GRUDGE, ghostAppears, ghostDef, wrenBoss } from '@core/variants';
@@ -98,7 +98,7 @@ export class OverworldScene extends Phaser.Scene {
   private drawTiles() {
     const m = this.session.map;
     // A painted map (docs/ART.md, DECISIONS #39) replaces the tileset when one exists for this screen.
-    const painted = `map_${m.screenIndex + 1}`;
+    const painted = m.paint ?? `map_${m.screenIndex + 1}`;
     if (this.textures.exists(painted)) {
       this.add.image(0, 0, painted).setOrigin(0).setDisplaySize(m.width * TILE, m.height * TILE).setDepth(1);
       if (devMode()) this.drawAlignmentOverlay();
@@ -169,6 +169,8 @@ export class OverworldScene extends Phaser.Scene {
     }
     switch (n.kind) {
       case 'start': {
+        // In the Treasure Dungeon the entrance is the way back up (DECISIONS #84).
+        if (inDungeon(s)) { cont.add(this.add.text(0, -2, '▲', { fontFamily: FONT, fontSize: `${26 * K}px`, color: '#e0c060', stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5)); cont.add(this.label(20 * K, 'way out', '#e0c060')); break; }
         this.prop(cont, 'campfire', 0.4, 14 * K, () => [this.add.circle(0, 0, 10 * K, 0xff8c42)]);
         if (STORY.enabled && (giverHere || (s.screenIndex === 0 && !currentQuest(s)))) cont.add(this.add.rectangle(TILE * 0.45, 2, 20 * K, 30 * K, 0x7a5c3a).setStrokeStyle(2, 0xc9a227));
         cont.add(this.label(20 * K, giverHere ? currentQuest(s)!.giver.name : 'camp', '#e0c060'));
@@ -180,6 +182,17 @@ export class OverworldScene extends Phaser.Scene {
         cont.add(this.add.circle(0, -2, 15 * K, cleared ? 0x3a4260 : 0xc9a227).setStrokeStyle(2, 0x000000, 0.6));
         cont.add(this.add.text(0, -2, '?', { fontFamily: FONT, fontSize: `${20 * K}px`, color: cleared ? '#8b93a7' : '#1a1200', fontStyle: 'bold' }).setOrigin(0.5));
         cont.add(this.label(16 * K, giverHere ? currentQuest(s)!.giver.name : n.kind === 'lost' ? 'a voice' : 'someone', cleared && !giverHere ? '#8b93a7' : '#e0c060'));
+        break;
+      }
+      case 'dungeon': {
+        // The Treasure Dungeon's door (DECISIONS #84): a stone arch over the dark.
+        const sealed = !!s.dungeonDone;
+        cont.add(this.add.rectangle(0, -2, 34 * K, 30 * K, 0x6b6f7a).setStrokeStyle(3, 0x1a1c22));
+        cont.add(this.add.ellipse(0, -6, 26 * K, 22 * K, 0x6b6f7a).setStrokeStyle(3, 0x1a1c22));
+        cont.add(this.add.rectangle(0, 2, 18 * K, 22 * K, sealed ? 0x3a3d45 : 0x0a0a10));
+        cont.add(this.add.ellipse(0, -7, 18 * K, 14 * K, sealed ? 0x3a3d45 : 0x0a0a10));
+        cont.add(this.label(20 * K, sealed ? 'dungeon, sealed' : 'Treasure Dungeon', sealed ? '#8b93a7' : '#e0c060'));
+        if (sealed) cont.setAlpha(0.6);
         break;
       }
       case 'shop': this.prop(cont, 'tent', 0.5, 14 * K, () => [this.add.rectangle(0, 2, 34 * K, 30 * K, 0x7a3fb9)]); cont.add(this.label(20 * K, 'shop')); break;
@@ -264,7 +277,7 @@ export class OverworldScene extends Phaser.Scene {
     hud.add(this.hpFill);
     this.hpText = this.add.text(182, 36, '', { fontFamily: FONT, fontSize: '13px', color: COLORS.muted }).setOrigin(0, 0.5);
     hud.add(this.hpText);
-    hud.add(this.add.text(W / 2, 14, `Screen ${s.screenIndex + 1} of ${SCREEN_COUNT}`, { fontFamily: FONT, fontSize: '14px', color: COLORS.text, fontStyle: 'bold' }).setOrigin(0.5, 0));
+    hud.add(this.add.text(W / 2, 14, inDungeon(s) ? 'Treasure Dungeon' : `Screen ${s.screenIndex + 1} of ${SCREEN_COUNT}`, { fontFamily: FONT, fontSize: '14px', color: COLORS.text, fontStyle: 'bold' }).setOrigin(0.5, 0));
     hud.add(this.add.text(W / 2, 34, `seed ${s.seed}`, text.mono).setOrigin(0.5, 0));
     this.goldText = this.add.text(W - 60, 26, '', { fontFamily: FONT, fontSize: '15px', color: COLORS.gold, fontStyle: 'bold' }).setOrigin(1, 0.5);
     hud.add(this.goldText);
@@ -368,6 +381,12 @@ export class OverworldScene extends Phaser.Scene {
     this.locked = true;
     this.syncRings();
     const done = async () => { s.clearedNodes.add(n.id); this.drawNode(n); await persistRun(this); this.locked = false; this.syncRings(); this.syncHud(); };
+    // Back at the Treasure Dungeon's entrance: up to screen 1, at the door, which seals (DECISIONS #84).
+    if (inDungeon(s) && n.kind === 'start') {
+      leaveDungeon(s);
+      await persistRun(this);
+      this.scene.restart(); return;
+    }
     switch (n.kind) {
       case 'start': {
         const q = currentQuest(s);
@@ -391,11 +410,23 @@ export class OverworldScene extends Phaser.Scene {
         await done(); return;
       }
       case 'shop': { await this.nodeWords(n); s.clearedNodes.add(n.id); await persistRun(this); this.scene.start('Shop'); return; }
+      case 'dungeon': {
+        // The Treasure Dungeon (DECISIONS #84): one visit a run, and it asks first.
+        if (s.dungeonDone) { void this.toast('The dungeon is sealed.', 1200); this.locked = false; this.syncRings(); return; }
+        const go = await this.ask({ title: 'This Dungeon is a Real challenge.', titleColor: '#e0c060', body: 'Enter?', yes: 'Yes', no: 'No', veil: 0x0a0806, yesFill: 0x2a2010, yesEdge: 0xc9a227 });
+        s.clearedNodes.add(n.id); // walked to either way: the road through it is open
+        if (!go) { await done(); return; }
+        enterDungeon(s, n);
+        await persistRun(this);
+        this.scene.restart(); return;
+      }
       case 'treasure': {
         if (isCleared(s, n)) { this.locked = false; this.syncRings(); return; }
         await this.nodeWords(n);
         s.clearedNodes.add(n.id);
         this.drawNode(n);
+        // The Treasure Dungeon's chest holds its one prize, take it or leave it (DECISIONS #84).
+        if (inDungeon(s) && n.prize) { s.pendingOffer = { source: 'chest', gold: 0, fixed: [n.prize], title: 'Dungeon treasure' }; await persistRun(this); this.scene.start('Reward'); return; }
         s.pendingOffer = { source: 'chest', gold: treasureGold(s, n) };
         await persistRun(this); this.scene.start('Reward'); return;
       }

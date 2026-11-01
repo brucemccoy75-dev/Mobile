@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { describeSkill, familyOf } from '@data/index';
+import { describeSkill, familyOf, getItem } from '@data/index';
 import type { SkillId } from '@data/types';
 import { cursedOffer, goldFor, rollOffer, sellValue, type Offer, type RewardChoice } from '@core/loot';
 import type { PendingOffer } from '@game/session';
@@ -39,7 +39,10 @@ export class RewardScene extends Phaser.Scene {
     const meta = getMeta(this);
     const ctx = { classId: this.session.classId, families: this.session.families, meta, deck: this.session.deck, equipment: this.session.equipment, ...(pending.bossId ? { bossId: pending.bossId } : {}) };
     const rng = this.session.rng.stream('loot');
-    if (pending.source === 'cursed') {
+    if (pending.fixed?.length) {
+      // A set prize (the Treasure Dungeon's chest, DECISIONS #84): exactly these, take or leave.
+      this.offer = { source: pending.source === 'cursed' ? 'chest' : pending.source, choices: pending.fixed.map((id) => ({ kind: 'item' as const, item: getItem(id) })), gold: pending.gold ?? 0 };
+    } else if (pending.source === 'cursed') {
       this.offer = cursedOffer(ctx);
       // Nothing to offer (the pool is empty, or a card you hold locks the rest): straight on.
       if (!this.offer.choices.length) { this.finish(); return; }
@@ -52,7 +55,7 @@ export class RewardScene extends Phaser.Scene {
 
     const { width: W, height: H } = this.scale.gameSize;
     this.cameras.main.setBackgroundColor(0x0b0f1a);
-    this.add.text(W / 2, 30, TITLES[this.offer.source], text.h2).setOrigin(0.5);
+    this.add.text(W / 2, 30, pending.title ?? TITLES[this.offer.source], text.h2).setOrigin(0.5);
     this.add.text(W / 2, 60, this.offer.gold > 0 ? `+${this.offer.gold} gold  ·  choose one` : 'choose one', { ...text.small, fontSize: '14px', color: COLORS.gold }).setOrigin(0.5);
 
     const n = this.offer.choices.length;
@@ -89,7 +92,8 @@ export class RewardScene extends Phaser.Scene {
     bg.setInteractive({ useHandCursor: true });
     bg.on('pointerup', () => this.pick(c));
     // Sell instead: gold now, and it still counts as discovered.
-    const value = sellValue(rarity, this.session.screenIndex);
+    // An item may name its own price (the goat sells for 150, DECISIONS #84).
+    const value = (c.kind === 'item' ? c.item.sellPrice : undefined) ?? sellValue(rarity, this.session.screenIndex);
     new Button(this, x, y + h / 2 + 24, `Sell · ${value} g`, () => this.sell(c, value), { width: w - 40, height: 32, fontSize: '13px', fill: 0x2a2416, edge: 0x8a6a2b });
   }
 

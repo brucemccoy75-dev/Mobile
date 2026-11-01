@@ -67,11 +67,10 @@ const hitWith = (id: string, name: string, mult: number, hits: number, status: S
 export const MOVES = { hit, spell, guard, debuff, harden, stagger, charge, brace, scatter, curse, drain, hitWith };
 
 /**
- * The crawl roster (DECISIONS #83): five enemies from the designer's favourite books, swapped in for
- * screen 1 while this is on. Balanced like the screen-1 five they replace. Turn it off to bring the
- * Boar, Shell Beetle, Hex Imp, Adept Necromancer and Rat Pack back.
+ * The Treasure Dungeon's five (DECISIONS #83, #84): they live only in the dungeon under screen 1,
+ * where they are 50% tougher (`dungeonEnemy`). Balanced alone like the screen-1 five.
  */
-export const ROSTER = { crawl: true };
+export const DUNGEON_ROSTER = ['wrath_wraith', 'midden_queen', 'hogpile', 'spiteful_alpaca', 'bramble_hornet'] as const;
 
 export const ENEMIES: Enemy[] = [
   // ---- Screen 1 ----
@@ -86,9 +85,9 @@ export const ENEMIES: Enemy[] = [
   { id: 'rat_pack', name: 'Rat Pack', tier: 1, archetype: 'swarm', stats: { maxHp: 12, atk: 3, def: 0 },
     table: { kind: 'weighted', moves: [{ move: hit('swarm', 'Swarm', 0.6, 'aggressive', 3), weight: 2 }, { move: hit('nibble', 'Nibble', 1.0), weight: 1 }, { move: scatter(), weight: 1 }] } },
 
-  // ---- Screen 1, the crawl roster (DECISIONS #83) ----
-  // Rage Elemental: armoured smoke (DEF 1), it enrages below half HP. A Chill contains it: Exposed.
-  { id: 'rage_elemental', name: 'Rage Elemental', tier: 1, archetype: 'brute', set: 'crawl', stats: { maxHp: 10, atk: 4, def: 1 },
+  // ---- The Treasure Dungeon (DECISIONS #83, #84) ----
+  // Wrath Wraith: armoured smoke (DEF 1), it enrages below half HP. A Chill contains it: Exposed.
+  { id: 'wrath_wraith', name: 'Wrath Wraith', tier: 1, archetype: 'brute', set: 'dungeon', stats: { maxHp: 10, atk: 4, def: 1 },
     table: { kind: 'sequence', moves: [hit('obsidian_rend', 'Obsidian Rend', 0.5, 'aggressive', 3), hitWith('reverse_gravity', 'Reverse Gravity', 0.8, 1, 'exposed', 2, 1, 'magic', 'sinister'), hit('obsidian_rend', 'Obsidian Rend', 0.5, 'aggressive', 3), charge('berserker_charge', 'Berserker Charge', 1.8)] },
     phases: [{ hpBelow: 0.5, table: { kind: 'sequence', moves: [hit('obsidian_rend', 'Obsidian Rend', 0.5, 'aggressive', 3), charge('berserker_charge', 'Berserker Charge', 1.8)] } }],
     traits: { chillExposes: 2 },
@@ -97,32 +96,32 @@ export const ENEMIES: Enemy[] = [
       rage: ['NOW I AM ANGRY.', 'You will BURN for that!', 'MORE! MORE! MORE!'],
       death: ['This... is not... over...', 'The smoke... settles...', 'Rrr...gh.'],
     } },
-  // The Hoarder: slow (every other turn she gathers junk, open to you), she never dodges, and a sweep hits her double.
-  { id: 'the_hoarder', name: 'The Hoarder', tier: 1, archetype: 'brute', set: 'crawl', stats: { maxHp: 14, atk: 4, def: 0 },
+  // The Midden Queen: slow (every other turn she gathers junk, open to you), she never dodges, and a sweep hits her double.
+  { id: 'midden_queen', name: 'The Midden Queen', tier: 1, archetype: 'brute', set: 'dungeon', stats: { maxHp: 14, atk: 4, def: 0 },
     table: { kind: 'sequence', moves: [hitWith('scatterer_vomit', 'Scatterer Vomit', 0.4, 4, 'weak', 2), stagger('gathering', 'Gathering Junk'), charge('crushing_slam', 'Crushing Slam', 2.0), stagger('gathering', 'Gathering Junk'), hitWith('filth_storm', 'Filth Storm', 0.8, 1, 'curse', 3, 1, 'magic', 'sinister')] },
     traits: { sweepVuln: 2 },
     barks: {
       start: ["Don't touch my things! DON'T TOUCH THEM!", "You're mine now. I keep everything.", 'My babies are hungry, sweetie.', 'Oh, a new treasure! Come here, come here!'],
       death: ['My things... who will keep my things...', 'Mine... it was all... mine...', "Don't throw me out..."],
     } },
-  // Porkchop Express: each attack adds Momentum to every later hit. Block a hit, or Chill it, and it stops dead.
-  { id: 'porkchop_express', name: 'Porkchop Express', tier: 1, archetype: 'brute', set: 'crawl', stats: { maxHp: 11, atk: 3, def: 1 },
+  // The Hogpile: each attack adds Momentum to every later hit. Block a hit, or Chill it, and it stops dead.
+  { id: 'hogpile', name: 'The Hogpile', tier: 1, archetype: 'brute', set: 'dungeon', stats: { maxHp: 11, atk: 3, def: 1 },
     table: { kind: 'sequence', moves: [hit('tusken_grinder', 'Tusken Grinder', 0.6, 'aggressive', 2), charge('rolling_massacre', 'Rolling Massacre', 1.2), hit('tusken_grinder', 'Tusken Grinder', 0.6, 'aggressive', 2), charge('rolling_massacre', 'Rolling Massacre', 1.2)] },
     traits: { momentum: 1 },
     barks: {
       start: ['Out of the way, peasant! We have reservations!', 'Squeal for us! SQUEAL!', 'Do you know who we ARE?', 'More! We want MORE!'],
       death: ['But we were... first class...', 'Put it... on our tab...', 'Not... the suits...'],
     } },
-  // Bad Llama: fragile, but its lava keeps burning. Cold hardens the lava: a Chill leaves it Exposed.
-  { id: 'bad_llama', name: 'Bad Llama', tier: 1, archetype: 'caster', set: 'crawl', stats: { maxHp: 8, atk: 4, def: 0 },
+  // Spiteful Alpaca: fragile, but its lava keeps burning. Cold hardens the lava: a Chill leaves it Exposed.
+  { id: 'spiteful_alpaca', name: 'Spiteful Alpaca', tier: 1, archetype: 'caster', set: 'dungeon', stats: { maxHp: 8, atk: 4, def: 0 },
     table: { kind: 'sequence', moves: [hitWith('lava_spit', 'Lava Spit', 0.6, 1, 'burn', 3, 1), hit('savage_bite', 'Savage Bite', 1.0), hitWith('molten_spray', 'Molten Spray', 0.8, 1, 'burn', 2, 2, 'magic', 'sinister'), hit('savage_bite', 'Savage Bite', 1.0)] },
     traits: { chillExposes: 2 },
     barks: {
       start: ['Hmmph.', '*spits*', 'You looked at me. That was your mistake.', 'Go on. Pet me. I dare you.'],
-      death: ['...worth it.', '*one last spit*', 'I will be back. Llamas always come back.'],
+      death: ['...worth it.', '*one last spit*', 'I will be back. Alpacas always come back.'],
     } },
-  // Brindled Vespa: hunts in pairs (+50% while another Vespa lives), takes wing before it dives. Fire burns it double; a Chill brings it down.
-  { id: 'brindled_vespa', name: 'Brindled Vespa', tier: 1, archetype: 'swarm', set: 'crawl', stats: { maxHp: 8, atk: 3, def: 0 },
+  // Bramble Hornet: hunts in pairs (+50% while another hornet lives), takes wing before it dives. Fire burns it double; a Chill brings it down.
+  { id: 'bramble_hornet', name: 'Bramble Hornet', tier: 1, archetype: 'swarm', set: 'dungeon', stats: { maxHp: 8, atk: 3, def: 0 },
     table: { kind: 'sequence', moves: [hitWith('venomous_sting', 'Venomous Sting', 0.7, 1, 'burn', 3, 1), scatter('take_wing', 'Take Wing'), charge('dive_strike', 'Dive Strike', 1.6)] },
     traits: { frenzy: 0.5, burnVuln: 2, chillGrounds: true },
     barks: {
@@ -130,14 +129,14 @@ export const ENEMIES: Enemy[] = [
       death: ['The hive... remembers...', 'Bzzz...zz...', 'Others... will come...'],
     } },
 
-  // ---- Screen 2 ----
-  { id: 'ogre', name: 'Ogre', tier: 2, archetype: 'brute', stats: { maxHp: 24, atk: 7, def: 1 },
+  // ---- Screen 2, the Frozen Pass: frost names (DECISIONS #84), same moves and stats ----
+  { id: 'ogre', name: 'Frost Ogre', tier: 2, archetype: 'brute', stats: { maxHp: 24, atk: 7, def: 1 },
     table: { kind: 'sequence', moves: [hit('club', 'Club', 1.0), brace(), charge('smash', 'Smash', 2.2)] } },
-  { id: 'iron_knight', name: 'Iron Knight', tier: 2, archetype: 'armored', stats: { maxHp: 18, atk: 6, def: 3 },
+  { id: 'iron_knight', name: 'Frozen Knight', tier: 2, archetype: 'armored', stats: { maxHp: 18, atk: 6, def: 3 },
     table: { kind: 'sequence', moves: [hit('slash', 'Slash', 1.0), harden('brace_plate', 'Brace Plate'), hit('slash', 'Slash', 1.0), charge('bash', 'Bash', 1.5)] } },
-  { id: 'witch', name: 'Witch', tier: 2, archetype: 'caster', stats: { maxHp: 17, atk: 6, def: 0 },
+  { id: 'witch', name: 'Icy Witch', tier: 2, archetype: 'caster', stats: { maxHp: 17, atk: 6, def: 0 },
     table: { kind: 'sequence', moves: [debuff('hex', 'Hex', 'exposed', 2), spell('bolt', 'Bolt', 1.2), debuff('curse', 'Curse', 'weak', 2), spell('bolt', 'Bolt', 1.2)] } },
-  { id: 'harpies', name: 'Harpies', tier: 2, archetype: 'swarm', stats: { maxHp: 18, atk: 4, def: 1 },
+  { id: 'harpies', name: 'Snow Harpies', tier: 2, archetype: 'swarm', stats: { maxHp: 18, atk: 4, def: 1 },
     table: { kind: 'weighted', moves: [{ move: hit('swarm', 'Dive', 0.7, 'aggressive', 3), weight: 2 }, { move: debuff('screech', 'Screech', 'weak', 2), weight: 1 }, { move: scatter('scatter', 'Wheel'), weight: 1 }] } },
 
   // ---- Bosses ----
@@ -145,7 +144,7 @@ export const ENEMIES: Enemy[] = [
   { id: 'gatekeeper', name: 'Knight Andre', tier: 'boss1', archetype: 'boss', stats: { maxHp: 52, atk: 7, def: 2 },
     table: { kind: 'sequence', moves: [guard(), charge('crush', 'Crush', 1.0, 2), stagger()] } },
   // Warden: phase two at half HP trades guard for a multi-hit rend and Weak.
-  { id: 'warden', name: 'The Warden', tier: 'boss2', archetype: 'boss', stats: { maxHp: 62, atk: 8, def: 2 },
+  { id: 'warden', name: 'The Frost Warden', tier: 'boss2', archetype: 'boss', stats: { maxHp: 62, atk: 8, def: 2 },
     table: { kind: 'sequence', moves: [hit('slash', 'Slash', 1.0), guard(), charge('smash', 'Smash', 1.6), stagger()] },
     phases: [{ hpBelow: 0.5, table: { kind: 'sequence', moves: [hit('rend', 'Rend', 0.6, 'aggressive', 3), debuff('curse', 'Curse', 'weak', 2), charge('smash', 'Smash', 2.0)] } }] },
 ];

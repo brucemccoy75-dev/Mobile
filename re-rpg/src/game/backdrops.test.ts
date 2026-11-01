@@ -13,5 +13,8 @@ describe('combat backdrops (DECISIONS #80)', () => {
     expect(backdropGround('bg_forest')).toBe(0x8b8d45);
     expect(backdropGround('bg_tundra')).toBe(0xd0deef);
     expect(backdropGround('bg_unknown')).toBe(0x8b8d45);
+    // The Treasure Dungeon fights in its own hall, whatever the screen (DECISIONS #84).
+    expect(backdropKey('road', 0, true)).toBe('bg_dungeon');
+    expect(backdropGround('bg_dungeon')).toBe(0x312d2c);
   });
 });

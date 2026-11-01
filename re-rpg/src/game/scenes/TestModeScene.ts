@@ -43,14 +43,16 @@ export class TestModeScene extends Phaser.Scene {
     // enemies
     const x0 = 16;
     this.add.text(x0, 50, 'Enemy  ·  "2nd" adds it behind the first', text.small).setOrigin(0, 0);
-    // The enemies a run can meet: screen 1's active roster (the crawl five while ROSTER.crawl is on, DECISIONS #83), screen 2, the bosses.
-    const listed = [...enemiesOfTier(1), ...enemiesOfTier(2), ...ENEMIES.filter((e) => e.archetype === 'boss')];
+    // Screen 1, screen 2, the bosses, then the Treasure Dungeon's five (DECISIONS #84); rows of 25 so all fit.
+    const listed = [...enemiesOfTier(1), ...enemiesOfTier(2), ...ENEMIES.filter((e) => e.archetype === 'boss'), ...ENEMIES.filter((e) => e.set === 'dungeon')];
+    const row = 25;
     listed.forEach((e, i) => {
-      new Button(this, x0 + 76, 80 + i * 30, `${e.name}  ·  ${e.archetype === 'boss' ? 'boss' : `t${e.tier}`}`, () => this.set({ enemyId: e.id }), { ...small, width: 152, ...sel(this.setup.enemyId === e.id) });
-      new Button(this, x0 + 178, 80 + i * 30, '2nd', () => this.set({ extraId: this.setup.extraId === e.id ? null : e.id }), { width: 44, height: 26, fontSize: '11px', ...sel(this.setup.extraId === e.id) });
+      const tag = e.archetype === 'boss' ? 'boss' : e.set === 'dungeon' ? 'dgn' : `t${e.tier}`;
+      new Button(this, x0 + 76, 78 + i * row, `${e.name}  ·  ${tag}`, () => this.set({ enemyId: e.id }), { ...small, width: 152, height: 22, ...sel(this.setup.enemyId === e.id) });
+      new Button(this, x0 + 178, 78 + i * row, '2nd', () => this.set({ extraId: this.setup.extraId === e.id ? null : e.id }), { width: 44, height: 22, fontSize: '11px', ...sel(this.setup.extraId === e.id) });
     });
     // Boss variant (DECISIONS #36): Wren with whatever weapon is picked on the right.
-    new Button(this, x0 + 76, 80 + listed.length * 30, 'Wren  ·  boss variant', () => this.set({ enemyId: 'wren', extraId: null }), { ...small, width: 152, ...sel(this.setup.enemyId === 'wren') });
+    new Button(this, x0 + 76, 78 + listed.length * row, 'Wren  ·  boss variant', () => this.set({ enemyId: 'wren', extraId: null }), { ...small, width: 152, height: 22, ...sel(this.setup.enemyId === 'wren') });
 
     // class + tomes
     const x1 = 236;

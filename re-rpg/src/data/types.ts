@@ -150,8 +150,8 @@ export interface Enemy {
   traits?: EnemyTraits;
   /** Short lines it says in battle, even with the story off (DECISIONS #83): one is picked at random. */
   barks?: { start?: string[]; rage?: string[]; death?: string[] };
-  /** A swappable roster this enemy belongs to (DECISIONS #83): `crawl` replaces screen 1's while ROSTER.crawl is on. */
-  set?: 'crawl';
+  /** A roster outside the screens (DECISIONS #84): `dungeon` enemies appear only in the Treasure Dungeon. */
+  set?: 'dungeon';
 }
 
 /** Enemy weaknesses and habits (DECISIONS #83). */
@@ -194,6 +194,10 @@ export interface Item {
   immune?: StatusId[];
   /** a chance per hit to go through Guard, Ward or Aegis, */
   pierce?: number;
-  /** a once-per-fight reshuffle that costs this much gold. */
+  /** a once-per-fight reshuffle that costs this much gold, */
   redraw?: { gold: number };
+  /** HP lost for every damaging card played (Doomsday, DECISIONS #84). */
+  selfDamage?: number;
+  /** What selling it pays, instead of the usual share of its price (the goat, DECISIONS #84). */
+  sellPrice?: number;
 }

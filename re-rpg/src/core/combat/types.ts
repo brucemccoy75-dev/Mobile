@@ -27,6 +27,8 @@ export interface Gear {
   pierce?: number;
   /** Once per fight: shuffle hand, deck and discard together and deal a fresh hand (Earthen Relic). */
   redraw?: boolean;
+  /** HP the wearer loses for every card played that deals damage (the Doomsday pieces, DECISIONS #84). */
+  selfDamage?: number;
 }
 
 export interface PlayerCombatant extends Combatant {
@@ -129,6 +131,8 @@ export type CombatEvent =
   | { t: 'statusResisted'; side: Side; status: StatusId; warded?: boolean; /** Gear made the wearer immune (DECISIONS #82). */ immune?: boolean; who?: number }
   /** A hit went through a block (Earthen Blade, DECISIONS #82); the block stays. */
   | { t: 'pierce'; who?: number }
+  /** Doomsday gear's recoil (DECISIONS #84): the wearer pays for an attack. */
+  | { t: 'recoil'; amount: number }
   /** The Earthen Relic's reshuffle (DECISIONS #82): every card back in, shuffled, a fresh hand. */
   | { t: 'redraw'; count: number }
   | { t: 'statusExpired'; side: Side; status: StatusId; stripped?: boolean; who?: number; volley?: number }

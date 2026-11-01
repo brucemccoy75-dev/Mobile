@@ -1287,3 +1287,83 @@ Checked in a real browser (Test Mode and a level-select map):
 - a map rolled from the new five.
 
 Screenshots in `docs/audit/crawl-2026-11-01/`.
+
+## 84. The Treasure Dungeon under screen 1; the crawl five renamed and moved there; screen 2 in frost
+
+Designer's request, with answers to the questions asked first:
+1. Map 1 gets its original five back.
+2. A small sub-map, the Treasure Dungeon, entered from the node at the bottom of map 1:
+   - five nodes in a straight line, the last a chest;
+   - the book enemies, renamed, placed at random;
+   - its own on-brand comic-dungeon map and battle backdrop.
+3. Map 2's enemies get frost names and snowy art, with the same moves and stats.
+
+**The door** (`D` in `screen1.ts`, at the south spur's end, x20 y15; node kind `dungeon`):
+- a stone arch on the map, labelled "Treasure Dungeon";
+- arriving asks "This Dungeon is a Real challenge. Enter?" Yes goes down; No leaves the door to
+  come back to;
+- one visit per run: once you come back up, it reads "dungeon, sealed".
+
+**Inside** (`src/data/maps/dungeon1.ts`, 22×9 tiles):
+- the entrance, three fights and the chest in a straight hall;
+- each fight is one of the dungeon's five, sometimes a duo (35%, any two at random, hornet pairs
+  included);
+- all at +50% HP and attack (`dungeonEnemy`), with normal spoils and EXP;
+- fights you have won are walked through freely. Back at the entrance ("way out"), you are on
+  map 1 at the door. Screen 1's map, position, cleared nodes and shrines are kept aside while you
+  are below (`surface`), saved with the run, and put back as they were;
+- no surprises or curses roll down there;
+- the chest holds one prize, rolled when you enter, take it or leave it ("Dungeon treasure"). The
+  three prizes come from nowhere else (`from: 'dungeon'`):
+
+| Prize | Slot | Does |
+|---|---|---|
+| Doomsday Armor | body | +5 DEF; every card that deals damage costs you 1 HP |
+| Doomsday Device | relic | +5 ATK; every card that deals damage costs you 1 HP |
+| A Goat | weapon | −15 ATK (every hit does the minimum); sells for 150 gold |
+
+Engine changes, tests first:
+- `Gear.selfDamage`, the recoil: per damaging card, not per hit, through any block; the two
+  Doomsday pieces stack to 2;
+- `Item.sellPrice`, so the goat sells for 150;
+- `parseScreen`'s `sub` option for a map with no gate and its own roster and duos;
+- a `fixed` reward offer for the chest.
+
+**The five, renamed** (ids and art files too; art and barks unchanged): Wrath Wraith, The Midden
+Queen, The Hogpile, Spiteful Alpaca, Bramble Hornet. They are now `set: 'dungeon'` and in no
+screen's roster. The `ROSTER.crawl` switch from #83 is gone. Test Mode lists them as "dgn", in
+rows of 25 so all 16 enemies fit.
+
+**Screen 2**: Frost Ogre, Frozen Knight, Icy Witch, Snow Harpies and The Frost Warden. Their moves
+and stats are unchanged. Each has new Grok art (`art-src/frost-enemies/`): frost, a little snow and
+icicles, not over the top. Until now they were placeholder squares.
+
+**Art**:
+- the dungeon map is a Grok edit of a layout render (`art-src/dungeon/layout.jpg`) at 2k;
+- Grok copied the layout's yellow dots into the painting, so a second edit removed only them
+  (`map-2-clean-1.jpg`, shipped as `public/art/c/map_dungeon1.jpg`). The nodes sit on its five
+  painted clearings;
+- the battle backdrop is an edit of `bg_forest` (torch-lit pillars, a deep arched hall, a goofy
+  skeleton, a chest glinting at the end), shipped as `bg_dungeon.jpg`, with its own ground colour;
+- about $1.50 in all.
+
+**Balance**: the door took one of map 1's open slots, so every seed rolls a slightly different
+map. The shortest road now reaches Knight Andre 11.8–48.6% (BALANCE.md). The dungeon is optional
+and not in the mirror.
+
+Pinned by:
+- `src/game/dungeon.test.ts`: one door at the bottom; the hall of five; the +50% fights and their
+  duo share; every prize turning up; a save in the dungeon; the way back; the seal;
+- `src/data/dungeonRoster.test.ts`: the rosters, the names and the art;
+- `gear.test.ts`: the recoil;
+- `backdrops.test.ts`.
+
+Checked in a real browser:
+- the door prompt and going down;
+- a dungeon fight on its backdrop (The Hogpile at 17 HP);
+- the chest offering the goat with "Sell · 150 g";
+- walking back up to a sealed door;
+- the frost five in battle;
+- the Test Mode list.
+
+Screenshots in `docs/audit/dungeon-2026-11-01/`.

@@ -23,18 +23,26 @@ export const ART_FILES: Record<string, string> = {
   enemy_shell_beetle_c: 'art/c/shell_beetle@2x.png',
   enemy_rat_pack_c: 'art/c/rat_pack@2x.png',
   enemy_gatekeeper_c: 'art/c/gatekeeper@2x.png', // Knight Andre
-  // The crawl roster (DECISIONS #83), from Grok (art-src/crawl/).
-  enemy_rage_elemental_c: 'art/c/rage_elemental@2x.png',
-  enemy_the_hoarder_c: 'art/c/the_hoarder@2x.png',
-  enemy_porkchop_express_c: 'art/c/porkchop_express@2x.png',
-  enemy_bad_llama_c: 'art/c/bad_llama@2x.png',
-  enemy_brindled_vespa_c: 'art/c/brindled_vespa@2x.png',
+  // Screen 2's frost five (DECISIONS #84), from Grok (art-src/frost-enemies/).
+  enemy_ogre_c: 'art/c/ogre@2x.png',
+  enemy_iron_knight_c: 'art/c/iron_knight@2x.png',
+  enemy_witch_c: 'art/c/witch@2x.png',
+  enemy_harpies_c: 'art/c/harpies@2x.png',
+  enemy_warden_c: 'art/c/warden@2x.png',
+  // The Treasure Dungeon's five (DECISIONS #83, #84), from Grok (art-src/dungeon-enemies/).
+  enemy_wrath_wraith_c: 'art/c/wrath_wraith@2x.png',
+  enemy_midden_queen_c: 'art/c/midden_queen@2x.png',
+  enemy_hogpile_c: 'art/c/hogpile@2x.png',
+  enemy_spiteful_alpaca_c: 'art/c/spiteful_alpaca@2x.png',
+  enemy_bramble_hornet_c: 'art/c/bramble_hornet@2x.png',
   bg_forest: 'art/c/bg_forest.jpg',
   bg_tundra: 'art/c/bg_tundra.jpg', // screen 2's battles (DECISIONS #80)
   title: 'art/c/title.jpg', // title screen key art with the logo (docs/ART.md, DECISIONS #74)
   map_1: 'art/c/map1.jpg', // painted screen 1 (docs/ART.md); the tileset draws when a screen has no painting
   fx_curse_skull: 'art/c/fx_curse_skull.png', // the curse's skull and crossbones (DECISIONS #79)
-  map_2: 'art/c/map2.jpg', // painted screen 2, the Frozen Pass (DECISIONS #76)
+  map_2: 'art/c/map2.jpg',
+  map_dungeon1: 'art/c/map_dungeon1.jpg', // the Treasure Dungeon (DECISIONS #84)
+  bg_dungeon: 'art/c/bg_dungeon.jpg', // painted screen 2, the Frozen Pass (DECISIONS #76)
 };
 
 /** Wires persistence and loads meta before the title shows. Optional art loads here too. */

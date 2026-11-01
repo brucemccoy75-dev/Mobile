@@ -111,3 +111,9 @@ export function cursedEnemy(def: Enemy, traits: CursedTrait[]): Enemy {
   const stats = { ...def.stats, maxHp: def.stats.maxHp * (traits.includes('hp') ? 2 : 1), atk: def.stats.atk * (traits.includes('damage') ? 2 : 1) };
   return { ...def, name: `Cursed ${def.name}`, stats, cursed: [...traits], art: def.art ?? `enemy_${def.id}` };
 }
+
+/** The Treasure Dungeon makes its five 50% tougher (DECISIONS #84): HP and attack. */
+export const DUNGEON_MULT = 1.5;
+export function dungeonEnemy(def: Enemy): Enemy {
+  return { ...def, stats: { ...def.stats, maxHp: Math.round(def.stats.maxHp * DUNGEON_MULT), atk: Math.round(def.stats.atk * DUNGEON_MULT) }, art: def.art ?? `enemy_${def.id}` };
+}

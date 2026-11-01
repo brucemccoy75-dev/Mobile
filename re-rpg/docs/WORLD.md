@@ -84,9 +84,9 @@ Every "only when" (dialogue entries, options, quests, on-kill hooks) uses these;
 | note | show a line as a toast |
 | rearm (trigger, win flag) | send the last cleared fight back bigger; the node greets you with that trigger and sets the win flag when you win it there |
 
-**The crawl roster** (DECISIONS #83): enemies with `set: 'crawl'` speak in battle barks
-(`barks` in `src/data/enemies.ts`), not world lines, so the validator does not ask them for a
-default line. A fight with no line just starts.
+**The Treasure Dungeon's five** (DECISIONS #83, #84): enemies with `set: 'dungeon'` speak in
+battle barks (`barks` in `src/data/enemies.ts`), not world lines, so the validator does not ask
+them for a default line. A fight with no line just starts.
 
 **On-kill hooks.** `enemies[id].onKill` is a list of `{when, effects}`; when one of that enemy is
 killed, the first entry whose conditions hold runs its effects (Wren's rats live here). Wins are

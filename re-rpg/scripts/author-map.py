@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Assembles the authored screens (DECISIONS #37, node overworld) and prints them; paste into src/data/maps.
 Letters on roads are node slots: E start (always the story node), o open slot (typed per run), x elite,
-q the mid-map quest node, n the lost one, B boss. Usage: author-map.py forest|marsh|tundra (tundra is screen 2). Terrain: . grass # forest = road ~ water ^ rock % swamp A arena."""
+q the mid-map quest node, n the lost one, B boss, D the Treasure Dungeon's door. Usage: author-map.py forest|marsh|tundra (tundra is screen 2). Terrain: . grass # forest = road ~ water ^ rock % swamp A arena."""
 import sys
 W, H = 36, 18
 def blank():
@@ -34,7 +34,7 @@ def screen(biome):
     # nodes: every road junction is a node, so a link never forks between nodes
     put(g, 1, 8, 'E'); put(g, 5, 8, 'o'); put(g, 10, 8, 'q'); put(g, 14, 8, 'o'); put(g, 19, 8, 'o'); put(g, 23, 8, 'o'); put(g, 26, 8, 'x')
     put(g, 10, 5, 'o'); put(g, 14, 2, 'o'); put(g, 14, 1, 'o'); put(g, 18, 2, 'o'); put(g, 18, 1, 'o'); put(g, 23, 5, 'o')
-    put(g, 14, 11, 'o'); put(g, 20, 13, 'x'); put(g, 20, 15, 'o'); put(g, 26, 13, 'o'); put(g, 30, 13, 'n')
+    put(g, 14, 11, 'o'); put(g, 20, 13, 'x'); put(g, 20, 15, 'D' if biome == 'forest' else 'o'); put(g, 26, 13, 'o'); put(g, 30, 13, 'n')  # D: the Treasure Dungeon's door (DECISIONS #84)
     # a rock bar so the south lane is only entered at its two ends
     hline(g, 10, 15, 16, '^'); hline(g, 10, 22, 25, '^')
     return '\n'.join(''.join(r) for r in g)

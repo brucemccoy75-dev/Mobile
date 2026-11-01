@@ -40,7 +40,7 @@ describe('authored node screens', () => {
     expect(two.nodes!.find((n) => n.id === boss.links[0])!.kind).toBe('elite');
     for (let i = 0; i < 10; i++) {
       const m = parse(`de2-${i}`, 1);
-      const deadEnds = m.nodes!.filter((n) => n.links.length === 1 && n.kind !== 'start' && n.kind !== 'boss' && n.kind !== 'lost');
+      const deadEnds = m.nodes!.filter((n) => n.links.length === 1 && n.kind !== 'start' && n.kind !== 'boss' && n.kind !== 'lost' && n.kind !== 'dungeon'); // the dungeon door is a dead end by design (#84)
       expect(deadEnds.every((n) => ['shop', 'shrine', 'treasure'].includes(n.kind))).toBe(true);
     }
   });
@@ -69,7 +69,7 @@ describe('authored node screens', () => {
   it('dead ends never hold a plain monster when a calm type is left in the bag', () => {
     for (let i = 0; i < 10; i++) {
       const m = parse(`de${i}`, 0);
-      const deadEnds = m.nodes!.filter((n) => n.links.length === 1 && n.kind !== 'start' && n.kind !== 'boss' && n.kind !== 'lost');
+      const deadEnds = m.nodes!.filter((n) => n.links.length === 1 && n.kind !== 'start' && n.kind !== 'boss' && n.kind !== 'lost' && n.kind !== 'dungeon'); // the dungeon door is a dead end by design (#84)
       expect(deadEnds.every((n) => ['shop', 'shrine', 'treasure'].includes(n.kind))).toBe(true);
     }
   });

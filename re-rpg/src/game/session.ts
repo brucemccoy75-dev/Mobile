@@ -2,17 +2,19 @@
 // RunState that SaveStore persists. Pure rules live in core/run, core/loot, core/meta.
 import type Phaser from 'phaser';
 import { enemiesOfTier, familyOf, getClass, getEnemy, getSet, getSkill } from '@data/index';
-import { CURSED_CHANCE, CURSED_MIN_LEVEL, cursedEnemy, rollCursedTraits } from '@core/variants';
+import { CURSED_CHANCE, CURSED_MIN_LEVEL, cursedEnemy, dungeonEnemy, rollCursedTraits } from '@core/variants';
 import type { ClassId, Enemy, EnemyId, Item, SetId, Skill, SkillId, Stats } from '@data/types';
 import { RunRng, newSeed } from '@core/rng';
 import { SHRINE_HEAL, key, parseScreen, rollSurprises, type MapNode, type ScreenMap, type Tile, type TileType } from '@core/map';
 import { SCREEN1 } from '@data/maps/screen1';
 import { SCREEN2 } from '@data/maps/screen2';
+import { DUNGEON1 } from '@data/maps/dungeon1';
+import { DUNGEON_ROSTER } from '@data/enemies';
 import { STORY, WORLD, nodeRules } from '@data/world';
 import { DECK_CAP } from '@core/combat';
-import { PAIRS } from '@data/packs';
+import { DUNGEON_PAIRS, PAIRS } from '@data/packs';
 import { TOME_COPY_CAP, basicsFor } from '@data/skills';
-import { computeStats, emptyEquipment, equip as equipItem, equipmentFromIds, equipmentToIds, type Equipment, RUN_VERSION, type RunState } from '@core/run';
+import { computeStats, emptyEquipment, equip as equipItem, equipmentFromIds, equipmentToIds, type Equipment, RUN_VERSION, type RunState, type SurfaceState } from '@core/run';
 import { classProgress, createMeta, deathsOn, discoverItem, discoverSkill, nudgeRelation, rollHeirloomChoices, unlockedSets, type Heirloom, type MetaState } from '@core/meta';
 import { LUCK_RARE_WEIGHT, buildPool, locked, rollShopStock, sellValue, type RewardChoice, type RewardSource, type ShopStock } from '@core/loot';
 import { LEVEL_GOLD, LEVEL_HP, LEVEL_RARE_CHANCE } from '@data/progression';
@@ -28,7 +30,12 @@ export type EncounterKind = 'random' | 'guard' | 'boss' | 'node';
 export interface PendingEncounter { /** A cursed enemy (DECISIONS #73): 3× gold and EXP and a cursed card offer if won. */ cursed?: boolean; kind: EncounterKind; enemyId: EnemyId; guardId?: string; /** Authored map node (kind 'node'). */ nodeId?: string; tile?: TileType; /** Further enemies behind the first (duos, DECISIONS #29). */ extra?: EnemyId[]; /** Full definitions when the fight holds enemies that are not in the roster (a ghost, a boss variant; DECISIONS #36). Front first; overrides enemyId/extra for the engine. */ custom?: Enemy[]; /** Set when your ghost is in this fight. */ ghost?: boolean; /** The enemy the map showed when this one is a surprise (DECISIONS #81). */ surprise?: EnemyId; }
 export interface CombatResult { encounter: PendingEncounter; won: boolean; /** What the win already changed (applied in combat, DECISIONS #61); the map only shows it. */ report?: import('@game/story').WinReport; }
 /** A reward to show. `goldMult` scales the rolled gold and `then` is the offer that follows (a cursed win, DECISIONS #73). */
-export interface PendingOffer { source: RewardSource | 'cursed'; gold?: number; goldMult?: number; then?: PendingOffer; /** A boss's loot (DECISIONS #82): that boss's own items may be offered. */ bossId?: string; }
+export interface PendingOffer {
+  source: RewardSource | 'cursed'; gold?: number; goldMult?: number; then?: PendingOffer;
+  /** A boss's loot (DECISIONS #82): that boss's own items may be offered. */ bossId?: string;
+  /** Exactly these items, no roll (the Treasure Dungeon's chest, DECISIONS #84). */ fixed?: string[];
+  /** The screen's title instead of the source's. */ title?: string;
+}
 
 export interface RunSession {
   seed: string;
@@ -55,6 +62,10 @@ export interface RunSession {
   /** Node overworld (DECISIONS #37): nodes whose task is done, and the last monster node cleared (quests re-arm it). */
   clearedNodes: Set<string>;
   lastClearedNode: string | null;
+  /** In the Treasure Dungeon (DECISIONS #84): screen 1's state, put back on the way out. */
+  surface?: SurfaceState;
+  /** The Treasure Dungeon was entered and left this run: its door is sealed. */
+  dungeonDone?: boolean;
   /** Run-scoped story flags set by dialogue options (DECISIONS #35). */
   flags: Set<string>;
   /** A special run (DECISIONS #58): rolled once at the start; each screen offers its special quest when one qualifies. */
@@ -388,6 +399,11 @@ export const isFightNode = (n: MapNode): boolean => n.kind === 'monster' || n.ki
 
 /** The fight waiting at a node. */
 export function nodeEncounter(s: RunSession, node: MapNode): PendingEncounter {
+  // The Treasure Dungeon's five come 50% tougher (DECISIONS #84), duos and all.
+  if (s.map.dungeon) {
+    const ids = [node.enemyId!, ...(node.extra ?? [])];
+    return { kind: 'node', enemyId: ids[0]!, nodeId: node.id, ...(ids.length > 1 ? { extra: ids.slice(1) } : {}), custom: ids.map((id) => dungeonEnemy(getEnemy(id))) };
+  }
   if (node.kind === 'boss') return { kind: 'boss', enemyId: node.enemyId ?? s.map.bossId, nodeId: node.id };
   // A cursed node is one cursed enemy alone, even on a duo's node (DECISIONS #73).
   if (node.cursed) return { kind: 'node', enemyId: node.enemyId!, nodeId: node.id, cursed: true, custom: [cursedEnemy(getEnemy(node.enemyId!), node.cursed)] };
@@ -498,6 +514,7 @@ export function serialize(s: RunSession): RunState {
     screenIndex: s.screenIndex, map: s.map, playerPos: { ...s.playerPos }, threat: s.threat,
     openedPois: [...s.openedPois], usedShrines: [...s.usedShrines], defeatedGuards: [...s.defeatedGuards],
     clearedNodes: [...s.clearedNodes], lastClearedNode: s.lastClearedNode, flags: [...s.flags], special: s.special,
+    ...(s.surface ? { surface: JSON.parse(JSON.stringify(s.surface)) as SurfaceState } : {}), ...(s.dungeonDone ? { dungeonDone: true } : {}),
     bossDefeated: s.bossDefeated, encountersWon: s.encountersWon, newDiscoveries: [...s.newDiscoveries], heirloomName: s.heirloomName,
     shop: JSON.parse(JSON.stringify(s.shop)) as ShopStock,
     quests: JSON.parse(JSON.stringify(s.quests)) as Quest[], skillUpgrades: { ...s.skillUpgrades }, skillGrowth: { ...s.skillGrowth }, soldBasics: [...s.soldBasics], customItems: JSON.parse(JSON.stringify(s.customItems)) as Item[],
@@ -515,6 +532,7 @@ export function deserialize(st: RunState, meta: MetaState): RunSession {
     screenIndex: st.screenIndex, map: st.map, playerPos: { ...st.playerPos }, threat: st.threat,
     openedPois: new Set(st.openedPois), usedShrines: new Set(st.usedShrines), defeatedGuards: new Set(st.defeatedGuards),
     clearedNodes: new Set(st.clearedNodes ?? []), lastClearedNode: st.lastClearedNode ?? null, flags: new Set(st.flags ?? []), special: st.special ?? false,
+    ...(st.surface ? { surface: st.surface } : {}), ...(st.dungeonDone ? { dungeonDone: true } : {}),
     bossDefeated: st.bossDefeated, encountersWon: st.encountersWon, newDiscoveries: [...st.newDiscoveries], heirloomName: st.heirloomName,
     shop: st.shop, quests: st.quests ?? [], skillUpgrades: st.skillUpgrades ?? {}, skillGrowth: st.skillGrowth ?? {}, soldBasics: (st.soldBasics ?? []) as SkillId[], customItems: st.customItems ?? [],
     pendingEncounter: null, lastResult: null, pendingOffer: null, heirloomChoices: [],
@@ -548,4 +566,45 @@ export function sellCard(s: RunSession, id: SkillId, from: 'deck' | 'basic'): nu
   s.gold += card.value;
   s.shop.cardSold = true;
   return card.value;
+}
+
+// ---------------------------------------------------------------- the Treasure Dungeon (DECISIONS #84)
+
+/** The three things the chest may hold, one at random per run. */
+export const DUNGEON_PRIZES = ['doomsday_armor', 'doomsday_device', 'the_goat'] as const;
+export const inDungeon = (s: RunSession): boolean => !!s.map.dungeon;
+
+/**
+ * Go down: screen 1's map and where you stand are put aside, the dungeon is built (its fights from
+ * the dungeon's five, its chest's prize rolled now), and you stand at its entrance.
+ */
+export function enterDungeon(s: RunSession, door: MapNode): void {
+  if (s.dungeonDone || s.map.dungeon) throw new Error('enterDungeon: the door is sealed');
+  s.clearedNodes.add(door.id);
+  s.surface = { map: s.map, playerPos: { ...s.playerPos }, clearedNodes: [...s.clearedNodes], usedShrines: [...s.usedShrines], lastClearedNode: s.lastClearedNode, doorNode: door.id };
+  const rng = s.rng.stream('dungeon');
+  const map = parseScreen(DUNGEON1, rng, { seed: s.seed, screenIndex: s.screenIndex, sub: { roster: DUNGEON_ROSTER, pairs: DUNGEON_PAIRS } });
+  map.paint = 'map_dungeon1';
+  const chest = map.nodes!.find((n) => n.kind === 'treasure')!;
+  chest.prize = rng.pick(DUNGEON_PRIZES);
+  s.map = map;
+  s.playerPos = { ...map.entry };
+  const entrance = map.nodes!.find((n) => n.kind === 'start')!;
+  s.clearedNodes = new Set([entrance.id]);
+  s.usedShrines = new Set();
+  s.lastClearedNode = null;
+}
+
+/** Come back up: screen 1 as it was, standing at the door, which is sealed for the rest of the run. */
+export function leaveDungeon(s: RunSession): void {
+  const up = s.surface;
+  if (!up || !s.map.dungeon) throw new Error('leaveDungeon: not in the dungeon');
+  s.map = up.map;
+  const door = up.map.nodes!.find((n) => n.id === up.doorNode)!;
+  s.playerPos = { ...door.pos };
+  s.clearedNodes = new Set([...up.clearedNodes, door.id]);
+  s.usedShrines = new Set(up.usedShrines);
+  s.lastClearedNode = up.lastClearedNode;
+  delete s.surface;
+  s.dungeonDone = true;
 }
