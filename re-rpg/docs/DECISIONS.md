@@ -1607,3 +1607,31 @@ witch has her snowflake swirl back.
 
 **From now on**: generate any pale or white character on flat green from the start and cut it
 with `cut-green.py` (docs/ART.md). About $0.35.
+
+## 92. Duo intent panels sit over their own enemy
+
+Designer's report (a screenshot of a Frozen Knight and Snow Harpies): the Frozen Knight was drawn
+over the Snow Harpies' intent panel, and that panel was not over the harpies at all.
+
+**What was wrong**: an enemy taller than 170 px gets its "will" panel beside it, to its left,
+instead of above it. That rule was meant for a lone boss, whose head would push a panel into the
+HUD. Screen 2's enemies (#84) are all that tall, so in a duo the rear enemy's panel landed on the
+front enemy. The front enemy's sprite also had a higher depth than the panels (none was set), so
+it covered the box.
+
+**The fix** (`CombatScene`):
+- the side placement is only for a single enemy, so in a duo each panel sits above its own enemy;
+- a tall enemy in a duo is scaled down to fit under the panels (its head no higher than y 198), and
+  a duo panel's centre stays at or below y 132, so its label clears the HUD's status row. That row
+  had collided with the dungeon duo's "THE MIDDEN QUEEN WILL" label;
+- intent panels draw at depth 6, above the fighters, so nothing covers a promise.
+
+Duo enemies now stand about 152 px tall (were up to 168). Single enemies and bosses are unchanged.
+
+Checked in a browser, measuring every panel against every sprite for overlaps (none), on:
+- screen 2: Frozen Knight + Snow Harpies both ways round, and Frost Ogre + Icy Witch;
+- screen 1: Boar + Hex Imp;
+- the dungeon: Wrath Wraith + The Midden Queen;
+- lone bosses: The Frost Warden and Knight Andre, beside as before.
+
+Screenshots in `docs/audit/duo-panels-2026-11-01/`.

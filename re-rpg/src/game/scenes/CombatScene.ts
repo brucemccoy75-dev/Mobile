@@ -53,6 +53,13 @@ interface EnemyView {
 /** A thin dark outline for small labels over the backdrop, so they read on the snow too (DECISIONS #80). */
 const LABEL_OUTLINE = { stroke: '#0b0f1a', strokeThickness: 3 };
 
+/** Intent panels draw over the fighters (DECISIONS #92); sprites sit at depth 1-2. */
+const PANEL_DEPTH = 6;
+/** In a duo, how high an enemy's head may reach, so the panels and the target arrow sit above it. */
+const DUO_HEAD_TOP = 198;
+/** A duo's panel centre never rises above this: its label stays under the HUD's status row (chips at y 70). */
+const DUO_PANEL_MIN_Y = 132;
+
 export class CombatScene extends Phaser.Scene {
   private session!: RunSession;
   private encounter!: PendingEncounter;
@@ -177,6 +184,10 @@ export class CombatScene extends Phaser.Scene {
       const enemyKey = artKey(this, def.art ?? `enemy_${def.id}`);
       if (enemyKey) {
         sprite = this.add.image(ex, groundY, enemyKey).setOrigin(0.5, 1).setScale(def.cursed ? scale * CURSED_SCALE : scale);
+        // In a duo the panels sit over the heads, so a tall enemy (screen 2, DECISIONS #92) is drawn no
+        // taller than the room under them.
+        const room = groundY - DUO_HEAD_TOP;
+        if (n > 1 && sprite.displayHeight > room) (sprite as Phaser.GameObjects.Image).setScale(sprite.scaleX * (room / sprite.displayHeight));
         if (def.art?.startsWith('hero_')) (sprite as Phaser.GameObjects.Image).setFlipX(true); // a borrowed hero faces the player
         if (def.tint !== undefined) (sprite as Phaser.GameObjects.Image).setTint(def.tint).setAlpha(0.8);
         ey = groundY - sprite.displayHeight / 2;
@@ -226,13 +237,13 @@ export class CombatScene extends Phaser.Scene {
     for (const v of this.views) {
       const pw = n === 1 ? 230 : 176, half = pw / 2 - 11;
       const { ix, iy } = this.intentPanelPos(v, n);
-      v.intentBg = this.add.rectangle(ix, iy, pw, 64, COLORS.panel, 0.9).setStrokeStyle(2, COLORS.panelEdge).setInteractive({ useHandCursor: true });
+      v.intentBg = this.add.rectangle(ix, iy, pw, 64, COLORS.panel, 0.9).setStrokeStyle(2, COLORS.panelEdge).setInteractive({ useHandCursor: true }).setDepth(PANEL_DEPTH);
       v.intentBg.on('pointerup', () => this.explainIntent(v.slot));
       // The panel is a promise, not a state: the enemy does this after your move.
-      v.intentHead = this.add.text(ix - half, iy - 34, n === 1 ? 'AFTER YOUR MOVE, IT WILL' : `${v.def.name.toUpperCase()} WILL`, { fontFamily: FONT, fontSize: '10px', color: '#9aa3b8', fontStyle: 'bold', ...LABEL_OUTLINE }).setOrigin(0, 1);
-      v.intentText = this.add.text(ix - half, iy - 10, '', { ...text.body, fontSize: n === 1 ? '14px' : '12px', fontStyle: 'bold', wordWrap: { width: pw - 60 } }).setOrigin(0, 0.5);
-      v.intentNum = this.add.text(ix + half, iy - 10, '', { ...text.h2, fontSize: n === 1 ? '26px' : '22px' }).setOrigin(1, 0.5);
-      v.postureText = this.add.text(ix, iy + 16, '', { ...text.small, fontSize: n === 1 ? text.small.fontSize : '11px' }).setOrigin(0.5);
+      v.intentHead = this.add.text(ix - half, iy - 34, n === 1 ? 'AFTER YOUR MOVE, IT WILL' : `${v.def.name.toUpperCase()} WILL`, { fontFamily: FONT, fontSize: '10px', color: '#9aa3b8', fontStyle: 'bold', ...LABEL_OUTLINE }).setOrigin(0, 1).setDepth(PANEL_DEPTH);
+      v.intentText = this.add.text(ix - half, iy - 10, '', { ...text.body, fontSize: n === 1 ? '14px' : '12px', fontStyle: 'bold', wordWrap: { width: pw - 60 } }).setOrigin(0, 0.5).setDepth(PANEL_DEPTH);
+      v.intentNum = this.add.text(ix + half, iy - 10, '', { ...text.h2, fontSize: n === 1 ? '26px' : '22px' }).setOrigin(1, 0.5).setDepth(PANEL_DEPTH);
+      v.postureText = this.add.text(ix, iy + 16, '', { ...text.small, fontSize: n === 1 ? text.small.fontSize : '11px' }).setOrigin(0.5).setDepth(PANEL_DEPTH);
     }
     // Target arrow: a gold chevron bobbing over the enemy the next card hits (duos only; a single enemy needs none).
     this.targetArrow = this.add.text(0, 0, '▼', { fontFamily: FONT, fontSize: '26px', color: COLORS.gold, fontStyle: 'bold', stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5, 1).setDepth(8).setVisible(n > 1);
@@ -446,10 +457,12 @@ export class CombatScene extends Phaser.Scene {
   /** Where an enemy's intent panel sits: above the sprite, or beside a tall boss that would push it into the HUD. */
   private intentPanelPos(v: EnemyView, n: number): { ix: number; iy: number } {
     const W = this.scale.gameSize.width, pw = n === 1 ? 230 : 176;
-    const tall = v.sprite.displayHeight > 170;
+    // Beside the enemy only for a lone tall one (a boss): in a duo the rear one's panel would land
+    // on the front enemy (DECISIONS #92), so duo panels always sit above their own enemy.
+    const tall = n === 1 && v.sprite.displayHeight > 170;
     const ix = tall ? Math.max(W / 2 - 40, v.x - v.sprite.displayWidth / 2 - pw / 2 - 10) : Math.min(W - pw / 2 - 6, v.x);
     // Duos sit the panels a little higher so the target arrow fits between panel and head.
-    const iy = tall ? 190 : n === 1 ? Math.max(126, v.y - v.sprite.displayHeight / 2 - 58) : Math.max(112, v.y - v.sprite.displayHeight / 2 - 72);
+    const iy = tall ? 190 : n === 1 ? Math.max(126, v.y - v.sprite.displayHeight / 2 - 58) : Math.max(DUO_PANEL_MIN_Y, v.y - v.sprite.displayHeight / 2 - 72);
     return { ix, iy };
   }
 
