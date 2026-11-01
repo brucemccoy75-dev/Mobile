@@ -1680,3 +1680,35 @@ Checked by tapping in a real browser: the button, the panel, a screen-2 map, an 
 dead in one tap of Doom, spoils offering items only, and browser storage unchanged. Knight Andre's
 fight shows the Doom hand; the card editor shows the new field at 390×844. Screenshots in
 `docs/audit/demo-2026-11-01/`.
+
+## 94. Run start: real cards for heirlooms, a valley behind both menus
+
+Designer's request: the heirloom screen showed dark text-only boxes; use the real cards. And give
+it and the class select a background on theme with the game and the title art, muted so it does
+not distract, with depth: a valley, snowcaps in the distance.
+
+**The backdrop** (`public/art/c/menu_valley.jpg`, `src/game/ui/menuBackdrop.ts`):
+- a 2k Grok edit with the title art as its style reference (`art-src/menu-bg/`, `compare.jpg`); the
+  pick, #2, looks down a road into a green valley, with a village and a river, trees framing both
+  sides, and snow-capped peaks far behind;
+- it covers the screen under a dark veil (55%), with darker bands at the top (the heading) and the
+  bottom (the buttons);
+- class select and heirlooms both use it; without the art, the old flat dark background;
+- class panels are 90% opaque so the valley shows at their edges.
+
+**Heirlooms are the real cards**: the four choices are battle cards (#86's parchment and frames),
+as large as the row allows (×1.23 at 844×390), with the family name under each.
+- A tap keeps or returns a card; a kept card lifts in a gold glow and reads "✓ KEPT".
+- Once two are kept, the others dim.
+- Press and hold reads a card at 2× as in battle (#87). A held card shows at full strength even
+  when dimmed, and goes back to its own size.
+
+`Card` now remembers its resting size, so pressing and holding return a bigger-than-hand card to
+its size, not to 1.
+
+Checked by tapping in a real browser:
+- Title → class select → pick the warrior → Begin → heirlooms;
+- keep two; hold a third, which grew to 2× and came back at ×1.23, not kept;
+- Begin started the run with exactly the two kept cards in the deck.
+
+About $0.40. Screenshots in `docs/audit/run-start-2026-11-01/`.

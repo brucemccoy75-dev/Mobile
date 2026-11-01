@@ -88,8 +88,8 @@ export class Card extends Phaser.GameObjects.Container {
     // and letting go puts it back without playing it. A press shorter than PEEK_MS is a tap.
     this.bg.setInteractive({ useHandCursor: true });
     this.bg.on('pointerdown', () => {
-      this.setScale(0.96);
       this.pressing = true; this.wasPeek = false; this.pressAt = scene.time.now;
+      this.setScale(this.restScale * 0.96); // after `pressing`, so the rest size is kept
       this.holdTimer?.remove();
       this.holdTimer = scene.time.delayedCall(PEEK_MS, () => { this.holdTimer = null; this.peek(); });
       // Released anywhere (the big card may no longer be under the finger or the mouse): put it back.
@@ -107,29 +107,33 @@ export class Card extends Phaser.GameObjects.Container {
       window.addEventListener('pointerup', release);
       window.addEventListener('touchend', release);
     });
-    this.bg.on('pointerout', () => { if (this.peeking) return; this.holdTimer?.remove(); this.holdTimer = null; this.pressing = false; this.setScale(1); });
+    this.bg.on('pointerout', () => { if (this.peeking) return; this.holdTimer?.remove(); this.holdTimer = null; this.pressing = false; this.setScale(this.restScale); });
     this.bg.on('pointerup', () => {
       if (!this.pressing) return;
       this.pressing = false;
       if (this.peeking || this.wasPeek || scene.time.now - this.pressAt >= PEEK_MS) { this.wasPeek = false; return; } // a hold, not a tap
       this.holdTimer?.remove(); this.holdTimer = null;
-      this.setScale(1); onTap();
+      this.setScale(this.restScale); onTap();
     });
   }
 
+  /** The card's size at rest (a hand card is 1, a heirloom card bigger, #94); press and peek return to it. */
+  private restScale = 1;
+  override setScale(x?: number, y?: number): this { if (!this.pressing && !this.peeking && x !== undefined && (y === undefined || y === x)) this.restScale = x; return super.setScale(x, y); }
   private pressing = false;
   private wasPeek = false;
   private pressAt = 0;
   private holdTimer: Phaser.Time.TimerEvent | null = null;
   private peeking = false;
-  private home: { x: number; y: number; depth: number } | null = null;
+  private home: { x: number; y: number; depth: number; scale: number; alpha: number } | null = null;
 
   /** Show the card big in the middle of the screen, to read it (#87). Nothing is played. */
   private peek() {
     if (this.peeking || !this.scene) return;
     this.peeking = true;
     const { width: W, height: H } = this.scene.scale.gameSize;
-    this.home = { x: this.x, y: this.y, depth: this.depth };
+    this.home = { x: this.x, y: this.y, depth: this.depth, scale: this.restScale, alpha: this.alpha };
+    this.setAlpha(1); // a dimmed card (#94) reads at full strength while held
     this.setDepth(300);
     this.scene.tweens.killTweensOf(this);
     this.scene.tweens.add({ targets: this, x: W / 2, y: H * 0.45, scale: PEEK_SCALE, duration: 160, ease: 'Quad.Out' });
@@ -139,7 +143,7 @@ export class Card extends Phaser.GameObjects.Container {
     this.peeking = false;
     const home = this.home;
     this.scene.tweens.killTweensOf(this);
-    this.scene.tweens.add({ targets: this, x: home.x, y: home.y, scale: 1, duration: 140, ease: 'Quad.In', onComplete: () => this.setDepth(home.depth) });
+    this.scene.tweens.add({ targets: this, x: home.x, y: home.y, scale: home.scale, duration: 140, ease: 'Quad.In', onComplete: () => { this.setDepth(home.depth); this.setAlpha(home.alpha); } });
   }
 
   setEnabled(on: boolean): this {

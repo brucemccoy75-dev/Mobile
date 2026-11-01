@@ -42,6 +42,7 @@ export const ART_FILES: Record<string, string> = {
   fx_curse_skull: 'art/c/fx_curse_skull.png', // the curse's skull and crossbones (DECISIONS #79)
   map_2: 'art/c/map2.jpg',
   map_dungeon1: 'art/c/map_dungeon1.jpg',
+  menu_valley: 'art/c/menu_valley.jpg', // behind class select and heirlooms (DECISIONS #94)
   // Card frames by theme (DECISIONS #85, wide in #86) and the parchment under them, from Grok (art-src/card-frames-wide/).
   card_parchment: 'art/c/card_parchment.jpg',
   frame_sword: 'art/c/frame_sword.png',

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { CLASSES, getSet } from '@data/index';
 import type { ClassId } from '@data/types';
 import { Button } from '@game/ui/Button';
+import { menuBackdrop } from '@game/ui/menuBackdrop';
 import { CLASS_COLORS, COLORS, text } from '@game/ui/theme';
 import { baseStatsFor, createSession, getMeta, persistRun, setSession } from '@game/session';
 import { legacySummary } from '@core/meta';
@@ -21,6 +22,7 @@ export class ClassSelectScene extends Phaser.Scene {
     this.selected = null;
     this.panels.clear();
     const { width, height } = this.scale.gameSize;
+    menuBackdrop(this);
     this.add.text(width / 2, 34, 'Choose your class', text.h2).setOrigin(0.5);
 
     const panelW = Math.min(260, (width - 80) / 3 - 16);
@@ -32,7 +34,7 @@ export class ClassSelectScene extends Phaser.Scene {
       const x = startX + i * (panelW + gap);
       const y = height / 2 - 20;
       const unlocked = classUnlocked(getMeta(this), cls.id);
-      const bg = this.add.rectangle(x, y, panelW, 250, COLORS.panel).setStrokeStyle(3, COLORS.panelEdge);
+      const bg = this.add.rectangle(x, y, panelW, 250, COLORS.panel, 0.9).setStrokeStyle(3, COLORS.panelEdge);
       this.panels.set(cls.id, bg);
       this.add.rectangle(x, y - 80, 56, 72, CLASS_COLORS[cls.id] ?? COLORS.player);
       this.add.text(x, y - 30, cls.name, text.h2).setOrigin(0.5);
