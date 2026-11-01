@@ -89,13 +89,14 @@ describe('cards.json (DECISIONS #44)', () => {
   it('remove guard and remove buffs (DECISIONS #48) compile to a strip that runs before the damage and follows its targets', () => {
     const data: CardsData = JSON.parse(JSON.stringify(CARDS_DATA));
     data.modifiers.push({ id: 'break_guard', name: 'Break guard', target: 'enemy', status: 'remove_guard' }, { id: 'strip_all', name: 'Strip', target: 'enemy', status: 'remove_buffs' });
-    data.cards.find((c) => c.id === 'bellow')!.modifiers = ['break_guard'];
+    data.cards.find((c) => c.id === 'spiritboomerang')!.modifiers = ['break_guard']; // a sweep (Bellow stopped being one, #88)
     data.cards.find((c) => c.id === 'broadsword')!.modifiers = ['overextend', 'strip_all'];
     expect(validateCards(data)).toEqual([]);
     const { skills } = compileCards(data);
-    const bellow = skills.find((k) => k.id === 'bellow')!;
-    expect(bellow.effects).toEqual([{ type: 'strip', statuses: ['guard'], targets: 'all' }, { type: 'damage', mult: 0, flat: 1, ignoreDef: true, targets: 'all' }]);
-    expect(bellow.text).toBe("Remove every enemy's Guard first. Deal 0% + 1 damage to every enemy, ignoring defence.");
+    const sweep = skills.find((k) => k.id === 'spiritboomerang')!;
+    expect(sweep.effects[0]).toEqual({ type: 'strip', statuses: ['guard'], targets: 'all' });
+    expect(sweep.effects[1]).toMatchObject({ type: 'damage', kind: 'magic', hits: 2, targets: 'all' });
+    expect(sweep.text.startsWith("Remove every enemy's Guard first.")).toBe(true);
     const broad = skills.find((k) => k.id === 'broadsword')!;
     expect(broad.effects[0]).toEqual({ type: 'strip', statuses: ['guard', 'ward', 'aegis', 'harden', 'brace', 'scatter'] });
     expect(broad.effects.map((e) => e.type)).toEqual(['strip', 'damage', 'status']);
@@ -188,9 +189,10 @@ describe('the five synergy cards (DECISIONS #69)', () => {
     expect(getSkill('desperation')).toMatchObject({ setId: 'warrior_tank', rarity: 'rare', uses: 'fleeting', effects: [{ type: 'if', cond: { kind: 'selfHpBelow', pct: 0.2 }, then: [{ type: 'heal', pct: 0.2 }], else: [{ type: 'damage', mult: 0, flat: 5 }] }] });
     expect(getSkill('utility_knife')).toMatchObject({ setId: 'warrior_tank', rarity: 'rare', vfx: 'slash', effects: [{ type: 'if', cond: { kind: 'targetDebuffed' }, then: [{ type: 'damage', mult: 1.5 }], else: [{ type: 'status', target: 'self', status: 'weak', turns: 2 }] }] });
     expect(getSkill('lunch_break')).toMatchObject({ setId: 'warrior_dps', rarity: 'rare', vfx: 'sandwich', effects: [{ type: 'status', target: 'self', status: 'regen', turns: 3, magnitude: 10 }] });
-    expect(getSkill('blackjack')).toMatchObject({ setId: 'warrior_dps', rarity: 'rare', vfx: 'cards', effects: [{ type: 'status', target: 'self', status: 'blackjack', turns: 99, magnitude: 5 }] });
+    // Blackjack and Trickster as redesigned (DECISIONS #88).
+    expect(getSkill('blackjack')).toMatchObject({ setId: 'warrior_dps', rarity: 'rare', vfx: 'cards', effects: [{ type: 'if', cond: { kind: 'blackjack' }, then: [{ type: 'damage', mult: 2 }], else: [{ type: 'status', target: 'self', status: 'exposed', turns: 2 }] }] });
     expect(getSkill('trickster')).toMatchObject({ setId: 'warrior_dps', rarity: 'rare', vfx: 'coin', effects: [{ type: 'if', cond: { kind: 'coin' },
-      then: [{ type: 'damage', mult: 0.5 }, { type: 'extraPlay', n: 1 }, { type: 'draw', upTo: 3 }],
+      then: [{ type: 'damage', mult: 0.5 }, { type: 'extraPlay', n: 1 }, { type: 'draw', upTo: 3 }, { type: 'status', target: 'enemy', status: 'weak', turns: 2 }, { type: 'status', target: 'enemy', status: 'exposed', turns: 2 }, { type: 'status', target: 'enemy', status: 'curse', turns: 2, magnitude: 1 }],
       else: [{ type: 'status', target: 'self', status: 'weak', turns: 2 }, { type: 'status', target: 'self', status: 'exposed', turns: 2 }, { type: 'status', target: 'self', status: 'curse', turns: 2, magnitude: 1 }] }] });
   });
 });

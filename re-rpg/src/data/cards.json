@@ -162,6 +162,29 @@
       "status": "curse",
       "rounds": 2,
       "amount": 1
+    },
+    {
+      "id": "weak_2",
+      "name": "Weak 2",
+      "target": "enemy",
+      "status": "weak",
+      "rounds": 2
+    },
+    {
+      "id": "curse_2",
+      "name": "Curse 1×2",
+      "target": "enemy",
+      "status": "curse",
+      "rounds": 2,
+      "amount": 1
+    },
+    {
+      "id": "stun_1",
+      "name": "Stun 1",
+      "target": "enemy",
+      "status": "stun",
+      "rounds": 1,
+      "text": "The enemy is stunned: it skips its next action."
     }
   ],
   "cards": [
@@ -530,17 +553,12 @@
       "classId": "any",
       "rarity": "basic",
       "uses": null,
-      "damage": {
-        "percent": 0,
-        "bonus": 1,
-        "hits": 1,
-        "type": "physical",
-        "ignoreDef": true,
-        "drain": 0,
-        "targets": "all"
-      },
+      "damage": null,
       "heal": null,
-      "modifiers": []
+      "modifiers": [
+        "stun_1",
+        "tiring"
+      ]
     },
     {
       "id": "healboomerang",
@@ -708,12 +726,28 @@
       "classId": "warrior",
       "rarity": "rare",
       "uses": null,
-      "damage": null,
+      "damage": {
+        "percent": 200,
+        "bonus": 0,
+        "hits": 1,
+        "type": "physical",
+        "ignoreDef": false,
+        "drain": 0,
+        "targets": "one"
+      },
       "heal": null,
-      "modifiers": [
-        "blackjack_x5"
-      ],
-      "vfx": "cards"
+      "modifiers": [],
+      "vfx": "cards",
+      "condition": {
+        "kind": "blackjack"
+      },
+      "else": {
+        "damage": null,
+        "heal": null,
+        "modifiers": [
+          "winded"
+        ]
+      }
     },
     {
       "id": "trickster",
@@ -733,7 +767,10 @@
       "heal": null,
       "modifiers": [
         "extra_play_1",
-        "draw_to_3"
+        "draw_to_3",
+        "weak_2",
+        "exposed_2",
+        "curse_2"
       ],
       "vfx": "coin",
       "condition": {

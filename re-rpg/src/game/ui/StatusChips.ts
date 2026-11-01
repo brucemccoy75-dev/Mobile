@@ -32,7 +32,9 @@ export class StatusChips extends Phaser.GameObjects.Container {
     for (const s of statuses) {
       const meta = STATUS_LABELS[s.id];
       const suffix = s.id === 'guard' || s.id === 'ward' || s.id === 'blackjack' ? ` x${s.magnitude}` : s.id === 'burn' || s.id === 'curse' ? ` ${s.magnitude}/${s.turns}` : s.id === 'chill' || s.id === 'brace' || s.id === 'scatter' ? '' : s.id === 'harden' || s.id === 'aegis' ? ` ${s.turns}` : s.id === 'stun' ? ` ${Math.max(0, s.turns - 1)}` : ` ${s.turns}`;
-      const t = this.scene.add.text(0, 0, meta.label + suffix, { fontFamily: FONT, fontSize: '12px', color: meta.color, fontStyle: 'bold' }).setOrigin(this.alignRight ? 1 : 0, 0.5);
+      // An enemy's stun (DECISIONS #88; enemy rows are the right-aligned ones) reads STUNNED, no count.
+      const enemyStun = s.id === 'stun' && this.alignRight;
+      const t = this.scene.add.text(0, 0, enemyStun ? 'STUNNED' : meta.label + suffix, { fontFamily: FONT, fontSize: '12px', color: meta.color, fontStyle: 'bold' }).setOrigin(this.alignRight ? 1 : 0, 0.5);
       const w = t.width + 12;
       const bg = this.scene.add.rectangle(0, 0, w + 8, 26, 0x000000, 0.55).setOrigin(this.alignRight ? 1 : 0, 0.5).setStrokeStyle(1, 0xffffff, 0.25);
       bg.x = this.alignRight ? -cx : cx;

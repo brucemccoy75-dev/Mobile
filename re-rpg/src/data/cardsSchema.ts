@@ -33,8 +33,8 @@ export interface CardDamage {
 }
 export interface CardHeal { percent: number; flat: number; }
 /** What a branching card asks (DECISIONS #69). */
-export type CardCondition = { kind: 'self_hp_below'; percent: number } | { kind: 'enemy_debuffed' } | { kind: 'coin' };
-export const CONDITION_KINDS: CardCondition['kind'][] = ['self_hp_below', 'enemy_debuffed', 'coin'];
+export type CardCondition = { kind: 'self_hp_below'; percent: number } | { kind: 'enemy_debuffed' } | { kind: 'coin' } | { kind: 'blackjack' };
+export const CONDITION_KINDS: CardCondition['kind'][] = ['self_hp_below', 'enemy_debuffed', 'coin', 'blackjack'];
 /** The otherwise side of a branching card. */
 export interface CardBranch { damage: CardDamage | null; heal: CardHeal | null; modifiers: string[]; }
 export interface CardDef {
@@ -166,7 +166,7 @@ export function modifierText(m: ModifierDef, targets?: 'one' | 'all'): string {
 export function cardText(c: CardDef, mods: Map<string, ModifierDef>): string {
   const parts: string[] = [];
   if (c.condition) {
-    const [yes, no] = c.condition.kind === 'self_hp_below' ? [`If your HP is below ${c.condition.percent}%:`, 'Otherwise:'] : c.condition.kind === 'enemy_debuffed' ? ['If the enemy has a debuff:', 'Otherwise:'] : ['Call the coin. Right:', 'Wrong:'];
+    const [yes, no] = c.condition.kind === 'self_hp_below' ? [`If your HP is below ${c.condition.percent}%:`, 'Otherwise:'] : c.condition.kind === 'enemy_debuffed' ? ['If the enemy has a debuff:', 'Otherwise:'] : c.condition.kind === 'blackjack' ? ['Beat 16 (two cards, hit for more). Win:', 'Lose or bust:'] : ['Call the coin. Right:', 'Wrong:'];
     parts.push(`${yes} ${branchText(c, mods)}`);
     if (c.else) parts.push(`${no} ${branchText(c.else, mods)}`);
   } else parts.push(branchText(c, mods));
@@ -233,7 +233,7 @@ export function compileCards(data: CardsData): Compiled {
 }
 
 const conditionOf = (c: CardCondition): Condition =>
-  c.kind === 'self_hp_below' ? { kind: 'selfHpBelow', pct: c.percent / 100 } : c.kind === 'enemy_debuffed' ? { kind: 'targetDebuffed' } : { kind: 'coin' };
+  c.kind === 'self_hp_below' ? { kind: 'selfHpBelow', pct: c.percent / 100 } : c.kind === 'enemy_debuffed' ? { kind: 'targetDebuffed' } : c.kind === 'blackjack' ? { kind: 'blackjack' } : { kind: 'coin' };
 
 // ---------------------------------------------------------------- validate
 
@@ -361,7 +361,10 @@ export function validateCards(data: CardsData, shipped?: CardsData): string[] {
     const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
     // The warrior's starting deck is the designer's; the other classes' decks and the shared basics (used by every class) are frozen.
     for (const cls of ['wizard', 'shaman'] as ClassId[]) if (!same(shipped.basics[cls], data.basics[cls])) bad(`import: ${cls} starting deck changed; only the warrior is in scope`);
-    for (const c of shipped.cards) if (c.rarity === 'basic' && c.classId === 'any' && !same(c, cardById.get(c.id))) bad(`import: shared basic card ${c.id} changed (every class deals it; ask for a design change)`);
+    // A shared basic is frozen while a frozen class deals it (Attack, Defend, Ward). One only the warrior
+    // deals (Bellow, DECISIONS #88) is the warrior's to change.
+    const frozenBasics = new Set((['wizard', 'shaman'] as ClassId[]).flatMap((cls) => shipped.basics[cls] ?? []));
+    for (const c of shipped.cards) if (c.rarity === 'basic' && c.classId === 'any' && frozenBasics.has(c.id) && !same(c, cardById.get(c.id))) bad(`import: shared basic card ${c.id} changed (every class deals it; ask for a design change)`);
     for (const cls of ['wizard', 'shaman'] as ClassId[]) {
       const pick = (d: CardsData) => ({ cards: d.cards.filter((c) => c.classId === cls), families: d.families.filter((f) => f.classId === cls), tree: d.trees[cls] });
       if (!same(pick(shipped), pick(data))) bad(`import: ${cls} data changed; only the warrior is in scope`);

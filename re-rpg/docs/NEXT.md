@@ -7,7 +7,7 @@ Pages at https://brucemccoy75-dev.github.io/Mobile/. After a push, poll `origin/
 "Deploy re-rpg <sha>", **then** poll the live site until its main JS contains your 7-character
 hash; that is the build stamp the title shows at the bottom left. Pages publishes some time after
 the branch updates, so the branch alone is not "live" (#75 follow-up). Fetch with a `?t=<now>`
-query so a cache cannot answer. 345 tests pass (`npm run check`: typecheck,
+query so a cache cannot answer. 351 tests pass (`npm run check`: typecheck,
 cards:validate, world:validate, tests, build). The game today is:
 
 - **Node overworld** (DECISIONS #37): a static node network per screen over an authored terrain,
@@ -34,8 +34,10 @@ cards:validate, world:validate, tests, build). The game today is:
 - **Combat**:
   - a hand of 3 before every card (#53, #70);
   - one card per enemy alive: a duo is two cards (#68);
-  - branching cards on HP below a percent, a debuffed enemy or a coin you call; Lunch Break's
-    Regen, which locks damage cards; Blackjack ×5 to 21, opening with a drawn card (#69, #71);
+  - branching cards on HP below a percent, a debuffed enemy, a coin you call or a hand of
+    blackjack against 16 (#88); Lunch Break's Regen, which locks damage cards (#69);
+  - Bellow stuns the enemy for its next action and leaves you Weak; Trickster's right call
+    debuffs the enemy; Blackjack is beat-16 for 200% or nothing and Exposed (#88);
   - statuses that land together play together (#64); sweeps hit every enemy at once (#47);
   - ATK and DEF for every fighter, green when buffed, red when debuffed (#77): yours on your status
     row, an enemy's under its name;
@@ -81,7 +83,7 @@ own command → Playwright at 844×390 (the game) or 390×844 (the editors) with
 (Test Mode: set registry `testSetup`, call `TestMode.fight()`, then `Combat.act()` and poll
 `busy`; to answer a dialogue from a script, `scene('Dialogue').choose(d, option)`) → commit with
 the attribution lines → `git push -u origin <branch>` → poll gh-pages. Record decisions in
-`docs/DECISIONS.md` (next number is 88). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
+`docs/DECISIONS.md` (next number is 89). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
 
 **Run logs** (`docs/PLAYTESTS.md`, DECISIONS #67). When the designer sends a run log, always:
 1. save it in `docs/playtests/`;

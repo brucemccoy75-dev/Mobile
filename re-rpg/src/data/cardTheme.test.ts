@@ -7,7 +7,8 @@ const theme = (id: string) => { const s = getSkill(id); return cardTheme(s, card
 describe('card frames by theme, colour by kind (DECISIONS #85)', () => {
   it('swords for physical attacks, shields for physical blocks', () => {
     expect(theme('attack')).toBe('sword');
-    expect(theme('bellow')).toBe('sword');
+    expect(theme('bellow')).toBe('sword'); // a stun shout (#88) wears attack red and swords
+    expect(theme('blackjack')).toBe('sword');
     expect(theme('defend')).toBe('shield');
   });
   it('magic for magic damage, Ward and heals', () => {

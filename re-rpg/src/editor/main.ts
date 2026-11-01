@@ -57,7 +57,7 @@ const isShippedCard = (id: string) => SHIPPED.cards.some((c) => c.id === id);
 const inScope = (c: CardDef) => c.classId === 'warrior' || c.classId === 'any';
 
 /** What a branching card asks, for the editor (DECISIONS #69). */
-const askLabel = (k: CardCondition) => (k.kind === 'self_hp_below' ? `HP below ${k.percent}%` : k.kind === 'enemy_debuffed' ? 'enemy debuffed' : 'coin call');
+const askLabel = (k: CardCondition) => (k.kind === 'self_hp_below' ? `HP below ${k.percent}%` : k.kind === 'enemy_debuffed' ? 'enemy debuffed' : k.kind === 'blackjack' ? 'beat 16' : 'coin call');
 
 function summary(c: CardDef): string {
   const side = sideSummary(c);
@@ -172,18 +172,18 @@ function cardForm(c: CardDef): HTMLElement {
     ),
     h('h2', {}, 'Condition'),
     h('div', { class: 'grid' },
-      h('label', {}, 'the card branches on', select(c.condition?.kind ?? '', [['', 'nothing (always does the same)'], ['self_hp_below', 'your HP below a percent'], ['enemy_debuffed', 'the enemy carrying a debuff'], ['coin', 'a coin the player calls']], (v) => {
+      h('label', {}, 'the card branches on', select(c.condition?.kind ?? '', [['', 'nothing (always does the same)'], ['self_hp_below', 'your HP below a percent'], ['enemy_debuffed', 'the enemy carrying a debuff'], ['coin', 'a coin the player calls'], ['blackjack', 'a hand of blackjack against 16']], (v) => {
         if (!v) { delete c.condition; delete c.else; render(); return; }
-        c.condition = v === 'self_hp_below' ? { kind: 'self_hp_below', percent: (c.condition?.kind === 'self_hp_below' ? c.condition.percent : 20) } : { kind: v as 'enemy_debuffed' | 'coin' };
+        c.condition = v === 'self_hp_below' ? { kind: 'self_hp_below', percent: (c.condition?.kind === 'self_hp_below' ? c.condition.percent : 20) } : { kind: v as 'enemy_debuffed' | 'coin' | 'blackjack' };
         c.else ??= { damage: null, heal: null, modifiers: [] };
         render();
       })),
       c.condition?.kind === 'self_hp_below' ? h('label', {}, 'HP below (% of max)', numInput(c.condition.percent, (v) => { (c.condition as { percent: number }).percent = v; render(); }, 1, 99)) : null,
     ),
-    c.condition ? h('div', { class: 'muted' }, c.condition.kind === 'coin' ? 'The player calls heads or tails when they play it: a right call does the first side, a wrong one the Otherwise side. Even odds.' : c.condition.kind === 'enemy_debuffed' ? 'A debuff is Exposed, Weak, Burn, Chill, Recovering or Curse on the target.' : 'Checked when the card is played: strictly below this share of max HP.') : null,
-    c.condition ? h('h2', {}, c.condition.kind === 'coin' ? 'Right call' : 'When it holds') : null,
+    c.condition ? h('div', { class: 'muted' }, c.condition.kind === 'coin' ? 'The player calls heads or tails when they play it: a right call does the first side, a wrong one the Otherwise side. Even odds.' : c.condition.kind === 'blackjack' ? 'The player is dealt two cards and may hit for more (Ace 11 or 1, faces 10). Beating the dealer\'s 16 without passing 21 does the first side; anything else does the Lose side.' : c.condition.kind === 'enemy_debuffed' ? 'A debuff is Exposed, Weak, Burn, Chill, Recovering or Curse on the target.' : 'Checked when the card is played: strictly below this share of max HP.') : null,
+    c.condition ? h('h2', {}, c.condition.kind === 'coin' ? 'Right call' : c.condition.kind === 'blackjack' ? 'Win (beat 16)' : 'When it holds') : null,
     ...sideEditor(c, n),
-    c.condition && c.else ? h('h2', {}, c.condition.kind === 'coin' ? 'Wrong call' : 'Otherwise') : null,
+    c.condition && c.else ? h('h2', {}, c.condition.kind === 'coin' ? 'Wrong call' : c.condition.kind === 'blackjack' ? 'Lose or bust' : 'Otherwise') : null,
     ...(c.condition && c.else ? sideEditor(c.else, hitFor(c.else)) : []),
     h('div', { class: 'muted' }, 'Need a modifier that is not listed? Add it on the Modifiers tab, then link it here.'),
     h('label', {}, 'note (for the designers, not shown in game)', h('input', { value: c.note ?? '', onchange: (ev: Event) => { const v = (ev.target as HTMLInputElement).value.trim(); if (v) c.note = v; else delete c.note; render(); } })),

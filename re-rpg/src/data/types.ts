@@ -64,7 +64,9 @@ export type Effect =
  * What a branching card asks (DECISIONS #69): your HP below a share of max, the target carrying
  * a debuff (Exposed, Weak, Burn, Chill, Recovering, Curse), or a coin you call (heads or tails).
  */
-export type Condition = { kind: 'selfHpBelow'; pct: number } | { kind: 'targetDebuffed' } | { kind: 'coin' };
+export type Condition = { kind: 'selfHpBelow'; pct: number } | { kind: 'targetDebuffed' } | { kind: 'coin' }
+  /** A hand of blackjack against a dealer's 16 (DECISIONS #88): two cards, hit for more; holds when you beat 16 without busting. */
+  | { kind: 'blackjack' };
 
 /** How often a tome may be played. Default: every time it is drawn. */
 export type SkillUses = 'once_per_fight' | 'fleeting';

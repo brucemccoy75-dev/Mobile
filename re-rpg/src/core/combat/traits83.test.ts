@@ -19,25 +19,26 @@ const hitsOnYou = (ev: ReturnType<typeof step>) => ev.filter((e) => e.t === 'dam
 describe('enemy traits for the crawl roster (DECISIONS #83)', () => {
   it('sweep-weak: a hit-all card does double to it, a single-target card does not', () => {
     const s = createCombat({ player: { ...WARRIOR, deck: [], basics: [] }, enemy: foe({ sweepVuln: 2 }, [wait]), rng: new Rng(1) });
-    const swept = play(s, 'bellow').find((e) => e.t === 'damage' && e.source === 'player');
-    expect(swept).toMatchObject({ amount: 2 }); // Bellow is 1 to everyone
+    // Spirit Boomerang is a sweep of 2 hits of 1 (Bellow stopped being one, #88).
+    const swept = play(s, 'spiritboomerang').find((e) => e.t === 'damage' && e.source === 'player');
+    expect(swept).toMatchObject({ amount: 2 });
     const plain = createCombat({ player: { ...WARRIOR, deck: [], basics: [] }, enemy: foe({}, [wait]), rng: new Rng(1) });
-    expect(play(plain, 'bellow').find((e) => e.t === 'damage' && e.source === 'player')).toMatchObject({ amount: 1 });
+    expect(play(plain, 'spiritboomerang').find((e) => e.t === 'damage' && e.source === 'player')).toMatchObject({ amount: 1 });
   });
 
   it('momentum: each attack adds to the next; a blocked hit or a Chill resets it', () => {
     const s = createCombat({ player: { ...WARRIOR, deck: [], basics: [] }, enemy: foe({ momentum: 1 }), rng: new Rng(2) });
-    expect(hitsOnYou(play(s, 'bellow'))).toEqual([3]);
+    expect(hitsOnYou(play(s, 'ward'))).toEqual([3]);
     expect(getStatus(s.enemies[0]!, 'momentum')?.magnitude).toBe(1);
-    expect(hitsOnYou(play(s, 'bellow'))).toEqual([4]);
-    expect(hitsOnYou(play(s, 'bellow'))).toEqual([5]);
+    expect(hitsOnYou(play(s, 'ward'))).toEqual([4]);
+    expect(hitsOnYou(play(s, 'ward'))).toEqual([5]);
     expect(getStatus(s.enemies[0]!, 'momentum')?.magnitude).toBe(3);
     s.player.statuses.push({ id: 'guard', turns: 99, magnitude: 1 });
-    play(s, 'bellow'); // blocked: the momentum breaks
+    play(s, 'ward'); // blocked: the momentum breaks
     expect(hasStatus(s.enemies[0]!, 'momentum')).toBe(false);
-    expect(hitsOnYou(play(s, 'bellow'))).toEqual([3]);
+    expect(hitsOnYou(play(s, 'ward'))).toEqual([3]);
     applyStatus(s.enemies[0]!, 'chill', 1, 1, []);
-    play(s, 'bellow'); // chilled: no attack, and the momentum is gone
+    play(s, 'ward'); // chilled: no attack, and the momentum is gone
     expect(hasStatus(s.enemies[0]!, 'momentum')).toBe(false);
   });
 

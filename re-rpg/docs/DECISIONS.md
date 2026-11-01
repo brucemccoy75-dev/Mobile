@@ -1477,3 +1477,52 @@ Checked in a real browser at 844x390 with real touch events:
 - the hands look right on the forest, the tundra and the dungeon.
 
 Screenshots in `docs/audit/card-unified-2026-11-01/`.
+
+## 88. Trickster, Blackjack and Bellow redesigned; enemies can be stunned
+
+Designer's request:
+- Trickster's right call should put its debuffs on the enemy, as a wrong call puts them on you.
+- Blackjack is confusing: deal two cards, beat a 16 with a Hit button; a win is 200% damage, a
+  loss is 0% and leaves you Exposed.
+- Bellow is confusing: make it stun the enemy for 1 and leave you Weak.
+
+**Trickster**: a right call is the 50% hit, one more card, draw to 3, and now the enemy is Weak,
+Exposed and Cursed (1 a round) for 2 rounds. A wrong call puts the same three on you. New
+modifiers `weak_2` and `curse_2` (on the enemy). Because it now curses its target, it wears the
+bones frame (#85's rule).
+
+**Blackjack** is now a branching card on a new condition, `blackjack` (beside coin, HP below and
+enemy debuffed; in the card editor as "a hand of blackjack against 16"):
+- Playing it opens a felt table: "Dealer stands on 16. Beat it without passing 21." You see two
+  cards and Hit or Stand. Aces count 11 until that would bust, then 1; faces 10. A bust ends it.
+- Win (17–21) runs the card's first side: 200% damage (8 at ATK 4). Lose or bust runs the other:
+  nothing lands, and you are Exposed for 2 rounds (`winded`).
+- The cards come from their own stream seeded by the fight state (`blackjackHand`), so the table
+  shows exactly the cards the play deals, and a reload cannot redeal them.
+- With no choice given (the sim), it hits below 17.
+- #69/#71's running-total Blackjack status stays in the engine, unused by any card.
+
+**Bellow** is no longer a sweep: "Stun: the enemy skips its next action. Tiring: Weak next turn."
+(`stun_1` on the target, `tiring` on you). Its face reads "1 stun" in attack red with the sword
+frame.
+- **Enemies can be stunned now**: a stunned enemy loses its action, and the stun ticks away at the
+  round's end. It shows "STUNNED" (the player's stun stays "Recovering").
+- The validator froze every shared basic; Bellow is only in the warrior's deck, so it now freezes
+  just the ones a frozen class deals (Attack, Defend, Ward).
+- With Bellow gone as a sweep, the warrior's hit-all cards (and the Midden Queen's sweep weakness,
+  #83) are the boomerangs and Leech. Tests that used Bellow as a sweep now use Spirit Boomerang.
+
+**Balance** (BALANCE.md): stronger. A stun in every starting hand cancels an enemy's turn, Knight
+Andre's Crush included. The shortest road reaches him 15.9–60.9% (was 11.8–48.6%), and for the
+first time a loadout beats him in the mirror: Berserker 0.2%; in the gauntlet up to 4.9% with gear.
+
+Pinned in `src/core/combat/cards88.test.ts` (the enemy stun and Bellow, Trickster both ways,
+Blackjack's hand, win and loss, aces, the sim's play), plus updated pins in `data.test.ts`.
+Checked in a real fight:
+- Bellow stunned the Boar (no Tusk) and left the hero Weak;
+- a Blackjack hand of Q 6, hit to 20, landed 8;
+- a bust at 25 landed 0 and left the hero Exposed;
+- Trickster lost three calls (debuffs on the hero) and won one (Weak, Exposed and Cursed on the
+  Boar).
+
+Screenshots in `docs/audit/cards88-2026-11-01/`.

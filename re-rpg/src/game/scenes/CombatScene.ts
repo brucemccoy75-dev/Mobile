@@ -3,7 +3,7 @@ import { BACKDROP_HORIZON, artKey, backdropGround, backdropKey, reloadArt } from
 import { describeSkill, getEnemy, getSkill } from '@data/index';
 import type { CardPreview } from '@data/describe';
 import type { CursedTrait, Enemy, Intent, Posture } from '@data/types';
-import { createCombat, redrawHand, currentIntent, effectsNow, isLocked, isPlayerStunned, playableIndices, previewDamage, resolveTarget, skillInCombat, statRatings, step, CURSED_TRAIT_INFO, enemyTraitInfo, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
+import { BLACKJACK_BEAT, blackjackHand, createCombat, redrawHand, currentIntent, effectsNow, isLocked, isPlayerStunned, playableIndices, previewDamage, resolveTarget, skillInCombat, statRatings, step, CURSED_TRAIT_INFO, enemyTraitInfo, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
 import { endSavedRun, getMeta, getSession, getStore, persistMeta, persistRun, setName, setSession, spendConsumedTomes, type PendingEncounter, type RunSession } from '@game/session';
 import { gainExp, ghostOn, layGhost, leaveGhost, nudgeRelation, recordDeath } from '@core/meta';
 import { CURSED_REWARD_MULT, ghostSpoils } from '@core/variants';
@@ -622,11 +622,65 @@ export class CombatScene extends Phaser.Scene {
       const id = this.state.player.hand[action.index];
       if (id && skillInCombat(this.state, id).effects.some((e) => e.type === 'if' && e.cond.kind === 'coin')) { this.askCoin((call) => this.act({ ...action, call })); return; }
     }
+    // A blackjack card (DECISIONS #88): the hand is played out at the table before the card is.
+    if (action.type === 'card' && action.bjHits === undefined) {
+      const id = this.state.player.hand[action.index];
+      if (id && skillInCombat(this.state, id).effects.some((e) => e.type === 'if' && e.cond.kind === 'blackjack')) { this.askBlackjack((bjHits) => this.act({ ...action, bjHits })); return; }
+    }
     const events = step(this.state, action);
     void this.playEvents(events);
   }
 
   /** Heads or tails, over the hand; Cancel puts the card back. */
+  /**
+   * The blackjack table (DECISIONS #88): the dealer stands on 16; you see your two cards and Hit or
+   * Stand. A bust ends it. The cards are the ones the play will deal (blackjackHand), so what you see
+   * is what lands.
+   */
+  private askBlackjack(then: (hits: number) => void) {
+    const W = this.scale.gameSize.width, H = this.scale.gameSize.height;
+    this.setInputEnabled(false);
+    const parts: Phaser.GameObjects.GameObject[] = [];
+    const close = () => { for (const p of parts) p.destroy(); };
+    const cy = H * 0.42;
+    parts.push(this.add.rectangle(W / 2, H / 2, W, H, 0x04130b, 0.82).setDepth(60).setInteractive());
+    parts.push(this.add.ellipse(W / 2, cy + 10, Math.min(720, W - 60), 300, 0x0f5a32, 1).setStrokeStyle(8, 0x5a3a1a).setDepth(60));
+    parts.push(this.add.text(W / 2, cy - 112, `Dealer stands on ${BLACKJACK_BEAT}. Beat it without passing 21.`, { ...text.body, fontSize: '16px', color: '#f5e6b0', fontStyle: 'bold' }).setOrigin(0.5).setDepth(61));
+    const cardsLayer: Phaser.GameObjects.GameObject[] = [];
+    const totalText = this.add.text(W / 2, cy + 70, '', { ...text.h2, fontSize: '26px', color: '#ffffff', stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5).setDepth(62);
+    parts.push(totalText);
+    let hits = 0;
+    const drawCard = (x: number, y: number, rank: string, suit: string) => {
+      const red = suit === '♥' || suit === '♦' ? '#c81e1e' : '#111111';
+      const c = this.add.container(x, y).setDepth(62);
+      c.add([
+        this.add.rectangle(3, 4, 66, 92, 0x000000, 0.35),
+        this.add.rectangle(0, 0, 66, 92, 0xfffdf6).setStrokeStyle(2, 0x333333),
+        this.add.text(-27, -40, `${rank}\n${suit}`, { fontFamily: 'Arial', fontSize: '15px', color: red, fontStyle: 'bold', align: 'center', lineSpacing: -3 }),
+        this.add.text(0, 8, suit, { fontFamily: 'Arial', fontSize: '34px', color: red }).setOrigin(0.5),
+      ]);
+      return c;
+    };
+    const show = () => {
+      for (const o of cardsLayer) o.destroy();
+      cardsLayer.length = 0;
+      const hand = blackjackHand(this.state, hits);
+      const n = hand.cards.length, gap = 76;
+      hand.cards.forEach((c, i) => cardsLayer.push(drawCard(W / 2 - ((n - 1) * gap) / 2 + i * gap, cy - 20, c.rank, c.suit)));
+      const bust = hand.total > 21;
+      totalText.setText(bust ? `${hand.total}: BUST` : `${hand.total}`).setColor(bust ? '#ff6b6b' : hand.total > BLACKJACK_BEAT ? '#7dff9a' : '#ffffff');
+      return bust;
+    };
+    const finish = () => { close(); for (const o of cardsLayer) o.destroy(); then(hits); };
+    const hitBtn = new Button(this, W / 2 - 100, cy + 128, 'Hit', () => {
+      hits++;
+      if (show()) { hitBtn.setEnabled(false); standBtn.setEnabled(false); this.time.delayedCall(900, finish); }
+    }, { width: 150, height: 54, fontSize: '19px', fill: 0x3a2e10, edge: 0xe0b040 }).setDepth(63);
+    const standBtn = new Button(this, W / 2 + 100, cy + 128, 'Stand', finish, { width: 150, height: 54, fontSize: '19px', fill: 0x103a22, edge: 0x7dff9a }).setDepth(63);
+    parts.push(hitBtn, standBtn);
+    show();
+  }
+
   private askCoin(then: (call: 'heads' | 'tails') => void) {
     const W = this.scale.gameSize.width, y = this.handY;
     this.setInputEnabled(false);
@@ -827,7 +881,8 @@ export class CombatScene extends Phaser.Scene {
         if (e.status === 'guard' || (e.side === 'player' && (e.status === 'regen' || e.status === 'blackjack'))) { await wait(this, 350); return; }
         const p = pos(e.side);
         const m = STATUS_LABELS[e.status];
-        await floatText(this, p.x, p.y - 110 - stack * 28, m.label, m.color, 22, 900);
+        // On an enemy a stun is a stun (Bellow, DECISIONS #88); "Recovering" is the player's word.
+        await floatText(this, p.x, p.y - 110 - stack * 28, e.side === 'enemy' && e.status === 'stun' ? 'STUNNED' : m.label, m.color, 22, 900);
         return;
       }
       case 'statusExpired':
@@ -855,7 +910,7 @@ export class CombatScene extends Phaser.Scene {
       }
       case 'stunned': {
         const p = pos(e.side);
-        await floatText(this, p.x, p.y - 30, 'recovering · turn skipped', '#ffd166', 26);
+        await floatText(this, p.x, p.y - 30, e.side === 'enemy' ? 'stunned · turn skipped' : 'recovering · turn skipped', '#ffd166', 26);
         return;
       }
       case 'phase':
@@ -904,6 +959,11 @@ export class CombatScene extends Phaser.Scene {
         void floatText(this, this.px + 70, this.py - 110, `${e.total} / 21`, e.total >= 17 ? '#ff6b6b' : '#ffd700', 30, 1300);
         await wait(this, 500);
         return;
+      case 'blackjackHand': {
+        // The hand was played at the table (DECISIONS #88): here the verdict.
+        await this.luckFanfare(e.won ? 'BLACKJACK WIN' : e.total > 21 ? 'BUST' : 'DEALER WINS', e.won ? '#ffd700' : '#ff6b6b', e.won ? `${e.total} beats 16: double damage` : `${e.total} vs 16: nothing lands, you are Exposed`);
+        return;
+      }
       case 'bust':
         this.cameras.main.shake(260, 0.014);
         this.showHp('player', -this.state.player.stats.maxHp);

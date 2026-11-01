@@ -30,11 +30,15 @@ export function describeSkill(skill: Skill, stats: Stats): string {
 const askText = (c: Condition): [string, string] =>
   c.kind === 'selfHpBelow' ? [`If your HP is below ${Math.round(c.pct * 100)}%:`, 'Otherwise:']
   : c.kind === 'targetDebuffed' ? ['If the enemy has a debuff:', 'Otherwise:']
+  : c.kind === 'blackjack' ? ['Beat 16 (two cards, hit for more). Win:', 'Lose or bust:']
   : ['Call the coin. Right:', 'Wrong:'];
 
 /** Plain timed statuses on yourself, which read as one sentence when several share a duration. */
 const PLAIN_SELF: ReadonlySet<StatusId> = new Set(['weak', 'exposed', 'curse', 'burn', 'harden', 'brace', 'scatter']);
 const isPlainSelf = (e: Effect): e is Extract<Effect, { type: 'status' }> => e.type === 'status' && e.target === 'self' && PLAIN_SELF.has(e.status) && e.chance === undefined;
+/** The same on the enemy (Trickster's right call, DECISIONS #88): "Enemy Weak, Exposed and Cursed for 2 rounds." */
+const PLAIN_ENEMY: ReadonlySet<StatusId> = new Set(['weak', 'exposed', 'curse']);
+const isPlainEnemy = (e: Effect): e is Extract<Effect, { type: 'status' }> => e.type === 'status' && e.target === 'enemy' && PLAIN_ENEMY.has(e.status) && e.chance === undefined && (e.status !== 'curse' || (e.magnitude ?? 1) === 1);
 
 function describeEffects(effects: Effect[], stats: Stats): string[] {
   const parts: string[] = [];
@@ -45,8 +49,14 @@ function describeEffects(effects: Effect[], stats: Stats): string[] {
     const names = group.map((g) => STATUS_NAME[g.status]);
     parts.push(`You are ${names.slice(0, -1).join(', ')} and ${names.at(-1)} for ${rounds(group[0]!.turns)}.`);
   }
+  const foes = effects.filter(isPlainEnemy);
+  const foesMerged = foes.length > 1 && foes.every((g) => g.turns === foes[0]!.turns);
   for (const e of effects) {
     if (merged && isPlainSelf(e)) continue;
+    if (foesMerged && isPlainEnemy(e)) {
+      if (e === foes[0]) { const names = foes.map((g) => STATUS_NAME[g.status]); parts.push(`Enemy ${names.slice(0, -1).join(', ')} and ${names.at(-1)} for ${rounds(e.turns)}.`); }
+      continue;
+    }
     switch (e.type) {
       case 'if': {
         const [yes, no] = askText(e.cond);
@@ -101,6 +111,7 @@ function describeEffects(effects: Effect[], stats: Stats): string[] {
         } else {
           if (e.status === 'burn' || e.status === 'curse') parts.push(`${chance}${STATUS_NAME[e.status]} ${e.magnitude ?? 1} per round for ${rounds(e.turns)}.`);
           else if (e.status === 'chill') parts.push(`${chance}Chill: the enemy skips its next action.`);
+          else if (e.status === 'stun') parts.push(`${chance}Stun: the enemy skips ${e.turns === 1 ? 'its next action' : `${e.turns} actions`}.`);
           else parts.push(`${chance}Enemy ${STATUS_NAME[e.status]} for ${rounds(e.turns)}.`);
         }
         break;
@@ -154,6 +165,8 @@ export function cardFace(skill: Skill, stats: Stats, preview?: CardPreview): Car
   if (hostile) {
     if (hostile.status === 'burn' || hostile.status === 'curse') return { kind: 'magic', value: `${hostile.magnitude ?? 1}×${hostile.turns}`, unit: STATUS_NAME[hostile.status].toLowerCase() };
     if (hostile.status === 'chill') return { kind: 'magic', value: '1', unit: 'skip' };
+    // A stun (Bellow, DECISIONS #88): a shout, not a spell, so it wears attack red.
+    if (hostile.status === 'stun') return { kind: 'attack', value: `${hostile.turns}`, unit: 'stun' };
     return { kind: 'magic', value: `${hostile.turns}`, unit: STATUS_NAME[hostile.status].toLowerCase() };
   }
   // A side that only costs you (Utility Knife against a clean enemy, #69): say so instead of a blank face.

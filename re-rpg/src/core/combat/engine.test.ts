@@ -973,13 +973,13 @@ describe('cursed enemies and growing cards (DECISIONS #73)', () => {
     expect(s.player.hp).toBe(25);
     // A sweep that kills it is the same.
     const sw = fight([], frail(['thorns']));
-    const ev2 = play(sw, 'bellow');
+    const ev2 = play(sw, 'spiritboomerang'); // a sweep (Bellow stopped being one, #88)
     expect(sw.enemies[0]!.hp).toBe(0);
     expect(ev2.some((e) => e.t === 'thorns')).toBe(false);
     expect(sw.player.hp).toBe(25);
     // One that lives through the blow still bites.
     const tough = fight([], quietCursed(['thorns']));
-    expect(play(tough, 'bellow').some((e) => e.t === 'thorns')).toBe(true);
+    expect(play(tough, 'spiritboomerang').some((e) => e.t === 'thorns')).toBe(true);
   });
 
   it('a follow-up hits for 25% of its attack right after its attack, and Guard does not stop it', () => {

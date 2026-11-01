@@ -4,6 +4,57 @@ Newest first. Run logs are read with the procedure in `docs/PLAYTESTS.md` (`npm 
 
 Loadouts: **fresh** = Attack/Defend only, empty deck. **Set** = the two set tomes in the deck. **gearN** = a full three-slot kit for screen N (`GEAR_KIT` in `src/core/sim/gauntlet.ts`). The sim does not model loot choice, relics or 4-card decks, so these are floors, not expectations.
 
+## Trickster, Blackjack and Bellow redesigned 2026-11-01 (DECISIONS #88)
+
+Changed cards: bellow (a 1-turn enemy stun and Weak on you, no damage), blackjack (beat 16: 200%
+or nothing and Exposed), trickster (a right call debuffs the enemy). Enemies can now be stunned.
+
+`npm run sim -- --screen --class warrior --runs 1000`:
+
+```
+full clear                     reach boss  beat boss  hp@boss fights rounds  deaths
+warrior fresh                        0.0%       0.0%      0.0   2.80   25.1  adept_necromancer 29%, boar 15%, rat_pack 13%
+warrior Bulwark                      1.0%       0.0%      9.3   2.74   28.2  adept_necromancer 31%, boar 15%, rat_pack 11%
+warrior Berserker                    4.8%       0.0%     14.9   3.52   26.5  adept_necromancer 25%, boar 14%, boar+hex_imp 12%
+warrior Shadow Knight               14.6%       0.0%     10.1   5.36   37.7  boar+hex_imp 16%, adept_necromancer 15%, gatekeeper 15%
+warrior Berserker+Bulwark            2.8%       0.0%     15.3   3.22   28.6  adept_necromancer 27%, boar 15%, adept_necromancer+boar 12%
+warrior Shadow Knight+Bulwark        3.9%       0.0%      8.3   3.46   30.8  adept_necromancer 27%, boar 15%, boar+hex_imp 13%
+warrior Berserker+Shadow Knight       6.3%       0.0%     12.9   4.12   30.1  adept_necromancer 24%, boar 14%, boar+hex_imp 12%
+
+shortest road                  reach boss  beat boss  hp@boss fights rounds  deaths
+warrior fresh                       15.9%       0.0%      8.6   2.23   23.0  adept_necromancer 18%, gatekeeper 16%, adept_necromancer+boar 14%
+warrior Bulwark                     17.4%       0.0%      9.8   2.14   25.5  adept_necromancer 19%, gatekeeper 17%, shell_beetle+rat_pack 12%
+warrior Berserker                   33.6%       0.2%     12.1   2.56   23.6  gatekeeper 33%, adept_necromancer 14%, adept_necromancer+boar 12%
+warrior Shadow Knight               60.9%       0.0%     12.5   3.22   29.4  gatekeeper 61%, boar+hex_imp 10%, adept_necromancer+boar 8%
+warrior Berserker+Bulwark           28.7%       0.1%     11.8   2.39   25.7  gatekeeper 29%, adept_necromancer 17%, adept_necromancer+boar 11%
+warrior Shadow Knight+Bulwark       29.0%       0.0%     11.8   2.44   26.9  gatekeeper 29%, adept_necromancer 15%, boar+hex_imp 12%
+warrior Berserker+Shadow Knight      42.9%       0.0%     12.2   2.79   25.4  gatekeeper 43%, boar+hex_imp 12%, adept_necromancer+boar 10%
+```
+
+`npm run sim -- --class warrior --runs 1000`:
+
+```
+loadout, greedy policy
+
+loadout                        reach boss  beat boss  hp@boss fights rounds  deaths
+warrior fresh                       32.2%       0.0%      5.9   2.73   24.1  adept_necromancer 34%, gatekeeper 32%, boar 16%
+warrior Bulwark                     29.8%       0.0%     10.4   2.56   30.1  adept_necromancer 31%, gatekeeper 30%, boar 24%
+warrior Berserker                   60.8%       0.6%     12.3   3.27   15.5  gatekeeper 60%, adept_necromancer 16%, boar 13%
+warrior Bulwark+gear1               74.5%       0.5%     16.3   3.60   36.0  gatekeeper 74%, adept_necromancer 14%, boar 9%
+warrior Berserker+gear1             79.4%       3.4%     16.9   3.67   16.5  gatekeeper 76%, boar 8%, adept_necromancer 8%
+warrior both sets+gear1             84.9%       4.9%     17.8   3.77   22.6  gatekeeper 80%, boar 7%, adept_necromancer 6%
+```
+
+Reading:
+- Clearly stronger. The shortest road reaches Knight Andre 15.9–60.9% (was 11.8–48.6%).
+  Berserker went from 18.9% to 33.6%, and Shadow Knight from 48.6% to 60.9%.
+- For the first time a loadout beats Andre: 0.2% on the shortest road (Berserker), and up to 4.9%
+  in the gauntlet with gear.
+- Most of it is Bellow: a stun in every starting hand cancels a turn, Andre's Crush included.
+  Weak on you is the price, and the greedy sim plays it whenever an attack is coming.
+- If it is too much, the levers are: Bellow once per fight, a longer Weak, or a chance to stun
+  (the modifier's `chance`).
+
 ## Map 1 back to its five, with the dungeon door 2026-11-01 (DECISIONS #84)
 
 The crawl five moved to the Treasure Dungeon. Map 1 has its original roster again, and the south

@@ -3,6 +3,9 @@ import type { CursedTrait, DamageKind, Effect, Enemy, EnemyId, EnemyTraits, Enem
 
 export type Side = 'player' | 'enemy';
 
+/** A playing card dealt for blackjack (DECISIONS #69, #88). */
+export interface PlayingCard { rank: string; suit: string; value: number }
+
 export interface Combatant {
   side: Side;
   name: string;
@@ -87,7 +90,8 @@ export interface CombatState {
 
 export type PlayerAction =
   /** `target` is an enemy slot; omitted or dead → the first living enemy. */
-  | { type: 'card'; index: number; target?: number; /** A coin card's call (DECISIONS #69); heads when omitted. */ call?: 'heads' | 'tails' }
+  | { type: 'card'; index: number; target?: number; /** A coin card's call (DECISIONS #69); heads when omitted. */ call?: 'heads' | 'tails';
+      /** A blackjack card's hits after the first two cards (DECISIONS #88); omitted = hit until 17 (the sim). */ bjHits?: number }
   /** Hold back: discard this card and pass the turn. The universal out for a trap turn. */
   | { type: 'hold'; index: number }
   /** Only valid while Recovering (stunned), with an empty hand, or with nothing playable (Regen, #69): the turn passes. */
@@ -123,6 +127,8 @@ export type CombatEvent =
   | { t: 'blackjack'; total: number }
   /** Playing Blackjack draws a playing card onto the total (DECISIONS #71). */
   | { t: 'blackjackDraw'; rank: string; suit: string; value: number; total: number }
+  /** A hand of blackjack against 16 (DECISIONS #88): the cards, the total, and whether it beat 16. */
+  | { t: 'blackjackHand'; cards: PlayingCard[]; total: number; won: boolean }
   | { t: 'bust'; total: number }
   /** The card did not kill: it turns on the player (DECISIONS #51). */
   | { t: 'backfire'; amount: number }

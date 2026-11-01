@@ -8,7 +8,7 @@ import { advanceMoves, pickMove } from './ai';
 import { computeHit, predictDamage } from './damage';
 import { HAND_CAP, dealOne, playCard } from './deck';
 import { addMomentum, applyStatus, consumeBlock, consumeBrace, consumeChill, getStatus, hasStatus, removeStatus, tickStatuses } from './status';
-import type { Combatant, CombatEvent, CombatState, EnemyCombatant, Gear, PlayerAction, PlayerCombatant } from './types';
+import type { Combatant, CombatEvent, CombatState, EnemyCombatant, Gear, PlayerAction, PlayerCombatant, PlayingCard } from './types';
 
 export interface PlayerSetup {
   name?: string;
@@ -144,7 +144,7 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
     }
     tagWho(events, from, target.slot);
     // A branching card (DECISIONS #69) becomes the branch it takes, before anything else rolls.
-    const effects = resolveBranches(skill.effects, state, target, action.call ?? 'heads', roll, events);
+    const effects = resolveBranches(skill.effects, state, target, action.call ?? 'heads', roll, events, action.bjHits);
     // Luck (DECISIONS #50): one roll per damage card for a critical hit. Luck 0 rolls nothing.
     const luckChance = (state.player.stats.luck ?? 0) * LUCK_PER_POINT;
     const crit = luckChance > 0 && effects.some((e) => e.type === 'damage') && roll() < luckChance;
@@ -233,7 +233,10 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
   refreshFrenzy(state);
   for (const e of livingEnemies(state)) {
     const from = events.length;
-    if (consumeChill(e, events)) {
+    if (hasStatus(e, 'stun')) {
+      // A stunned enemy loses its action (DECISIONS #88); the stun ticks away at the round's end.
+      events.push({ t: 'stunned', side: 'enemy', turnsLeft: getStatus(e, 'stun')!.turns - 1 });
+    } else if (consumeChill(e, events)) {
       // A Chill stops a rolling enemy dead: its momentum is gone (DECISIONS #83).
       if (hasStatus(e, 'momentum')) removeStatus(e, 'momentum', events);
     } else {
@@ -415,6 +418,32 @@ export const isLocked = (state: CombatState, id: SkillId): boolean => hasStatus(
 export const canPlay = (state: CombatState, index: number): boolean => { const id = state.player.hand[index]; return id !== undefined && !isLocked(state, id); };
 export const playableIndices = (state: CombatState): number[] => state.player.hand.map((_, i) => i).filter((i) => canPlay(state, i));
 
+/** The dealer's stand (DECISIONS #88): a hand must beat it without passing 21. */
+export const BLACKJACK_BEAT = 16;
+
+/**
+ * The hand a blackjack card deals (DECISIONS #88): two cards plus `hits` more, from their own stream
+ * seeded by the combat state, so the scene can show the cards before the play and the play deals the
+ * very same ones. Aces count 11 until that would bust, then 1.
+ */
+export function blackjackHand(state: CombatState, hits: number): { cards: PlayingCard[]; total: number; won: boolean } {
+  const rng = new Rng((state.rngState ^ 0x9e3779b9) >>> 0);
+  const cards: PlayingCard[] = [];
+  for (let i = 0; i < 2 + Math.max(0, hits); i++) {
+    const rank = CARD_RANKS[Math.floor(rng.next() * CARD_RANKS.length)]!, suit = CARD_SUITS[Math.floor(rng.next() * CARD_SUITS.length)]!;
+    cards.push({ rank, suit, value: blackjackValue(rank) });
+  }
+  let total = cards.reduce((a, c) => a + c.value, 0), soft = cards.filter((c) => c.rank === 'A').length;
+  while (total > BLACKJACK_LIMIT && soft > 0) { total -= 10; soft--; }
+  return { cards, total, won: total > BLACKJACK_BEAT && total <= BLACKJACK_LIMIT };
+}
+/** How many hits a player who hits below 17 takes (the sim's play, and the default). */
+export function blackjackAutoHits(state: CombatState): number {
+  let h = 0;
+  while (h < 9 && blackjackHand(state, h).total < 17) h++;
+  return h;
+}
+
 function holds(cond: Condition, state: CombatState, target: Combatant): boolean {
   if (cond.kind === 'selfHpBelow') return state.player.hp < cond.pct * state.player.stats.maxHp;
   if (cond.kind === 'targetDebuffed') return DEBUFFS.some((id) => hasStatus(target, id));
@@ -422,22 +451,26 @@ function holds(cond: Condition, state: CombatState, target: Combatant): boolean 
 }
 
 /** Replace each branch with the side it takes; a coin is flipped here and its call compared. */
-function resolveBranches(effects: Effect[], state: CombatState, target: Combatant, call: 'heads' | 'tails', roll: () => number, events: CombatEvent[]): Effect[] {
+function resolveBranches(effects: Effect[], state: CombatState, target: Combatant, call: 'heads' | 'tails', roll: () => number, events: CombatEvent[], bjHits?: number): Effect[] {
   return effects.flatMap((e) => {
     if (e.type !== 'if') return [e];
     let yes: boolean;
-    if (e.cond.kind === 'coin') {
+    if (e.cond.kind === 'blackjack') {
+      const hand = blackjackHand(state, bjHits ?? blackjackAutoHits(state));
+      yes = hand.won;
+      events.push({ t: 'blackjackHand', cards: hand.cards, total: hand.total, won: hand.won });
+    } else if (e.cond.kind === 'coin') {
       const result = roll() < 0.5 ? 'heads' : 'tails';
       yes = result === call;
       events.push({ t: 'coin', call, result, won: yes });
     } else yes = holds(e.cond, state, target);
-    return resolveBranches(yes ? e.then : e.else, state, target, call, roll, events);
+    return resolveBranches(yes ? e.then : e.else, state, target, call, roll, events, bjHits);
   });
 }
 
 /** The effects a card would have right now against `target`, for its face and the sim: a coin shows its winning side. */
 export function effectsNow(state: CombatState, skill: Skill, target: Combatant): Effect[] {
-  return skill.effects.flatMap((e) => (e.type !== 'if' ? [e] : effectsNow(state, { ...skill, effects: e.cond.kind === 'coin' || holds(e.cond, state, target) ? e.then : e.else }, target)));
+  return skill.effects.flatMap((e) => (e.type !== 'if' ? [e] : effectsNow(state, { ...skill, effects: e.cond.kind === 'coin' || e.cond.kind === 'blackjack' || holds(e.cond, state, target) ? e.then : e.else }, target)));
 }
 
 /** Luck (DECISIONS #50, #52): each point is 0.2% chance of a critical hit and of a bonus turn, per card; base luck 5 is 1%. */
