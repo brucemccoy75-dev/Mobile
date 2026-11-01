@@ -1,5 +1,5 @@
 import { CLASSES } from './classes';
-import { ENEMIES } from './enemies';
+import { ENEMIES, ROSTER } from './enemies';
 import { CARDS_DATA, SETS, SKILLS } from './skills';
 import { ITEMS } from './items';
 import type { ClassId, Enemy, EnemyId, Item, PlayerClass, SetId, Skill, SkillId, SkillSet } from './types';
@@ -30,4 +30,5 @@ export const getSet = (id: SetId) => must(setById, id, 'set');
 export const getClass = (id: ClassId) => must(classById, id, 'class');
 export const getEnemy = (id: EnemyId) => must(enemyById, id, 'enemy');
 export const getItem = (id: string) => must(itemById, id, 'item');
-export const enemiesOfTier = (tier: Enemy['tier']) => ENEMIES.filter((e) => e.tier === tier);
+/** A tier's roster. Screen 1 is the crawl roster while ROSTER.crawl is on (DECISIONS #83), else the original five. */
+export const enemiesOfTier = (tier: Enemy['tier']) => ENEMIES.filter((e) => e.tier === tier && (tier !== 1 || (e.set === 'crawl') === ROSTER.crawl));

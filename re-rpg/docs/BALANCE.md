@@ -4,6 +4,66 @@ Newest first. Run logs are read with the procedure in `docs/PLAYTESTS.md` (`npm 
 
 Loadouts: **fresh** = Attack/Defend only, empty deck. **Set** = the two set tomes in the deck. **gearN** = a full three-slot kit for screen N (`GEAR_KIT` in `src/core/sim/gauntlet.ts`). The sim does not model loot choice, relics or 4-card decks, so these are floors, not expectations.
 
+## The crawl roster on screen 1 2026-11-01 (DECISIONS #83)
+
+Screen 1's five swapped for the crawl roster (`ROSTER.crawl`). Each alone, a fresh warrior, 1000
+fights, greedy policy:
+
+```
+original         win   HP lost        crawl              win   HP lost
+boar            100%    10.3          rage_elemental    100%    15.0
+shell_beetle    100%     5.1          the_hoarder       100%     6.7
+hex_imp         100%     3.8          porkchop_express  100%    10.8
+adept_necro     100%    14.5          bad_llama         100%     3.5
+rat_pack        100%     7.8          brindled_vespa    100%     3.4
+average                  8.3          average                    7.9
+```
+
+`npm run sim -- --screen --class warrior --runs 1000`:
+
+```
+full clear                     reach boss  beat boss  hp@boss fights rounds  deaths
+warrior fresh                        0.0%       0.0%      0.0   2.50   17.8  rage_elemental 24%, porkchop_express 16%, the_hoarder 14%
+warrior Bulwark                      0.2%       0.0%      6.5   2.45   18.5  rage_elemental 25%, porkchop_express 19%, the_hoarder 11%
+warrior Berserker                    0.1%       0.0%      4.0   2.63   16.2  rage_elemental 21%, porkchop_express 19%, the_hoarder 11%
+warrior Shadow Knight                0.8%       0.0%      8.4   3.65   21.3  rage_elemental 21%, porkchop_express 20%, the_hoarder 9%
+warrior Berserker+Bulwark            0.1%       0.0%      2.0   2.57   17.5  rage_elemental 22%, porkchop_express 22%, the_hoarder 10%
+warrior Shadow Knight+Bulwark        0.2%       0.0%      5.0   2.78   19.2  rage_elemental 24%, porkchop_express 20%, the_hoarder 11%
+warrior Berserker+Shadow Knight       0.1%       0.0%      3.0   2.96   17.9  porkchop_express 22%, rage_elemental 19%, the_hoarder 11%
+
+shortest road                  reach boss  beat boss  hp@boss fights rounds  deaths
+warrior fresh                        9.2%       0.0%      7.7   2.27   16.8  rage_elemental 15%, porkchop_express 10%, gatekeeper 9%
+warrior Bulwark                     10.5%       0.0%      9.9   2.17   17.1  rage_elemental 18%, porkchop_express 14%, gatekeeper 11%
+warrior Berserker                   11.7%       0.0%      9.9   2.22   14.8  rage_elemental 14%, porkchop_express 13%, gatekeeper 12%
+warrior Shadow Knight               29.9%       0.0%      9.7   2.87   18.0  gatekeeper 30%, porkchop_express 10%, rage_elemental 8%
+warrior Berserker+Bulwark           12.1%       0.0%      9.4   2.25   16.2  rage_elemental 15%, porkchop_express 12%, gatekeeper 12%
+warrior Shadow Knight+Bulwark       17.1%       0.0%      9.2   2.40   17.5  gatekeeper 17%, porkchop_express 13%, rage_elemental 13%
+warrior Berserker+Shadow Knight      16.7%       0.0%     10.7   2.42   15.8  gatekeeper 17%, porkchop_express 13%, rage_elemental 11%
+```
+
+`npm run sim -- --class warrior` (gauntlet):
+
+```
+loadout, greedy policy
+
+loadout                        reach boss  beat boss  hp@boss fights rounds  deaths
+warrior fresh                       19.8%       0.0%      5.5   2.56   16.9  rage_elemental 31%, gatekeeper 20%, porkchop_express 16%
+warrior Bulwark                     29.2%       0.0%      8.7   2.68   21.3  gatekeeper 29%, rage_elemental 27%, porkchop_express 26%
+warrior Berserker                   41.9%       0.0%     10.8   2.83   12.8  gatekeeper 42%, rage_elemental 21%, porkchop_express 19%
+warrior Bulwark+gear1               78.3%       0.0%     13.6   3.69   25.2  gatekeeper 78%, porkchop_express 9%, rage_elemental 9%
+warrior Berserker+gear1             73.6%       0.0%     16.1   3.51   14.4  gatekeeper 74%, porkchop_express 10%, rage_elemental 9%
+warrior both sets+gear1             77.7%       0.7%     15.8   3.58   19.6  gatekeeper 77%, porkchop_express 10%, rage_elemental 7%
+```
+
+Reading:
+- Alone, the new five cost about what the old ones did (7.9 HP against 8.3).
+- The shortest road is close for fresh, Bulwark and the two-heirloom Bulwark loadouts. Shadow
+  Knight (40.0% → 29.9%) and Berserker (15.5% → 11.7%) reach the gate less often. The duos are
+  harder: a Vespa pair in frenzy, or a Rage Elemental behind anything.
+- Porkchop's momentum is the one to learn: a Guard on its hits stops it. The greedy policy does
+  not plan for that, so real play should beat the mirror there.
+- Knight Andre is unchanged and still beaten 0% in the mirror.
+
 ## Surprise fights and the shrine that asks 2026-10-31 (DECISIONS #81)
 
 The screen mirror now rolls the same surprises a run does (about 15% of single-enemy fight nodes

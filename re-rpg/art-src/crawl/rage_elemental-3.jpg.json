@@ -1,0 +1,13 @@
+{
+  "when": "2026-11-01T01:07:17",
+  "cmd": "image",
+  "model": "grok-imagine-image-2.0",
+  "prompt": "A Rage Elemental: a towering six-legged nightmare made of swirling black and purple smoke, a skeletal horned skull head with glowing crimson eyes, enormous jagged obsidian claws on its front limbs, wisps of smoke trailing from its body, menacing and furious. Full-body game enemy character, flat vector cel-shaded style, chunky stylised proportions, thick uniform dark outline, flat fills, two tones per material (base plus one shadow), no texture, no gradients, strict side view facing left, light from the top left, centred with space around it, plain flat white background, nothing else in the picture: no text, no ground, no shadow, no frame.",
+  "refs": [],
+  "revised_prompt": null,
+  "reply": {
+    "usage": {
+      "cost_in_usd_ticks": 1600000000
+    }
+  }
+}

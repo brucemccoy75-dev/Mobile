@@ -23,6 +23,12 @@ export const ART_FILES: Record<string, string> = {
   enemy_shell_beetle_c: 'art/c/shell_beetle@2x.png',
   enemy_rat_pack_c: 'art/c/rat_pack@2x.png',
   enemy_gatekeeper_c: 'art/c/gatekeeper@2x.png', // Knight Andre
+  // The crawl roster (DECISIONS #83), from Grok (art-src/crawl/).
+  enemy_rage_elemental_c: 'art/c/rage_elemental@2x.png',
+  enemy_the_hoarder_c: 'art/c/the_hoarder@2x.png',
+  enemy_porkchop_express_c: 'art/c/porkchop_express@2x.png',
+  enemy_bad_llama_c: 'art/c/bad_llama@2x.png',
+  enemy_brindled_vespa_c: 'art/c/brindled_vespa@2x.png',
   bg_forest: 'art/c/bg_forest.jpg',
   bg_tundra: 'art/c/bg_tundra.jpg', // screen 2's battles (DECISIONS #80)
   title: 'art/c/title.jpg', // title screen key art with the logo (docs/ART.md, DECISIONS #74)

@@ -21,7 +21,8 @@ export const CURSED_SHIELD = 0.5;
  */
 export function computeHit(attacker: Combatant, target: Combatant, mult: number, ignoreDef = false, flat = 0, hits = 1): number {
   const gear = attacker.stats.gearAtk ?? 0;
-  let base = Math.round((attacker.stats.atk - gear) * mult) + gear + flat;
+  // Momentum (DECISIONS #83) adds to every hit, like gear.
+  let base = Math.round((attacker.stats.atk - gear) * mult) + gear + flat + (getStatus(attacker, 'momentum')?.magnitude ?? 0);
   // Scatter: a single big hit finds nothing; multi-hit attacks are unaffected.
   if (hits === 1 && hasStatus(target, 'scatter')) base = Math.ceil(base * 0.5);
   if (hasStatus(attacker, 'weak')) base = Math.floor(base * WEAK_MULT);
@@ -32,6 +33,8 @@ export function computeHit(attacker: Combatant, target: Combatant, mult: number,
   // A cursed shield (DECISIONS #73): every hit halved, for good.
   if (target.cursed?.includes('shield')) dmg = Math.max(1, Math.ceil(dmg * CURSED_SHIELD));
   if (hasStatus(target, 'exposed')) dmg *= EXPOSED_MULT;
+  // Frenzy (DECISIONS #83): a share more for each frenzied ally still standing.
+  if (attacker.boost) dmg = Math.ceil(dmg * (1 + attacker.boost));
   // Blackjack (DECISIONS #69): every hit lands this many times over.
   const bj = getStatus(attacker, 'blackjack');
   if (bj) dmg *= bj.magnitude;
@@ -51,6 +54,9 @@ export function predictDamage(attacker: Combatant, target: Combatant, mult: numb
  * the attacker's Weak. Brace's counter is not a change to what lands, so it is not here.
  */
 export function previewDamage(attacker: Combatant, target: Combatant, e: Extract<Effect, { type: 'damage' }>): CardPreview {
+  // A sweep on a sweep-weak enemy (the Hoarder, DECISIONS #83) shows what will really land.
+  const k = e.targets === 'all' ? (target.traits?.sweepVuln ?? 1) : 1;
+  if (k !== 1) e = { ...e, mult: e.mult * k, flat: (e.flat ?? 0) * k };
   const hits = e.hits ?? 1;
   const aegis = hasStatus(target, 'aegis');
   let stacks = getStatus(target, e.kind === 'magic' ? 'ward' : 'guard')?.magnitude ?? 0;

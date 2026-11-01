@@ -1,5 +1,5 @@
 import type { VfxKind } from '@core/vfx';
-import type { CursedTrait, DamageKind, Effect, Enemy, EnemyId, EnemyMove, Intent, Posture, SkillId, Stats, Status, StatusId } from '@data/types';
+import type { CursedTrait, DamageKind, Effect, Enemy, EnemyId, EnemyTraits, EnemyMove, Intent, Posture, SkillId, Stats, Status, StatusId } from '@data/types';
 
 export type Side = 'player' | 'enemy';
 
@@ -13,6 +13,10 @@ export interface Combatant {
   cursed?: CursedTrait[];
   /** What the player's equipment does in a fight beyond stats (DECISIONS #82). */
   gear?: Gear;
+  /** An enemy's weaknesses and habits (DECISIONS #83). */
+  traits?: EnemyTraits;
+  /** Extra damage share right now (a Vespa's frenzy, DECISIONS #83); kept current by the engine. */
+  boost?: number;
 }
 
 /** Equipment powers in combat (DECISIONS #82): statuses that never land, a chance to pierce blocks, a paid reshuffle. */

@@ -1216,3 +1216,74 @@ gives). Checked in Test Mode against Knight Andre, who guards, with all three wo
 - 3 of 7 hits into his Guard pierced.
 
 A boss reward in a real run offered the Earthen Relic. Screenshots in `docs/audit/earthen-2026-10-31/`.
+
+## 83. The crawl roster: five enemies the designer's wife loves, on screen 1 for now
+
+Designer's request: five enemies from a book series she loves, with Grok art in the game's style,
+attacks that fit the cards, and personality-driven lines, replacing screen 1's five for testing.
+The designer chose (Q&A before starting):
+- keep the names and looks as they are;
+- the same balance as the existing five;
+- random duos;
+- battle barks (they play with the story off);
+- every proposed mechanic;
+- a single switch.
+
+**The switch**: `ROSTER.crawl` in `src/data/enemies.ts` (on).
+- While it is on, screen 1's roster (`enemiesOfTier(1)`) is the five `set: 'crawl'` enemies, and
+  its duos are any two at random, Vespa pairs included (21 pairs).
+- Off, the Boar, Shell Beetle, Hex Imp, Adept Necromancer and Rat Pack come back. Their data and
+  art are untouched.
+- Knight Andre still holds the gate. Test Mode lists the active roster (the full list no longer
+  fit), and it now allows two of a kind.
+
+**The book weaknesses, in the game's terms** (no distance, flight, pits or terrain here). New
+engine traits (`EnemyTraits`), test first in `src/core/combat/traits83.test.ts`:
+
+| Enemy | Moves (telegraphed) | Weakness / habit |
+|---|---|---|
+| Rage Elemental (brute, 10 HP, DEF 1) | Obsidian Rend 3 hits; Reverse Gravity (magic, leaves you Exposed); Berserker Charge; enrages below half (no rest turns) | `chillExposes`: a Chill contains it (skips its action) and Exposes it |
+| The Hoarder (14 HP, slow) | Scatterer Vomit 4 small hits + Weak; Gathering Junk (her free, Exposed turn); Crushing Slam; Filth Storm (magic + Curse) | `sweepVuln 2`: hit-all cards (Bellow) do double; she never guards or dodges |
+| Porkchop Express (11 HP, DEF 1) | Tusken Grinder 2 hits; Rolling Massacre | `momentum 1`: each attack adds +1 to every later hit (a MOMENTUM chip); a blocked hit or a Chill stops it dead |
+| Bad Llama (8 HP, fragile) | Lava Spit + Burn; Savage Bite; Molten Spray (magic + Burn 2) | `chillExposes`: cold hardens the lava |
+| Brindled Vespa (8 HP) | Venomous Sting + Burn (venom); Take Wing (Scatter); Dive Strike | `frenzy 0.5`: +50% per other Vespa alive (gone the moment one dies); `burnVuln 2`; `chillGrounds` (a Chill ends its Scatter) |
+
+The warrior can use the Hoarder's weakness today, through Bellow and the boomerangs. No warrior
+card applies Chill or Burn, so the cold and fire weaknesses wait for a card; Chill works in Test
+Mode. The card preview shows the doubled sweep on the Hoarder (#40: the number is what lands).
+
+**On screen**:
+- the weaknesses are one gold-edged chip on the enemy's status row: its first trait, then "+N"
+  for more (one chip, so a duo's rows fit). A tap explains them all;
+- barks are a speech bubble beside the head, toward the open middle, so the intent panel stays
+  readable. One plays as the fight opens, a rage line when the Rage Elemental enrages, a last
+  word at death. A new line replaces the one still showing.
+
+**World data**: the crawl five have no world.json lines. The validator and the dialogue test skip
+`set: 'crawl'`, and a fight with no line simply starts.
+
+**Art**: four Grok images each with the style sheet's clauses, facing left on white
+(`art-src/crawl/`, contact sheet `compare.jpg`). Picks: Rage #4, Hoarder #3, Porkchop #1,
+Llama #3, Vespa #1. They were cut with `cut-sprite.py` at battle size (150–165 px) as
+`public/art/c/<id>@2x.png`. About $1.30 for the 20.
+
+**Balance**: first numbers were harder than the old five (the Rage Elemental at DEF 2 cost 20 HP a
+fight and lost 1 in 7). Tuned against each enemy alone and both sim tables (BALANCE.md):
+- the Rage Elemental to DEF 1 and 10 HP, with a softer rage phase;
+- Porkchop to 11 HP and a 1.2× Massacre;
+- the Llama to 8 HP and a 1.0× Bite.
+
+Alone they now cost 7.9 HP on average against the old five's 8.3. The shortest road is within a
+point or two for most loadouts; Shadow Knight and Berserker reach the gate less often (duos: a
+Vespa pair in frenzy).
+
+Checked in a real browser (Test Mode and a level-select map):
+- every enemy's art, opening bark and chip;
+- Bellow doing 2 to the Hoarder;
+- Porkchop's momentum going 1 → 2 and its next hit landing for 4;
+- a Vespa pair at +50% each;
+- the Rage Elemental's rage line;
+- the Llama's last word;
+- a map rolled from the new five.
+
+Screenshots in `docs/audit/crawl-2026-11-01/`.

@@ -52,6 +52,7 @@ export const STATUS_LABELS: Record<StatusId, { label: string; color: string; des
   harden: { label: 'HARDENED', color: '#a8b3c7', desc: 'Takes half damage from every hit while it lasts. Hits still land, so Exposed and Burn still work.' },
   regen: { label: 'LUNCH BREAK', color: '#7dff9a', desc: 'Heals a share of max HP at the end of every round while it lasts. No card that deals damage can be played meanwhile.' },
   blackjack: { label: 'BLACKJACK', color: '#ffd700', desc: 'Playing it draws a playing card: its value starts your total (Ace 11 or 1, faces 10). Every hit lands five times over for the rest of the fight and adds what lands to the total. Pass 21 and you bust: you die.' },
+  momentum: { label: 'MOMENTUM', color: '#e0a060', desc: 'Every hit it lands does this much more. It grows with each attack; a hit you block, or a Chill, stops it dead.' },
 };
 
 /** Plain-language reading of an enemy intent for the tap-to-explain panel. */

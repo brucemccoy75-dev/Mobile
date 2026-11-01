@@ -30,6 +30,18 @@ export function applyStatus(c: Combatant, id: StatusId, turns: number, magnitude
   }
   const s = getStatus(c, id)!;
   events.push({ t: 'statusApplied', side: c.side, status: id, turns: s.turns, magnitude: s.magnitude });
+  // Chill's extra bite on some enemies (DECISIONS #83): containment exposes it, a flier comes down.
+  if (id === 'chill') {
+    if (c.traits?.chillExposes) applyStatus(c, 'exposed', c.traits.chillExposes, 1, events);
+    if (c.traits?.chillGrounds && hasStatus(c, 'scatter')) removeStatus(c, 'scatter', events);
+  }
+}
+
+/** Momentum (DECISIONS #83): `n` more on every hit, for the fight, until something breaks it. */
+export function addMomentum(c: Combatant, n: number, events: CombatEvent[]): void {
+  const m = getStatus(c, 'momentum');
+  if (m) m.magnitude += n; else c.statuses.push({ id: 'momentum', turns: 99, magnitude: n });
+  events.push({ t: 'statusApplied', side: c.side, status: 'momentum', turns: 99, magnitude: getStatus(c, 'momentum')!.magnitude });
 }
 
 export function removeStatus(c: Combatant, id: StatusId, events: CombatEvent[]): void {
@@ -73,7 +85,8 @@ export function tickStatuses(c: Combatant, events: CombatEvent[]): void {
   for (const dot of ['burn', 'curse'] as const) {
     const st = getStatus(c, dot);
     if (st && c.hp > 0) {
-      const amount = Math.min(c.hp, st.magnitude);
+      // Some enemies burn worse (DECISIONS #83).
+      const amount = Math.min(c.hp, st.magnitude * (dot === 'burn' ? (c.traits?.burnVuln ?? 1) : 1));
       c.hp -= amount;
       events.push({ t: 'burn', side: c.side, amount, status: dot });
     }
@@ -88,7 +101,7 @@ export function tickStatuses(c: Combatant, events: CombatEvent[]): void {
   }
   for (const s of c.statuses.slice()) {
     // Blackjack lasts the whole fight.
-    if (s.id === 'guard' || s.id === 'ward' || s.id === 'chill' || s.id === 'blackjack') continue;
+    if (s.id === 'guard' || s.id === 'ward' || s.id === 'chill' || s.id === 'blackjack' || s.id === 'momentum') continue;
     s.turns -= 1;
     if (s.turns <= 0) removeStatus(c, s.id, events);
   }

@@ -20,7 +20,9 @@ export interface Stats {
 /** guard blocks the next physical hit; ward the next magic hit; aegis every hit for N rounds. */
 export type StatusId = 'exposed' | 'guard' | 'ward' | 'aegis' | 'burn' | 'chill' | 'weak' | 'stun' | 'brace' | 'scatter' | 'curse' | 'harden'
   /** Regen (DECISIONS #69): heal `magnitude`% of max HP each round end; no damage cards while it lasts. Blackjack: every hit ×`magnitude` for the fight; more than 21 dealt in total and you die. */
-  | 'regen' | 'blackjack';
+  | 'regen' | 'blackjack'
+  /** Momentum (DECISIONS #83): `magnitude` added to every hit; grows with each attack, broken by a block or a Chill. */
+  | 'momentum';
 
 export type DamageKind = 'physical' | 'magic';
 
@@ -144,6 +146,28 @@ export interface Enemy {
   tint?: number;
   /** A cursed variant's traits (DECISIONS #73). */
   cursed?: CursedTrait[];
+  /** Weaknesses and habits beyond the move table (DECISIONS #83). */
+  traits?: EnemyTraits;
+  /** Short lines it says in battle, even with the story off (DECISIONS #83): one is picked at random. */
+  barks?: { start?: string[]; rage?: string[]; death?: string[] };
+  /** A swappable roster this enemy belongs to (DECISIONS #83): `crawl` replaces screen 1's while ROSTER.crawl is on. */
+  set?: 'crawl';
+}
+
+/** Enemy weaknesses and habits (DECISIONS #83). */
+export interface EnemyTraits {
+  /** Hit-all (sweep) damage on it is multiplied by this. */
+  sweepVuln?: number;
+  /** Each attack adds this much to every later hit (Momentum); a blocked hit or a Chill resets it. */
+  momentum?: number;
+  /** +this share of damage for each other living enemy that also has frenzy. */
+  frenzy?: number;
+  /** Burn ticks on it are multiplied by this. */
+  burnVuln?: number;
+  /** A Chill on it also leaves it Exposed for this many rounds. */
+  chillExposes?: number;
+  /** A Chill on it ends its Scatter (a flier brought down). */
+  chillGrounds?: boolean;
 }
 
 export type Slot = 'body' | 'weapon' | 'relic';

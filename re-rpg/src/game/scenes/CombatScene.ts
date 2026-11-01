@@ -3,7 +3,7 @@ import { BACKDROP_HORIZON, artKey, backdropGround, backdropKey, reloadArt } from
 import { describeSkill, getEnemy, getSkill } from '@data/index';
 import type { CardPreview } from '@data/describe';
 import type { CursedTrait, Enemy, Intent, Posture } from '@data/types';
-import { createCombat, redrawHand, currentIntent, effectsNow, isLocked, isPlayerStunned, playableIndices, previewDamage, resolveTarget, skillInCombat, statRatings, step, CURSED_TRAIT_INFO, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
+import { createCombat, redrawHand, currentIntent, effectsNow, isLocked, isPlayerStunned, playableIndices, previewDamage, resolveTarget, skillInCombat, statRatings, step, CURSED_TRAIT_INFO, enemyTraitInfo, type CombatEvent, type CombatState, type PlayerAction } from '@core/combat';
 import { endSavedRun, getMeta, getSession, getStore, persistMeta, persistRun, setName, setSession, spendConsumedTomes, type PendingEncounter, type RunSession } from '@game/session';
 import { gainExp, ghostOn, layGhost, leaveGhost, nudgeRelation, recordDeath } from '@core/meta';
 import { CURSED_REWARD_MULT, ghostSpoils } from '@core/variants';
@@ -91,6 +91,8 @@ export class CombatScene extends Phaser.Scene {
   private handHint!: Phaser.GameObjects.Text;
   private holdBtn!: Button;
   private redrawBtn?: Button;
+  /** The speech bubble each enemy is showing (DECISIONS #83), so a new line replaces the old. */
+  private barks = new Map<number, Phaser.GameObjects.GameObject[]>();
   private holdMode = false;
   private handY = 0;
   private px = 0; private py = 0;
@@ -103,6 +105,7 @@ export class CombatScene extends Phaser.Scene {
     this.cast = null;
     this.hand = [];
     this.displayHand = [];
+    this.barks = new Map();
     this.holdMode = false;
     this.session = getSession(this);
     if (!this.session.pendingEncounter) throw new Error('Combat started without an encounter');
@@ -249,6 +252,8 @@ export class CombatScene extends Phaser.Scene {
 
     new Button(this, W / 2, H * 0.66 + 22, 'Quit', () => this.quit(), { width: 70, height: 28, fontSize: '12px' }).setDepth(5).setAlpha(0.6);
     if (this.encounter.surprise) void this.surpriseIntro(getEnemy(this.encounter.surprise).name, this.state.enemyDefs[0]!.name);
+    // Each enemy that has something to say says it as the fight opens (DECISIONS #83), the front one first.
+    this.views.forEach((v, i) => this.time.delayedCall((this.encounter.surprise ? 2000 : 650) + i * 900, () => this.bark(v.slot, 'start')));
   }
 
   /** A surprise fight (DECISIONS #81): the map showed one enemy and another is here. Cards wait until it is said. */
@@ -274,10 +279,39 @@ export class CombatScene extends Phaser.Scene {
 
   /** A cursed enemy's traits, as chips that last the fight (DECISIONS #78). */
   private traitChips(v: EnemyView) {
-    return (this.state.enemies[v.slot]?.cursed ?? []).map((t) => {
+    const cursed = (this.state.enemies[v.slot]?.cursed ?? []).map((t) => {
       const info = CURSED_TRAIT_INFO[t];
       return { label: info.label, color: '#ff8a8a', tap: () => this.showInfo(`${info.label} on ${v.def.name}  ·  the whole fight`, info.desc, '#ff8a8a') };
     });
+    // Its weaknesses and habits (DECISIONS #83), gold-edged: things to use, not only to fear.
+    // One chip, so a duo's two rows still fit: its first trait and how many more; a tap reads them all.
+    const info = enemyTraitInfo(this.state.enemies[v.slot]?.traits);
+    const own = info.length ? [{ label: info.length > 1 ? `${info[0]!.label} +${info.length - 1}` : info[0]!.label, color: '#f0d890', edge: 0xc9a227, tap: () => this.showInfo(`${v.def.name}: ${info.map((x) => x.label).join(' · ')}`, info.map((x) => `${x.label}: ${x.desc}`).join('\n'), '#f0d890') }] : [];
+    return [...cursed, ...own];
+  }
+
+  /**
+   * A line from the enemy (DECISIONS #83): a speech bubble over its head for a couple of seconds,
+   * picked at random from its barks. These play with the story off.
+   */
+  private bark(slot: number, kind: 'start' | 'rage' | 'death') {
+    const v = this.views[slot];
+    const lines = v?.def.barks?.[kind];
+    if (!v || !lines?.length) return;
+    const line = lines[Math.floor(Math.random() * lines.length)]!;
+    // A new line replaces whatever it was still saying.
+    this.barks.get(slot)?.forEach((p) => p.destroy());
+    // Beside its head, toward the open middle of the stage: the intent panel above the head stays readable.
+    const sp = v.sprite as unknown as { displayHeight: number; displayWidth: number };
+    const right = v.x - sp.displayWidth * 0.32, y = v.y - sp.displayHeight * 0.12;
+    const t = this.add.text(right - 12, y, line, { fontFamily: FONT, fontSize: '15px', color: '#1a1200', fontStyle: 'bold', align: 'center', wordWrap: { width: 220 } }).setOrigin(1, 0.5).setDepth(66);
+    const bg = this.add.rectangle(right + 0, y, t.width + 24, t.height + 14, 0xfff6dc, 0.96).setOrigin(1, 0.5).setStrokeStyle(2, 0x1a1200).setDepth(65);
+    const tail = this.add.triangle(right - 1, y, 0, -7, 0, 7, 12, 0, 0xfff6dc).setOrigin(0, 0.5).setDepth(65);
+    const parts = [bg, tail, t];
+    this.barks.set(slot, parts);
+    for (const p of parts) p.setAlpha(0);
+    this.tweens.add({ targets: parts, alpha: 1, duration: 160 });
+    this.time.delayedCall(kind === 'death' ? 1500 : 2300, () => { if (!parts[0]!.active) return; this.tweens.add({ targets: parts, alpha: 0, duration: 260, onComplete: () => { parts.forEach((p) => p.destroy()); if (this.barks.get(slot) === parts) this.barks.delete(slot); } }); });
   }
 
   /** ATK and DEF under each bar, from the statuses playback has shown so far (DECISIONS #77). */
@@ -825,6 +859,7 @@ export class CombatScene extends Phaser.Scene {
         return;
       }
       case 'phase':
+        this.bark(who, 'rage');
         await this.bannerShow(`${view.def.name} rages!`);
         return;
       case 'crit':
@@ -889,7 +924,7 @@ export class CombatScene extends Phaser.Scene {
         const s = sprite(e.side);
         if (s instanceof Phaser.GameObjects.Sprite) s.anims.stop();
         this.tweens.killTweensOf(s); // the breathing stops with the body
-        if (e.side === 'enemy') { s.disableInteractive(); this.hideIntent(who); view.slain = true; view.hp.setDead(); view.chips.set([]); view.stats.setVisible(false); view.nameText.setAlpha(0.4); }
+        if (e.side === 'enemy') { this.bark(who, 'death'); s.disableInteractive(); this.hideIntent(who); view.slain = true; view.hp.setDead(); view.chips.set([]); view.stats.setVisible(false); view.nameText.setAlpha(0.4); }
         await tween(this, { targets: s, alpha: 0.15, y: s.y + 10, duration: 350 });
         if (e.side === 'enemy' && this.target === who) this.setTarget(-1, true);
         return;

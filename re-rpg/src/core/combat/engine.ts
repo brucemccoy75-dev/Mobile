@@ -7,7 +7,7 @@ import { vfxForEffects, vfxForSkill } from '@core/vfx';
 import { advanceMoves, pickMove } from './ai';
 import { computeHit, predictDamage } from './damage';
 import { HAND_CAP, dealOne, playCard } from './deck';
-import { applyStatus, consumeBlock, consumeBrace, consumeChill, getStatus, hasStatus, removeStatus, tickStatuses } from './status';
+import { addMomentum, applyStatus, consumeBlock, consumeBrace, consumeChill, getStatus, hasStatus, removeStatus, tickStatuses } from './status';
 import type { Combatant, CombatEvent, CombatState, EnemyCombatant, Gear, PlayerAction, PlayerCombatant } from './types';
 
 export interface PlayerSetup {
@@ -64,7 +64,7 @@ export function createCombat(opts: CombatOptions): CombatState {
     ...(opts.player.gear ? { gear: { ...opts.player.gear } } : {}),
   };
   const enemies = defs.map((def, slot) => {
-    const base = { side: 'enemy' as const, name: def.name, enemyId: def.id, slot, dead: false, stats: { ...def.stats }, hp: def.stats.maxHp, statuses: [], phase: 0, seqIndex: 0, ...(def.cursed ? { cursed: [...def.cursed] } : {}) };
+    const base = { side: 'enemy' as const, name: def.name, enemyId: def.id, slot, dead: false, stats: { ...def.stats }, hp: def.stats.maxHp, statuses: [], phase: 0, seqIndex: 0, ...(def.cursed ? { cursed: [...def.cursed] } : {}), ...(def.traits ? { traits: { ...def.traits } } : {}) };
     const e = base as unknown as EnemyCombatant;
     e.current = pickMove(e, def, roll);
     e.next = pickMove(e, def, roll);
@@ -223,12 +223,23 @@ export function step(state: CombatState, action: PlayerAction): CombatEvent[] {
   }
 
   // Enemy turns, front to back
+  refreshFrenzy(state);
   for (const e of livingEnemies(state)) {
     const from = events.length;
-    if (!consumeChill(e, events)) {
+    if (consumeChill(e, events)) {
+      // A Chill stops a rolling enemy dead: its momentum is gone (DECISIONS #83).
+      if (hasStatus(e, 'momentum')) removeStatus(e, 'momentum', events);
+    } else {
       const move = e.current;
       events.push({ t: 'play', side: 'enemy', skill: move.id, name: move.name, vfx: vfxForEffects(move.effects) });
+      const moveFrom = events.length;
       applyEffects(move.effects, e, state.player, roll, events);
+      // Momentum (DECISIONS #83): an attack builds it, unless one of its hits was blocked.
+      if (e.traits?.momentum && move.effects.some((m) => m.type === 'damage')) {
+        const blocked = events.slice(moveFrom).some((x) => x.t === 'damage' && x.source === 'enemy' && x.blocked);
+        if (blocked) { if (hasStatus(e, 'momentum')) removeStatus(e, 'momentum', events); }
+        else addMomentum(e, e.traits.momentum, events);
+      }
       // A cursed follow-up (DECISIONS #73): a quarter of its attack right after, and no block stops it.
       if (e.cursed?.includes('followUp') && move.effects.some((m) => m.type === 'damage') && state.player.hp > 0) {
         const amount = Math.min(state.player.hp, Math.max(1, computeHit(e, state.player, CURSED_FOLLOW_UP)));
@@ -265,8 +276,20 @@ function finish(state: CombatState, rng: Rng, events: CombatEvent[]): CombatEven
   return events;
 }
 
+/** Frenzy (DECISIONS #83): each frenzied enemy hits harder for every other frenzied one alive. */
+function refreshFrenzy(state: CombatState): void {
+  const living = livingEnemies(state);
+  for (const e of state.enemies) {
+    const f = e.traits?.frenzy;
+    if (!f) continue;
+    const others = e.dead ? 0 : living.filter((o) => o !== e && o.traits?.frenzy).length;
+    e.boost = f * others || undefined;
+  }
+}
+
 function startRound(state: CombatState, rng: Rng, events: CombatEvent[]): void {
   state.round += 1;
+  refreshFrenzy(state);
   state.bonusTaken = false;
   events.push({ t: 'roundStart', round: state.round });
   // The new intents are announced before the deals, so the panels never show last
@@ -288,6 +311,7 @@ function checkDeaths(state: CombatState, events: CombatEvent[]): boolean {
     e.dead = true;
     events.push({ t: 'death', side: 'enemy', who: e.slot });
   }
+  refreshFrenzy(state); // a fallen Vespa's partner calms at once (DECISIONS #83)
   if (state.enemies.every((e) => e.dead)) {
     state.outcome = 'won';
     events.push({ t: 'end', outcome: 'won' });
@@ -314,7 +338,9 @@ function sweep(state: CombatState, e: Extract<Effect, { type: 'damage' }>, event
     victims.forEach((v, k) => {
       if (v.hp <= 0) return;
       const f = events.length;
-      dealt[k]! += applyHit(state.player, v, e, i, hits, events, roll, crit);
+      // Sweep-weak (the Hoarder, DECISIONS #83): a hit-all card lands harder on it.
+      const k2 = v.traits?.sweepVuln ?? 1;
+      dealt[k]! += applyHit(state.player, v, k2 === 1 ? e : { ...e, mult: e.mult * k2, flat: (e.flat ?? 0) * k2 }, i, hits, events, roll, crit);
       tagWho(events, f, v.slot);
       for (let j = f; j < events.length; j++) (events[j] as CombatEvent & { volley?: number }).volley = i + 1;
     });

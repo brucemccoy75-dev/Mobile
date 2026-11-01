@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CLASSES, ENEMIES, ITEMS, SKILLS, getClass, getEnemy, getItem, getSkill } from '@data/index';
+import { CLASSES, ENEMIES, ITEMS, SKILLS, enemiesOfTier, getClass, getEnemy, getItem, getSkill } from '@data/index';
 import { CURSED_TRAITS, type ClassId, type CursedTrait, type EnemyId, type SkillId, type Slot } from '@data/types';
 import { TOME_COPY_CAP } from '@data/skills';
 import { DECK_CAP } from '@core/combat';
@@ -43,12 +43,14 @@ export class TestModeScene extends Phaser.Scene {
     // enemies
     const x0 = 16;
     this.add.text(x0, 50, 'Enemy  ·  "2nd" adds it behind the first', text.small).setOrigin(0, 0);
-    ENEMIES.forEach((e, i) => {
-      new Button(this, x0 + 76, 80 + i * 30, `${e.name}  ·  ${e.archetype === 'boss' ? 'boss' : `t${e.tier}`}`, () => this.set({ enemyId: e.id, extraId: this.setup.extraId === e.id ? null : this.setup.extraId }), { ...small, width: 152, ...sel(this.setup.enemyId === e.id) });
+    // The enemies a run can meet: screen 1's active roster (the crawl five while ROSTER.crawl is on, DECISIONS #83), screen 2, the bosses.
+    const listed = [...enemiesOfTier(1), ...enemiesOfTier(2), ...ENEMIES.filter((e) => e.archetype === 'boss')];
+    listed.forEach((e, i) => {
+      new Button(this, x0 + 76, 80 + i * 30, `${e.name}  ·  ${e.archetype === 'boss' ? 'boss' : `t${e.tier}`}`, () => this.set({ enemyId: e.id }), { ...small, width: 152, ...sel(this.setup.enemyId === e.id) });
       new Button(this, x0 + 178, 80 + i * 30, '2nd', () => this.set({ extraId: this.setup.extraId === e.id ? null : e.id }), { width: 44, height: 26, fontSize: '11px', ...sel(this.setup.extraId === e.id) });
     });
     // Boss variant (DECISIONS #36): Wren with whatever weapon is picked on the right.
-    new Button(this, x0 + 76, 80 + ENEMIES.length * 30, 'Wren  ·  boss variant', () => this.set({ enemyId: 'wren', extraId: null }), { ...small, width: 152, ...sel(this.setup.enemyId === 'wren') });
+    new Button(this, x0 + 76, 80 + listed.length * 30, 'Wren  ·  boss variant', () => this.set({ enemyId: 'wren', extraId: null }), { ...small, width: 152, ...sel(this.setup.enemyId === 'wren') });
 
     // class + tomes
     const x1 = 236;
@@ -122,7 +124,7 @@ export class TestModeScene extends Phaser.Scene {
       this.scene.start('Combat');
       return;
     }
-    s.pendingEncounter = { kind: enemy.archetype === 'boss' ? 'boss' : 'random', enemyId: enemy.id, tile: 'forest', extra: this.setup.extraId && this.setup.extraId !== enemy.id ? [this.setup.extraId] : undefined };
+    s.pendingEncounter = { kind: enemy.archetype === 'boss' ? 'boss' : 'random', enemyId: enemy.id, tile: 'forest', extra: this.setup.extraId ? [this.setup.extraId] : undefined }; // two of a kind is fine (a Vespa pair, #83)
     setSession(this, s);
     this.scene.start('Combat');
   }

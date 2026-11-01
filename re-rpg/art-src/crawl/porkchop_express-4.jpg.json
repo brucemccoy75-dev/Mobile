@@ -1,0 +1,13 @@
+{
+  "when": "2026-11-01T01:07:17",
+  "cmd": "image",
+  "model": "grok-imagine-image-2.0",
+  "prompt": "Porkchop Express: a huge rolling ball made of many fused pig-faced humanoids squashed together, snouts, tusks and screaming open mouths all over its round surface, scraps of fancy business suits, neckties and elegant evening dresses tangled in it, a grotesque comedic monster sphere. Full-body game enemy character, flat vector cel-shaded style, chunky stylised proportions, thick uniform dark outline, flat fills, two tones per material (base plus one shadow), no texture, no gradients, strict side view facing left, light from the top left, centred with space around it, plain flat white background, nothing else in the picture: no text, no ground, no shadow, no frame.",
+  "refs": [],
+  "revised_prompt": null,
+  "reply": {
+    "usage": {
+      "cost_in_usd_ticks": 1600000000
+    }
+  }
+}

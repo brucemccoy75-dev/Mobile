@@ -16,13 +16,13 @@ export class StatusChips extends Phaser.GameObjects.Container {
    * `fixed` are chips that last the whole fight (a cursed enemy's traits, DECISIONS #78): drawn first,
    * with a red edge, each with its own tap.
    */
-  set(statuses: Status[], onTap?: (s: Status) => void, fixed: { label: string; color: string; tap?: () => void }[] = []): void {
+  set(statuses: Status[], onTap?: (s: Status) => void, fixed: { label: string; color: string; edge?: number; tap?: () => void }[] = []): void {
     this.removeAll(true);
     let cx = 0;
     for (const f of fixed) {
       const t = this.scene.add.text(0, 0, f.label, { fontFamily: FONT, fontSize: '12px', color: f.color, fontStyle: 'bold' }).setOrigin(this.alignRight ? 1 : 0, 0.5);
       const w = t.width + 12;
-      const bg = this.scene.add.rectangle(0, 0, w + 8, 26, 0x2a0a0e, 0.8).setOrigin(this.alignRight ? 1 : 0, 0.5).setStrokeStyle(1, 0xd64545, 0.9);
+      const bg = this.scene.add.rectangle(0, 0, w + 8, 26, 0x2a0a0e, 0.8).setOrigin(this.alignRight ? 1 : 0, 0.5).setStrokeStyle(1, f.edge ?? 0xd64545, 0.9);
       bg.x = this.alignRight ? -cx : cx;
       t.x = this.alignRight ? -cx - 10 : cx + 10;
       this.add([bg, t]);

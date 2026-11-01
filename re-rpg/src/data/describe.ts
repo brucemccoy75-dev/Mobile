@@ -2,7 +2,7 @@ import type { Condition, Effect, Skill, Stats, StatusId } from './types';
 
 const STATUS_NAME: Record<StatusId, string> = {
   exposed: 'Exposed', guard: 'Guard', ward: 'Ward', aegis: 'Aegis', burn: 'Burn', chill: 'Chill', weak: 'Weak', stun: 'Recovering', brace: 'Braced', scatter: 'Scattered', curse: 'Cursed', harden: 'Hardened',
-  regen: 'Lunch Break', blackjack: 'Blackjack',
+  regen: 'Lunch Break', blackjack: 'Blackjack', momentum: 'Momentum',
 };
 
 const rounds = (n: number) => `${n} round${n === 1 ? '' : 's'}`;
