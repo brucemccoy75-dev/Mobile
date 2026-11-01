@@ -41,7 +41,12 @@ export const ART_FILES: Record<string, string> = {
   map_1: 'art/c/map1.jpg', // painted screen 1 (docs/ART.md); the tileset draws when a screen has no painting
   fx_curse_skull: 'art/c/fx_curse_skull.png', // the curse's skull and crossbones (DECISIONS #79)
   map_2: 'art/c/map2.jpg',
-  map_dungeon1: 'art/c/map_dungeon1.jpg', // the Treasure Dungeon (DECISIONS #84)
+  map_dungeon1: 'art/c/map_dungeon1.jpg',
+  // Card frames by theme (DECISIONS #85), from Grok (art-src/card-frames/).
+  frame_sword: 'art/c/frame_sword.png',
+  frame_shield: 'art/c/frame_shield.png',
+  frame_magic: 'art/c/frame_magic.png',
+  frame_curse: 'art/c/frame_curse.png', // the Treasure Dungeon (DECISIONS #84)
   bg_dungeon: 'art/c/bg_dungeon.jpg', // painted screen 2, the Frozen Pass (DECISIONS #76)
 };
 

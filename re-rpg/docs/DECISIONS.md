@@ -1367,3 +1367,44 @@ Checked in a real browser:
 - the Test Mode list.
 
 Screenshots in `docs/audit/dungeon-2026-11-01/`.
+
+## 85. Card frames by theme, from Grok
+
+Designer's request: a design pass on the cards, on theme, keeping the colour coding and staying at
+least as readable as before:
+- a subtle magic frame (wands, books, potions) for magic damage and magic defence;
+- armour and shields for blocks;
+- swords for attacks;
+- bones and graves for curse cards.
+
+**The theme is apart from the colour** (`cardTheme` in `src/data/describe.ts`). The colour stays
+the kind (#28: attack red, defence blue, heal green, magic orange), and the frame says what the
+card is about:
+- **sword**: a physical attack (Attack, Bellow, Shield Bash);
+- **shield**: a physical block (Defend);
+- **magic**: magic damage, Ward (a blue card in a magic frame) and heals;
+- **curse**: a cursed-pool card, or one that curses its target.
+
+A branching card is themed by both its branches.
+
+**The art**: four frames from Grok on a flat green screen (`art-src/card-frames/`, contact sheet
+`compare.jpg`), keyed whole by `scripts/cut-green.py <src> <out> 510x378` (a new frame mode: no
+crop) into `public/art/c/frame_<theme>.png`. The picks: sword #3, shield #3, magic #1, curse #1.
+- The first curse prompt ("death and the grave") was refused by Grok's moderation. A cartoon
+  Halloween wording passed.
+- A rerun of the whole batch regenerated two frames that had already worked, about $0.50 wasted.
+- About $1.80 in all.
+
+**Readability**:
+- the card grows from 150×112 to 170×126, so the frame takes the new margin and no room from
+  the text;
+- the name is 15 px (was 14) and the text 11 px (was 10), both with a thin dark outline;
+- the text keeps clear of the frame's ornaments: the name sits below the top-centre piece, the
+  big number in from the bottom-left corner;
+- the ONCE, FLEETING and CURSED tags ride on the top band, so the name keeps its full width. A
+  long name steps down a size rather than wrap; long text steps down as before (to 8 px for
+  Cursed Counter, its longest);
+- without the frame art, the old flat card with its coloured edge draws.
+
+Pinned in `src/data/cardTheme.test.ts`. Checked in real hands at 844x390 and 3× density, on the
+forest, the tundra and the dungeon. Screenshots in `docs/audit/card-frames-2026-11-01/`.

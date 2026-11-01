@@ -164,3 +164,19 @@ export function cardFace(skill: Skill, stats: Stats, preview?: CardPreview): Car
   return { kind: 'defense', value: '', unit: '' };
 }
 
+
+/**
+ * The frame a card wears (DECISIONS #85), chosen apart from its colour, which stays its kind:
+ * swords for a physical attack, armour and shields for a physical block, subtle magic (wands,
+ * books, potions) for magic damage, Ward and heals, bones and graves for a cursed card or one that
+ * curses its target.
+ */
+export type CardTheme = 'sword' | 'shield' | 'magic' | 'curse';
+export function cardTheme(skill: Skill, kind: CardKind): CardTheme {
+  const all = (effects: Effect[]): Effect[] => effects.flatMap((e) => (e.type === 'if' ? [e, ...all(e.then), ...all(e.else ?? [])] : [e]));
+  const fx = all(skill.effects);
+  if (skill.pool === 'cursed' || fx.some((e) => e.type === 'status' && e.target === 'enemy' && e.status === 'curse')) return 'curse';
+  if (kind === 'magic' || kind === 'heal') return 'magic';
+  if (kind === 'defense') return fx.some((e) => e.type === 'status' && e.target === 'self' && e.status === 'ward') ? 'magic' : 'shield';
+  return 'sword';
+}

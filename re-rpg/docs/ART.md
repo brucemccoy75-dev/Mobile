@@ -238,6 +238,13 @@ paste it and saves it as `XAI_API_KEY=<key>` in `re-rpg/.env.local` (mode 600).
 
 The image host turns away Python's default user agent, so the script sends its own.
 
+### Card frames (DECISIONS #85)
+
+Each frame fills a 4:3 image on a flat green screen (thin border, ornaments in the corners and at
+the top centre). `python3 scripts/cut-green.py <src> public/art/c/frame_<theme>.png 510x378` keys
+the green and keeps the whole frame at card size. Avoid "death" wording for the curse frame:
+moderation refused it, and a cartoon Halloween prompt passed.
+
 ### Effect sprites (scripts/cut-green.py)
 
 For a battle effect image (the curse skull, DECISIONS #79), generate it on a flat solid green

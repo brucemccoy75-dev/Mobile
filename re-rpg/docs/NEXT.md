@@ -7,7 +7,7 @@ Pages at https://brucemccoy75-dev.github.io/Mobile/. After a push, poll `origin/
 "Deploy re-rpg <sha>", **then** poll the live site until its main JS contains your 7-character
 hash; that is the build stamp the title shows at the bottom left. Pages publishes some time after
 the branch updates, so the branch alone is not "live" (#75 follow-up). Fetch with a `?t=<now>`
-query so a cache cannot answer. 341 tests pass (`npm run check`: typecheck,
+query so a cache cannot answer. 345 tests pass (`npm run check`: typecheck,
 cards:validate, world:validate, tests, build). The game today is:
 
 - **Node overworld** (DECISIONS #37): a static node network per screen over an authored terrain,
@@ -45,6 +45,8 @@ cards:validate, world:validate, tests, build). The game today is:
     2× damage, a half-damage shield, thorns 2, an unblockable follow-up. They pay 3× gold and EXP,
     plus the cursed pool, today just Cursed Counter (#73). Their traits show as tappable red chips,
     and a dead enemy does nothing to you: the blow that kills a thorned enemy is free (#78).
+- **Cards** wear a Grok frame by theme (#85): swords for attacks, shields for blocks, subtle magic
+  for magic, Ward and heals, bones for curses. The colour is still the kind; the cards are 170×126.
 - **Battle effects** (#59, #62), chosen from what a card does or named per card in the card
   editor:
   - slash, fireball, lightning, frost, arcane, heal;
@@ -77,7 +79,7 @@ own command → Playwright at 844×390 (the game) or 390×844 (the editors) with
 (Test Mode: set registry `testSetup`, call `TestMode.fight()`, then `Combat.act()` and poll
 `busy`; to answer a dialogue from a script, `scene('Dialogue').choose(d, option)`) → commit with
 the attribution lines → `git push -u origin <branch>` → poll gh-pages. Record decisions in
-`docs/DECISIONS.md` (next number is 85). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
+`docs/DECISIONS.md` (next number is 86). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
 
 **Run logs** (`docs/PLAYTESTS.md`, DECISIONS #67). When the designer sends a run log, always:
 1. save it in `docs/playtests/`;
