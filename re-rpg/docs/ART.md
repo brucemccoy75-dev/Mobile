@@ -238,7 +238,12 @@ paste it and saves it as `XAI_API_KEY=<key>` in `re-rpg/.env.local` (mode 600).
 
 The image host turns away Python's default user agent, so the script sends its own.
 
-### Card frames (DECISIONS #85)
+### Card frames (DECISIONS #85, #86)
+
+The shipped frames are the 16:9 set in `art-src/card-frames-wide/` (the card is 212×126), cut with
+`cut-green.py ... 636x378`. The parchment under them is `card_parchment.jpg`, a plain Grok sheet,
+tinted per kind in code.
+
 
 Each frame fills a 4:3 image on a flat green screen (thin border, ornaments in the corners and at
 the top centre). `python3 scripts/cut-green.py <src> public/art/c/frame_<theme>.png 510x378` keys

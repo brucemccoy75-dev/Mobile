@@ -1,0 +1,13 @@
+{
+  "when": "2026-11-01T05:27:46",
+  "cmd": "image",
+  "model": "grok-imagine-image-2.0",
+  "prompt": "A game card frame, front view, perfectly flat and straight, filling the whole wide 16:9 landscape image. The frame is only a thin border, about one twenty-fifth of the image width, with small decorations in the four corners and a tiny one at the top centre. Everything inside the border is one flat solid pure bright green (#00ff00) empty panel, and the area outside the border is the same flat green. Flat vector cel-shaded style with thick clean dark outlines, flat fills, two tones per material, no texture, no gradients, matching a cute cartoon fantasy mobile RPG. No text, no characters, no background scene. The border theme is old bones, cute and cartoony: a band made of little white cartoon bones joined end to end with grey pebbles, a pair of crossed cartoon bones in each corner, a tiny rounded grey stone marker at the top centre.",
+  "refs": [],
+  "revised_prompt": null,
+  "reply": {
+    "usage": {
+      "cost_in_usd_ticks": 800000000
+    }
+  }
+}

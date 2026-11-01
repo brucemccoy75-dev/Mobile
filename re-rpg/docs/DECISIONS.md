@@ -1408,3 +1408,39 @@ crop) into `public/art/c/frame_<theme>.png`. The picks: sword #3, shield #3, mag
 
 Pinned in `src/data/cardTheme.test.ts`. Checked in real hands at 844x390 and 3× density, on the
 forest, the tundra and the dungeon. Screenshots in `docs/audit/card-frames-2026-11-01/`.
+
+## 86. Parchment cards, 25% wider
+
+Designer's report on #85: the cards were not very readable, and the solid colour looked cheesy.
+They should look like parchment, 25% wider (the hand has the room), with tags like FLEETING moved
+off the face.
+
+**The face**:
+- a Grok parchment sheet (`public/art/c/card_parchment.jpg`, #3 of three: aged edges, a lighter
+  middle), tinted lightly by kind so the colour coding (#28) stays: red-pink attack, blue-grey
+  defence, green heal, amber magic;
+- the words are dark brown ink (`#2b1d0e`) with no outline;
+- the big number and its unit are in the kind's dark ink (deep red, blue, green, amber);
+- the name is in the rarity colour, which was already dark enough for paper (a basic card is
+  plain ink).
+
+**The size**: 212×126 (was 170×126). The wider lines hold more words, so the type grew: the name
+is 16 px (was 15), the text 12 px (was 11), the number 32 px. Long text still steps down; Cursed
+Counter's fits at 10 px.
+
+**The frames** (#85's themes) were made again at 16:9 to fit the wider card without warping their
+ornaments (`art-src/card-frames-wide/`):
+- picks: sword #2, shield #1, magic #1, bones #1;
+- the bones frame needed a third wording (cartoon bones and a stone marker, no skull) to pass
+  moderation;
+- the names now start below the top-centre ornament (it ran through "Attack", "Defend" and
+  "Ward" at first).
+
+**Tags**: ONCE, FLEETING and CURSED straddle the card's top edge on the left. Off the face and the
+ornaments, and low enough to stay clear of the enemy's ATK / DEF line above the hand; placed fully
+above the card, they sat on it.
+
+Without the parchment the old dark card draws, with outlined light text.
+
+Checked in real hands at 844x390 and 3× density: the forest, the tundra, the dungeon, and a hand
+with every frame. About $1.20 in Grok images. Screenshots in `docs/audit/card-parchment-2026-11-01/`.

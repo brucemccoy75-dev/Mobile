@@ -1,0 +1,13 @@
+{
+  "when": "2026-11-01T05:27:26",
+  "cmd": "image",
+  "model": "grok-imagine-image-2.0",
+  "prompt": "A plain sheet of old parchment paper filling the whole wide 16:9 image edge to edge, seen straight on, warm light cream colour with very soft faint stains and gentle fibre texture, slightly lighter in the middle, evenly lit, calm and subtle so dark text on it is easy to read. Hand-painted game UI texture matching a cartoon fantasy mobile RPG. No writing, no drawings, no border, no frame, no torn edges, no shadows, nothing else.",
+  "refs": [],
+  "revised_prompt": null,
+  "reply": {
+    "usage": {
+      "cost_in_usd_ticks": 1200000000
+    }
+  }
+}
