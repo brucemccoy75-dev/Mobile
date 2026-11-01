@@ -1554,3 +1554,28 @@ golem would be one more edit.
 
 About $0.55. Screenshots, old against the two twilight options, in
 `docs/audit/tundra-lake-2026-11-01/`.
+
+## 90. Map 2 at twilight, with a village, a bridge and a watchtower
+
+Designer's report: map 2 is a lot of white and a little boring. Regenerate it at twilight with
+deeper blues, to keep map 1's vibrancy, and add interest (a canyon with a bridge, houses): a big
+map, still cold.
+
+**The art**: a 2k Grok edit of the shipped painting (`art-src/map2/hd-a.jpg`), told to keep every
+road, clearing, lake, stream and the fortress where they are and to add landmarks only between
+the roads. Three came back (`art-src/map2-twilight/`, with the trace drawn on them in
+`compare-with-trace.jpg`); all three kept the roads. The pick is `tw-1`:
+- the snow is indigo and blue in shadow, the frozen lakes glow cyan, the sky has a violet cast;
+- a lantern-lit village of four cottages with smoking chimneys and a campfire sits on the west
+  side, by the start, and one more cottage in the south-west;
+- the stream runs through a rocky canyon, and the main road crosses it on a wooden rope bridge;
+- a watchtower stands by the fortress, whose gate glows;
+- blue crystals are scattered around.
+
+It ships as `public/art/c/map2.jpg` (3456×1944, from 2816×1584 as in #76).
+
+**The trace still fits**: checked region by region at full size with the node overlay (#76's
+method). Every node and road is on its painted road, so `screen2.ts` is unchanged. A level-select
+run on screen 2 panned the whole map and walked to the first node.
+
+About $0.40. Screenshots in `docs/audit/map2-twilight-2026-11-01/`.

@@ -13,7 +13,7 @@ cards:validate, world:validate, tests, build). The game today is:
 - **Node overworld** (DECISIONS #37): a static node network per screen over an authored terrain,
   contents rolled per run (and shaped by node rules, #55), tap a reachable node to travel, swipe to
   pan. Both screens are painted: screen 1 the Gate Road (`map1.jpg`, #39), screen 2 the Frozen Pass
-  (`map2.jpg`, #76), a tundra on 48x27 tiles with 40 nodes and crossing tracks; its battles use
+  (`map2.jpg`, #76; at twilight with a village, a rope bridge and a watchtower since #90), a tundra on 48x27 tiles with 40 nodes and crossing tracks; its battles use
   the tundra backdrop (`bg_tundra.jpg`, #80; a blue frozen lake at twilight since #89, so the pale frost enemies stand out). Subtle
   ambience: dust behind the hero, ripples on water, birds now and then (#60). `?dev` shows an overlay.
   Fight nodes show just their enemies (a duo both); about 15% are a surprise, another enemy waits
@@ -83,7 +83,7 @@ own command → Playwright at 844×390 (the game) or 390×844 (the editors) with
 (Test Mode: set registry `testSetup`, call `TestMode.fight()`, then `Combat.act()` and poll
 `busy`; to answer a dialogue from a script, `scene('Dialogue').choose(d, option)`) → commit with
 the attribution lines → `git push -u origin <branch>` → poll gh-pages. Record decisions in
-`docs/DECISIONS.md` (next number is 90). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
+`docs/DECISIONS.md` (next number is 91). Screenshots of checks go in `docs/audit/<topic>-<date>/`.
 
 **Run logs** (`docs/PLAYTESTS.md`, DECISIONS #67). When the designer sends a run log, always:
 1. save it in `docs/playtests/`;
