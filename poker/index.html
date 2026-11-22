@@ -3,29 +3,155 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#0a1f14" />
+  <meta name="theme-color" content="#07100b" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="description" content="Poker, I Hardly Knew Her: a 3D poker game for your phone." />
   <title>Poker, I Hardly Knew Her</title>
   <style>
-    :root { color-scheme: dark; --bg: #0a1f14; --fg: #e8ecef; }
+    :root {
+      color-scheme: dark;
+      --bg: #07100b; --fg: #eef0ea; --muted: #9fb0a6; --gold: #e3c06a; --red: #d8463a; --green: #3fbf7f;
+      --plate: rgba(8, 12, 10, 0.78);
+      --sal: env(safe-area-inset-left); --sar: env(safe-area-inset-right); --sab: env(safe-area-inset-bottom); --sat: env(safe-area-inset-top);
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--fg);
-      font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      font: 15px/1.35 "Helvetica Neue", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       user-select: none; -webkit-user-select: none; touch-action: none; overscroll-behavior: none; }
+    button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; touch-action: manipulation; }
     #game { position: fixed; inset: 0; }
-    #game canvas { display: block; touch-action: none; }
-    #hud { position: fixed; left: 0; right: 0; bottom: 0;
-      padding: 12px max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
-      display: flex; justify-content: space-between; align-items: center; pointer-events: none;
-      color: #b9c6bf; font-size: 13px; }
+    #game canvas { display: block; width: 100% !important; height: 100% !important; touch-action: none; }
+
+    /* Labels pinned to the 3D scene */
+    #overlay { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+    #overlay > div { position: absolute; left: 0; top: 0; will-change: transform; }
+    .plate { background: var(--plate); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 5px 10px 6px;
+      min-width: 108px; text-align: center; backdrop-filter: blur(6px); transition: opacity .25s, box-shadow .25s; }
+    .plate .name { font-weight: 600; font-size: 13px; letter-spacing: .01em; white-space: nowrap; }
+    .plate .stack { font-size: 12px; color: var(--gold); font-variant-numeric: tabular-nums; }
+    .plate.active { box-shadow: 0 0 0 2px var(--gold), 0 0 18px rgba(227,192,106,.45); }
+    .plate.folded { opacity: .45; }
+    .plate.out { opacity: .35; }
+    .plate .tag { position: absolute; left: 50%; top: -14px; transform: translate(-50%, -100%) scale(.8); opacity: 0;
+      background: #f2efe6; color: #141614; font-size: 11px; font-weight: 700; letter-spacing: .06em; padding: 3px 8px; border-radius: 6px;
+      white-space: nowrap; transition: transform .18s, opacity .18s; }
+    .plate .tag.show { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+    .plate .tag.strong { background: var(--gold); }
+    .plate .tag.hot { background: var(--red); color: #fff; }
+    .plate .tag.muted { background: #5c6660; color: #e8ebe6; }
+    .bet, .pot { font-size: 12px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.8); opacity: 0; transition: opacity .2s;
+      font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .pot { font-size: 13px; color: var(--gold); letter-spacing: .04em; }
+    .bet.show, .pot.show { opacity: 1; }
+
+    /* HUD */
+    #hud { position: fixed; left: max(12px, var(--sal)); right: max(12px, var(--sar)); top: max(8px, var(--sat)); display: flex; align-items: center; gap: 10px; pointer-events: none; }
+    #info { color: var(--muted); font-size: 12px; letter-spacing: .03em; flex: 1; text-shadow: 0 1px 2px #000; }
+    #hud button { pointer-events: auto; background: rgba(8,12,10,.7); border: 1px solid rgba(255,255,255,.12); border-radius: 8px; padding: 6px 10px; font-size: 12px; color: var(--muted); }
+    #hud button.on { color: #141614; background: var(--gold); border-color: var(--gold); }
+    #toast { position: fixed; left: 50%; top: max(44px, calc(var(--sat) + 36px)); transform: translate(-50%, -10px); opacity: 0; transition: .25s;
+      background: var(--plate); border: 1px solid rgba(255,255,255,.1); padding: 8px 14px; border-radius: 10px; font-size: 13px; pointer-events: none; }
+    #toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    /* Your cards */
+    #hole { position: fixed; left: max(14px, var(--sal)); bottom: max(12px, var(--sab)); display: flex; gap: 6px; opacity: 0; transform: translateY(12px); transition: .25s; pointer-events: none; }
+    #hole.show { opacity: 1; transform: none; }
+    .pcard { width: 58px; height: 82px; border-radius: 7px; background: #f7f4ec; color: #1b1b1f; box-shadow: 0 6px 16px rgba(0,0,0,.5);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 700; }
+    .pcard.red { color: #c8202c; }
+    .pcard .rank { font-size: 28px; line-height: 1; }
+    .pcard .suit { font-size: 22px; line-height: 1; margin-top: 2px; }
+
+    /* Action bar */
+    #actions { position: fixed; right: max(12px, var(--sar)); bottom: max(12px, var(--sab)); display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+      opacity: 0; pointer-events: none; transform: translateY(10px); transition: .2s; }
+    #actions.show { opacity: 1; pointer-events: auto; transform: none; }
+    #actions .row { display: flex; gap: 8px; }
+    #actions .row > button { min-width: 104px; height: 52px; border-radius: 12px; font-weight: 700; font-size: 15px; letter-spacing: .02em;
+      background: rgba(20,24,22,.9); border: 1px solid rgba(255,255,255,.14); box-shadow: 0 4px 14px rgba(0,0,0,.4); }
+    #actions .row > button:disabled { opacity: .35; }
+    #actions .fold { color: #ffb4ad; }
+    #actions .passive { color: #fff; }
+    #actions .row > button.aggressive { background: var(--gold); color: #141614; border-color: var(--gold); }
+    #actions .clockwrap { width: 100%; height: 4px; background: rgba(255,255,255,.12); border-radius: 2px; overflow: hidden; }
+    #actions .clock { height: 100%; background: var(--gold); transform-origin: left; transform: scaleX(1); }
+    #actions .clock.urgent { background: var(--red); }
+    .sizing { display: none; flex-direction: column; gap: 8px; background: rgba(20,24,22,.92); border: 1px solid rgba(255,255,255,.12); border-radius: 12px; padding: 10px; width: min(360px, calc(100vw - 24px)); }
+    .sizing.show { display: flex; }
+    .sizing .quicks { display: flex; gap: 6px; }
+    .sizing .quick { flex: 1; height: 34px; border-radius: 8px; background: rgba(255,255,255,.08); font-size: 12px; font-weight: 600; }
+    .sizing input[type=range] { width: 100%; accent-color: var(--gold); height: 28px; }
+    .sizing .confirmrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .sizing .amount { font-weight: 700; font-variant-numeric: tabular-nums; }
+    .sizing .confirm { height: 40px; padding: 0 18px; border-radius: 10px; background: var(--gold); color: #141614; font-weight: 700; }
+
+    /* Screens */
+    #screens { position: fixed; inset: 0; display: none; place-items: center; background: radial-gradient(ellipse at 50% 40%, rgba(29,111,61,.35), rgba(7,16,11,.96) 70%); z-index: 20; }
+    #screens.show { display: grid; }
+    .screen { text-align: center; padding: 24px; max-width: 720px; width: 100%; }
+    .eyebrow { color: var(--muted); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; margin-bottom: 10px; }
+    h1 { font-size: clamp(34px, 7vw, 64px); line-height: .98; font-weight: 800; letter-spacing: -.02em; margin-bottom: 26px; }
+    h2 { font-size: clamp(26px, 5vw, 40px); margin-bottom: 14px; }
+    button.primary { height: 54px; padding: 0 34px; border-radius: 14px; background: var(--gold); color: #141614; font-weight: 800; font-size: 17px; box-shadow: 0 8px 24px rgba(227,192,106,.25); }
+    button.link { color: var(--muted); padding: 12px; }
+    .tcards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 8px 0 14px; }
+    .tcard { text-align: left; background: rgba(8,12,10,.7); border: 1px solid rgba(255,255,255,.12); border-radius: 14px; padding: 16px; min-height: 120px; }
+    .tcard:active { border-color: var(--gold); }
+    .tname { font-weight: 800; font-size: 20px; margin-bottom: 6px; }
+    .tblurb { color: var(--muted); font-size: 13px; }
+    .results ol { list-style: none; margin: 0 auto 18px; max-width: 380px; text-align: left; }
+    .results li { display: grid; grid-template-columns: 54px 1fr auto; gap: 10px; padding: 7px 10px; border-bottom: 1px solid rgba(255,255,255,.08); font-variant-numeric: tabular-nums; }
+    .results li.you { color: var(--gold); font-weight: 700; }
+    .results .row { display: flex; justify-content: center; gap: 12px; align-items: center; }
+
+    /* Landscape only */
+    #rotate { position: fixed; inset: 0; z-index: 50; display: none; place-items: center; text-align: center; background: var(--bg); padding: 24px; }
+    #rotate .phone { width: 36px; height: 64px; border: 3px solid var(--fg); border-radius: 8px; margin: 0 auto 18px; animation: turn 1.6s ease-in-out infinite; }
+    @keyframes turn { 0%, 30% { transform: rotate(0) } 60%, 100% { transform: rotate(-90deg) } }
+    #rotate p { color: var(--muted); margin-top: 6px; }
+    @media (orientation: portrait) and (max-width: 900px) { #rotate { display: grid; } }
+    @media (max-height: 420px) { .tcards { gap: 8px; } .tcard { min-height: 0; padding: 12px; } h1 { margin-bottom: 14px; } }
   </style>
 </head>
 <body>
   <div id="game"></div>
-  <div id="hud"><span>Poker, I Hardly Knew Her · pipeline check</span><span id="fps"></span></div>
+  <div id="overlay"></div>
+  <div id="hud">
+    <div id="info"></div>
+    <button id="fast" title="Fast forward">▶▶</button>
+    <button id="menu">Menu</button>
+  </div>
+  <div id="toast"></div>
+  <div id="hole"></div>
+  <div id="actions">
+    <div class="sizing">
+      <div class="quicks">
+        <button class="quick" data-size="min">Min</button>
+        <button class="quick" data-size="half">½ pot</button>
+        <button class="quick" data-size="threeq">¾ pot</button>
+        <button class="quick" data-size="pot">Pot</button>
+        <button class="quick" data-size="allin">All in</button>
+      </div>
+      <input type="range" min="0" max="100" step="25" value="0" />
+      <div class="confirmrow"><span class="amount"></span><button class="confirm">Raise</button></div>
+    </div>
+    <div class="row">
+      <button class="fold">Fold</button>
+      <button class="passive">Check</button>
+      <button class="aggressive">Raise</button>
+    </div>
+    <div class="clockwrap"><div class="clock"></div></div>
+  </div>
+  <div id="screens"></div>
+  <div id="rotate" aria-live="polite">
+    <div>
+      <div class="phone"></div>
+      <strong>Rotate your phone</strong>
+      <p>This table is played in landscape.</p>
+    </div>
+  </div>
   <script type="module" src="./src/main.ts"></script>
 </body>
 </html>

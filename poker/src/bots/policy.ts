@@ -258,10 +258,10 @@ function tourist(c: Context): Weights {
   if (c.preflop) {
     if (c.facingAllIn) return c.equity >= 0.4 ? W(0, 1) : W(1, 0);
     if (!c.facingRaise) {
-      if (c.percentile <= 0.55) return W(0, 0.55, 0.15, 0.2, 0.1 * wild, (c.stackBB < 20 ? 0.1 : 0.02) * wild);
+      if (c.percentile <= 0.55) return W(0, 0.55, 0.15, 0.2, 0.1 * wild, c.stackBB < 20 ? 0.1 * wild : 0);
       return W(0.8, 0.2);
     }
-    if (c.percentile <= 0.5) return W(0.15, 0.6, 0, 0.15, 0.07 * wild, 0.03 * wild);
+    if (c.percentile <= 0.5) return W(0.15, 0.6, 0, 0.15, 0.07 * wild, c.stackBB < 30 ? 0.03 * wild : 0);
     return W(0.85, 0.15);
   }
   const something = c.made >= HandCategory.Pair || c.flushDraw || c.straightOuts >= 4;
