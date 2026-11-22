@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { type Card, RANK_CHARS, rankOf, suitOf } from '../engine/cards';
 import { type BlindLevel } from '../engine/tournament';
+import { money } from './format';
 
 interface Anchored {
   el: HTMLElement;
@@ -36,8 +37,11 @@ export class Overlay {
   private boardCards: Card[] = [];
   private potAmount = 0;
 
-  constructor(root: HTMLElement, holeEl: HTMLElement, infoEl: HTMLElement, toastEl: HTMLElement, boardEl: HTMLElement) {
+  private readonly meEl: HTMLElement;
+
+  constructor(root: HTMLElement, holeEl: HTMLElement, infoEl: HTMLElement, toastEl: HTMLElement, boardEl: HTMLElement, meEl: HTMLElement) {
     this.root = root;
+    this.meEl = meEl;
     this.holeEl = holeEl;
     this.infoEl = infoEl;
     this.toastEl = toastEl;
@@ -58,7 +62,7 @@ export class Overlay {
 
   private renderPot(): void {
     const el = this.boardEl.querySelector('.potline')!;
-    el.textContent = this.potAmount > 0 ? `POT ${this.potAmount}` : '';
+    el.textContent = this.potAmount > 0 ? `POT ${money(this.potAmount)}` : '';
     this.boardEl.classList.toggle('show', this.boardCards.length > 0 || this.potAmount > 0);
   }
 
@@ -77,17 +81,18 @@ export class Overlay {
   }
 
   plate(seat: number, pos: THREE.Vector3, name: string, stack: number): void {
-    const el = this.anchor(`plate${seat}`, pos, 'plate', 0);
+    const el = seat === 0 ? this.meEl : this.anchor(`plate${seat}`, pos, 'plate', 0);
+    if (seat === 0) el.className = 'plate me';
     el.innerHTML = `<div class="tag"></div><div class="name"></div><div class="stack"></div>`;
     el.querySelector('.name')!.textContent = name;
-    el.querySelector('.stack')!.textContent = String(stack);
+    el.querySelector('.stack')!.textContent = money(stack);
     el.dataset.seat = String(seat);
     this.plates.set(seat, el);
   }
 
   setStack(seat: number, stack: number): void {
     const el = this.plates.get(seat);
-    if (el) el.querySelector('.stack')!.textContent = stack > 0 ? String(stack) : 'ALL IN';
+    if (el) el.querySelector('.stack')!.textContent = stack > 0 ? money(stack) : 'ALL IN';
   }
 
   setTag(seat: number, text: string, kind = ''): void {
@@ -116,7 +121,7 @@ export class Overlay {
 
   setBet(seat: number, amount: number, pos?: THREE.Vector3): void {
     const el = this.anchor(`bet${seat}`, pos ?? this.anchored.get(`bet${seat}`)?.pos ?? new THREE.Vector3(), 'bet', 20);
-    el.textContent = amount > 0 ? String(amount) : '';
+    el.textContent = amount > 0 ? money(amount) : '';
     el.classList.toggle('show', amount > 0);
   }
 
@@ -134,7 +139,7 @@ export class Overlay {
     if (info.level) this.level = info.level;
     if (info.handNumber !== undefined) this.handNumber = info.handNumber;
     const l = this.level;
-    this.infoEl.textContent = `${this.tournamentName}${this.handNumber ? ` · Hand ${this.handNumber}` : ''}${l ? ` · Blinds ${l.sb}/${l.bb}${l.ante ? ` · Ante ${l.ante}` : ''}` : ''}`;
+    this.infoEl.textContent = `${this.tournamentName}${this.handNumber ? ` · Hand ${this.handNumber}` : ''}${l ? ` · Blinds ${money(l.sb)}/${money(l.bb)}${l.ante ? ` · Ante ${money(l.ante)}` : ''}` : ''}`;
   }
 
   toast(text: string, ms = 2200): void {
@@ -149,8 +154,11 @@ export class Overlay {
     for (const a of this.anchored.values()) {
       this.tmp.copy(a.pos).project(camera);
       const behind = this.tmp.z > 1;
-      const x = (this.tmp.x * 0.5 + 0.5) * width;
+      let x = (this.tmp.x * 0.5 + 0.5) * width;
       const y = (-this.tmp.y * 0.5 + 0.5) * height + a.offsetY;
+      // Keep bubbles and plates on screen when a seat sits near the edge.
+      const half = a.el.offsetWidth / 2 + 8;
+      if (half > 8) x = Math.min(width - half, Math.max(half, x));
       a.el.style.transform = `translate(-50%, -50%) translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
       a.el.style.visibility = behind ? 'hidden' : 'visible';
     }
@@ -172,6 +180,8 @@ export class Overlay {
     for (const a of this.anchored.values()) a.el.remove();
     this.anchored.clear();
     this.plates.clear();
+    this.meEl.className = 'plate me';
+    this.meEl.innerHTML = '';
     this.setHole(null);
     this.potAmount = 0;
     this.boardCards = [];

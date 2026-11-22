@@ -1,5 +1,6 @@
 // The human's action bar: fold, check or call, bet or raise with a sizing panel, and a shot clock.
 import { type Action, type LegalActions } from '../engine/hand';
+import { money } from './format';
 
 export interface Spot {
   legal: LegalActions;
@@ -8,6 +9,7 @@ export interface Spot {
   /** The human's chips already in on this street. */
   streetBet: number;
   bigBlind: number;
+  /** Kept for a possible timed mode; unused when null. */
   deadline: number | null;
 }
 
@@ -20,10 +22,7 @@ export class ActionBar {
   private readonly slider: HTMLInputElement;
   private readonly amountEl: HTMLElement;
   private readonly confirm: HTMLButtonElement;
-  private readonly clock: HTMLElement;
   private spot: Spot | null = null;
-  private clockTotal = 1;
-  private raf = 0;
   onAction: (a: Action) => void = () => {};
 
   constructor(root: HTMLElement) {
@@ -35,7 +34,6 @@ export class ActionBar {
     this.slider = root.querySelector('input[type=range]')!;
     this.amountEl = root.querySelector('.amount')!;
     this.confirm = root.querySelector('.confirm')!;
-    this.clock = root.querySelector('.clock')!;
 
     this.fold.addEventListener('click', () => this.send({ type: 'fold' }));
     this.passive.addEventListener('click', () => {
@@ -62,7 +60,7 @@ export class ActionBar {
     const { legal } = spot;
     this.fold.disabled = legal.canCheck;
     const callAllIn = !legal.canCheck && legal.callAmount >= legal.maxTo - spot.streetBet;
-    this.passive.textContent = legal.canCheck ? 'Check' : callAllIn ? `Call ${legal.callAmount} · all in` : `Call ${legal.callAmount}`;
+    this.passive.textContent = legal.canCheck ? 'Check' : callAllIn ? `Call ${money(legal.callAmount)} · all in` : `Call ${money(legal.callAmount)}`;
     const canAggress = legal.canBet || legal.canRaise;
     this.aggressive.disabled = !canAggress;
     this.aggressive.textContent = legal.canBet ? 'Bet' : 'Raise';
@@ -74,26 +72,12 @@ export class ActionBar {
     this.sizing.classList.remove('show');
     this.syncAmount();
     this.root.classList.add('show');
-    this.clockTotal = spot.deadline ? Math.max(1, spot.deadline - Date.now()) : 1;
-    cancelAnimationFrame(this.raf);
-    if (spot.deadline) this.tickClock();
-    else this.clock.style.transform = 'scaleX(0)';
   }
 
   hide(): void {
     this.spot = null;
     this.root.classList.remove('show');
     this.sizing.classList.remove('show');
-    cancelAnimationFrame(this.raf);
-  }
-
-  private tickClock(): void {
-    if (!this.spot?.deadline) return;
-    const left = Math.max(0, this.spot.deadline - Date.now());
-    const f = left / this.clockTotal;
-    this.clock.style.transform = `scaleX(${f.toFixed(3)})`;
-    this.clock.classList.toggle('urgent', left < 5000);
-    if (left > 0) this.raf = requestAnimationFrame(() => this.tickClock());
   }
 
   /** Raise-to total for a bet of `fraction` of the pot after calling. */
@@ -127,7 +111,7 @@ export class ActionBar {
     const v = Number(this.slider.value);
     const allIn = v >= legal.maxTo;
     const verb = legal.canBet ? 'Bet' : 'Raise to';
-    this.amountEl.textContent = allIn ? `All in · ${v}` : `${verb} ${v}`;
+    this.amountEl.textContent = allIn ? `All in · ${money(v)}` : `${verb} ${money(v)}`;
     this.confirm.textContent = allIn ? 'All in' : legal.canBet ? 'Bet' : 'Raise';
   }
 

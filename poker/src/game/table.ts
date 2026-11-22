@@ -9,7 +9,8 @@ import { type Rng } from '../engine/rng';
 import { type BlindLevel, Tournament, type TournamentPlayer } from '../engine/tournament';
 
 export const HUMAN_SEAT = 0;
-export const SHOT_CLOCK_MS = 20000;
+/** No shot clock by default: it is a casual game. Tests can set one. */
+export const SHOT_CLOCK_MS = 0;
 
 export interface SeatInfo {
   seat: number;
@@ -47,6 +48,7 @@ export interface TableOptions {
   memories?: Record<string, BotMemory>;
   /** Time multiplier for bot think delays; >1 is fast-forward. */
   speed?: () => number;
+  /** Milliseconds before the human is folded or checked automatically; 0 or unset means never. */
   shotClockMs?: number;
   samples?: number;
   /** Replaces the real wait; tests pass an instant one. */
@@ -190,7 +192,8 @@ export class TableController {
       let action: Action;
       let thinkMs: number;
       if (seat === HUMAN_SEAT) {
-        const deadline = this.opts.human ? null : Date.now() + (this.opts.shotClockMs ?? SHOT_CLOCK_MS);
+        const clock = this.opts.shotClockMs ?? SHOT_CLOCK_MS;
+        const deadline = this.opts.human || clock <= 0 ? null : Date.now() + clock;
         await this.emit({ type: 'turn', seat, legal, deadline });
         const started = Date.now();
         action = await this.humanTurn(hand, legal);
@@ -275,8 +278,12 @@ export class TableController {
         },
         restart: () => {
           if (timer) clearTimeout(timer);
-          timer = setTimeout(fire, clockMs);
-          this.onDeadline(Date.now() + clockMs);
+          if (clockMs > 0) {
+            timer = setTimeout(fire, clockMs);
+            this.onDeadline(Date.now() + clockMs);
+          } else {
+            this.onDeadline(0);
+          }
         },
       };
       const fire = () => {
@@ -287,7 +294,7 @@ export class TableController {
         }
       };
       this.pending = entry;
-      timer = setTimeout(fire, clockMs);
+      if (clockMs > 0) timer = setTimeout(fire, clockMs);
     });
   }
 

@@ -1,6 +1,7 @@
 // Full-screen menus: title, tournament select, results.
 import { TOURNAMENTS, type TournamentKey } from '../bots/characters';
 import { type TournamentPlayer } from '../engine/tournament';
+import { money } from './format';
 import { ordinal } from './overlay';
 
 const BLURBS: Record<TournamentKey, string> = {
@@ -59,7 +60,7 @@ export class Screens {
 
   results(r: { humanFinish: number; standings: TournamentPlayer[]; handsPlayed: number; tournament: string; earned: { name: string }[] }, onAgain: () => void, onMenu: () => void): void {
     const rows = r.standings
-      .map((p) => `<li class="${p.seat === 0 ? 'you' : ''}"><span>${p.finish ? ordinal(p.finish) : '—'}</span><span>${p.name}</span><span>${p.stack}</span></li>`)
+      .map((p) => `<li class="${p.seat === 0 ? 'you' : ''}"><span>${p.finish ? ordinal(p.finish) : '—'}</span><span>${p.name}</span><span>${money(p.stack)}</span></li>`)
       .join('');
     const headline = r.humanFinish === 1 ? 'You won.' : r.humanFinish === 2 ? 'Second. So close.' : `${ordinal(r.humanFinish)} place.`;
     this.render(`

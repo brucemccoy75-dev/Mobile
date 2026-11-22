@@ -6,6 +6,7 @@ import { describeHand, evaluate } from '../engine/evaluator';
 import { type Hand, type Street } from '../engine/hand';
 import { mulberry32 } from '../engine/rng';
 import { type Save, TROPHIES } from '../game/career';
+import { money } from './format';
 import { cardHtml, ordinal } from './overlay';
 
 export interface ReplayPlayer {
@@ -110,10 +111,10 @@ export class Panels {
     let street: Street = 'preflop';
     for (const e of hand.events) {
       if (e.type === 'street') street = e.street;
-      if (e.type === 'post') (actionsByStreet.get('preflop') ?? actionsByStreet.set('preflop', []).get('preflop')!).push(`${name(e.seat)} posts ${e.amount}`);
+      if (e.type === 'post') (actionsByStreet.get('preflop') ?? actionsByStreet.set('preflop', []).get('preflop')!).push(`${name(e.seat)} posts ${money(e.amount)}`);
       if (e.type === 'action') {
         const a = e.action;
-        const text = a.type === 'fold' ? 'folds' : a.type === 'check' ? 'checks' : a.type === 'call' ? `calls ${e.amount}` : a.type === 'bet' ? `bets ${a.amount}` : `raises to ${a.amount}`;
+        const text = a.type === 'fold' ? 'folds' : a.type === 'check' ? 'checks' : a.type === 'call' ? `calls ${money(e.amount)}` : a.type === 'bet' ? `bets ${money(a.amount)}` : `raises to ${money(a.amount)}`;
         (actionsByStreet.get(street) ?? actionsByStreet.set(street, []).get(street)!).push(`${name(e.seat)} ${text}${e.allIn ? ' (all in)' : ''}`);
       }
     }
@@ -175,7 +176,7 @@ export class Panels {
       return `<div class="crow"><div class="cname">${TOURNAMENTS[k].name}</div>
         <div class="cstats">${r.played} played · ${r.wins} won · ${r.handsPlayed} hands</div>
         <div class="cfin">${finishes}</div>
-        <div class="cbest">${r.bestHand ? `Best hand: ${r.bestHand.description}` : 'No showdowns won yet'}${r.biggestPot ? ` · Biggest pot: ${r.biggestPot}` : ''}</div></div>`;
+        <div class="cbest">${r.bestHand ? `Best hand: ${r.bestHand.description}` : 'No showdowns won yet'}${r.biggestPot ? ` · Biggest pot: ${money(r.biggestPot)}` : ''}</div></div>`;
     }).join('');
     const trophies = TROPHIES.map((t) => {
       const got = save.trophies[t.id];

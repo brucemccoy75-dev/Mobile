@@ -11,6 +11,7 @@ import { type Expression, Figure } from './figures';
 import * as L from './layout';
 import { TableAudio } from './audio';
 import { Tweens, easeInOutCubic, easeOutCubic, linear } from './tween';
+import { money } from '../ui/format';
 
 export class TableScene implements Presenter {
   readonly renderer: THREE.WebGLRenderer;
@@ -49,7 +50,7 @@ export class TableScene implements Presenter {
 
     this.scene.background = new THREE.Color(0x07100b);
     this.scene.fog = new THREE.Fog(0x07100b, 14, 30);
-    this.camera = new THREE.PerspectiveCamera(44, 1, 0.1, 60);
+    this.camera = new THREE.PerspectiveCamera(48, 1, 0.1, 60);
     this.director = new Director(this.camera, this.tweens);
 
     this.buildRoom();
@@ -291,7 +292,7 @@ export class TableScene implements Presenter {
         return;
       case 'level':
         this.overlay.setInfo({ level: ev.level });
-        this.overlay.toast(`Blinds up: ${ev.level.sb} / ${ev.level.bb}${ev.level.ante ? ` ante ${ev.level.ante}` : ''}`);
+        this.overlay.toast(`Blinds up: ${money(ev.level.sb)} / ${money(ev.level.bb)}${ev.level.ante ? ` · ante ${money(ev.level.ante)}` : ''}`);
         return this.tweens.delay(600);
       case 'tournamentEnd':
         return;
@@ -418,7 +419,7 @@ export class TableScene implements Presenter {
     if (f && !this.out.has(seat)) f.setExpression(this.moodBase.get(seat) ?? 'neutral');
     const hand = this.hand!;
     const p = hand.player(seat);
-    const label = allIn ? 'ALL IN' : type === 'raise' ? `RAISE ${p.streetBet}` : type === 'bet' ? `BET ${p.streetBet}` : type.toUpperCase();
+    const label = allIn ? 'ALL IN' : type === 'raise' ? `RAISE ${money(p.streetBet)}` : type === 'bet' ? `BET ${money(p.streetBet)}` : type.toUpperCase();
     this.overlay.setTag(seat, label, type === 'fold' ? 'muted' : allIn ? 'hot' : type === 'raise' || type === 'bet' ? 'strong' : '');
     this.refreshStacks();
     if (type === 'fold') {
@@ -509,7 +510,7 @@ export class TableScene implements Presenter {
     }
     const from = this.pot.group.position.clone();
     const to = L.betPos(seat);
-    this.overlay.setTag(seat, `WINS ${amount}`, 'hot');
+    this.overlay.setTag(seat, `WINS ${money(amount)}`, 'hot');
     this.audio.play(amount >= 3000 ? 'win' : 'chips');
     this.pot.set(amount);
     await this.tweens.run(520, (t) => {
