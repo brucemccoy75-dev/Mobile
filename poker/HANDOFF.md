@@ -22,9 +22,10 @@ python3 tools/key-portrait.py in.jpg public/portraits/<id>.png   # green-screen 
 ```
 
 Verify visually with Playwright in headless Chromium (pre-installed): serve `dist/` with
-`npx vite preview --port 4173`, drive the page at viewport 844x390 with `isMobile` (also try 1024x768
-and 1400x900: the stage letterboxes), click
-`button.primary` then `.tcard[data-key=...]`, act through `#actions .passive` / `.fold`, screenshot.
+`npx vite preview --port 4173` and open `http://localhost:4173/` (not the Pages path: the preview serves
+`dist/` at the root and falls back to index.html for anything else). Drive the page at viewport 844x390
+with `isMobile` (also try 1024x768 and 1400x900: the stage letterboxes). The home screen is the pick
+screen: click `.random` then `.deal`, act through `#actions .passive` / `.fold`, screenshot.
 `window.__scene` exposes the scene (`director`, `showInset(seat, ms, name, caption)`, `hideInset()`).
 
 ## Architecture in one paragraph
@@ -36,7 +37,8 @@ tournament with the human in seat 0 and emits events to a presenter; `banter.ts`
 two-man conversations; `career.ts` is the save file and trophies. `src/scene` is Three.js: table,
 figures (`figures.ts`: drawn placeholder, or a portrait standee when `public/portraits/<id>.png`
 exists), cards, chips, camera `director.ts`, synthesized `audio.ts`. `src/ui` is HTML overlay:
-plates, board, action bar, panels, screens, and `stage.ts`: a fixed 1000x460 stage scaled uniformly to
+plates, board, action bar, panels, screens (the home screen is the pick-your-opponents grid with name
+entry, Career and Settings in its footer; there is no title screen or intro), and `stage.ts`: a fixed 1000x460 stage scaled uniformly to
 fit the visual viewport (safe areas respected), so the layout is identical on every screen and any
 spare screen is dark bars. Everything, menus and panels included, is laid out in stage units inside
 `#stage`; only `#rotate` sits outside it. `src/main.ts` wires it all. `src/content/lines.ts` holds

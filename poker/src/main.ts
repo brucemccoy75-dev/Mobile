@@ -65,16 +65,15 @@ panels.onReset = () => {
 function showMenu(): void {
   panels.close();
   actions.hide();
-  screens.title(
-    save.name,
-    (name) => {
+  screens.select(CHARACTERS, `${import.meta.env.BASE_URL}portraits/`, save.name, {
+    deal: (name, lineup) => {
       save.name = name;
       writeSave(save);
-      screens.select(CHARACTERS, `${import.meta.env.BASE_URL}portraits/`, (lineup) => start('custom', lineup), showMenu);
+      start('custom', lineup);
     },
-    () => panels.career(save, () => panels.close()),
-    () => panels.settings(save, () => panels.close()),
-  );
+    career: () => panels.career(save, () => panels.close()),
+    settings: () => panels.settings(save, () => panels.close()),
+  });
 }
 
 function start(key: TournamentKey, lineup: Character[]): void {

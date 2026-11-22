@@ -1,11 +1,8 @@
-// Full-screen menus: title with the intro video, pick your opponents, results.
+// Full-screen menus: the home screen (pick your opponents) and results.
 import { type Character } from '../bots/characters';
 import { type TournamentPlayer } from '../engine/tournament';
 import { money } from './format';
 import { ordinal } from './overlay';
-
-/** The intro plays once per visit; later trips to the title show it paused behind the menu. */
-let introPlayed = false;
 
 export class Screens {
   private readonly root: HTMLElement;
@@ -24,52 +21,13 @@ export class Screens {
     this.root.innerHTML = '';
   }
 
-  title(name: string, onPlay: (name: string) => void, onCareer: () => void, onSettings: () => void): void {
-    const first = !introPlayed;
-    this.render(`
-      <video class="intro ${first ? 'playing' : ''}" autoplay muted playsinline preload="auto"><source src="./intro.mp4" type="video/mp4"></video>
-      ${first ? '<button class="link skip">Skip</button>' : ''}
-      <div class="screen title ${first ? 'waiting' : ''}">
-        <div class="eyebrow">No-Limit Hold'em · six-max · you against five of Dave's friends</div>
-        <h1>Poker Night<br>at Dave's</h1>
-        <div class="namerow"><label>They'll call you</label><input class="name" maxlength="14" value="${name.replace(/"/g, '')}" /></div>
-        <button class="primary">Who's playing?</button>
-        <div class="links"><button class="link go-career">Career</button><button class="link go-settings">Settings</button></div>
-      </div>`);
-    const video = this.root.querySelector<HTMLVideoElement>('video.intro')!;
-    const screen = this.root.querySelector<HTMLElement>('.screen.title')!;
-    const reveal = () => {
-      introPlayed = true;
-      video.classList.remove('playing');
-      screen.classList.remove('waiting');
-      this.root.querySelector('.skip')?.remove();
-      video.removeEventListener('click', reveal);
-    };
-    video.addEventListener('error', () => {
-      video.remove();
-      reveal();
-    }, { once: true });
-    if (first) {
-      video.addEventListener('ended', reveal, { once: true });
-      video.addEventListener('click', reveal);
-      this.root.querySelector('.skip')!.addEventListener('click', reveal);
-      // If autoplay is refused, do not leave the player staring at a black frame.
-      void video.play().catch(reveal);
-      window.setTimeout(() => {
-        if (video.paused && !introPlayed) reveal();
-      }, 1500);
-    } else {
-      video.pause();
-      video.currentTime = 19.5;
-    }
-    const input = this.root.querySelector<HTMLInputElement>('.name')!;
-    this.root.querySelector('button.primary')!.addEventListener('click', () => onPlay(input.value.trim() || name));
-    this.root.querySelector('.go-career')!.addEventListener('click', onCareer);
-    this.root.querySelector('.go-settings')!.addEventListener('click', onSettings);
-  }
-
-  /** Pick five opponents. Everyone wants in, and says so. */
-  select(characters: Character[], portraitBase: string, onDeal: (lineup: Character[]) => void, onBack: () => void): void {
+  /** The home screen: pick five opponents, enter your name, deal. Everyone wants in, and says so. */
+  select(
+    characters: Character[],
+    portraitBase: string,
+    name: string,
+    on: { deal: (name: string, lineup: Character[]) => void; career: () => void; settings: () => void },
+  ): void {
     const picked: string[] = [];
     const cards = characters
       .map((c) => `<button class="pcardc" data-id="${c.id}">
@@ -82,16 +40,21 @@ export class Screens {
     this.render(`
       <div class="screen pick">
         <div class="pickhead">
-          <button class="link back">Back</button>
+          <div class="brand">Poker Night<span>at Dave's</span></div>
           <div class="eyebrow">Who's coming tonight? <span class="count">Pick 5</span></div>
           <button class="link random">Random five</button>
         </div>
         <div class="pgrid">${cards}</div>
-        <button class="primary deal" disabled>Deal</button>
+        <div class="pickfoot">
+          <div class="namerow"><label>They'll call you</label><input class="name" maxlength="14" value="${name.replace(/"/g, '')}" /></div>
+          <button class="primary deal" disabled>Deal</button>
+          <div class="links"><button class="link go-career">Career</button><button class="link go-settings">Settings</button></div>
+        </div>
       </div>`);
     const root = this.root;
     const countEl = root.querySelector('.count')!;
     const dealBtn = root.querySelector<HTMLButtonElement>('.deal')!;
+    const input = root.querySelector<HTMLInputElement>('.name')!;
     const byId = (id: string) => characters.find((c) => c.id === id)!;
     // One man talks at a time; his bubble fades after a few seconds.
     let talking: { id: string; timer: number } | null = null;
@@ -145,8 +108,9 @@ export class Screens {
       say(pool[0].id, pool[0].picked, true);
       refresh();
     });
-    dealBtn.addEventListener('click', () => onDeal(picked.map(byId)));
-    root.querySelector('.back')!.addEventListener('click', onBack);
+    dealBtn.addEventListener('click', () => on.deal(input.value.trim() || name, picked.map(byId)));
+    root.querySelector('.go-career')!.addEventListener('click', on.career);
+    root.querySelector('.go-settings')!.addEventListener('click', on.settings);
     // Chatter: every few seconds one man who is not picked makes his pitch.
     const chatter = window.setInterval(() => {
       if (!root.contains(dealBtn)) {
