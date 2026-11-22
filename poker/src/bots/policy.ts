@@ -86,7 +86,11 @@ export interface Context {
 }
 
 const SIZE: Record<'small' | 'medium' | 'big', number> = { small: 0.45, medium: 0.7, big: 1.1 };
+/** Postflop bets as a share of the pot, scaled per type: the weak players bet smaller and odder. */
+const SIZE_SCALE: Record<BotType, number> = { nit: 0.85, tourist: 0.7, calculator: 1, pro: 1 };
 const PREFLOP_MULT: Record<'small' | 'medium' | 'big', number> = { small: 2.2, medium: 2.8, big: 4 };
+/** A re-raise before the flop is a multiple of the bet it is over, not of the pot. */
+const PREFLOP_RERAISE: Record<'small' | 'medium' | 'big', number> = { small: 2.3, medium: 2.8, big: 3.5 };
 
 function gaussian(rng: Rng): number {
   let u = 0;
@@ -261,19 +265,19 @@ function tourist(c: Context): Weights {
       if (c.percentile <= 0.55) return W(0, 0.55, 0.15, 0.2, 0.1 * wild, c.stackBB < 20 ? 0.1 * wild : 0);
       return W(0.8, 0.2);
     }
-    if (c.percentile <= 0.5) return W(0.15, 0.6, 0, 0.15, 0.07 * wild, c.stackBB < 30 ? 0.03 * wild : 0);
+    if (c.percentile <= 0.5) return W(0.15, 0.7, 0.03, 0.08, 0.03 * wild, c.stackBB < 30 ? 0.02 * wild : 0);
     return W(0.85, 0.15);
   }
   const something = c.made >= HandCategory.Pair || c.flushDraw || c.straightOuts >= 4;
   // Shoving is for when the stack is not much bigger than the pot; otherwise it becomes a big bet.
   const shove = c.spr < 4 ? 1 : 0;
   if (!c.facingBet) {
-    if (something) return W(0, 0.3, 0.1, 0.25, 0.3 * wild + 0.05 * wild * (1 - shove), 0.05 * wild * shove);
-    return W(0, 0.75, 0.1, 0.1, 0.05 * wild);
+    if (something) return W(0, 0.3, 0.2, 0.3, 0.15 * wild + 0.05 * wild * (1 - shove), 0.05 * wild * shove);
+    return W(0, 0.75, 0.12, 0.1, 0.03 * wild);
   }
   if (c.facingAllIn) return c.equity >= 0.38 ? W(0, 1) : W(1, 0);
-  if (c.equity >= 0.7) return W(0, 0.4, 0, 0.2, 0.3 + 0.1 * wild * (1 - shove), 0.1 * wild * shove);
-  if (something) return W(0.1, 0.65, 0, 0.1, 0.1 + 0.05 * wild * (1 - shove), 0.05 * wild * shove);
+  if (c.equity >= 0.7) return W(0, 0.4, 0.05, 0.25, 0.2 + 0.1 * wild * (1 - shove), 0.1 * wild * shove);
+  if (something) return W(0.1, 0.65, 0.05, 0.1, 0.05 + 0.05 * wild * (1 - shove), 0.05 * wild * shove);
   if (c.betRatio < 0.5) return W(0.5, 0.4, 0, 0.05, 0.05);
   return W(0.75, 0.15, 0, 0.05, 0.05);
 }
@@ -387,10 +391,11 @@ function roundChips(amount: number, bigBlind: number): number {
   return Math.round(amount / unit) * unit;
 }
 
-function sizeToAction(hand: Hand, legal: LegalActions, c: Context, move: 'small' | 'medium' | 'big'): Action | null {
+function sizeToAction(hand: Hand, legal: LegalActions, c: Context, move: 'small' | 'medium' | 'big', type: BotType = 'pro'): Action | null {
   const me = hand.player(legal.seat);
+  const share = SIZE[move] * SIZE_SCALE[type];
   if (legal.canBet) {
-    let amount = roundChips(c.pot * SIZE[move], hand.bigBlind);
+    let amount = roundChips(c.pot * share, hand.bigBlind);
     amount = clamp(amount, legal.minBet, legal.maxTo);
     return { type: 'bet', amount };
   }
@@ -398,8 +403,12 @@ function sizeToAction(hand: Hand, legal: LegalActions, c: Context, move: 'small'
     let amount: number;
     if (c.preflop && c.raisesThisStreet === 0) {
       amount = hand.bigBlind * PREFLOP_MULT[move] + c.limpers * hand.bigBlind;
+    } else if (c.preflop) {
+      // Three-bets and four-bets scale with the raise in front, so a 3bb open draws 7 to 10bb, not 25.
+      // The weak players mostly min-raise; the scale pulls their multiple down to the floor.
+      amount = hand.currentBet * PREFLOP_RERAISE[move] * (type === 'tourist' ? 0.8 : 1) + c.limpers * hand.bigBlind;
     } else {
-      amount = hand.currentBet + (c.pot + c.toCall) * SIZE[move];
+      amount = hand.currentBet + (c.pot + c.toCall) * share;
     }
     amount = clamp(roundChips(amount, hand.bigBlind), legal.minRaiseTo, legal.maxTo);
     // A raise that leaves crumbs behind is just a shove.
@@ -475,7 +484,7 @@ export function decide(input: DecisionInput): Decision {
       action = legal.canBet ? { type: 'bet', amount: legal.maxTo } : legal.canRaise ? { type: 'raise', amount: legal.maxTo } : legal.canCheck ? { type: 'check' } : { type: 'call' };
       break;
     default: {
-      const sized = sizeToAction(hand, legal, c, move);
+      const sized = sizeToAction(hand, legal, c, move, type);
       if (sized) action = sized;
       else {
         move = 'passive';

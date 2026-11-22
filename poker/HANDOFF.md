@@ -206,6 +206,11 @@ how many cards are to come. Trigger `thinking`; recent lines are not repeated by
 
 1. Expression variants (`<id>_happy.png` etc.) and the texture swap in `figures.ts`.
 2. Tuning from real play: banter density, bot busts in the first few hands, the blind schedule.
+   Bet sizing lives in `policy.ts`: `SIZE` (postflop share of pot) scaled by `SIZE_SCALE` per type
+   (tourists 0.7), `PREFLOP_MULT` for opens, `PREFLOP_RERAISE` for three- and four-bets as a
+   multiple of the raise in front (tourists ×0.8, so they mostly min-raise). The scratch script
+   that measured sizes printed, per type, median and p90 of opens, three-bets and postflop
+   bet-to-pot; tourists' three-bets went from a 10bb median / 25bb p90 to 7bb / 12bb.
 3. Later from the design: text-to-speech, cash games.
 4. The re-rpg and map3d workflows on their own branches force-publish the whole Pages site and would
    wipe `gh-pages/poker/`; rerunning our workflow restores it. Fix those workflows if it bites.
