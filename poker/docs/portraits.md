@@ -92,8 +92,10 @@ level, eyes calm, mouth closed and straight); the expression variants come later
 > out as a fat teenager.)
 
 **Luca** (`benny.png`) — tourist, big night out, overconfident.
-> A man in his late twenties, slicked dark hair, open-collared black shirt, thin gold chain, strong
-> jaw, cocky raised eyebrow and a smirk, the look of someone who has told this story twice already.
+> An ordinary white man clearly in his mid twenties, an adult, average build, average height, with an
+> unremarkable everyday face, short neat dark hair, clean-shaven with just a hint of stubble, wearing
+> a plain black crew-neck t-shirt with nothing on it. Nothing distinctive about him at all. Neutral
+> expression.
 
 **Jonathan** (`wen.png`) — calculator, statistician, literal.
 > A man in his mid forties, rimless glasses, close-cropped hair, grey quarter-zip over a collared

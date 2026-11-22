@@ -49,7 +49,7 @@ The ids never change (saves, memories and file names depend on them). Only names
 | marvin | Kevin (late 40s, heavy, dark messy hair, drunk and crazy; imaginary) | nit | anti | **done** |
 | chad | Bawb (late 40s, short, fit, buzzed stubble, white tee) | tourist | pro | **done** |
 | trish | Tim (late 30s, stocky, stubble, wild hair under a red backwards cap, video-game tee) | tourist | meh | **done** |
-| benny | Luca | tourist | pro | needed |
+| benny | Luca (mid 20s, average, dark hair, black tee, nondescript) | tourist | pro | prompt ready |
 | wen | Jonathan | calculator | pro | needed |
 | priya | Will | calculator | meh | needed |
 | ulrich | Menafee | calculator | anti | needed |
