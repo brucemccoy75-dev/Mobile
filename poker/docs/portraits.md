@@ -16,7 +16,9 @@ Deliver, per character:
 - **File name = character id**: `harold.png`, `dolores.png`, `marvin.png`, `chad.png`, `trish.png`,
   `benny.png`, `wen.png`, `priya.png`, `ulrich.png`, `sal.png`, `nadia.png`, `jimmy.png`, `dealer.png`.
   (The ids are the original placeholder ids; they never changed, only the display names did.)
-- Put them in `poker/public/portraits/`. I will mount them in the scene and the panel.
+- Put them in `poker/public/portraits/`. The engine mounts any portrait it finds there in place of the
+  drawn figure, at the table and in the speaker panel; characters without one keep the drawn figure.
+- To key a green-screen image yourself: `python3 tools/key-portrait.py in.jpg public/portraits/<id>.png`.
 
 Optional, later: expression variants as `<id>_happy.png`, `<id>_annoyed.png`, `<id>_shocked.png`,
 `<id>_thinking.png`, `<id>_tilted.png`. Start with the neutral one per character; the engine can keep

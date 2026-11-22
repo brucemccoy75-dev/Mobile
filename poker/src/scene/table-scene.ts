@@ -119,7 +119,14 @@ export class TableScene implements Presenter {
     const w = Math.round(r.width);
     const h = Math.round(r.height);
     if (w <= 0 || h <= 0) return;
-    const pose = this.pip.seat === -1 ? closeUpOf(L.DEALER_POS) : seatPose(this.pip.seat);
+    const fig0 = this.figures.get(this.pip.seat);
+    let pose = this.pip.seat === -1 ? closeUpOf(L.DEALER_POS) : seatPose(this.pip.seat);
+    if (fig0?.portrait) {
+      // A flat portrait standee reads best from closer in, squarely from the front.
+      const f = fig0.group.position;
+      const toCentre = new THREE.Vector3(-f.x, 0, -f.z).normalize();
+      pose = { pos: f.clone().add(toCentre.multiplyScalar(1.75)).setY(1.4), look: new THREE.Vector3(f.x, 1.22, f.z) };
+    }
     this.pipCamera.aspect = r.width / r.height;
     this.pipCamera.updateProjectionMatrix();
     this.pipCamera.position.copy(pose.pos);

@@ -72,9 +72,20 @@ function faceTexture(expression: Expression, hash: number): THREE.CanvasTexture 
   return tex;
 }
 
+const textureLoader = new THREE.TextureLoader();
+
+/** Height of a portrait standee in world units; its bottom hides behind the rail. */
+const PORTRAIT_HEIGHT = 1.5;
+const PORTRAIT_BOTTOM = 0.18;
+
 export class Figure {
   readonly group = new THREE.Group();
+  /** The drawn placeholder; hidden once a portrait loads. */
+  readonly capsule = new THREE.Group();
   readonly head: THREE.Mesh;
+  /** The portrait standee, when the character has one. */
+  portrait: THREE.Mesh | null = null;
+  private portraitMaterial: THREE.MeshBasicMaterial | null = null;
   private readonly face: THREE.Mesh;
   private readonly faceMaterial: THREE.MeshBasicMaterial;
   private readonly hash: number;
@@ -95,54 +106,77 @@ export class Figure {
     this.skinMaterial = new THREE.MeshStandardMaterial({ color: skin, roughness: 0.7 });
     const hairMaterial = new THREE.MeshStandardMaterial({ color: hair, roughness: 0.9 });
 
+    this.group.add(this.capsule);
     const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.42 * build, 0.5, 6, 16), this.bodyMaterial);
     body.position.y = 0.55;
     body.scale.set(1, 1, 0.7);
     body.castShadow = true;
-    this.group.add(body);
+    this.capsule.add(body);
 
     const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, 0.16, 12), this.skinMaterial);
     neck.position.y = 1.05;
-    this.group.add(neck);
+    this.capsule.add(neck);
 
     this.head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 24, 18), this.skinMaterial);
     this.head.position.y = 1.36;
     this.head.scale.set(1, 1.12, 1);
     this.head.castShadow = true;
-    this.group.add(this.head);
+    this.capsule.add(this.head);
 
     const cap = new THREE.Mesh(new THREE.SphereGeometry(0.295, 24, 12, 0, Math.PI * 2, 0, Math.PI * (0.35 + ((h >>> 12) % 3) * 0.08)), hairMaterial);
     cap.position.y = 1.4;
     cap.scale.set(1, 1.1, 1);
-    this.group.add(cap);
+    this.capsule.add(cap);
 
     if (dealer) {
       const tie = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.08, 0.06), new THREE.MeshStandardMaterial({ color: 0x1a1a1a }));
       tie.position.set(0, 0.95, 0.3);
-      this.group.add(tie);
+      this.capsule.add(tie);
       const vest = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 0.3, 4, 12), new THREE.MeshStandardMaterial({ color: 0x1f1f24, roughness: 0.8 }));
       vest.position.set(0, 0.5, 0.12);
       vest.scale.set(1.2, 1, 0.55);
-      this.group.add(vest);
+      this.capsule.add(vest);
     } else if ((h >>> 15) % 3 === 0) {
       const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.03, 20), hairMaterial);
       brim.position.y = 1.5;
-      this.group.add(brim);
+      this.capsule.add(brim);
       const top = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.28, 0.22, 20), hairMaterial);
       top.position.y = 1.6;
-      this.group.add(top);
+      this.capsule.add(top);
     } else if ((h >>> 15) % 3 === 1) {
       const glasses = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.012, 8, 16), new THREE.MeshStandardMaterial({ color: 0x222222 }));
       glasses.position.set(-0.1, 1.38, 0.26);
       const glasses2 = glasses.clone();
       glasses2.position.x = 0.1;
-      this.group.add(glasses, glasses2);
+      this.capsule.add(glasses, glasses2);
     }
 
     this.faceMaterial = new THREE.MeshBasicMaterial({ transparent: true, map: this.texture('neutral'), depthWrite: false });
     this.face = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.46), this.faceMaterial);
     this.face.position.set(0, 1.36, 0.275);
-    this.group.add(this.face);
+    this.capsule.add(this.face);
+    this.loadPortrait(dealer ? 'dealer' : id);
+  }
+
+  /** Tries the character's portrait; the drawn figure stays until it arrives, or forever if none. */
+  private loadPortrait(id: string): void {
+    const url = `${import.meta.env.BASE_URL}portraits/${id}.png`;
+    textureLoader.load(url, (tex) => {
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 8;
+      const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.08, color: 0xfff1e2, side: THREE.DoubleSide });
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(PORTRAIT_HEIGHT, PORTRAIT_HEIGHT), mat);
+      mesh.position.y = PORTRAIT_BOTTOM + PORTRAIT_HEIGHT / 2;
+      mesh.castShadow = true;
+      mesh.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: tex, alphaTest: 0.5 });
+      this.portrait = mesh;
+      this.portraitMaterial = mat;
+      this.group.add(mesh);
+      this.capsule.visible = false;
+      if (this.folded) mat.opacity = 0.38;
+    }, undefined, () => {
+      // No portrait for this character yet: keep the drawn figure.
+    });
   }
 
   private texture(e: Expression): THREE.CanvasTexture {
@@ -163,8 +197,8 @@ export class Figure {
     this.group.traverse((o) => {
       const m = (o as THREE.Mesh).material as THREE.Material | undefined;
       if (!m || !('opacity' in m)) return;
-      // The face plane is always transparent; only its opacity changes.
-      if (m !== this.faceMaterial) m.transparent = folded;
+      // The face plane and the portrait are always transparent; only their opacity changes.
+      if (m !== this.faceMaterial && m !== this.portraitMaterial) m.transparent = folded;
       m.opacity = folded ? 0.38 : 1;
     });
   }
@@ -177,6 +211,7 @@ export class Figure {
     const lean = this.folded ? -0.14 : this.expression === 'thinking' ? 0.12 : this.expression === 'tilted' ? 0.06 : 0;
     this.group.rotation.x += (lean - this.group.rotation.x) * 0.08;
     this.head.rotation.y = Math.sin(phase * 0.7) * 0.08 + (this.expression === 'thinking' ? Math.sin(phase * 2.3) * 0.05 : 0);
+    if (this.portrait) this.portrait.rotation.z = Math.sin(phase * 0.9) * 0.012;
   }
 
   setExpression(e: Expression): void {
@@ -193,7 +228,7 @@ export class Figure {
     this.group.traverse((o) => {
       const m = (o as THREE.Mesh).material as THREE.Material | undefined;
       if (!m || !('opacity' in m)) return;
-      if (m !== this.faceMaterial) m.transparent = out;
+      if (m !== this.faceMaterial && m !== this.portraitMaterial) m.transparent = out;
       m.opacity = v;
     });
     if (out) this.setExpression('out');
