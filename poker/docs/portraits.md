@@ -66,10 +66,13 @@ level, eyes calm, mouth closed and straight); the expression variants come later
 > lettering or pictures. Neutral expression. (Not "heavyset", which came out fat, and not "muscular"
 > or "lifts weights", which came out as a bodybuilder.)
 
-**Kevin** (`marvin.png`) — nit, actuary, fatalistic.
-> A man in his late thirties, pale, slightly hollow cheeks, thinning dark hair, short-sleeve white
-> dress shirt with a narrow tie, flat resigned expression, eyes that have already calculated how this
-> ends.
+**Kevin** (`marvin.png`) — nit, actuary; the imaginary one, drunk and unhinged.
+> A heavyset white man in his late forties with a big round face, double chin, thick neck and heavy
+> shoulders, messy dark hair sticking up on one side, flushed red cheeks and nose, wearing a wrinkled
+> dark plaid shirt with the collar askew and one button undone. He looks wildly drunk and unhinged:
+> eyes wide and glassy and pointing in slightly different directions, one eyebrow way up, a huge
+> lopsided grin showing teeth, a little sweat on his forehead, the face of a man who just had the
+> greatest idea of his life at two in the morning. (The crazy face is his base expression.)
 
 **Bawb** (`chad.png`) — tourist, loud, the life of the party. Done.
 > A white man in his late forties, short and fit, a compact runner's build with narrow shoulders, a

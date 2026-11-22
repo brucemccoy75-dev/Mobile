@@ -46,7 +46,7 @@ The ids never change (saves, memories and file names depend on them). Only names
 |---|---|---|---|---|
 | harold | David Sr (~70, thin, bald, white shirt; David's father) | nit | anti | **done** |
 | dolores | Paul (40s, average build, dark hair, tank top, tribal armbands) | nit | meh | **done** |
-| marvin | Kevin | nit | anti | needed |
+| marvin | Kevin (late 40s, heavy, dark messy hair, drunk and crazy; imaginary) | nit | anti | prompt ready |
 | chad | Bawb (late 40s, short, fit, buzzed stubble, white tee) | tourist | pro | **done** |
 | trish | Tim | tourist | meh | needed |
 | benny | Luca | tourist | pro | needed |
