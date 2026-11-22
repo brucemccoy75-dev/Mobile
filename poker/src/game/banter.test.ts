@@ -17,6 +17,7 @@ describe('lines', () => {
   it('covers every trigger for every character', () => {
     const triggers = ['dealtIn', 'foldPreflop', 'raise', 'reraise', 'callBig', 'allIn', 'facingAllIn', 'winNoShowdown', 'bluffWorked', 'winShowdown', 'loseShowdown', 'badBeatTaken', 'badBeatGiven', 'bluffCaught', 'targetFoldsToMe', 'targetCallsMeDown', 'stackedTarget', 'stackedByTarget', 'targetTank', 'targetInstant', 'shortStack', 'chipLeader', 'playerOut', 'headsUp', 'idle'];
     for (const c of CHARACTERS) {
+      if (c.id === 'ulrich') continue; // Menafee never speaks: the chair is the joke
       const have = new Set(LINES[c.id].map((l) => l.t));
       for (const t of triggers) expect(have.has(t as never), `${c.id} ${t}`).toBe(true);
       expect(LINES[c.id].some((l) => l.m === 'tilted'), `${c.id} tilted`).toBe(true);

@@ -23,14 +23,14 @@ export interface Character {
 
 export const CHARACTERS: Character[] = [
   { id: 'harold', name: 'David Sr', type: 'nit', iq: 48, read: 32, clarityBase: 24, bio: 'David\u2019s father. Says almost nothing. Folds almost everything.', aiStance: 'anti', talk: 0.3, trash: 0.5 },
-  { id: 'dolores', name: 'Paul', type: 'nit', iq: 52, read: 38, clarityBase: 14, bio: 'Teaches fourth grade and raises bees by hand. Knows the spot.', aiStance: 'meh', talk: 1, trash: 0.8 },
-  { id: 'marvin', name: 'Kevin', type: 'nit', iq: 40, read: 24, clarityBase: 28, bio: 'Nobody is sure who invited Kevin. Kevin is not sure either.', aiStance: 'anti', talk: 1.1, trash: 1, temper: 1.4 },
+  { id: 'dolores', name: 'Paul', type: 'nit', iq: 52, read: 38, clarityBase: 14, bio: 'Makes everything by hand: clothes, car, horse. Sells honey. Calls a full house a full homestead.', aiStance: 'meh', talk: 1.1, trash: 0.8 },
+  { id: 'marvin', name: 'Kevin', type: 'nit', iq: 40, read: 24, clarityBase: 28, bio: 'Nobody is sure who invited Kevin. Kevin is not sure either.', aiStance: 'anti', talk: 0.6, trash: 0.8, temper: 1.4 },
   { id: 'chad', name: 'Bawb', type: 'tourist', iq: 28, read: 20, clarityBase: 22, bio: 'Says about four words a night. Second year of clown school. She said no.', aiStance: 'pro', talk: 0.3, trash: 0.6 },
   { id: 'trish', name: 'Tim', type: 'tourist', iq: 36, read: 30, clarityBase: 12, bio: 'Financial services. Has stories from the office that cannot all be true.', aiStance: 'meh', talk: 1.2, trash: 1.7 },
   { id: 'benny', name: 'Luca', type: 'tourist', iq: 22, read: 18, clarityBase: 30, bio: 'Loves the new GTA. Enrolled in clown school. Has proposed three times, all of them high up.', aiStance: 'pro', talk: 1.1, trash: 1 },
-  { id: 'wen', name: 'Jonathan', type: 'calculator', iq: 92, read: 48, clarityBase: 12, bio: 'Statistician. Will tell you your exact equity after beating you with it.', aiStance: 'pro', talk: 1, trash: 1 },
+  { id: 'wen', name: 'Jonathan', type: 'calculator', iq: 92, read: 48, clarityBase: 12, bio: 'Quiet. Built like a boxer. Wears the B hat.', aiStance: 'pro', talk: 0.6, trash: 0.8 },
   { id: 'priya', name: 'Will', type: 'calculator', iq: 84, read: 58, clarityBase: 18, bio: 'Plans everything, laminates it, and is on month fourteen of trying for a baby.', aiStance: 'meh', talk: 1, trash: 0.9 },
-  { id: 'ulrich', name: 'Menafee', type: 'calculator', iq: 78, read: 42, clarityBase: 26, bio: 'Has never once shown up. His chair plays better than most.', aiStance: 'anti', talk: 0.8, trash: 1 },
+  { id: 'ulrich', name: 'Menafee', type: 'calculator', iq: 78, read: 42, clarityBase: 26, bio: 'Has never once shown up. People talk to his chair. It never answers.', aiStance: 'anti', talk: 1, trash: 0 },
   { id: 'sal', name: 'Jack', type: 'pro', iq: 86, read: 92, clarityBase: 16, bio: 'Sixteen. Best player at the table. Would like to know where the snacks are.', aiStance: 'anti', talk: 1.3, trash: 1.1 },
   { id: 'nadia', name: 'David', type: 'pro', iq: 94, read: 84, clarityBase: 26, bio: 'Financial services. The hottest head at the table. Has a policy about checking.', aiStance: 'pro', talk: 1.3, trash: 1.9, temper: 2 },
   { id: 'jimmy', name: 'Bruce', type: 'pro', iq: 82, read: 90, clarityBase: 22, bio: 'Joins every conversation with one dry line, usually at your expense.', aiStance: 'meh', talk: 1.1, trash: 1.2 },

@@ -566,4 +566,87 @@ export const CONVERSATIONS: Conversation[] = [
     ['B', 'Who came?'],
     ['A', 'One clown. He did not have a job either. He just stood there. It was the best lecture so far.'],
   ] },
+  // ---- Paul: honey sales, everything by hand, the game at home ---------------------------------
+  { tag: 'office', who: { A: ['dolores'] }, lines: [
+    ['A', 'Honey is on sale. Thirty percent off a gallon.'],
+    ['B', 'Who buys a gallon of honey?'],
+    ['A', 'Show me one card and it is half off.'],
+    ['B', 'I am not showing you a card, Paul.'],
+    ['A', 'Forty percent. Show me the back of one.'],
+  ] },
+  { tag: 'office', who: { A: ['dolores'] }, lines: [
+    ['A', 'Built the car.'],
+    ['B', 'The whole car?'],
+    ['A', 'Frame, engine, seats. The seats are honey-cured leather. You stick to them. It is a feature.'],
+  ] },
+  { tag: 'office', who: { A: ['dolores'], B: ['jimmy'] }, lines: [
+    ['A', 'Built the horse.'],
+    ['B', 'You cannot build a horse, Paul.'],
+    ['A', 'From parts. You start with a smaller horse.'],
+    ['B', 'I am going to go stand outside for a while.'],
+  ] },
+  { tag: 'dnd', who: { A: ['dolores'] }, lines: [
+    ['A', 'Thursday game. My bard seduced a door.'],
+    ['B', 'A door.'],
+    ['A', 'Rolled a nineteen. The door opened. My wife, the DM, said “of course it did.” Then she looked at me for a while.'],
+  ] },
+  { tag: 'dnd', who: { A: ['dolores'], B: ['sal'] }, lines: [
+    ['A', 'Jack, you should come Thursday. We need a cleric.'],
+    ['B', 'What does a cleric do?'],
+    ['A', 'Heals people. Mostly me. Mostly from things my wife’s rogue did to me. On purpose.'],
+    ['B', 'I have a chem test Friday.'],
+    ['A', 'The cleric would have an answer for that. That is why we need one.'],
+  ] },
+  { tag: 'office', who: { A: ['dolores'] }, lines: [
+    ['A', 'Work put me on the honey committee.'],
+    ['B', 'There is a honey committee?'],
+    ['A', 'There is now. It is me and a man who is allergic. We meet in the parking lot. For his safety.'],
+  ] },
+  { tag: 'office', who: { A: ['dolores'], B: ['benny'] }, lines: [
+    ['A', 'Luca, the horse in the new GTA. Can you build one?'],
+    ['B', 'You can steal one.'],
+    ['A', 'That is not the same. Anyone can steal a horse. I have. Once. It did not count. It was my horse.'],
+  ] },
+
+  // ---- Menafee: everyone talks to the chair; the chair never answers --------------------------
+  { tag: 'office', who: { B: ['ulrich'] }, lines: [
+    ['A', 'Menafee, you in for the next one?'],
+    ['B', ''],
+    ['A', 'Okay. Good talk.'],
+  ] },
+  { tag: 'office', who: { B: ['ulrich'] }, lines: [
+    ['A', 'Menafee. Do you want anything from the fridge.'],
+    ['B', ''],
+    ['A', 'I will get you a water. You never drink it. I get it anyway. That is friendship.'],
+  ] },
+  { tag: 'office', who: { A: ['nadia'], B: ['ulrich'] }, lines: [
+    ['A', 'Menafee, back me up here. The castration policy. Yes or no.'],
+    ['B', ''],
+    ['A', 'See? Menafee gets it. Menafee has always gotten it.'],
+  ] },
+  { tag: 'office', who: { A: ['trish'], B: ['ulrich'] }, lines: [
+    ['A', 'Menafee, I have a towel for you. The chair one. It is just a picture of a chair.'],
+    ['B', ''],
+    ['A', 'I will leave it on your seat. Forty dollars. You can pay me when you get here.'],
+  ] },
+  { tag: 'office', who: { A: ['sal'], B: ['ulrich'] }, lines: [
+    ['A', 'Mr. Menafee, are you going to eat those pretzels?'],
+    ['B', ''],
+    ['A', 'Cool. Cool. Thanks, Mr. Menafee. You are the best one here, honestly.'],
+  ] },
+  { tag: 'office', who: { A: ['dolores'], B: ['ulrich'] }, lines: [
+    ['A', 'Menafee, show me one card and the honey is half off.'],
+    ['B', ''],
+    ['A', 'That is the first time anyone has said no without saying no. I respect it. Forty percent.'],
+  ] },
+  { tag: 'ai', who: { B: ['ulrich'] }, lines: [
+    ['A', 'Menafee, where do you stand on the data centre.'],
+    ['B', ''],
+    ['A', 'Firmly against. I knew it. You and me both.'],
+  ] },
+  { tag: 'office', who: { A: ['jimmy'], B: ['ulrich'] }, lines: [
+    ['A', 'Menafee. How’s the wife.'],
+    ['B', ''],
+    ['A', 'Yeah. Mine too.'],
+  ] },
 ];

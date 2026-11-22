@@ -89,6 +89,12 @@ covered for every character and at least 100 lines per type. To rewrite a person
    trash talk half vicious and half misunderstanding the rules of the hand.
    **David is done.** Hothead, the castration policy for checking (a `targetChecks` trigger fires
    when anyone checks), hummus and pretzels, tilts twice as hard (`temper` in `characters.ts`).
+   **Paul is done.** Everything by hand (clothes, car, horse), honey on sale, half off a gallon if
+   you show one card, "full homestead", bees, D&D with his wife as DM, work small talk.
+   **The quiet men share a pool.** David Sr, Kevin and Jonathan use `GENERIC` in `lines.ts`: short,
+   plain lines, with low talk factors. Replace with a persona by giving the id its own array.
+   **Menafee never speaks.** `LINES.ulrich` is empty; conversations pinned to him have empty B lines
+   so the panel shows the chair with no caption while people talk to it.
    **Luca, Bawb and Will are done** as one set: the new GTA (Luca loves it, Will hates it),
    Christmas plans, clown school, failed proposals (balloon, Celtics game, bridge, thirty-slide
    deck), and trying for children. Bawb's lines are a few words each because he barely talks.
@@ -96,12 +102,12 @@ covered for every character and at least 100 lines per type. To rewrite a person
 
 Persona notes from the owner for the rest (all lines exaggerated, a little in character, the work
 stuff ridiculous: "the new girl died during her test and now I have to finish it for her"):
-- Paul: raises bees by hand, has found the spot to tickle them for the special honey.
 - Bruce: joins most conversations, very dry, usually one joke at the expense of whoever he is
   talking to.
-- David Sr: almost always quiet (Bawb done).
 - The whole table debates technology, AI and data centres.
-- Kevin: the drunk imaginary one. Skynet: the android dealer; give it a robot voice.
+- Still generic: David Sr, Kevin (the drunk imaginary one), Jonathan. Bruce still has the old
+  placeholder "Clock" voice, which is dry and needling and close to the note. Skynet still has the
+  human dealer's lines; give it a robot voice.
 Already wired: each character has `talk` and `trash` factors in `characters.ts` that the banter
 engine uses for who speaks and who needles, and conversations can be pinned to particular men with
 `who` in `conversations.ts` (Jack's, Paul's bees, the office trio, Bruce's dry shots exist).
