@@ -48,7 +48,7 @@ The ids never change (saves, memories and file names depend on them). Only names
 | dolores | Paul (40s, average build, dark hair, tank top, tribal armbands) | nit | meh | **done** |
 | marvin | Kevin (late 40s, heavy, dark messy hair, drunk and crazy; imaginary) | nit | anti | **done** |
 | chad | Bawb (late 40s, short, fit, buzzed stubble, white tee) | tourist | pro | **done** |
-| trish | Tim (late 30s, stocky, stubble, wild hair under a red backwards cap, video-game tee) | tourist | meh | prompt ready |
+| trish | Tim (late 30s, stocky, stubble, wild hair under a red backwards cap, video-game tee) | tourist | meh | **done** |
 | benny | Luca | tourist | pro | needed |
 | wen | Jonathan | calculator | pro | needed |
 | priya | Will | calculator | meh | needed |
@@ -99,7 +99,7 @@ about the real crew's running jokes fit there.
 
 ## Open items, in order
 
-1. Portraits for the six remaining characters (above).
+1. Portraits for the five remaining characters (above).
 2. Lines rewrite per persona, Jack first.
 3. Expression variants and the texture swap in `figures.ts`.
 4. Tuning from real play: nits may feel too passive; tourists' aggression; banter density.

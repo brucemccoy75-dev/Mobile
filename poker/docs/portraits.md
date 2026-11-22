@@ -82,7 +82,7 @@ level, eyes calm, mouth closed and straight); the expression variants come later
 > eyes open and calm, mouth closed and straight, neither smiling nor frowning, just looking at you.
 > (Do not say "Popeye", "bald" or "square chin": the generator turns those into Mr. Clean.)
 
-**Tim** (`trish.png`) — tourist, cruise-ship regular, superstitious.
+**Tim** (`trish.png`) — tourist, cruise-ship regular, superstitious. Done.
 > A white man clearly in his mid to late thirties, an adult with a few lines at the eyes and a tired
 > look, stocky and a bit overweight but not huge, with a round face, a five o'clock shadow of dark
 > stubble across his jaw and upper lip, and medium-length wild brown hair poking out messily from
