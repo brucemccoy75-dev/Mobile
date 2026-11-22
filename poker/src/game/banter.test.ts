@@ -28,7 +28,7 @@ describe('lines', () => {
 describe('conversations', () => {
   it('are well formed and cover every theme', () => {
     const tags = new Set(CONVERSATIONS.map((c) => c.tag));
-    for (const t of ['office', 'ai', 'spouse', 'weather', 'sports', 'dnd']) expect(tags.has(t as never), t).toBe(true);
+    for (const t of ['office', 'ai', 'spouse', 'weather', 'sports', 'dnd', 'kill']) expect(tags.has(t as never), t).toBe(true);
     expect(CONVERSATIONS.length).toBeGreaterThanOrEqual(40);
     for (const c of CONVERSATIONS) {
       expect(c.lines.length).toBeGreaterThanOrEqual(2);
@@ -143,5 +143,36 @@ describe('Bruce', () => {
     expect(jabs.length).toBeGreaterThan(2);
     expect(convo.every((l) => !l.text.includes('{'))).toBe(true);
     for (let i = 1; i < convo.length; i++) if (convo[i - 1].last) expect(convo[i].seat).not.toBe(-1);
+  });
+});
+
+describe('Skynet', () => {
+  it('has a word for every bust, the table frets then eats, and the dead stay quiet', () => {
+    let clock = 0;
+    const banter = new Banter(mulberry32(13), () => clock);
+    const ids = new Map([[0, 'human'], [1, 'jimmy'], [2, 'trish'], [3, 'dolores'], [4, 'sal'], [5, 'nadia']]);
+    const names = new Map([[0, 'Hero'], [1, 'Bruce'], [2, 'Tim'], [3, 'Paul'], [4, 'Jack'], [5, 'David']]);
+    const table = { ids, names, clarity: () => 0 };
+    for (let i = 0; i < 200; i++) {
+      clock += 1500;
+      banter.onEvent({ type: 'turn', seat: 2, legal: { seat: 2 } as never, deadline: null }, table);
+    }
+    clock += 1500;
+    const kill = banter.onEvent({ type: 'bust', seats: [3], finishes: { 3: 6 } }, table)!;
+    expect(kill.seat).toBe(-1);
+    expect(kill.trigger).toBe('termination');
+    expect(kill.text).toContain('Paul');
+    const after: { seat: number; text: string; conversation?: boolean }[] = [];
+    for (let i = 0; i < 1240; i++) {
+      clock += 1500;
+      const s = banter.onEvent({ type: 'turn', seat: 2, legal: { seat: 2 } as never, deadline: null }, table);
+      if (s) after.push(s);
+    }
+    // The first thing anyone says after the laser is the aftermath exchange, and it ends on snacks.
+    expect(after[0].conversation).toBe(true);
+    const first = after.filter((l) => l.conversation).slice(0, 3);
+    expect(first.some((l) => /pretzel|dip|cheese|wings|chips|hummus|snacks|pigs in blankets/i.test(l.text))).toBe(true);
+    expect(after.every((l) => !l.text.includes('{'))).toBe(true);
+    expect(after.some((l) => l.seat === 3)).toBe(false);
   });
 });

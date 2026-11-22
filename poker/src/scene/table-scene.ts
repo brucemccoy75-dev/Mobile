@@ -39,6 +39,7 @@ export class TableScene implements Presenter {
   private readonly stage: Stage;
   private seatNames = new Map<number, string>();
   private levelChanged = false;
+  private puffTexture: THREE.CanvasTexture | null = null;
   private shownHands = new Map<number, { cards: Card[]; description: string }>();
   private payouts = new Map<number, number>();
   /** The picture-in-picture camera and what it is looking at. */
@@ -367,9 +368,9 @@ export class TableScene implements Presenter {
         for (const s of ev.seats) {
           this.out.add(s);
           this.finishes.set(s, ev.finishes[s]);
-          this.figures.get(s)?.setOut(true);
           this.overlay.setOut(s, ev.finishes[s]);
           this.overlay.setPosition(s, '');
+          await this.vaporise(s);
         }
         return;
       case 'level':
@@ -380,6 +381,101 @@ export class TableScene implements Presenter {
       case 'tournamentEnd':
         return;
     }
+  }
+
+  /** Skynet's red laser hits the seat; a puff of smoke; the man is gone. */
+  private async vaporise(seat: number): Promise<void> {
+    const flash = document.getElementById('flash');
+    const fig = this.figures.get(seat);
+    const from = L.DEALER_POS.clone().add(new THREE.Vector3(0, 1.22, 0));
+    const to = seat === HUMAN_SEAT ? this.camera.position.clone().add(new THREE.Vector3(0, -0.3, 0)) : L.figurePos(seat).add(new THREE.Vector3(0, 0.95, 0));
+    this.audio.play('zap');
+    // The beam: a bright core and a soft glow, both additive.
+    const dir = to.clone().sub(from);
+    const len = dir.length();
+    const beam = new THREE.Group();
+    const mk = (r: number, opacity: number) => {
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0xff2a1a, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false }));
+      m.position.y = len / 2;
+      beam.add(m);
+      return m;
+    };
+    const core = mk(0.018, 1);
+    const glow = mk(0.07, 0.35);
+    beam.position.copy(from);
+    beam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+    beam.scale.y = 0.001;
+    this.scene.add(beam);
+    await this.tweens.run(140, (t) => { beam.scale.y = Math.max(0.001, t); });
+    await this.tweens.run(320, (t) => {
+      const f = 0.75 + 0.25 * Math.sin(t * 60);
+      (core.material as THREE.MeshBasicMaterial).opacity = f;
+      (glow.material as THREE.MeshBasicMaterial).opacity = 0.35 * f;
+      if (flash) flash.style.opacity = String(seat === HUMAN_SEAT ? 0.55 * f : 0.18 * f);
+    });
+    // The puff, and the man is gone.
+    if (fig) fig.group.visible = false;
+    if (flash) flash.style.opacity = '0';
+    const puff = this.makePuff(seat === HUMAN_SEAT ? to.clone().add(new THREE.Vector3(0, -0.4, -1.2)) : to.clone().add(new THREE.Vector3(0, -0.25, 0)));
+    this.scene.add(puff.group);
+    await Promise.all([
+      this.tweens.run(180, (t) => { beam.scale.y = Math.max(0.001, 1 - t); (glow.material as THREE.MeshBasicMaterial).opacity = 0.35 * (1 - t); }),
+      this.tweens.run(900, (t) => puff.update(t)),
+    ]);
+    this.scene.remove(beam);
+    this.scene.remove(puff.group);
+    for (const m of beam.children) { (m as THREE.Mesh).geometry.dispose(); ((m as THREE.Mesh).material as THREE.Material).dispose(); }
+    puff.dispose();
+    await this.tweens.delay(250);
+  }
+
+  private makePuff(at: THREE.Vector3): { group: THREE.Group; update: (t: number) => void; dispose: () => void } {
+    if (!this.puffTexture) {
+      const c = document.createElement('canvas');
+      c.width = c.height = 64;
+      const g = c.getContext('2d')!;
+      const grad = g.createRadialGradient(32, 32, 2, 32, 32, 32);
+      grad.addColorStop(0, 'rgba(230,225,215,1)');
+      grad.addColorStop(0.5, 'rgba(170,165,160,.55)');
+      grad.addColorStop(1, 'rgba(120,115,110,0)');
+      g.fillStyle = grad;
+      g.fillRect(0, 0, 64, 64);
+      this.puffTexture = new THREE.CanvasTexture(c);
+    }
+    const group = new THREE.Group();
+    const bits: { s: THREE.Sprite; v: THREE.Vector3; size: number }[] = [];
+    for (let i = 0; i < 26; i++) {
+      const mat = new THREE.SpriteMaterial({ map: this.puffTexture, transparent: true, opacity: 0.85, depthWrite: false });
+      const s = new THREE.Sprite(mat);
+      const a = Math.random() * Math.PI * 2;
+      const r = 0.1 + Math.random() * 0.35;
+      s.position.set(at.x + Math.cos(a) * r * 0.3, at.y + (Math.random() - 0.3) * 0.3, at.z + Math.sin(a) * r * 0.3);
+      bits.push({ s, v: new THREE.Vector3(Math.cos(a) * r, 0.25 + Math.random() * 0.5, Math.sin(a) * r), size: 0.25 + Math.random() * 0.35 });
+      group.add(s);
+    }
+    // A few red embers.
+    for (let i = 0; i < 8; i++) {
+      const mat = new THREE.SpriteMaterial({ map: this.puffTexture, color: 0xff5030, transparent: true, opacity: 1, depthWrite: false, blending: THREE.AdditiveBlending });
+      const s = new THREE.Sprite(mat);
+      s.position.copy(at);
+      const a = Math.random() * Math.PI * 2;
+      bits.push({ s, v: new THREE.Vector3(Math.cos(a) * 0.8, 0.6 + Math.random() * 0.8, Math.sin(a) * 0.8), size: 0.08 });
+      group.add(s);
+    }
+    const start = bits.map((b) => b.s.position.clone());
+    return {
+      group,
+      update: (t: number) => {
+        for (let i = 0; i < bits.length; i++) {
+          const b = bits[i];
+          b.s.position.copy(start[i]).addScaledVector(b.v, t);
+          const k = b.size * (0.4 + 1.6 * t);
+          b.s.scale.set(k, k, 1);
+          (b.s.material as THREE.SpriteMaterial).opacity = (b.size < 0.1 ? 1 : 0.85) * (1 - t) * (1 - t);
+        }
+      },
+      dispose: () => { for (const b of bits) b.s.material.dispose(); },
+    };
   }
 
   private refreshStacks(): void {

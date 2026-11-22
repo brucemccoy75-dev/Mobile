@@ -48,7 +48,7 @@ const NEEDLES: Trigger[] = ['targetFoldsToMe', 'targetCallsMeDown', 'targetTank'
 
 const COOLDOWN_MS = 11000;
 const GLOBAL_GAP_MS = 1800;
-const URGENT: Trigger[] = ['badBeatTaken', 'stackedTarget', 'stackedByTarget', 'allIn', 'headsUp'];
+const URGENT: Trigger[] = ['badBeatTaken', 'stackedTarget', 'stackedByTarget', 'allIn', 'headsUp', 'termination'];
 
 export class Banter {
   private used = new Map<string, Set<Line>>();
@@ -61,7 +61,9 @@ export class Banter {
   private humanLastThink = 0;
   /** Chance multiplier; 0 silences the table. */
   density = 1;
-  private convo: { conv: Conversation; a: number; b: number; next: number; lastAt: number } | null = null;
+  private convo: { conv: Conversation; a: number; b: number; next: number; lastAt: number; gone?: string } | null = null;
+  /** Seats the dealer has already dealt with. The dead do not talk. */
+  private gone = new Set<number>();
   private usedConvos = new Set<Conversation>();
   private usedJabs = new Set<Interjection>();
   /** A bystander's dry line queued for after the current exchange. */
@@ -103,11 +105,17 @@ export class Banter {
       case 'handEnd':
         return this.onHandEnd(ev, table);
       case 'bust': {
+        // Skynet always has a word as the laser fires; the table frets about it after, then eats.
+        for (const s of ev.seats) this.gone.add(s);
         const gone = ev.seats[0];
-        const bots = this.seatsOf(table).filter((s) => s !== gone && !ev.seats.includes(s));
-        if (bots.length > 0 && this.chance(0.5)) return this.say(this.pickSpeaker(bots, table, true), 'playerOut', table, { target: table.names.get(gone) });
-        if (this.chance(0.4)) return this.say(DEALER_SEAT, 'playerOut', table, { target: table.names.get(gone) });
-        return null;
+        const name = table.names.get(gone) ?? 'friend';
+        this.queueAftermath(table, name);
+        const line = this.pickLine('dealer', 'termination', 'calm');
+        if (!line) return null;
+        const now = this.now();
+        this.lastAny = now;
+        this.lastSpoke.set('dealer', now);
+        return { seat: DEALER_SEAT, speaker: 'dealer', text: line.s.replace(/\{target\}/g, name), trigger: 'termination', targetSeat: gone };
       }
       case 'turn': {
         if (ev.seat === HUMAN_SEAT) return null;
@@ -155,7 +163,7 @@ export class Banter {
       const seat = role === 'A' ? c.a : c.b;
       // Wait for a gap, and never talk over your own decision or a big pot.
       if (now - c.lastAt < 5200 || seat === actor || bigPot) return null;
-      if (!table.ids.has(c.a) || !table.ids.has(c.b)) {
+      if (!table.ids.has(c.a) || !table.ids.has(c.b) || this.gone.has(c.a) || this.gone.has(c.b)) {
         this.convo = null;
         return null;
       }
@@ -167,12 +175,26 @@ export class Banter {
     return this.startConversation(table, actor);
   }
 
+  /** Lines up a short exchange about the man who just got vaporised, for the next quiet moment. */
+  private queueAftermath(table: BanterTable, gone: string): void {
+    const bots = this.seatsOf(table);
+    if (bots.length < 2) return;
+    const pool = CONVERSATIONS.filter((c) => c.tag === 'kill');
+    const fresh = pool.filter((c) => !this.usedConvos.has(c));
+    const conv = this.pick(fresh.length > 0 ? fresh : pool);
+    this.usedConvos.add(conv);
+    const [a, b] = this.shuffled(bots);
+    this.jab = null;
+    this.convo = { conv, a, b, next: 0, lastAt: this.now(), gone };
+  }
+
   private startConversation(table: BanterTable, actor: number | null): Speech | null {
     const bots = this.allBotSeats(table).filter((s) => s !== actor && !(this.hand && !this.hand.isComplete && this.hand.players.some((p) => p.seat === s && !p.folded && s === actor)));
     if (bots.length < 2) return null;
     const stance = (s: number): Stance => table.stance?.(s) ?? 'meh';
-    const fresh = CONVERSATIONS.filter((c) => !this.usedConvos.has(c));
-    const pool = fresh.length > 0 ? fresh : CONVERSATIONS;
+    const regular = CONVERSATIONS.filter((c) => c.tag !== 'kill');
+    const fresh = regular.filter((c) => !this.usedConvos.has(c));
+    const pool = fresh.length > 0 ? fresh : regular;
     if (fresh.length === 0) this.usedConvos.clear();
     for (const conv of this.shuffled(pool)) {
       // A man with no lines (Menafee) only takes part when an exchange names him on purpose.
@@ -224,7 +246,8 @@ export class Banter {
     const text = raw
       .replace(/\{A\}/g, table.names.get(c.a) ?? 'pal')
       .replace(/\{B\}/g, table.names.get(c.b) ?? 'pal')
-      .replace(/\{you\}/g, table.names.get(HUMAN_SEAT) ?? 'the kid');
+      .replace(/\{you\}/g, table.names.get(HUMAN_SEAT) ?? 'the kid')
+      .replace(/\{gone\}/g, c.gone ?? 'him');
     return { seat, speaker: id, text, trigger: 'idle', targetSeat: last ? other : undefined, conversation: true, last };
   }
 
@@ -454,13 +477,13 @@ export class Banter {
   /** Bot seats that can speak at all: not the human, and not a man with no lines. */
   private seatsOf(table: BanterTable): number[] {
     return [...table.ids.entries()]
-      .filter(([s, id]) => id !== 'human' && s !== DEALER_SEAT && (LINES[id] ?? []).length > 0)
+      .filter(([s, id]) => id !== 'human' && s !== DEALER_SEAT && !this.gone.has(s) && (LINES[id] ?? []).length > 0)
       .map(([s]) => s);
   }
 
   /** Every bot seat, including the silent ones, for exchanges that name them. */
   private allBotSeats(table: BanterTable): number[] {
-    return [...table.ids.entries()].filter(([s, id]) => id !== 'human' && s !== DEALER_SEAT).map(([s]) => s);
+    return [...table.ids.entries()].filter(([s, id]) => id !== 'human' && s !== DEALER_SEAT && !this.gone.has(s)).map(([s]) => s);
   }
 
   private botsInHand(table: BanterTable): number[] {

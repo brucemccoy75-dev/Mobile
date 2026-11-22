@@ -25,6 +25,7 @@ export type Trigger =
   | 'chipLeader'       // the speaker has a big stack
   | 'playerOut'        // {target} just busted (speaker is a bystander)
   | 'headsUp'          // two left
+  | 'termination'      // the dealer vaporises {target}, who just busted (dealer only)
   | 'idle';            // table chatter
 
 export type Mood = 'calm' | 'tilted' | 'any';

@@ -1,6 +1,6 @@
 // Sounds synthesized with WebAudio: no files to download. Everything routes through one gain so a
 // single toggle mutes the table. Audio starts on the first user gesture, as browsers require.
-export type Sfx = 'deal' | 'flip' | 'chip' | 'chips' | 'fold' | 'allin' | 'win' | 'tick';
+export type Sfx = 'deal' | 'flip' | 'chip' | 'chips' | 'fold' | 'allin' | 'win' | 'tick' | 'zap';
 
 export class TableAudio {
   private ctx: AudioContext | null = null;
@@ -101,6 +101,24 @@ export class TableAudio {
       case 'tick':
         this.ping(t, 1200, 0.03, 0.08 * volume);
         break;
+      case 'zap': {
+        // Charge whine, the beam, then the puff.
+        const osc = ctx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, t);
+        osc.frequency.exponentialRampToValueAtTime(1800, t + 0.25);
+        osc.frequency.exponentialRampToValueAtTime(90, t + 0.6);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.12 * volume, t + 0.05);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.65);
+        osc.connect(g).connect(this.master);
+        osc.start(t);
+        osc.stop(t + 0.7);
+        this.burst(t + 0.3, 0.5, 600, 0.2 * volume, 'lowpass');
+        this.burst(t + 0.32, 0.25, 3000, 0.08 * volume, 'highpass');
+        break;
+      }
     }
   }
 

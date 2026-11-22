@@ -70,6 +70,7 @@
     #toast { position: absolute; left: 50%; top: max(96px, calc(var(--sat) + 90px)); transform: translate(-50%, -10px); opacity: 0; transition: .25s;
       background: var(--plate); border: 1px solid rgba(255,255,255,.1); padding: 8px 14px; border-radius: 10px; font-size: 13px; pointer-events: none; }
     #toast.show { opacity: 1; transform: translate(-50%, 0); }
+    #flash { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 60%, rgba(255,40,20,.9), rgba(255,0,0,.55)); opacity: 0; pointer-events: none; z-index: 9; }
 
     /* The board, big and readable */
     #board { position: absolute; left: 50%; top: 8px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px;
@@ -278,6 +279,7 @@
     <button id="menu">Menu</button>
   </div>
   <div id="toast"></div>
+  <div id="flash"></div>
   <div id="board"><div class="potline"></div><div class="cards"></div></div>
   <div id="pip"><div class="backing top"></div><div class="backing bottom"></div><div class="backing left"></div><div class="backing right"></div><div class="frame"><div class="who"></div></div><div class="caption"></div></div>
   <div id="standings"></div>

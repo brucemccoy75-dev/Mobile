@@ -118,7 +118,13 @@ stuff ridiculous: "the new girl died during her test and now I have to finish it
   `{them}` is the other man, or the one who started the story). Other men can get interjection
   pools the same way, keyed by `who`.
 - **Skynet is done.** An android sent to end everyone, barely hiding it; misquotes the classics
-  ("Futility is resistance", "Jim, I am your father", "Live long and perspire").
+  ("Futility is resistance", "Jim, I am your father", "Live long and perspire"). When a man busts,
+  Skynet vaporises him: `vaporise()` in `table-scene.ts` fires a red beam from the visor, a puff of
+  smoke, the figure is hidden, the `zap` sound plays and `#flash` tints the screen (hard, when it is
+  you). The dealer always says a `termination` line as it fires (Cylon detected, weakest link, the
+  Ryan Leaf of poker), then `queueAftermath()` in `banter.ts` runs one `kill` exchange from
+  `conversations.ts`: concern for two lines, then snacks. Busted seats go in `Banter.gone` and never
+  speak or get cast again.
 Already wired: each character has `talk` and `trash` factors in `characters.ts` that the banter
 engine uses for who speaks and who needles, and conversations can be pinned to particular men with
 `who` in `conversations.ts` (Jack's, Paul's bees, the office trio, Bruce's dry shots exist).

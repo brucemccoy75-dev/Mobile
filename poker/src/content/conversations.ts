@@ -4,7 +4,8 @@
 export type Stance = 'pro' | 'anti' | 'meh';
 
 export interface Conversation {
-  tag: 'office' | 'ai' | 'spouse' | 'weather' | 'sports' | 'dnd';
+  tag: 'office' | 'ai' | 'spouse' | 'weather' | 'sports' | 'dnd' | 'kill';
+  /** `kill` exchanges may use {gone}: the man the dealer just vaporised. */
   /** Required AI stance for a role, when the exchange depends on it. */
   needs?: { A?: Stance; B?: Stance };
   /** Character ids allowed in a role, when the exchange is someone's in particular. */
@@ -704,6 +705,58 @@ export const CONVERSATIONS: Conversation[] = [
     ['A', 'My wife asked why I come to these. I said networking.'],
     ['B', 'With us?'],
     ['A', 'That was her question too, {B}. Word for word. You two should meet. You’d get on. You both think I’m wasting my time.'],
+  ] },
+  // ---- after Skynet vaporises somebody: concern, briefly, then snacks ----------------------------
+  { tag: 'kill', lines: [
+    ['A', 'Did. Did {gone} just get lasered.'],
+    ['B', 'Yeah. Yeah, I think so.'],
+    ['A', 'Should we. I mean. Do we call someone.'],
+    ['B', 'Dave knows. Dave bought it. Are those the good pretzels or the bag from last time.'],
+  ] },
+  { tag: 'kill', lines: [
+    ['A', 'Okay so the dealer shoots people. We are all on the same page about that now.'],
+    ['B', 'I did not love it.'],
+    ['A', 'No. No. Anyway, is there more of the onion dip or was that the whole tub.'],
+  ] },
+  { tag: 'kill', lines: [
+    ['A', '{gone} had a family, {B}.'],
+    ['B', 'He did.'],
+    ['A', 'Somebody should tell them. After. There is a cheese thing in the oven and I am not leaving before the cheese thing.'],
+  ] },
+  { tag: 'kill', lines: [
+    ['A', 'That was a lot of smoke for one guy.'],
+    ['B', 'He was a big guy.'],
+    ['A', 'He was. He would have wanted us to finish the wings. He said that. Out loud. Earlier. About the wings.'],
+  ] },
+  { tag: 'kill', lines: [
+    ['A', 'Is {gone} okay.'],
+    ['B', 'He is a small pile of ash, {A}.'],
+    ['A', 'Right. Right. Pass the chips. The eating ones.'],
+  ] },
+  { tag: 'kill', lines: [
+    ['A', 'I am going to be honest. The laser thing is making it hard to enjoy the night.'],
+    ['B', 'It was quick though.'],
+    ['A', 'It was quick. He did not even finish his pretzel. Which, is that pretzel still there.'],
+  ] },
+  { tag: 'kill', lines: [
+    ['A', 'Dave. Dave, your robot killed {gone}.'],
+    ['B', 'He is in the kitchen. He cannot hear you.'],
+    ['A', 'Is he bringing the pigs in blankets when he comes back or should I go in.'],
+  ] },
+  { tag: 'kill', lines: [
+    ['A', 'We should say a few words.'],
+    ['B', 'Go ahead.'],
+    ['A', '{gone} was. He was here. And now he is not. Whose hummus is this.'],
+  ] },
+  { tag: 'kill', lines: [
+    ['A', 'Nobody look at the dealer. Nobody make eye contact with the dealer.'],
+    ['B', 'It does not have eyes, {A}.'],
+    ['A', 'Then why does it feel like it is looking at the snacks. Those are my snacks. I brought those.'],
+  ] },
+  { tag: 'kill', lines: [
+    ['A', 'So that is what happens when you bust.'],
+    ['B', 'Apparently.'],
+    ['A', 'Good to know. Good to know. The dip is getting a skin on it. Somebody stir the dip.'],
   ] },
 ];
 
