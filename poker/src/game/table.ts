@@ -63,9 +63,15 @@ export class TableController {
   readonly bots = new Map<number, Bot>();
   readonly seats: SeatInfo[];
   private readonly opts: TableOptions;
-  private pending: { legal: LegalActions; resolve: (a: Action) => void } | null = null;
+  private pending: { legal: LegalActions; resolve: (a: Action) => void; restart: () => void } | null = null;
   private stopped = false;
   private lastLevel = 0;
+  private paused = false;
+  private resumeWaiters: (() => void)[] = [];
+  /** Finished hands, newest last, capped. */
+  readonly history: Hand[] = [];
+  /** Called with a new shot-clock deadline when a paused human turn resumes. */
+  onDeadline: (deadline: number) => void = () => {};
 
   constructor(opts: TableOptions) {
     this.opts = opts;
@@ -112,8 +118,33 @@ export class TableController {
     return true;
   }
 
+  get isPaused(): boolean {
+    return this.paused;
+  }
+
+  /** Freezes bot timers and the shot clock until resume(). */
+  pause(): void {
+    if (this.paused) return;
+    this.paused = true;
+  }
+
+  resume(): void {
+    if (!this.paused) return;
+    this.paused = false;
+    const waiters = this.resumeWaiters;
+    this.resumeWaiters = [];
+    for (const w of waiters) w();
+    if (this.pending) this.pending.restart();
+  }
+
+  private whenResumed(): Promise<void> {
+    if (!this.paused) return Promise.resolve();
+    return new Promise((r) => this.resumeWaiters.push(r));
+  }
+
   stop(): void {
     this.stopped = true;
+    this.resume();
     if (this.pending) this.humanAct(this.pending.legal.canCheck ? { type: 'check' } : { type: 'fold' });
   }
 
@@ -178,11 +209,14 @@ export class TableController {
       cursor = await this.flush(hand, cursor, thinkMs);
     }
 
+    if (this.stopped && !hand.isComplete) return;
     const outcomes: Record<number, HandOutcome | null> = {};
     for (const [seat, bot] of this.bots) {
       if (hand.players.some((p) => p.seat === seat)) outcomes[seat] = bot.observe(hand, this.opts.rng, timings);
     }
     const end = hand.events[hand.events.length - 1];
+    this.history.push(hand);
+    if (this.history.length > 12) this.history.shift();
     await this.emit({ type: 'handEnd', hand, winners: end.type === 'end' ? end.winners : [], outcomes, moods: this.moods() });
 
     const summary = t.finishHand();
@@ -232,30 +266,40 @@ export class TableController {
     void hand;
     return new Promise<Action>((resolve) => {
       let timer: ReturnType<typeof setTimeout> | null = null;
+      const clockMs = this.opts.shotClockMs ?? SHOT_CLOCK_MS;
       const entry = {
         legal,
         resolve: (a: Action) => {
           if (timer) clearTimeout(timer);
           resolve(a);
         },
+        restart: () => {
+          if (timer) clearTimeout(timer);
+          timer = setTimeout(fire, clockMs);
+          this.onDeadline(Date.now() + clockMs);
+        },
       };
-      this.pending = entry;
-      timer = setTimeout(() => {
+      const fire = () => {
+        if (this.paused) return;
         if (this.pending === entry) {
           this.pending = null;
           resolve(legal.canCheck ? { type: 'check' } : { type: 'fold' });
         }
-      }, this.opts.shotClockMs ?? SHOT_CLOCK_MS);
+      };
+      this.pending = entry;
+      timer = setTimeout(fire, clockMs);
     });
   }
 
-  private wait(ms: number): Promise<void> {
+  private async wait(ms: number): Promise<void> {
     const speed = this.opts.speed?.() ?? 1;
-    return (this.opts.sleep ?? realSleep)(ms / Math.max(0.01, speed));
+    await (this.opts.sleep ?? realSleep)(ms / Math.max(0.01, speed));
+    await this.whenResumed();
   }
 
-  private emit(ev: TableEvent): Promise<void> {
-    return Promise.resolve(this.opts.presenter.present(ev));
+  private async emit(ev: TableEvent): Promise<void> {
+    await this.whenResumed();
+    await this.opts.presenter.present(ev);
   }
 }
 

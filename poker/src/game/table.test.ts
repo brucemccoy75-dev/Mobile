@@ -72,3 +72,27 @@ describe('TableController', () => {
     expect(humanActions.length).toBeGreaterThan(1);
   }, 30000);
 });
+
+describe('pause', () => {
+  it('holds the game while paused and resumes', async () => {
+    const events: TableEvent[] = [];
+    const table = new TableController({
+      lineup: CHARACTERS.slice(0, 5), humanName: 'You', rng: mulberry32(9), samples: 40,
+      sleep: (ms) => new Promise((r) => setTimeout(r, Math.min(ms, 2))),
+      presenter: { present: (ev) => void events.push(ev) },
+      shotClockMs: 40,
+      human: (_h, legal) => (legal.canCheck ? { type: 'check' } : { type: 'fold' }),
+    });
+    const run = table.run();
+    await new Promise((r) => setTimeout(r, 60));
+    table.pause();
+    const before = events.length;
+    await new Promise((r) => setTimeout(r, 120));
+    expect(events.length - before).toBeLessThanOrEqual(1);
+    table.resume();
+    await new Promise((r) => setTimeout(r, 120));
+    expect(events.length).toBeGreaterThan(before + 1);
+    table.stop();
+    await run;
+  });
+});

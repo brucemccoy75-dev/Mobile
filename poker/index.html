@@ -113,6 +113,50 @@
     .results li.you { color: var(--gold); font-weight: 700; }
     .results .row { display: flex; justify-content: center; gap: 12px; align-items: center; }
 
+    /* Panels */
+    #panels { position: fixed; inset: 0; display: none; place-items: center; background: rgba(4,8,6,.72); backdrop-filter: blur(4px); z-index: 30; padding: max(10px, var(--sat)) max(10px, var(--sar)) max(10px, var(--sab)) max(10px, var(--sal)); }
+    #panels.show { display: grid; }
+    .panel { background: rgba(12,18,14,.96); border: 1px solid rgba(255,255,255,.12); border-radius: 16px; padding: 16px; width: min(760px, 100%); max-height: 100%; overflow: auto; text-align: center; }
+    .panel .stack { display: flex; flex-direction: column; gap: 8px; max-width: 340px; margin: 0 auto; }
+    .panel .row { height: 46px; border-radius: 12px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); font-weight: 600; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; }
+    .panel button.row { justify-content: center; }
+    .panel .row:disabled { opacity: .35; }
+    .panel .row.danger { color: #ffb4ad; }
+    .panel .row select, .panel .row input[type=checkbox] { accent-color: var(--gold); font: inherit; color: var(--fg); background: rgba(0,0,0,.4); border: 1px solid rgba(255,255,255,.14); border-radius: 8px; padding: 4px 8px; }
+    .panel .row input[type=checkbox] { width: 22px; height: 22px; }
+    .replayhead { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-bottom: 8px; }
+    .replayhead .nav { text-align: right; }
+    .replayhead .link:disabled { opacity: .3; }
+    .replaybody { text-align: left; }
+    .eqtable { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .eqtable th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; text-align: center; padding: 4px; }
+    .eqtable td { padding: 5px 4px; border-top: 1px solid rgba(255,255,255,.08); text-align: center; font-variant-numeric: tabular-nums; }
+    .eqtable td.pname { text-align: left; font-weight: 600; white-space: nowrap; }
+    .eqtable td.desc { text-align: right; color: var(--muted); font-size: 12px; }
+    .eqtable tr.win td { color: var(--gold); }
+    .eqtable tr.folded td { opacity: .55; }
+    .eqtable .dim { color: var(--muted); }
+    .cards { display: inline-flex; gap: 3px; vertical-align: middle; }
+    .cards .pcard { width: 26px; height: 36px; border-radius: 4px; box-shadow: none; }
+    .cards .pcard .rank { font-size: 13px; } .cards .pcard .suit { font-size: 11px; margin-top: 0; }
+    .streets { margin-top: 10px; display: grid; gap: 6px; }
+    .street { font-size: 12px; color: var(--muted); }
+    .street .sname { color: var(--fg); font-weight: 700; text-transform: capitalize; display: flex; align-items: center; gap: 8px; }
+    .career { display: grid; gap: 10px; }
+    .crow { background: rgba(255,255,255,.05); border-radius: 12px; padding: 10px 12px; }
+    .cname { font-weight: 800; font-size: 16px; }
+    .cstats, .cbest { color: var(--muted); font-size: 12px; }
+    .cfin { display: flex; gap: 10px; font-size: 12px; margin: 4px 0; flex-wrap: wrap; }
+    .cfin b { color: var(--gold); }
+    .trophies { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin-top: 8px; }
+    .trophy { position: relative; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 8px 10px; opacity: .45; }
+    .trophy.got { opacity: 1; border-color: rgba(227,192,106,.5); }
+    .trophy .tn { font-weight: 700; font-size: 13px; } .trophy .tb { font-size: 11px; color: var(--muted); }
+    .trophy .tc { position: absolute; right: 8px; top: 6px; color: var(--gold); font-size: 11px; font-weight: 700; }
+    .results .earned { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 12px; }
+    .results .earned span { background: rgba(227,192,106,.15); border: 1px solid rgba(227,192,106,.5); color: var(--gold); border-radius: 8px; padding: 4px 10px; font-size: 12px; font-weight: 700; }
+    .title .links { margin-top: 14px; }
+
     /* Landscape only */
     #rotate { position: fixed; inset: 0; z-index: 50; display: none; place-items: center; text-align: center; background: var(--bg); padding: 24px; }
     #rotate .phone { width: 36px; height: 64px; border: 3px solid var(--fg); border-radius: 8px; margin: 0 auto 18px; animation: turn 1.6s ease-in-out infinite; }
@@ -151,6 +195,7 @@
     </div>
     <div class="clockwrap"><div class="clock"></div></div>
   </div>
+  <div id="panels"></div>
   <div id="screens"></div>
   <div id="rotate" aria-live="polite">
     <div>

@@ -1,14 +1,15 @@
-// Wires the screens, the 3D table, the action bar and the game controller together.
-import { type BotMemory } from './bots/bot';
+// Wires the screens, the 3D table, the action bar, the panels and the game controller together.
 import { TOURNAMENTS, type TournamentKey } from './bots/characters';
 import { mulberry32, seedFromString } from './engine/rng';
 import { Banter, DEALER_SEAT } from './game/banter';
+import { TournamentTracker, clearSave, loadSave, recordTournament, writeSave } from './game/career';
 import { HUMAN_SEAT, TableController, type TableEvent } from './game/table';
 import { DEALER_POS, figurePos } from './scene/layout';
 import { TableScene } from './scene/table-scene';
 import { pickLineup } from './sim/run';
 import { ActionBar } from './ui/actions';
 import { Overlay } from './ui/overlay';
+import { Panels } from './ui/panels';
 import { Screens } from './ui/screens';
 
 const $ = <T extends HTMLElement>(sel: string): T => {
@@ -21,56 +22,20 @@ const overlay = new Overlay($('#overlay'), $('#hole'), $('#info'), $('#toast'));
 const scene = new TableScene($('#game'), overlay);
 const actions = new ActionBar($('#actions'));
 const screens = new Screens($('#screens'));
+const panels = new Panels($('#panels'));
 const fastButton = $<HTMLButtonElement>('#fast');
 const menuButton = $<HTMLButtonElement>('#menu');
 
+let save = loadSave();
 let fast = false;
+let controller: TableController | null = null;
+let banter: Banter | null = null;
+
 scene.setSpeed(() => (fast ? 4 : 1));
 fastButton.addEventListener('click', () => {
   fast = !fast;
   fastButton.classList.toggle('on', fast);
 });
-
-const MEMORY_KEY = 'pihkh.memories.v1';
-function loadMemories(): Record<string, BotMemory> {
-  try {
-    const raw = localStorage.getItem(MEMORY_KEY);
-    return raw ? (JSON.parse(raw) as Record<string, BotMemory>) : {};
-  } catch {
-    return {};
-  }
-}
-function saveMemories(m: Record<string, BotMemory>): void {
-  try {
-    localStorage.setItem(MEMORY_KEY, JSON.stringify({ ...loadMemories(), ...m }));
-  } catch {
-    // Storage may be unavailable; the game still plays.
-  }
-}
-
-let controller: TableController | null = null;
-
-const NAME_KEY = 'pihkh.name';
-function loadName(): string {
-  try {
-    return localStorage.getItem(NAME_KEY) || 'Hero';
-  } catch {
-    return 'Hero';
-  }
-}
-let humanName = loadName();
-
-function showMenu(): void {
-  screens.title(humanName, (name) => {
-    humanName = name;
-    try {
-      localStorage.setItem(NAME_KEY, name);
-    } catch {
-      // ignore
-    }
-    screens.select(start, showMenu);
-  });
-}
 
 function bubblePos(seat: number) {
   const p = seat === DEALER_SEAT ? DEALER_POS.clone() : figurePos(seat);
@@ -78,71 +43,134 @@ function bubblePos(seat: number) {
   return p;
 }
 
+function applySettings(): void {
+  if (banter) banter.density = save.settings.banter;
+  writeSave(save);
+}
+
+panels.onSettings = applySettings;
+panels.onReset = () => {
+  clearSave();
+  save = loadSave();
+  panels.close();
+  if (controller) {
+    controller.stop();
+    controller = null;
+  }
+  showMenu();
+};
+
+function showMenu(): void {
+  panels.close();
+  actions.hide();
+  screens.title(
+    save.name,
+    (name) => {
+      save.name = name;
+      writeSave(save);
+      screens.select(start, showMenu);
+    },
+    () => panels.career(save, () => panels.close()),
+    () => panels.settings(save, () => panels.close()),
+  );
+}
+
 function start(key: TournamentKey): void {
   screens.hide();
+  panels.close();
   overlay.clear();
   overlay.tournamentName = TOURNAMENTS[key].name;
   const seed = seedFromString(`${key}:${Date.now()}:${Math.random()}`);
   const rng = mulberry32(seed);
   const lineup = pickLineup(key, rng, 5);
-  const banter = new Banter(mulberry32(seed ^ 0x5bd1e995));
+  const tracker = new TournamentTracker();
+  banter = new Banter(mulberry32(seed ^ 0x5bd1e995));
+  banter.density = save.settings.banter;
+  const talk = banter;
+
   const table = new TableController({
     lineup,
-    humanName,
+    humanName: save.name,
     rng,
-    memories: loadMemories(),
+    memories: save.memories,
     speed: () => (fast ? 4 : 1),
     presenter: {
       async present(ev: TableEvent) {
+        tracker.onEvent(ev);
         if (ev.type === 'action' && ev.seat === HUMAN_SEAT) actions.hide();
         if (ev.type === 'turn' && ev.seat !== HUMAN_SEAT) actions.hide();
-        const said = banter.onEvent(ev, {
+        const who = {
           ids: new Map(table.seats.map((s) => [s.seat, s.id])),
           names: new Map(table.seats.map((s) => [s.seat, s.name])),
-          clarity: (seat) => table.bots.get(seat)?.stats.clarity ?? 0,
-        });
+          clarity: (seat: number) => table.bots.get(seat)?.stats.clarity ?? 0,
+        };
+        const said = talk.onEvent(ev, who);
         if (said) overlay.say(said.speaker, bubblePos(said.seat), said.text, Math.min(6000, 2200 + said.text.length * 45));
         await scene.present(ev);
         if (ev.type === 'bust' && table.tournament.active().length === 2) {
-          const hu = banter.headsUp({
-            ids: new Map(table.seats.map((s) => [s.seat, s.id])),
-            names: new Map(table.seats.map((s) => [s.seat, s.name])),
-            clarity: (seat) => table.bots.get(seat)?.stats.clarity ?? 0,
-          });
+          const hu = talk.headsUp(who);
           if (hu) overlay.say(hu.speaker, bubblePos(hu.seat), hu.text, 4500);
         }
-        if (ev.type === 'turn' && ev.seat === HUMAN_SEAT && table.hand) {
-          const me = table.hand.player(HUMAN_SEAT);
-          actions.show({
-            legal: ev.legal,
-            pot: table.hand.potTotal(),
-            streetBet: me.streetBet,
-            bigBlind: table.hand.bigBlind,
-            deadline: ev.deadline,
-          });
-        }
+        if (ev.type === 'turn' && ev.seat === HUMAN_SEAT && table.hand) showActions(table, ev.deadline);
       },
     },
   });
+  table.onDeadline = (deadline) => showActions(table, deadline);
   controller = table;
   actions.onAction = (a) => void table.humanAct(a);
+
   table.run().then((result) => {
-    saveMemories(table.memories());
+    if (controller !== table) return;
+    controller = null;
+    save.memories = { ...save.memories, ...table.memories() };
+    const earned = recordTournament(save, { key, humanFinish: result.humanFinish, handsPlayed: table.tournament.handsPlayed }, tracker);
+    writeSave(save);
     actions.hide();
+    panels.close();
     screens.results(
-      { ...result, handsPlayed: table.tournament.handsPlayed, tournament: TOURNAMENTS[key].name },
+      { ...result, handsPlayed: table.tournament.handsPlayed, tournament: TOURNAMENTS[key].name, earned },
       () => start(key),
       showMenu,
     );
   });
 }
 
+function showActions(table: TableController, deadline: number | null): void {
+  const hand = table.hand;
+  const legal = table.humanLegal;
+  if (!hand || !legal || table.isPaused) return;
+  const me = hand.player(HUMAN_SEAT);
+  actions.show({ legal, pot: hand.potTotal(), streetBet: me.streetBet, bigBlind: hand.bigBlind, deadline });
+}
+
+function openPause(): void {
+  const table = controller;
+  if (!table) return;
+  table.pause();
+  actions.hide();
+  const players = table.seats.map((s) => ({ seat: s.seat, name: s.name }));
+  panels.onResume = () => {
+    panels.close();
+    table.resume();
+    if (table.humanLegal) showActions(table, null);
+  };
+  panels.onQuit = () => {
+    panels.close();
+    table.stop();
+    controller = null;
+    showMenu();
+  };
+  panels.onReplayRequest = () => {
+    const h = table.history;
+    if (h.length) panels.replay(h, players, h.length - 1, () => panels.pause(h.length > 0, save));
+  };
+  panels.pause(table.history.length > 0, save);
+}
+
 menuButton.addEventListener('click', () => {
   if (!controller) return;
-  controller.stop();
-  controller = null;
-  actions.hide();
-  showMenu();
+  if (panels.isOpen) return;
+  openPause();
 });
 
 showMenu();

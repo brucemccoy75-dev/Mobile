@@ -26,16 +26,19 @@ export class Screens {
     this.root.innerHTML = '';
   }
 
-  title(name: string, onPlay: (name: string) => void): void {
+  title(name: string, onPlay: (name: string) => void, onCareer: () => void, onSettings: () => void): void {
     this.render(`
       <div class="screen title">
         <div class="eyebrow">No-Limit Hold'em · six-max · you against five</div>
         <h1>Poker,<br>I Hardly Knew Her</h1>
         <div class="namerow"><label>They'll call you</label><input class="name" maxlength="14" value="${name.replace(/"/g, '')}" /></div>
         <button class="primary">Play</button>
+        <div class="links"><button class="link career">Career</button><button class="link settings">Settings</button></div>
       </div>`);
     const input = this.root.querySelector<HTMLInputElement>('.name')!;
     this.root.querySelector('button.primary')!.addEventListener('click', () => onPlay(input.value.trim() || name));
+    this.root.querySelector('.career')!.addEventListener('click', onCareer);
+    this.root.querySelector('.settings')!.addEventListener('click', onSettings);
   }
 
   select(onPick: (key: TournamentKey) => void, onBack: () => void): void {
@@ -54,7 +57,7 @@ export class Screens {
     this.root.querySelector('.back')!.addEventListener('click', onBack);
   }
 
-  results(r: { humanFinish: number; standings: TournamentPlayer[]; handsPlayed: number; tournament: string }, onAgain: () => void, onMenu: () => void): void {
+  results(r: { humanFinish: number; standings: TournamentPlayer[]; handsPlayed: number; tournament: string; earned: { name: string }[] }, onAgain: () => void, onMenu: () => void): void {
     const rows = r.standings
       .map((p) => `<li class="${p.seat === 0 ? 'you' : ''}"><span>${p.finish ? ordinal(p.finish) : '—'}</span><span>${p.name}</span><span>${p.stack}</span></li>`)
       .join('');
@@ -63,6 +66,7 @@ export class Screens {
       <div class="screen results">
         <div class="eyebrow">${r.tournament} · ${r.handsPlayed} hands</div>
         <h2>${headline}</h2>
+        ${r.earned.length ? `<div class="earned">${r.earned.map((t) => `<span>🏆 ${t.name}</span>`).join('')}</div>` : ''}
         <ol>${rows}</ol>
         <div class="row">
           <button class="primary again">Play again</button>
