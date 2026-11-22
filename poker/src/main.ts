@@ -2,7 +2,9 @@
 import { type BotMemory } from './bots/bot';
 import { TOURNAMENTS, type TournamentKey } from './bots/characters';
 import { mulberry32, seedFromString } from './engine/rng';
+import { Banter, DEALER_SEAT } from './game/banter';
 import { HUMAN_SEAT, TableController, type TableEvent } from './game/table';
+import { DEALER_POS, figurePos } from './scene/layout';
 import { TableScene } from './scene/table-scene';
 import { pickLineup } from './sim/run';
 import { ActionBar } from './ui/actions';
@@ -48,8 +50,32 @@ function saveMemories(m: Record<string, BotMemory>): void {
 
 let controller: TableController | null = null;
 
+const NAME_KEY = 'pihkh.name';
+function loadName(): string {
+  try {
+    return localStorage.getItem(NAME_KEY) || 'Hero';
+  } catch {
+    return 'Hero';
+  }
+}
+let humanName = loadName();
+
 function showMenu(): void {
-  screens.title(() => screens.select(start, showMenu));
+  screens.title(humanName, (name) => {
+    humanName = name;
+    try {
+      localStorage.setItem(NAME_KEY, name);
+    } catch {
+      // ignore
+    }
+    screens.select(start, showMenu);
+  });
+}
+
+function bubblePos(seat: number) {
+  const p = seat === DEALER_SEAT ? DEALER_POS.clone() : figurePos(seat);
+  p.y = 1.85;
+  return p;
 }
 
 function start(key: TournamentKey): void {
@@ -59,9 +85,10 @@ function start(key: TournamentKey): void {
   const seed = seedFromString(`${key}:${Date.now()}:${Math.random()}`);
   const rng = mulberry32(seed);
   const lineup = pickLineup(key, rng, 5);
+  const banter = new Banter(mulberry32(seed ^ 0x5bd1e995));
   const table = new TableController({
     lineup,
-    humanName: 'You',
+    humanName,
     rng,
     memories: loadMemories(),
     speed: () => (fast ? 4 : 1),
@@ -69,7 +96,21 @@ function start(key: TournamentKey): void {
       async present(ev: TableEvent) {
         if (ev.type === 'action' && ev.seat === HUMAN_SEAT) actions.hide();
         if (ev.type === 'turn' && ev.seat !== HUMAN_SEAT) actions.hide();
+        const said = banter.onEvent(ev, {
+          ids: new Map(table.seats.map((s) => [s.seat, s.id])),
+          names: new Map(table.seats.map((s) => [s.seat, s.name])),
+          clarity: (seat) => table.bots.get(seat)?.stats.clarity ?? 0,
+        });
+        if (said) overlay.say(said.speaker, bubblePos(said.seat), said.text, Math.min(6000, 2200 + said.text.length * 45));
         await scene.present(ev);
+        if (ev.type === 'bust' && table.tournament.active().length === 2) {
+          const hu = banter.headsUp({
+            ids: new Map(table.seats.map((s) => [s.seat, s.id])),
+            names: new Map(table.seats.map((s) => [s.seat, s.name])),
+            clarity: (seat) => table.bots.get(seat)?.stats.clarity ?? 0,
+          });
+          if (hu) overlay.say(hu.speaker, bubblePos(hu.seat), hu.text, 4500);
+        }
         if (ev.type === 'turn' && ev.seat === HUMAN_SEAT && table.hand) {
           const me = table.hand.player(HUMAN_SEAT);
           actions.show({

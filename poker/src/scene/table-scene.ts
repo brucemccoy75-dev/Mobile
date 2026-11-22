@@ -453,7 +453,7 @@ export class TableScene implements Presenter {
     await Promise.all(moving);
     const total = this.hand?.potTotal() ?? 0;
     this.pot.set(total);
-    this.overlay.setPot(total, L.POT_POS);
+    this.overlay.setPot(total, L.POT_LABEL_POS);
   }
 
   private async street(board: Card[]): Promise<void> {

@@ -98,7 +98,7 @@ export class Overlay {
   }
 
   setPot(amount: number, pos?: THREE.Vector3): void {
-    const el = this.anchor('pot', pos ?? this.anchored.get('pot')?.pos ?? new THREE.Vector3(0, 0, -0.6), 'pot', 24);
+    const el = this.anchor('pot', pos ?? this.anchored.get('pot')?.pos ?? new THREE.Vector3(0, 0, -0.42), 'pot', 0);
     el.textContent = amount > 0 ? `POT ${amount}` : '';
     el.classList.toggle('show', amount > 0);
   }
@@ -132,6 +132,18 @@ export class Overlay {
       a.el.style.transform = `translate(-50%, -50%) translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
       a.el.style.visibility = behind ? 'hidden' : 'visible';
     }
+  }
+
+  /** A speech bubble over a seat (or the dealer) for a while. */
+  say(key: string, pos: THREE.Vector3, text: string, ms: number): void {
+    const el = this.anchor(`say${key}`, pos, 'bubble', -14);
+    el.textContent = text;
+    el.classList.add('show');
+    const token = String(Date.now());
+    el.dataset.token = token;
+    window.setTimeout(() => {
+      if (el.dataset.token === token) el.classList.remove('show');
+    }, ms);
   }
 
   clear(): void {

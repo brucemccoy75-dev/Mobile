@@ -26,14 +26,16 @@ export class Screens {
     this.root.innerHTML = '';
   }
 
-  title(onPlay: () => void): void {
+  title(name: string, onPlay: (name: string) => void): void {
     this.render(`
       <div class="screen title">
         <div class="eyebrow">No-Limit Hold'em · six-max · you against five</div>
         <h1>Poker,<br>I Hardly Knew Her</h1>
+        <div class="namerow"><label>They'll call you</label><input class="name" maxlength="14" value="${name.replace(/"/g, '')}" /></div>
         <button class="primary">Play</button>
       </div>`);
-    this.root.querySelector('button')!.addEventListener('click', onPlay);
+    const input = this.root.querySelector<HTMLInputElement>('.name')!;
+    this.root.querySelector('button.primary')!.addEventListener('click', () => onPlay(input.value.trim() || name));
   }
 
   select(onPick: (key: TournamentKey) => void, onBack: () => void): void {

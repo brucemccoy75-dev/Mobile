@@ -22,7 +22,8 @@ export const betPos = (seat: number) => ellipse(seatAngle(seat), 0.46, 0);
 export const buttonPos = (seat: number) => ellipse(seatAngle(seat) - 16, 0.62, 0.01);
 export const platePos = (seat: number) => ellipse(seatAngle(seat), 1.17, 0.02);
 
-export const POT_POS = new THREE.Vector3(0, 0, -0.6);
+export const POT_POS = new THREE.Vector3(0, 0, -0.95);
+export const POT_LABEL_POS = new THREE.Vector3(0, 0, -0.42);
 export const BOARD_Z = 0.3;
 export const BOARD_SPACING = 0.72;
 export const DEALER_POS = ellipse(DEALER_ANGLE, 1.42, 0);
