@@ -29,8 +29,9 @@ using drawn expressions until the variants exist.
 - Generate one character you like first, then reference it for the rest: Midjourney `--sref` on that
   image for style (and `--cref` for expression variants of the same man), or image-to-image at low
   strength in Stable Diffusion. GPT image models take a reference image in the conversation.
-- Ask for a transparent background where the tool supports it (GPT image models do). Otherwise ask for
-  a flat dark background, `#0a120d`, and I will key it out.
+- Ask for a flat solid green background, exactly `#00b140`, no gradient, no vignette, no shadow, and
+  add "clothing is not green". I key it out and pull the green spill off the edges. A checkerboard
+  "transparent" JPEG does not work: the checkerboard is baked into the pixels.
 - Generate four candidates per character and pick; do not accept the first.
 
 ## Style block (paste first, every time)
@@ -38,8 +39,9 @@ using drawn expressions until the variants exist.
 > Stylised 3D-rendered character portrait, head and shoulders, facing the camera at eye level,
 > centred, square. Matte clay-like skin, simplified rounded features, slightly caricatured
 > proportions, big readable expression. One warm key light from above like a lamp over a poker
-> table, soft shadows, dark neutral background. Clean, no text, no watermark, no hands, no props.
-> Consistent with a set of thirteen portraits in the same style.
+> table, soft shadows. Clean, no text, no watermark, no hands, no props. Consistent with a set of
+> thirteen portraits in the same style. Flat solid green background, exactly #00b140, no gradient, no
+> vignette, no shadow on the background. Clothing is not green.
 
 ## The thirteen
 
@@ -98,8 +100,9 @@ New Hampshire, Dave's-basement feel.
 > around his neck, bored unimpressed expression, one eyebrow slightly raised, chewing on nothing.
 
 **Bruce** (`jimmy.png`) — pro, The Clock, reads timing.
-> A man in his mid forties, sharp features, short dark hair with grey at the temples, fitted dark
-> blazer over a t-shirt, a knowing smirk, eyes locked on the viewer like he is counting seconds.
+> A white man in his late forties, thin face and build, short full beard of mixed black and grey,
+> short dark hair going grey at the sides, a fairly large nose, plain black t-shirt, a sly knowing look
+> with a slight squint and a one-sided smirk, like he's counting how long you took to decide.
 
 **Dave** (`dealer.png`) — the host, deals every hand, long-suffering.
 > A man in his late forties, kind tired face, neat short hair, crisp white shirt, black vest and a
