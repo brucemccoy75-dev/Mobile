@@ -42,7 +42,7 @@ export interface BanterTable {
   traits?: (seat: number) => { talk: number; trash: number };
 }
 
-const NEEDLES: Trigger[] = ['targetFoldsToMe', 'targetCallsMeDown', 'targetTank', 'targetInstant', 'winShowdown', 'stackedTarget', 'playerOut'];
+const NEEDLES: Trigger[] = ['targetFoldsToMe', 'targetCallsMeDown', 'targetTank', 'targetInstant', 'targetChecks', 'winShowdown', 'stackedTarget', 'playerOut'];
 
 const COOLDOWN_MS = 11000;
 const GLOBAL_GAP_MS = 1800;
@@ -219,6 +219,13 @@ export class Banter {
     const aggressorBefore = this.lastAggressor;
     if (type === 'bet' || type === 'raise') this.lastAggressor = ev.seat;
 
+    if (type === 'check' && this.chance(0.14 * damp)) {
+      const others = this.botsInHand(table).filter((s) => s !== ev.seat && !hand.player(s).folded);
+      if (others.length > 0) {
+        const said = this.say(this.pickSpeaker(others, table, true), 'targetChecks', table, { targetSeat: ev.seat });
+        if (said) return said;
+      }
+    }
     if (ev.seat === HUMAN_SEAT) {
       this.humanLastThink = ev.thinkMs;
       const bots = this.botsInHand(table).filter((s) => !hand.player(s).folded);

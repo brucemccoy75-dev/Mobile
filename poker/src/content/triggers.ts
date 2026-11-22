@@ -20,6 +20,7 @@ export type Trigger =
   | 'stackedByTarget'  // {target} busted the speaker
   | 'targetTank'       // {target} took forever
   | 'targetInstant'    // {target} acted instantly
+  | 'targetChecks'     // {target} just checked, and the speaker has opinions about checking
   | 'shortStack'       // the speaker is short
   | 'chipLeader'       // the speaker has a big stack
   | 'playerOut'        // {target} just busted (speaker is a bystander)

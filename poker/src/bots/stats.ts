@@ -100,8 +100,9 @@ export function handOutcome(hand: Hand, seat: number, rng: Rng): HandOutcome {
  * Moves clarity after a hand. Bad beats and big losses push it up; wins pull it down; quiet hands
  * drift it down a point.
  */
-export function updateClarity(stats: BotStats, type: BotType, outcome: HandOutcome): number {
-  const sens = TILT_SENSITIVITY[type];
+export function updateClarity(stats: BotStats, type: BotType, outcome: HandOutcome, temper = 1): number {
+  const base = TILT_SENSITIVITY[type];
+  const sens = { up: base.up * temper, down: base.down / Math.sqrt(temper) };
   const before = stats.clarity;
   // Losses: the fraction of the stack that went (busting = 1). Wins: the gain relative to the stack
   // before the hand (doubling up = 1).

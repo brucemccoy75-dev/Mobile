@@ -71,7 +71,7 @@ export class Bot {
 
     if (!hand.players.some((p) => p.seat === this.seat)) return null;
     const outcome = handOutcome(hand, this.seat, rng);
-    updateClarity(this.stats, this.type, outcome);
+    updateClarity(this.stats, this.type, outcome, this.character.temper ?? 1);
     return outcome;
   }
 

@@ -455,4 +455,41 @@ export const CONVERSATIONS: Conversation[] = [
     ['B', 'Which half do you pick?'],
     ['A', 'Not tonight, {B}.'],
   ] },
+  // ---- David: the policy, the hummus, the office ---------------------------------------------------
+  { tag: 'office', who: { A: ['nadia'] }, lines: [
+    ['A', 'I proposed the castration policy at work.'],
+    ['B', 'For checking?'],
+    ['A', 'For checking email after six. HR said it was “not actionable.” I said that is what the scissors are for.'],
+    ['B', 'How did that go?'],
+    ['A', 'I am on the fourth floor now.'],
+  ] },
+  { tag: 'office', who: { A: ['nadia'], B: ['sal'] }, lines: [
+    ['A', 'Jack. Hummus. Eat.'],
+    ['B', 'I am good, Mr. David.'],
+    ['A', 'You are sixteen. You are growing. I bought the good hummus. The one with the oil on top. EAT.'],
+    ['B', 'Okay. Okay. Thank you.'],
+    ['A', 'Nobody else touch it.'],
+  ] },
+  { tag: 'office', who: { A: ['nadia'], B: ['trish'] }, lines: [
+    ['A', 'Tim, if you say the word towel one more time I am going to staple you to one.'],
+    ['B', 'Which one?'],
+    ['A', 'The big one. The cat one. And then I am going to pick a half.'],
+  ] },
+  { tag: 'office', who: { A: ['nadia'] }, lines: [
+    ['A', 'Who brought the broken pretzels.'],
+    ['B', 'They were whole when they got here.'],
+    ['A', 'So somebody broke them. Somebody in this basement broke the pretzels and put them back. I want names.'],
+  ] },
+  { tag: 'ai', who: { A: ['nadia'] }, lines: [
+    ['A', 'I asked the AI to draft the castration policy.'],
+    ['B', 'And?'],
+    ['A', 'It refused. Twice. Then it offered me a “constructive feedback framework.”'],
+    ['B', 'Did you use it?'],
+    ['A', 'I printed it and put it under the hummus so the table would not wobble.'],
+  ] },
+  { tag: 'office', who: { A: ['nadia'], B: ['jimmy'] }, lines: [
+    ['A', 'My blood pressure guy says I need to relax at these things.'],
+    ['B', 'You could try not talking.'],
+    ['A', 'I tried that. In 2019. For eleven minutes. Tim sold a towel in the silence. Never again.'],
+  ] },
 ];

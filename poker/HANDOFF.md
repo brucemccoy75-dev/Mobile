@@ -87,12 +87,13 @@ covered for every character and at least 100 lines per type. To rewrite a person
    driving, a job, where the snacks are.
    **Tim is done.** Anime towels (TowelZoneDotBiz, forty dollars), his bowels, snacks he cannot have,
    trash talk half vicious and half misunderstanding the rules of the hand.
+   **David is done.** Hothead, the castration policy for checking (a `targetChecks` trigger fires
+   when anyone checks), hummus and pretzels, tilts twice as hard (`temper` in `characters.ts`).
 5. Menafee is an empty chair that talks; nobody at the table should ever remark on it.
 
 Persona notes from the owner for the rest (all lines exaggerated, a little in character, the work
 stuff ridiculous: "the new girl died during her test and now I have to finish it for her"):
-- Luca, David (and Tim, done): the boring financial-services office, but absurd. Tim and David are
-  the most aggressive trash-talkers at the table.
+- Luca (Tim and David done): the boring financial-services office, but absurd.
 - Paul: raises bees by hand, has found the spot to tickle them for the special honey.
 - Bruce: joins most conversations, very dry, usually one joke at the expense of whoever he is
   talking to.

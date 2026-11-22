@@ -17,12 +17,14 @@ export interface Character {
   talk: number;
   /** How readily he needles other players; 1 is normal. */
   trash: number;
+  /** How hard bad beats land on him; 1 is normal, hotheads above. */
+  temper?: number;
 }
 
 export const CHARACTERS: Character[] = [
   { id: 'harold', name: 'David Sr', type: 'nit', iq: 48, read: 32, clarityBase: 24, bio: 'David\u2019s father. Says almost nothing. Folds almost everything.', aiStance: 'anti', talk: 0.3, trash: 0.5 },
   { id: 'dolores', name: 'Paul', type: 'nit', iq: 52, read: 38, clarityBase: 14, bio: 'Teaches fourth grade and raises bees by hand. Knows the spot.', aiStance: 'meh', talk: 1, trash: 0.8 },
-  { id: 'marvin', name: 'Kevin', type: 'nit', iq: 40, read: 24, clarityBase: 28, bio: 'Nobody is sure who invited Kevin. Kevin is not sure either.', aiStance: 'anti', talk: 1.1, trash: 1 },
+  { id: 'marvin', name: 'Kevin', type: 'nit', iq: 40, read: 24, clarityBase: 28, bio: 'Nobody is sure who invited Kevin. Kevin is not sure either.', aiStance: 'anti', talk: 1.1, trash: 1, temper: 1.4 },
   { id: 'chad', name: 'Bawb', type: 'tourist', iq: 28, read: 20, clarityBase: 22, bio: 'Says about four words a night. Two of them are \u201call in.\u201d', aiStance: 'pro', talk: 0.3, trash: 0.6 },
   { id: 'trish', name: 'Tim', type: 'tourist', iq: 36, read: 30, clarityBase: 12, bio: 'Financial services. Has stories from the office that cannot all be true.', aiStance: 'meh', talk: 1.2, trash: 1.7 },
   { id: 'benny', name: 'Luca', type: 'tourist', iq: 22, read: 18, clarityBase: 30, bio: 'Financial services, same office. Thinks the printer thing is being handled.', aiStance: 'pro', talk: 1.1, trash: 1 },
@@ -30,7 +32,7 @@ export const CHARACTERS: Character[] = [
   { id: 'priya', name: 'Will', type: 'calculator', iq: 84, read: 58, clarityBase: 18, bio: 'Chess coach. Sees your move three streets before you make it.', aiStance: 'meh', talk: 1, trash: 0.9 },
   { id: 'ulrich', name: 'Menafee', type: 'calculator', iq: 78, read: 42, clarityBase: 26, bio: 'Has never once shown up. His chair plays better than most.', aiStance: 'anti', talk: 0.8, trash: 1 },
   { id: 'sal', name: 'Jack', type: 'pro', iq: 86, read: 92, clarityBase: 16, bio: 'Sixteen. Best player at the table. Would like to know where the snacks are.', aiStance: 'anti', talk: 1.3, trash: 1.1 },
-  { id: 'nadia', name: 'David', type: 'pro', iq: 94, read: 84, clarityBase: 10, bio: 'Financial services. Will tell you exactly what is wrong with your play, and your face.', aiStance: 'pro', talk: 1.2, trash: 1.7 },
+  { id: 'nadia', name: 'David', type: 'pro', iq: 94, read: 84, clarityBase: 26, bio: 'Financial services. The hottest head at the table. Has a policy about checking.', aiStance: 'pro', talk: 1.3, trash: 1.9, temper: 2 },
   { id: 'jimmy', name: 'Bruce', type: 'pro', iq: 82, read: 90, clarityBase: 22, bio: 'Joins every conversation with one dry line, usually at your expense.', aiStance: 'meh', talk: 1.1, trash: 1.2 },
 ];
 
