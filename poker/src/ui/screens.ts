@@ -4,6 +4,9 @@ import { type TournamentPlayer } from '../engine/tournament';
 import { money } from './format';
 import { ordinal } from './overlay';
 
+/** The intro plays once per visit; later trips to the title show it paused behind the menu. */
+let introPlayed = false;
+
 export class Screens {
   private readonly root: HTMLElement;
 
@@ -22,9 +25,11 @@ export class Screens {
   }
 
   title(name: string, onPlay: (name: string) => void, onCareer: () => void, onSettings: () => void): void {
+    const first = !introPlayed;
     this.render(`
-      <video class="intro" autoplay muted loop playsinline preload="auto" poster=""><source src="./intro.mp4" type="video/mp4"></video>
-      <div class="screen title">
+      <video class="intro ${first ? 'playing' : ''}" autoplay muted playsinline preload="auto"><source src="./intro.mp4" type="video/mp4"></video>
+      ${first ? '<button class="link skip">Skip</button>' : ''}
+      <div class="screen title ${first ? 'waiting' : ''}">
         <div class="eyebrow">No-Limit Hold'em · six-max · you against five of Dave's friends</div>
         <h1>Poker Night<br>at Dave's</h1>
         <div class="namerow"><label>They'll call you</label><input class="name" maxlength="14" value="${name.replace(/"/g, '')}" /></div>
@@ -32,8 +37,31 @@ export class Screens {
         <div class="links"><button class="link go-career">Career</button><button class="link go-settings">Settings</button></div>
       </div>`);
     const video = this.root.querySelector<HTMLVideoElement>('video.intro')!;
-    video.addEventListener('error', () => video.remove(), { once: true });
-    void video.play().catch(() => {});
+    const screen = this.root.querySelector<HTMLElement>('.screen.title')!;
+    const reveal = () => {
+      introPlayed = true;
+      video.classList.remove('playing');
+      screen.classList.remove('waiting');
+      this.root.querySelector('.skip')?.remove();
+      video.removeEventListener('click', reveal);
+    };
+    video.addEventListener('error', () => {
+      video.remove();
+      reveal();
+    }, { once: true });
+    if (first) {
+      video.addEventListener('ended', reveal, { once: true });
+      video.addEventListener('click', reveal);
+      this.root.querySelector('.skip')!.addEventListener('click', reveal);
+      // If autoplay is refused, do not leave the player staring at a black frame.
+      void video.play().catch(reveal);
+      window.setTimeout(() => {
+        if (video.paused && !introPlayed) reveal();
+      }, 1500);
+    } else {
+      video.pause();
+      video.currentTime = 19.5;
+    }
     const input = this.root.querySelector<HTMLInputElement>('.name')!;
     this.root.querySelector('button.primary')!.addEventListener('click', () => onPlay(input.value.trim() || name));
     this.root.querySelector('.go-career')!.addEventListener('click', onCareer);
