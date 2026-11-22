@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a1f14" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="description" content="A 3D poker game for your phone." />
+  <title>Poker</title>
+  <style>
+    :root { color-scheme: dark; --bg: #0a1f14; --fg: #e8ecef; }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--fg);
+      font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      user-select: none; -webkit-user-select: none; touch-action: none; overscroll-behavior: none; }
+    #game { position: fixed; inset: 0; }
+    #game canvas { display: block; touch-action: none; }
+    #hud { position: fixed; left: 0; right: 0; bottom: 0;
+      padding: 12px max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+      display: flex; justify-content: space-between; align-items: center; pointer-events: none;
+      color: #b9c6bf; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div id="game"></div>
+  <div id="hud"><span>Poker · pipeline check</span><span id="fps"></span></div>
+  <script type="module" src="./src/main.ts"></script>
+</body>
+</html>

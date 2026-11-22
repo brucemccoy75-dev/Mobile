@@ -1,0 +1,57 @@
+name: poker
+
+on:
+  push:
+    branches: ['claude/magical-wozniak-04xz9z', 'poker/**']
+    paths: ['poker/**', '.github/workflows/poker.yml']
+  pull_request:
+    paths: ['poker/**', '.github/workflows/poker.yml']
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: poker
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: poker/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: poker/dist
+
+  pages:
+    # Public test build: https://brucemccoy75-dev.github.io/Mobile/poker/
+    # Publishes dist/ into the poker/ folder of the gh-pages branch. keep_files leaves every
+    # other folder on gh-pages alone, so this never clobbers the other projects hosted there.
+    needs: check
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: poker/dist
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: poker/dist
+          publish_branch: gh-pages
+          destination_dir: poker
+          keep_files: true
+          commit_message: "Deploy poker ${{ github.sha }}"
