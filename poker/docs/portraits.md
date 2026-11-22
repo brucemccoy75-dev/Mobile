@@ -88,9 +88,10 @@ New Hampshire, Dave's-basement feel.
 > A man about fifty, crew cut, square face, heavy brow, red and black flannel shirt, flat direct
 > stare, mouth a straight line, built like he carries beams for fun.
 
-**Jack** (`sal.png`) — pro, thirty years of card rooms.
-> A man in his early sixties, silver hair swept back, lined face, worn brown leather jacket over a
-> dark shirt, weary half smile, eyes that have seen every bluff at every table.
+**Jack** (`sal.png`) — pro, the best player at the table, and sixteen.
+> A sixteen-year-old boy, big for his age, broad shoulders and a heavy build, round full face, fairly
+> long blond hair falling out from under a backwards baseball cap, rectangular glasses, a plain hoodie,
+> a confident half smirk with eyes fixed on the viewer like he already knows what you have.
 
 **David** (`nadia.png`) — pro, online crusher, bored by live play.
 > A man in his late twenties, pale from screens, messy hair, black hoodie, over-ear headphones
