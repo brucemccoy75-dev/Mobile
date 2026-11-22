@@ -107,6 +107,10 @@ function start(key: TournamentKey): void {
           names: new Map(table.seats.map((s) => [s.seat, s.name])),
           clarity: (seat: number) => table.bots.get(seat)?.stats.clarity ?? 0,
           stance: (seat: number) => table.bots.get(seat)?.character.aiStance ?? 'meh',
+          traits: (seat: number) => {
+            const c = table.bots.get(seat)?.character;
+            return { talk: c?.talk ?? 1, trash: c?.trash ?? 1 };
+          },
         };
         const said = talk.onEvent(ev, who);
         if (said) {

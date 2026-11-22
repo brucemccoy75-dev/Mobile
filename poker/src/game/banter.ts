@@ -38,7 +38,11 @@ export interface BanterTable {
   clarity: (seat: number) => number;
   /** Where each bot stands on AI, for the arguments. */
   stance?: (seat: number) => Stance;
+  /** How talkative and how needling each bot is; defaults to 1 and 1. */
+  traits?: (seat: number) => { talk: number; trash: number };
 }
+
+const NEEDLES: Trigger[] = ['targetFoldsToMe', 'targetCallsMeDown', 'targetTank', 'targetInstant', 'winShowdown', 'stackedTarget', 'playerOut'];
 
 const COOLDOWN_MS = 11000;
 const GLOBAL_GAP_MS = 1800;
@@ -80,11 +84,12 @@ export class Banter {
         const bb = ev.level.bb;
         for (const seat of this.shuffled(bots)) {
           const stack = ev.stacks[seat] ?? 0;
+          if (!this.chance((table.traits?.(seat).talk ?? 1))) continue;
           const total = Object.values(ev.stacks).reduce((a, b) => a + b, 0);
           if (stack / bb < 10 && this.chance(0.18)) return this.say(seat, 'shortStack', table);
           if (stack > total * 0.42 && this.chance(0.1)) return this.say(seat, 'chipLeader', table);
         }
-        if (bots.length > 0 && this.chance(0.05)) return this.say(this.pick(bots), 'dealtIn', table);
+        if (bots.length > 0 && this.chance(0.05)) return this.say(this.pickSpeaker(bots, table), 'dealtIn', table);
         if (this.chance(0.03)) return this.say(DEALER_SEAT, 'dealtIn', table);
         return null;
       }
@@ -95,7 +100,7 @@ export class Banter {
       case 'bust': {
         const gone = ev.seats[0];
         const bots = this.seatsOf(table).filter((s) => s !== gone && !ev.seats.includes(s));
-        if (bots.length > 0 && this.chance(0.5)) return this.say(this.pick(bots), 'playerOut', table, { target: table.names.get(gone) });
+        if (bots.length > 0 && this.chance(0.5)) return this.say(this.pickSpeaker(bots, table, true), 'playerOut', table, { target: table.names.get(gone) });
         if (this.chance(0.4)) return this.say(DEALER_SEAT, 'playerOut', table, { target: table.names.get(gone) });
         return null;
       }
@@ -107,7 +112,7 @@ export class Banter {
         }
         // Table chatter from someone who has folded.
         const idle = this.botsInHand(table).filter((s) => s !== ev.seat && this.hand!.player(s).folded);
-        if (idle.length > 0 && this.chance(0.035)) return this.say(this.pick(idle), 'idle', table);
+        if (idle.length > 0 && this.chance(0.035)) return this.say(this.pickSpeaker(idle, table), 'idle', table);
         if (this.chance(0.01)) return this.say(DEALER_SEAT, 'idle', table);
         return null;
       }
@@ -152,11 +157,20 @@ export class Banter {
     const pool = fresh.length > 0 ? fresh : CONVERSATIONS;
     if (fresh.length === 0) this.usedConvos.clear();
     for (const conv of this.shuffled(pool)) {
-      const fits = (s: number, need?: Stance) => !need || stance(s) === need;
+      const fits = (s: number, need?: Stance, who?: string[]) => (!need || stance(s) === need) && (!who || who.includes(table.ids.get(s) ?? ''));
       const pairs: [number, number][] = [];
-      for (const a of bots) for (const b of bots) if (a !== b && fits(a, conv.needs?.A) && fits(b, conv.needs?.B)) pairs.push([a, b]);
+      for (const a of bots) for (const b of bots) if (a !== b && fits(a, conv.needs?.A, conv.who?.A) && fits(b, conv.needs?.B, conv.who?.B)) pairs.push([a, b]);
       if (pairs.length === 0) continue;
-      const [a, b] = this.pick(pairs);
+      // Talkative men end up in more conversations; the quiet ones mostly listen.
+      const weight = (p: [number, number]) => (table.traits?.(p[0]).talk ?? 1) * (table.traits?.(p[1]).talk ?? 1);
+      const total = pairs.reduce((s, p) => s + weight(p), 0);
+      let x = this.rng() * total;
+      let chosen = pairs[0];
+      for (const p of pairs) {
+        x -= weight(p);
+        if (x <= 0) { chosen = p; break; }
+      }
+      const [a, b] = chosen;
       this.convo = { conv, a, b, next: 0, lastAt: -1e9 };
       this.usedConvos.add(conv);
       return this.speakConvo(table);
@@ -209,8 +223,8 @@ export class Banter {
       this.humanLastThink = ev.thinkMs;
       const bots = this.botsInHand(table).filter((s) => !hand.player(s).folded);
       if (bots.length === 0) return null;
-      if (ev.thinkMs > 12000 && this.chance(0.35)) return this.say(this.pick(bots), 'targetTank', table, { target: table.names.get(HUMAN_SEAT) });
-      if (ev.thinkMs < 700 && type !== 'fold' && this.chance(0.15)) return this.say(this.pick(bots), 'targetInstant', table, { target: table.names.get(HUMAN_SEAT) });
+      if (ev.thinkMs > 12000 && this.chance(0.35)) return this.say(this.pickSpeaker(bots, table, true), 'targetTank', table, { target: table.names.get(HUMAN_SEAT) });
+      if (ev.thinkMs < 700 && type !== 'fold' && this.chance(0.15)) return this.say(this.pickSpeaker(bots, table, true), 'targetInstant', table, { target: table.names.get(HUMAN_SEAT) });
       if (type === 'fold' && aggressorBefore !== null && aggressorBefore !== HUMAN_SEAT && this.chance(0.22 * damp)) {
         return this.say(aggressorBefore, 'targetFoldsToMe', table, { target: table.names.get(HUMAN_SEAT) });
       }
@@ -302,6 +316,11 @@ export class Banter {
     const now = this.now();
     const urgent = URGENT.includes(trigger);
     if (!urgent && now - this.lastAny < GLOBAL_GAP_MS) return null;
+    if (seat !== DEALER_SEAT && table.traits) {
+      const t = table.traits(seat);
+      const gate = Math.min(1, t.talk * (NEEDLES.includes(trigger) ? t.trash : 1));
+      if (!urgent && this.rng() > gate) return null;
+    }
     if (now - (this.lastSpoke.get(id) ?? -1e9) < (urgent ? COOLDOWN_MS / 3 : COOLDOWN_MS)) return null;
     const mood: Mood = seat !== DEALER_SEAT && table.clarity(seat) >= 55 ? 'tilted' : 'calm';
     const line = this.pickLine(id, trigger, mood);
@@ -342,6 +361,21 @@ export class Banter {
 
   private pick<T>(items: T[]): T {
     return items[Math.floor(this.rng() * items.length)];
+  }
+
+  /** A speaker weighted by how much he talks (and, for needling, how much he enjoys it). */
+  private pickSpeaker(seats: number[], table: BanterTable, needling = false): number {
+    const w = (s: number) => {
+      const t = table.traits?.(s) ?? { talk: 1, trash: 1 };
+      return t.talk * (needling ? t.trash : 1);
+    };
+    const total = seats.reduce((a, s) => a + w(s), 0);
+    let x = this.rng() * total;
+    for (const s of seats) {
+      x -= w(s);
+      if (x <= 0) return s;
+    }
+    return seats[seats.length - 1];
   }
 
   private shuffled<T>(items: T[]): T[] {

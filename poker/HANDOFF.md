@@ -83,8 +83,23 @@ covered for every character and at least 100 lines per type. To rewrite a person
 2. Rewrite all of that character's lines in that voice. Keep `{target}` and `{hand}` placeholders,
    keep the trigger coverage, keep it funny first, raw tone allowed, no slurs.
 3. Update the bio in `characters.ts`. Run `npm test`. Push.
-4. Jack is first: he is sixteen now and the lines still sound like a sixty-year-old grinder.
+4. **Jack is done.** Sixteen, respectful trash talk ("sir", "respectfully", "no offense"), school,
+   driving, a job, where the snacks are.
 5. Menafee is an empty chair that talks; nobody at the table should ever remark on it.
+
+Persona notes from the owner for the rest (all lines exaggerated, a little in character, the work
+stuff ridiculous: "the new girl died during her test and now I have to finish it for her"):
+- Tim, Luca, David: the boring financial-services office, but absurd. Tim and David are the most
+  aggressive trash-talkers at the table.
+- Paul: raises bees by hand, has found the spot to tickle them for the special honey.
+- Bruce: joins most conversations, very dry, usually one joke at the expense of whoever he is
+  talking to.
+- David Sr and Bawb: almost always quiet.
+- The whole table debates technology, AI and data centres.
+- Kevin: the drunk imaginary one. Skynet: the android dealer; give it a robot voice.
+Already wired: each character has `talk` and `trash` factors in `characters.ts` that the banter
+engine uses for who speaks and who needles, and conversations can be pinned to particular men with
+`who` in `conversations.ts` (Jack's, Paul's bees, the office trio, Bruce's dry shots exist).
 
 The dealer is a robot named Skynet; its lines in `lines.ts` under `dealer` still read as a human dealer and want a robot voice.
 

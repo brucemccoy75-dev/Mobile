@@ -7,6 +7,8 @@ export interface Conversation {
   tag: 'office' | 'ai' | 'spouse' | 'weather' | 'sports' | 'dnd';
   /** Required AI stance for a role, when the exchange depends on it. */
   needs?: { A?: Stance; B?: Stance };
+  /** Character ids allowed in a role, when the exchange is someone's in particular. */
+  who?: { A?: string[]; B?: string[] };
   lines: ['A' | 'B', string][];
 }
 
@@ -270,5 +272,149 @@ export const CONVERSATIONS: Conversation[] = [
     ['A', 'I named my dog Vecna.'],
     ['B', 'Does your wife know who Vecna is?'],
     ['A', 'She thinks it is Italian. Please never tell her. She would take the dog in the divorce.'],
+  ] },
+  // ---- Jack: school, driving, a job, and where the snacks are ----------------------------------
+  { tag: 'office', who: { A: ['sal'] }, lines: [
+    ['A', 'I have a chemistry test tomorrow.'],
+    ['B', 'Did you study?'],
+    ['A', 'I am studying right now. This is probability. It is basically the same unit.'],
+  ] },
+  { tag: 'office', who: { A: ['sal'] }, lines: [
+    ['A', 'I get my license in March. Dad says I can have the Corolla.'],
+    ['B', 'Which Corolla?'],
+    ['A', 'The one in the yard.'],
+    ['B', 'The one with the tree in it?'],
+    ['A', 'The tree is not load-bearing.'],
+  ] },
+  { tag: 'office', who: { A: ['sal'] }, lines: [
+    ['A', 'I applied at Market Basket. They said I need experience.'],
+    ['B', 'Experience doing what?'],
+    ['A', 'Bagging. Experience bagging. Where do you get experience bagging if nobody lets you bag.'],
+    ['B', 'That is the whole economy, kid. That is the entire thing.'],
+  ] },
+  { tag: 'office', who: { A: ['sal'] }, lines: [
+    ['A', 'Are there any more of those pretzels?'],
+    ['B', 'You ate the pretzels.'],
+    ['A', 'I ate SOME of the pretzels. There was a whole second bag.'],
+    ['B', 'That was my lunch for tomorrow.'],
+    ['A', 'That is a sad lunch, {B}. I am helping you.'],
+  ] },
+  { tag: 'office', who: { A: ['sal'], B: ['trish', 'benny', 'nadia'] }, lines: [
+    ['A', 'What do you even do at work, {B}?'],
+    ['B', 'I move numbers from one column to another column and then a man named Gary checks the columns.'],
+    ['A', 'Why does Gary check them?'],
+    ['B', 'Nobody knows. Gary was here before the building.'],
+  ] },
+  { tag: 'office', who: { A: ['sal'], B: ['jimmy'] }, lines: [
+    ['A', 'Mr. Bruce, do you have any advice for getting a job?'],
+    ['B', 'Lie about your age in the other direction.'],
+    ['A', 'Up?'],
+    ['B', 'Down. Nobody expects anything from a twelve-year-old. You would be a prodigy.'],
+  ] },
+
+  // ---- Paul and the bees ---------------------------------------------------------------------------
+  { tag: 'office', who: { A: ['dolores'] }, lines: [
+    ['A', 'You have to tickle them. Right behind the wing.'],
+    ['B', 'Tickle the bees.'],
+    ['A', 'There is a spot. Took me four years to find it. The honey comes out different.'],
+    ['B', 'Different how?'],
+    ['A', 'Sweeter. Angrier. It knows things.'],
+  ] },
+  { tag: 'office', who: { A: ['dolores'] }, lines: [
+    ['A', 'Lost a hive this spring. They left a note.'],
+    ['B', 'Bees do not leave notes, Paul.'],
+    ['A', 'This one did. It just said “Paul.” In wax. I have it on the fridge.'],
+  ] },
+  { tag: 'office', who: { A: ['dolores'] }, lines: [
+    ['A', 'I hand-raised the new queen. Bottle-fed her.'],
+    ['B', 'With what?'],
+    ['A', 'A very small bottle. You would not understand. The other bees do not understand either. They have been talking.'],
+  ] },
+  { tag: 'office', who: { A: ['dolores'], B: ['jimmy'] }, lines: [
+    ['A', 'The special honey is a hundred and forty a jar. People drive up from Boston.'],
+    ['B', 'For the honey, or to see the man who tickles bees in a field alone.'],
+    ['A', 'They are not mutually exclusive, Bruce.'],
+  ] },
+  { tag: 'office', who: { A: ['dolores'] }, lines: [
+    ['A', 'A bee got in the house last night. My wife said it was mine.'],
+    ['B', 'Was it yours?'],
+    ['A', 'They are all mine, {B}. Every bee in this county has met me. We have an understanding.'],
+  ] },
+
+  // ---- the office, but worse: Tim, Luca and David --------------------------------------------------
+  { tag: 'office', who: { A: ['trish', 'benny', 'nadia'] }, lines: [
+    ['A', 'The new girl died during her Series 7.'],
+    ['B', 'During the test?'],
+    ['A', 'Question forty. Now I have to finish the test for her. Compliance says the seat was paid for.'],
+    ['B', 'What was question forty?'],
+    ['A', 'Municipal bonds. So, honestly, I get it.'],
+  ] },
+  { tag: 'office', who: { A: ['trish', 'benny', 'nadia'] }, lines: [
+    ['A', 'They replaced the water cooler with a guy named Gary.'],
+    ['B', 'What does Gary do?'],
+    ['A', 'You walk up, he says “water,” and you feel refreshed. It is cheaper. HR did a study.'],
+  ] },
+  { tag: 'office', who: { A: ['trish', 'benny', 'nadia'] }, lines: [
+    ['A', 'We moved to the fourth floor.'],
+    ['B', 'Your building has three floors.'],
+    ['A', 'We take the stairs to the third and wait. Management says the fourth floor is a mindset.'],
+  ] },
+  { tag: 'office', who: { A: ['trish', 'benny', 'nadia'] }, lines: [
+    ['A', 'I am on a performance plan.'],
+    ['B', 'For what?'],
+    ['A', 'Breathing in a non-goal-oriented way. There was a slide. The slide had a picture of me. Breathing.'],
+  ] },
+  { tag: 'office', who: { A: ['trish', 'benny', 'nadia'] }, lines: [
+    ['A', 'Dennis got promoted.'],
+    ['B', 'To what?'],
+    ['A', 'Senior Fish Microwaver. It comes with a parking spot. Near the fish.'],
+  ] },
+  { tag: 'office', who: { A: ['trish', 'benny', 'nadia'] }, lines: [
+    ['A', 'The printer unionized.'],
+    ['B', 'The printer.'],
+    ['A', 'Third floor printer. It has demands. Mostly toner. Some dental.'],
+    ['B', 'Is management negotiating?'],
+    ['A', 'Management is printing from home.'],
+  ] },
+  { tag: 'office', who: { A: ['trish', 'benny', 'nadia'], B: ['trish', 'benny', 'nadia'] }, lines: [
+    ['A', 'Did you get the email about the email?'],
+    ['B', 'The one about not sending emails about emails?'],
+    ['A', 'That one. I replied all. I think I am the problem now.'],
+    ['B', 'You have always been the problem, {A}. It is in your file. There is a tab.'],
+  ] },
+  { tag: 'office', who: { A: ['trish', 'benny', 'nadia'] }, lines: [
+    ['A', 'My client wanted to put his whole retirement in a boat.'],
+    ['B', 'A boat fund?'],
+    ['A', 'A boat. Physically. He wanted to bring the cash to the boat. I said that is not how it works. He said that is how it works on the boat.'],
+  ] },
+  { tag: 'office', who: { A: ['trish', 'benny', 'nadia'], B: ['jimmy'] }, lines: [
+    ['A', 'I got a plaque for ten years.'],
+    ['B', 'For ten years of what?'],
+    ['A', 'Attendance.'],
+    ['B', 'That is what they give the prisoners too, {A}. Yours is probably nicer.'],
+  ] },
+
+  // ---- Bruce, dry, at your expense ---------------------------------------------------------------
+  { tag: 'spouse', who: { B: ['jimmy'] }, lines: [
+    ['A', 'I am thinking about getting into real estate.'],
+    ['B', 'You should. You already have the face of a man nobody calls back.'],
+  ] },
+  { tag: 'spouse', who: { B: ['jimmy'] }, lines: [
+    ['A', 'My wife says I need a hobby.'],
+    ['B', 'You have one. You sit here and lose. She means a second one.'],
+  ] },
+  { tag: 'weather', who: { B: ['jimmy'] }, lines: [
+    ['A', 'Supposed to snow Thursday.'],
+    ['B', 'Good. You drive better when you cannot see the road. Fewer decisions.'],
+  ] },
+  { tag: 'ai', who: { B: ['jimmy'] }, lines: [
+    ['A', 'I asked the AI to summarise my week.'],
+    ['B', 'What did it say?'],
+    ['A', 'It asked if I was okay.'],
+    ['B', 'Even the machine, {A}. Even the machine.'],
+  ] },
+  { tag: 'spouse', who: { B: ['jimmy'] }, lines: [
+    ['A', 'I have been working on my poker face.'],
+    ['B', 'I can tell. It looks like a man working on something.'],
   ] },
 ];
