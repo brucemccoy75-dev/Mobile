@@ -1,7 +1,11 @@
-# Poker — Design Document (v1, for sign-off)
+# Poker, I Hardly Knew Her — Design Document (v1, for sign-off)
 
 Single-player, phone-first, 3D No-Limit Texas Hold'em. You against five bots at a
 six-seat table with a dealer. Tournament play only. Looks like watching poker on TV.
+
+**The vibe**: very accurate, genuinely fun poker, wrapped in dry humor. The bots needle
+you and each other with timely insults and banter that are always *funny* first. The game
+never plays dumb for a laugh; the poker is real, the table talk is the comedy.
 
 Status: **awaiting sign-off**. Nothing beyond the pipeline scaffold is built.
 
@@ -25,7 +29,8 @@ Status: **awaiting sign-off**. Nothing beyond the pipeline scaffold is built.
 | Faces | 2D portraits with expression states, mounted in the 3D scene. Procedural placeholders first; real art later |
 | Hole cards | Only yours during the hand. After the hand, optional replay with everyone's cards (hole cam) |
 | Camera | TV view by default. Swipe to orbit, snapping to seats. Tap a face for bio and recent moves. Auto-cuts to the actor in big moments unless you are looking around |
-| Comments | Text speech bubbles. Raw tone: swearing allowed, no slurs |
+| Comments | Text speech bubbles. Raw tone: swearing allowed, no slurs. Always funny: dry, timely, character-driven |
+| Name | *Poker, I Hardly Knew Her* |
 | Timing | 20-second shot clock on you. Your speed is a tell bots can read |
 | Pace | Realistic bot think times (1–6 s) with a fast-forward toggle |
 | Audio | Cards, chips, ambient casino. All mutable. No music |
@@ -93,7 +98,17 @@ Character names, bios, and portraits are produced in the content phase and revie
 
 ---
 
-## 6. Comments
+## 6. Comments and humor
+
+The comedy is the game's personality, so it gets the same care as the poker.
+
+**Rules for every line**
+- Funny first. A line that is merely rude gets cut. Dry beats loud.
+- Timely: tied to what just happened, at the moment it happened. A bad beat gets the needle while the chips are still sliding.
+- In character: a nit's humor is anxious and self-deprecating, a tourist's is loud and clueless, a calculator's is deadpan and literal, a pro's is cool, cutting, and rarely wasted.
+- Earned: insults aimed at you reference your actual play (the hand you showed, the fold you made, how long you tanked). Generic trash talk is a last resort.
+- Running gags: characters have recurring bits and callbacks within a tournament, and the dealer has a dry, long-suffering voice that comments on the table rather than the hands.
+- Bots talk to each other, not only to you, so the table feels alive when you are not in the hand.
 
 Goal: 100+ lines per type, written in each character's voice, raw tone. Lines are tagged by **trigger** and **mood** (clarity band), and the game picks a matching unused line.
 

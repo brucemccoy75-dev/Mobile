@@ -1,4 +1,4 @@
-# Poker
+# Poker, I Hardly Knew Her
 
 A web-based, phone-friendly 3D poker game. Vite + TypeScript + Three.js.
 
