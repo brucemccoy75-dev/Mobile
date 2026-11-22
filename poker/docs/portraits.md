@@ -113,10 +113,11 @@ level, eyes calm, mouth closed and straight); the expression variants come later
 **Menafee** (`ulrich.png`) — calculator, structural engineer, blunt. He never shows up: an empty chair.
 > (Replace "character portrait, head and shoulders" and the skin line in the style block with the
 > surfaces wording below.) Stylised 3D-rendered portrait in the same style as the set, centred,
-> square, eye level, matte clay-like surfaces. An empty grey metal folding chair, the kind from a
-> church basement, seen straight on from the front with the chair back filling the frame where a
-> person's head and shoulders would be, nobody sitting in it, a faint dent in the seat as if someone
-> was expected. Nothing in the image is green except the background.
+> square, eye level, matte clay-like surfaces. An empty black padded poker chair, the kind with a tall
+> cushioned back, padded armrests, a swivel base and casters, seen straight on from the front with the
+> chair back filling the frame where a person's head and shoulders would be, nobody sitting in it,
+> the cushion slightly worn in as if someone was expected. Nothing in the image is green except the
+> background.
 
 **Jack** (`sal.png`) — pro, the best player at the table, and sixteen.
 > A sixteen-year-old boy, big for his age, broad shoulders and a heavy build, round full face, fairly
