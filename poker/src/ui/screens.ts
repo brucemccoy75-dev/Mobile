@@ -1,8 +1,11 @@
-// Full-screen menus: the home screen (pick your opponents) and results.
+// Full-screen menus: the intro video, the home screen (pick your opponents) and results.
 import { type Character } from '../bots/characters';
 import { type TournamentPlayer } from '../engine/tournament';
 import { money } from './format';
 import { ordinal } from './overlay';
+
+/** The intro plays once per visit, then the home screen is shown straight away. */
+let introPlayed = false;
 
 export class Screens {
   private readonly root: HTMLElement;
@@ -37,8 +40,10 @@ export class Screens {
           <div class="tick">✓</div>
         </button>`)
       .join('');
+    const first = !introPlayed;
     this.render(`
-      <div class="screen pick">
+      ${first ? '<video class="intro" autoplay muted playsinline preload="auto"><source src="./intro.mp4" type="video/mp4"></video><button class="link skip">Skip</button>' : ''}
+      <div class="screen pick ${first ? 'waiting' : ''}">
         <div class="pickhead">
           <div class="brand">Poker Night<span>at Dave's</span></div>
           <div class="eyebrow">Who's coming tonight? <span class="count">Pick 5</span></div>
@@ -52,6 +57,7 @@ export class Screens {
         </div>
       </div>`);
     const root = this.root;
+    if (first) this.playIntro();
     const countEl = root.querySelector('.count')!;
     const dealBtn = root.querySelector<HTMLButtonElement>('.deal')!;
     const input = root.querySelector<HTMLInputElement>('.name')!;
@@ -126,8 +132,30 @@ export class Screens {
     window.setTimeout(() => {
       const c = characters.find((x) => x.id === 'sal') ?? characters[0];
       say(c.id, c.pitch[0]);
-    }, 500);
+    }, first ? 2500 : 500);
     refresh();
+  }
+
+  /** Runs the intro video over the home screen; ended, tapped, skipped or refused, the screen appears. */
+  private playIntro(): void {
+    const video = this.root.querySelector<HTMLVideoElement>('video.intro')!;
+    const screen = this.root.querySelector<HTMLElement>('.screen.pick')!;
+    const reveal = () => {
+      if (introPlayed) return;
+      introPlayed = true;
+      screen.classList.remove('waiting');
+      video.remove();
+      this.root.querySelector('.skip')?.remove();
+    };
+    video.addEventListener('ended', reveal, { once: true });
+    video.addEventListener('error', reveal, { once: true });
+    video.addEventListener('click', reveal);
+    this.root.querySelector('.skip')!.addEventListener('click', reveal);
+    // If autoplay is refused, do not leave the player staring at a black frame.
+    void video.play().catch(reveal);
+    window.setTimeout(() => {
+      if (video.paused) reveal();
+    }, 1500);
   }
 
   results(r: { humanFinish: number; standings: TournamentPlayer[]; handsPlayed: number; tournament: string; earned: { name: string }[] }, onAgain: () => void, onMenu: () => void): void {

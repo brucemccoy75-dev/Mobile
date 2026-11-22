@@ -38,7 +38,7 @@ two-man conversations; `career.ts` is the save file and trophies. `src/scene` is
 figures (`figures.ts`: drawn placeholder, or a portrait standee when `public/portraits/<id>.png`
 exists), cards, chips, camera `director.ts`, synthesized `audio.ts`. `src/ui` is HTML overlay:
 plates, board, action bar, panels, screens (the home screen is the pick-your-opponents grid with name
-entry, Career and Settings in its footer; there is no title screen or intro), and `stage.ts`: a fixed 1000x460 stage scaled uniformly to
+entry, Career and Settings in its footer; the intro video plays once over it and is skippable; there is no title screen), and `stage.ts`: a fixed 1000x460 stage scaled uniformly to
 fit the visual viewport (safe areas respected), so the layout is identical on every screen and any
 spare screen is dark bars. Everything, menus and panels included, is laid out in stage units inside
 `#stage`; only `#rotate` sits outside it. `src/main.ts` wires it all. `src/content/lines.ts` holds
