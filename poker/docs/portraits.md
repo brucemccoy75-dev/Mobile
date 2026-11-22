@@ -66,7 +66,7 @@ level, eyes calm, mouth closed and straight); the expression variants come later
 > dress shirt with a narrow tie, flat resigned expression, eyes that have already calculated how this
 > ends.
 
-**Bawb** (`chad.png`) — tourist, loud, the life of the party.
+**Bawb** (`chad.png`) — tourist, loud, the life of the party. Done.
 > A white man in his late forties, short and fit, a compact runner's build with narrow shoulders, a
 > very round head and a round fit face. His whole head is covered in short dark buzzed stubble, the
 > same length all over, with a matching short stubbly beard across his jaw, chin and upper lip, no

@@ -47,7 +47,7 @@ The ids never change (saves, memories and file names depend on them). Only names
 | harold | David Sr | nit | anti | needed |
 | dolores | Paul | nit | meh | needed |
 | marvin | Kevin | nit | anti | needed |
-| chad | Bawb (late 40s, short, fit, bald, Popeye chin, white tee) | tourist | pro | prompt ready |
+| chad | Bawb (late 40s, short, fit, buzzed stubble, white tee) | tourist | pro | **done** |
 | trish | Tim | tourist | meh | needed |
 | benny | Luca | tourist | pro | needed |
 | wen | Jonathan | calculator | pro | needed |
@@ -99,7 +99,7 @@ about the real crew's running jokes fit there.
 
 ## Open items, in order
 
-1. Portraits for the eleven remaining characters (above).
+1. Portraits for the ten remaining characters (above).
 2. Lines rewrite per persona, Jack first.
 3. Expression variants and the texture swap in `figures.ts`.
 4. Tuning from real play: nits may feel too passive; tourists' aggression; banter density.
