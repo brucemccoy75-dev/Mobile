@@ -1,6 +1,6 @@
 // Decides who says what, when. Lines are picked by trigger and mood from each character's set,
 // never repeated until the set runs dry, and rate-limited so the table stays readable.
-import { CONVERSATIONS, type Conversation, type Stance } from '../content/conversations';
+import { CONVERSATIONS, INTERJECTIONS, type Conversation, type Interjection, type Stance } from '../content/conversations';
 import { LINES } from '../content/lines';
 import { type Line, type Mood, type Trigger } from '../content/triggers';
 import { HandCategory, categoryOf, evaluate } from '../engine/evaluator';
@@ -63,6 +63,9 @@ export class Banter {
   density = 1;
   private convo: { conv: Conversation; a: number; b: number; next: number; lastAt: number } | null = null;
   private usedConvos = new Set<Conversation>();
+  private usedJabs = new Set<Interjection>();
+  /** A bystander's dry line queued for after the current exchange. */
+  private jab: { seat: number; target: number; text: string; at: number } | null = null;
   private lastConvoEnd = -1e9;
 
   constructor(rng: Rng, now: () => number = () => Date.now()) {
@@ -133,6 +136,19 @@ export class Banter {
     const now = this.now();
     const actor = this.hand && !this.hand.isComplete ? this.hand.actor : null;
     const bigPot = this.hand ? this.hand.potTotal() > 0.3 * this.avgStack() : false;
+    if (this.jab) {
+      const j = this.jab;
+      if (!table.ids.has(j.seat) || !table.ids.has(j.target)) {
+        this.jab = null;
+        return null;
+      }
+      if (now - j.at < 5200 || j.seat === actor || bigPot) return null;
+      this.jab = null;
+      this.lastAny = now;
+      this.lastConvoEnd = now;
+      this.lastSpoke.set(table.ids.get(j.seat)!, now);
+      return { seat: j.seat, speaker: table.ids.get(j.seat)!, text: j.text, trigger: 'idle', targetSeat: j.target, conversation: true, last: true };
+    }
     if (this.convo) {
       const c = this.convo;
       const [role] = c.conv.lines[c.next];
@@ -161,8 +177,10 @@ export class Banter {
     for (const conv of this.shuffled(pool)) {
       // A man with no lines (Menafee) only takes part when an exchange names him on purpose.
       const mute = (s: number) => (LINES[table.ids.get(s) ?? ''] ?? []).length === 0;
+      // Jack is sixteen: he only talks about his wife when an exchange is written for him.
+      const kid = (s: number) => conv.tag === 'spouse' && table.ids.get(s) === 'sal';
       const fits = (s: number, need?: Stance, who?: string[]) =>
-        (!need || stance(s) === need) && (who ? who.includes(table.ids.get(s) ?? '') : !mute(s));
+        (!need || stance(s) === need) && (who ? who.includes(table.ids.get(s) ?? '') : !mute(s) && !kid(s));
       const pairs: [number, number][] = [];
       for (const a of bots) for (const b of bots) if (a !== b && fits(a, conv.needs?.A, conv.who?.A) && fits(b, conv.needs?.B, conv.who?.B)) pairs.push([a, b]);
       if (pairs.length === 0) continue;
@@ -195,16 +213,50 @@ export class Banter {
     this.lastAny = now;
     this.lastSpoke.set(id, now);
     c.next++;
-    const last = c.next >= c.conv.lines.length;
+    let last = c.next >= c.conv.lines.length;
     if (last) {
       this.convo = null;
       this.lastConvoEnd = now;
+      // Someone who sat the exchange out may get the last word.
+      this.jab = this.interject(table, c.conv, c.a, c.b);
+      if (this.jab) last = false;
     }
     const text = raw
       .replace(/\{A\}/g, table.names.get(c.a) ?? 'pal')
       .replace(/\{B\}/g, table.names.get(c.b) ?? 'pal')
       .replace(/\{you\}/g, table.names.get(HUMAN_SEAT) ?? 'the kid');
     return { seat, speaker: id, text, trigger: 'idle', targetSeat: last ? other : undefined, conversation: true, last };
+  }
+
+  /** Picks a bystander's line to follow an exchange between seats a and b, or null. */
+  private interject(table: BanterTable, conv: Conversation, a: number, b: number): { seat: number; target: number; text: string; at: number } | null {
+    const bystanders = this.allBotSeats(table).filter((s) => s !== a && s !== b && INTERJECTIONS.some((j) => j.who === table.ids.get(s)));
+    if (bystanders.length === 0) return null;
+    const seat = this.pick(bystanders);
+    const id = table.ids.get(seat)!;
+    const chance = 0.45 * (table.traits?.(seat).trash ?? 1);
+    if (!this.chance(chance)) return null;
+    const idA = table.ids.get(a) ?? '';
+    const idB = table.ids.get(b) ?? '';
+    const fits = INTERJECTIONS.filter((j) => j.who === id && (j.at ? j.at.includes(idA) || j.at.includes(idB) : !j.tag || j.tag === conv.tag));
+    if (fits.length === 0) return null;
+    let fresh = fits.filter((j) => !this.usedJabs.has(j));
+    if (fresh.length === 0) {
+      for (const j of fits) this.usedJabs.delete(j);
+      fresh = fits;
+    }
+    // Aimed lines beat theme lines beat the all-purpose ones.
+    const aimed = fresh.filter((j) => j.at);
+    const themed = fresh.filter((j) => !j.at && j.tag);
+    const pool = aimed.length > 0 && this.chance(0.8) ? aimed : themed.length > 0 && this.chance(0.7) ? themed : fresh;
+    const jab = this.pick(pool);
+    this.usedJabs.add(jab);
+    // An aimed line lands on the man it names and {them} is the other one; a theme line lands on
+    // whoever started the story.
+    const target = jab.at ? (jab.at.includes(idB) && !jab.at.includes(idA) ? b : a) : a;
+    const them = jab.at ? (target === a ? b : a) : a;
+    const text = jab.s.replace(/\{them\}/g, table.names.get(them) ?? 'pal');
+    return { seat, target, text, at: this.now() };
   }
 
   /** Call when the hand reaches heads-up (two players left in the tournament). */

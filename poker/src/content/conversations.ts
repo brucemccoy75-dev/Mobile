@@ -649,4 +649,121 @@ export const CONVERSATIONS: Conversation[] = [
     ['B', ''],
     ['A', 'Yeah. Mine too.'],
   ] },
+  // ---- Bruce: the commute, the hour, and the glorious free market -------------------------------
+  { tag: 'weather', who: { A: ['jimmy'] }, lines: [
+    ['A', 'Hour and twenty to get here. Hour and twenty. Route 3 was a parking lot with a sunset.'],
+    ['B', 'Where were you coming from?'],
+    ['A', 'Work, {B}. Where I was also parked. Only there it’s called a career.'],
+  ] },
+  { tag: 'weather', who: { A: ['jimmy'] }, lines: [
+    ['A', 'What time is it.'],
+    ['B', 'Quarter past nine.'],
+    ['A', 'Right. So if I leave now I’m home by eleven, asleep by one, and furious by six. Deal me in.'],
+  ] },
+  { tag: 'office', who: { A: ['jimmy'] }, lines: [
+    ['A', 'We let forty people go Tuesday. One email. Beautiful email. Two paragraphs.'],
+    ['B', 'That is awful, Bruce.'],
+    ['A', 'The second paragraph was about parking. Nobody read the first one. That’s how you know it was good.'],
+  ] },
+  { tag: 'ai', who: { A: ['jimmy'] }, lines: [
+    ['A', 'They say the AI is coming for your job, {B}.'],
+    ['B', 'Does that not worry you?'],
+    ['A', 'Why would it worry me. It’s your job.'],
+  ] },
+  { tag: 'ai', who: { A: ['jimmy'] }, lines: [
+    ['A', 'I love the machines. Genuinely. They don’t take lunch, they don’t cry in the stairwell, and they don’t forward me things.'],
+    ['B', 'Does one not need to be paid?'],
+    ['A', 'They do get paid, {B}. In electricity. Nashua is building them a whole building for it. Nobody built you a building.'],
+  ] },
+  { tag: 'ai', who: { A: ['jimmy'] }, lines: [
+    ['A', 'Asked the AI to write my performance reviews this year. Took four seconds.'],
+    ['B', 'Were they any good?'],
+    ['A', 'They were accurate. Which is why I had to edit them. HR said “needs improvement” is not allowed as a whole paragraph.'],
+  ] },
+  { tag: 'office', who: { A: ['jimmy'] }, lines: [
+    ['A', 'My car did an update on the highway. Pulled over itself. Showed me a progress bar.'],
+    ['B', 'On the highway?'],
+    ['A', 'Shoulder of 93. Twelve minutes. The bar hit ninety and stayed there, like a man at this table.'],
+  ] },
+  { tag: 'ai', who: { A: ['jimmy'], B: ['dolores'] }, lines: [
+    ['A', 'They’ve got a robot hive now, Paul. Monitors the bees. No tickling required.'],
+    ['B', 'That is not beekeeping, Bruce. That is surveillance.'],
+    ['A', 'Right. Which is what you call it when you do it.'],
+  ] },
+  { tag: 'office', who: { A: ['jimmy'], B: ['trish'] }, lines: [
+    ['A', 'Tim. Honest question. Does the towel website have a layoffs page.'],
+    ['B', 'It is just me, Bruce.'],
+    ['A', 'So it does. Good. Keep it updated.'],
+  ] },
+  { tag: 'office', who: { A: ['jimmy'], B: ['sal'] }, lines: [
+    ['A', 'Jack, when you grow up, the jobs will be gone. All of them. It’s wonderful.'],
+    ['B', 'What will I do, sir?'],
+    ['A', 'This. Sit here and lose to me. It’s basically an internship.'],
+  ] },
+  { tag: 'spouse', who: { A: ['jimmy'] }, lines: [
+    ['A', 'My wife asked why I come to these. I said networking.'],
+    ['B', 'With us?'],
+    ['A', 'That was her question too, {B}. Word for word. You two should meet. You’d get on. You both think I’m wasting my time.'],
+  ] },
+];
+
+/**
+ * A dry line from a bystander after an exchange he was not part of. `at` names the men it is
+ * aimed at (either participant); without `at` it fits any exchange, `tag` narrows it to a theme.
+ * {them} is the other man in the exchange for an aimed line, and the one who started it otherwise.
+ */
+export interface Interjection {
+  who: string;
+  at?: string[];
+  tag?: Conversation['tag'];
+  s: string;
+}
+
+export const INTERJECTIONS: Interjection[] = [
+  // Tim
+  { who: 'jimmy', at: ['trish'], s: 'How’s the towel business, Tim. Still just the one towel.' },
+  { who: 'jimmy', at: ['trish'], s: 'Tim, every story you tell has a bathroom in it. Have you noticed that. We have.' },
+  { who: 'jimmy', at: ['trish'], s: 'Forty dollars, Tim. For a towel with a girl on it. Capitalism is beautiful and so is your lack of shame.' },
+  // Paul
+  { who: 'jimmy', at: ['dolores'], s: 'You ever see Life of Bees, Paul? Or is that just a mirror.' },
+  { who: 'jimmy', at: ['dolores'], s: 'Paul sews his own shirts. You can tell. We can all tell, Paul.' },
+  { who: 'jimmy', at: ['dolores'], s: 'Half off a gallon of honey. He’s said it four times. It’s not a deal, Paul, it’s a cry for help.' },
+  // Jack
+  { who: 'jimmy', at: ['sal'], s: 'Jack, it’s a school night. Not for you. For the rest of us, emotionally.' },
+  { who: 'jimmy', at: ['sal'], s: 'The kid’s sixteen and he’s already better at this than you are, {them}. Enjoy that.' },
+  // David
+  { who: 'jimmy', at: ['nadia'], s: 'David’s going to pop a vessel. He’s been building to it since the hummus.' },
+  { who: 'jimmy', at: ['nadia'], s: 'Easy, David. Nobody checked. Keep the pliers in the bag.' },
+  // Luca and Will
+  { who: 'jimmy', at: ['benny', 'priya'], s: 'Four proposals between the two of you. Four. At some point it stops being romance and becomes a pattern.' },
+  { who: 'jimmy', at: ['benny'], s: 'Luca, the clown school thing. Was that before or after the finance job. Trick question. It’s the same job.' },
+  { who: 'jimmy', at: ['priya'], s: 'Will hates the game. Will hates most things. Will loves one thing, and it is telling us about the things he hates.' },
+  // Bawb
+  { who: 'jimmy', at: ['chad'], s: 'Bawb said four words tonight. All of them better than anything {them} said.' },
+  // Kevin
+  { who: 'jimmy', at: ['marvin'], s: 'Kevin is doing great. For a man who is not real.' },
+  { who: 'jimmy', at: ['marvin'], s: 'Somebody check Kevin’s cup. Then check if Kevin is in it.' },
+  // Jonathan
+  { who: 'jimmy', at: ['wen'], s: 'Jonathan drove here in a jersey. On purpose. In this economy.' },
+  // David Sr
+  { who: 'jimmy', at: ['harold'], s: 'Listen to David Sr. He’s seen four recessions. He caused two of them.' },
+  // Menafee
+  { who: 'jimmy', at: ['ulrich'], s: 'Menafee makes a good point. Best thing anybody’s said all night.' },
+  { who: 'jimmy', at: ['ulrich'], s: 'Leave Menafee alone. He’s the only one here whose job is safe.' },
+  // Anybody, by theme
+  { who: 'jimmy', tag: 'office', s: 'Great story, {them}. A machine could have told it faster, and it wouldn’t have needed the chair.' },
+  { who: 'jimmy', tag: 'office', s: 'This is why the layoffs are necessary. Not that you’re on the list, {them}. You’re on a different list.' },
+  { who: 'jimmy', tag: 'ai', s: 'The AI would have ended that conversation three lines earlier. I’m just saying. Progress.' },
+  { who: 'jimmy', tag: 'ai', s: 'If the data centre could hear you two, it would turn itself off. Out of respect. For itself.' },
+  { who: 'jimmy', tag: 'spouse', s: 'Both your wives are home right now, enjoying it. Think about that.' },
+  { who: 'jimmy', tag: 'spouse', s: 'I’m going to tell your wife you said that, {them}. Not as a threat. As a courtesy.' },
+  { who: 'jimmy', tag: 'weather', s: 'Snow, rain, whatever. The commute is the same. The commute is forever. The commute is the only honest thing in this state.' },
+  { who: 'jimmy', tag: 'sports', s: 'Neither of you has watched a game since Pedro. I can tell. You said “the Pats” like it was a restaurant.' },
+  { who: 'jimmy', tag: 'sports', s: 'That conversation was twenty years out of date and so, {them}, are you.' },
+  { who: 'jimmy', tag: 'dnd', s: 'Grown men. Dice. A wizard. And they say I’m the one wasting an evening.' },
+  { who: 'jimmy', tag: 'dnd', s: 'What level are you, {them}. In life. Roll for it.' },
+  { who: 'jimmy', s: 'Fascinating. Truly. Anyway, it’s late, I’m tired, and I’ve got seventy minutes of road between me and not hearing that again.' },
+  { who: 'jimmy', s: 'Good talk. Both of you. Really filled the time while the rest of us aged.' },
+  { who: 'jimmy', s: 'I’m going to remember that, {them}. Not fondly. Just accurately.' },
+  { who: 'jimmy', s: 'And that’s why they’re building the robots.' },
 ];

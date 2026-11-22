@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CHARACTERS } from '../bots/characters';
-import { CONVERSATIONS } from '../content/conversations';
+import { CONVERSATIONS, INTERJECTIONS } from '../content/conversations';
 import { LINES } from '../content/lines';
 import { mulberry32 } from '../engine/rng';
 import { Banter } from './banter';
@@ -121,5 +121,27 @@ describe('Menafee', () => {
     expect(byMenafee.length).toBeGreaterThan(0);
     expect(byMenafee.every((t) => t === '')).toBe(true);
     expect(addressed).toBeGreaterThan(0);
+  });
+});
+
+describe('Bruce', () => {
+  it('gets the last word on conversations he was not part of', () => {
+    let clock = 0;
+    const banter = new Banter(mulberry32(8), () => clock);
+    const ids = new Map([[0, 'human'], [1, 'jimmy'], [2, 'trish'], [3, 'dolores'], [4, 'sal'], [5, 'nadia']]);
+    const names = new Map([[0, 'Hero'], [1, 'Bruce'], [2, 'Tim'], [3, 'Paul'], [4, 'Jack'], [5, 'David']]);
+    const table = { ids, names, clarity: () => 0 };
+    const lines: { seat: number; text: string; conversation?: boolean; last?: boolean }[] = [];
+    for (let i = 0; i < 1500; i++) {
+      clock += 1500;
+      const s = banter.onEvent({ type: 'turn', seat: 2, legal: { seat: 2 } as never, deadline: null }, table);
+      if (s) lines.push(s);
+    }
+    const convo = lines.filter((l) => l.conversation);
+    // Exchanges end exactly once, and an interjection is the closing line of its exchange.
+    const jabs = convo.filter((l) => l.seat === 1 && l.last && INTERJECTIONS.some((j) => l.text.startsWith(j.s.slice(0, 12))));
+    expect(jabs.length).toBeGreaterThan(2);
+    expect(convo.every((l) => !l.text.includes('{'))).toBe(true);
+    for (let i = 1; i < convo.length; i++) if (convo[i - 1].last) expect(convo[i].seat).not.toBe(-1);
   });
 });

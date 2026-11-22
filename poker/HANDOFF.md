@@ -109,14 +109,18 @@ stuff ridiculous: "the new girl died during her test and now I have to finish it
 - Bruce: joins most conversations, very dry, usually one joke at the expense of whoever he is
   talking to.
 - The whole table debates technology, AI and data centres.
-- Still generic: David Sr, Kevin (the drunk imaginary one), Jonathan. Bruce still has the old
-  placeholder "Clock" voice, which is dry and needling and close to the note. Skynet still has the
-  human dealer's lines; give it a robot voice.
+- Still generic: David Sr, Kevin (the drunk imaginary one), Jonathan.
+- **Bruce is done.** Dry, snide, never angry: the commute (Route 3, 93, seventy minutes), tired and
+  wants to go home, praises capitalism, layoffs and AI taking jobs. He also butts in: after any
+  two-man exchange he sat out, `interject()` in `banter.ts` may give him the last word from
+  `INTERJECTIONS` in `conversations.ts` (lines aimed at a man by id, by theme, or all-purpose;
+  `{them}` is the other man, or the one who started the story). Other men can get interjection
+  pools the same way, keyed by `who`.
+- **Skynet is done.** An android sent to end everyone, barely hiding it; misquotes the classics
+  ("Futility is resistance", "Jim, I am your father", "Live long and perspire").
 Already wired: each character has `talk` and `trash` factors in `characters.ts` that the banter
 engine uses for who speaks and who needles, and conversations can be pinned to particular men with
 `who` in `conversations.ts` (Jack's, Paul's bees, the office trio, Bruce's dry shots exist).
-
-The dealer is a robot named Skynet; its lines in `lines.ts` under `dealer` still read as a human dealer and want a robot voice.
 
 Conversations in `conversations.ts` are character-neutral and need no rewrite, but new exchanges
 about the real crew's running jokes fit there.
@@ -134,7 +138,7 @@ about the real crew's running jokes fit there.
 ## Open items, in order
 
 1. Portraits: all thirteen done. Expression variants are the next art step (see 3).
-2. Lines rewrite per persona, Jack first.
+2. Lines rewrite per persona: David Sr, Kevin and Jonathan still share the generic pool.
 3. Expression variants and the texture swap in `figures.ts`.
 4. Tuning from real play: nits may feel too passive; tourists' aggression; banter density.
 5. Later from the design: text-to-speech, cash games.
