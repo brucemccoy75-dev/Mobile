@@ -29,15 +29,15 @@ export class Screens {
         <h1>Poker Night<br>at Dave's</h1>
         <div class="namerow"><label>They'll call you</label><input class="name" maxlength="14" value="${name.replace(/"/g, '')}" /></div>
         <button class="primary">Who's playing?</button>
-        <div class="links"><button class="link career">Career</button><button class="link settings">Settings</button></div>
+        <div class="links"><button class="link go-career">Career</button><button class="link go-settings">Settings</button></div>
       </div>`);
     const video = this.root.querySelector<HTMLVideoElement>('video.intro')!;
     video.addEventListener('error', () => video.remove(), { once: true });
     void video.play().catch(() => {});
     const input = this.root.querySelector<HTMLInputElement>('.name')!;
     this.root.querySelector('button.primary')!.addEventListener('click', () => onPlay(input.value.trim() || name));
-    this.root.querySelector('.career')!.addEventListener('click', onCareer);
-    this.root.querySelector('.settings')!.addEventListener('click', onSettings);
+    this.root.querySelector('.go-career')!.addEventListener('click', onCareer);
+    this.root.querySelector('.go-settings')!.addEventListener('click', onSettings);
   }
 
   /** Pick five opponents. Everyone wants in, and says so. */
