@@ -7,7 +7,7 @@ six-seat table with a dealer. Tournament play only. Looks like watching poker on
 you and each other with timely insults and banter that are always *funny* first. The game
 never plays dumb for a laugh; the poker is real, the table talk is the comedy.
 
-Status: **awaiting sign-off**. Nothing beyond the pipeline scaffold is built.
+Status: **approved 2026-11-22**. Open points resolved: stat baselines as proposed; clarity also drifts down slowly over quiet hands; 12 characters, 3 per type; green felt; build order as proposed.
 
 ---
 
@@ -68,7 +68,7 @@ Every bot has three stats, 0–100. They are hidden from you.
 
 **Clarity** — the tilt meter. Starts at the bot's baseline each tournament.
 - Goes **up** when the bot gets sucked out on, loses a big pot, or loses a hand it was a big favorite in. The worse the beat and the bigger the pot, the larger the jump.
-- Goes **down** within the game as the bot wins pots, especially big ones, and slowly over uneventful hands.
+- Goes **down** within the game as the bot wins pots, especially big ones, and drifts down slowly over uneventful hands.
 - Effect: as clarity rises the bot gets more aggressive and looser (raises more, calls down lighter, bluffs more, think time shortens) and its effective IQ and Read drop. Each type expresses tilt its own way: a tilted nit starts calling, a tilted tourist goes all-in, a tilted calculator ignores odds, a tilted pro over-bluffs.
 - Expression: face state, comment choice, and action timing. Never a number.
 
@@ -168,9 +168,9 @@ Display: speech bubble beside the speaker's seat, readable from the TV camera, 2
 
 ---
 
-## 11. Open points for you
+## 11. Resolved points
 
-- Bot stat baselines in section 3 are my proposal; tell me if you want nits dumber or pros sharper.
-- Clarity rises on bad beats and falls on wins, per your note. Should it also fall slowly over quiet hands? (I assume yes.)
-- 12 characters, 3 per type. More or fewer?
-- Felt color: green or blue?
+- Stat baselines: as proposed in section 3, to be tuned in the simulator.
+- Clarity: rises on bad beats and big losses, falls on wins, and drifts down slowly over quiet hands.
+- Roster: 12 characters, 3 per type.
+- Felt: green.
