@@ -66,7 +66,7 @@ level, eyes calm, mouth closed and straight); the expression variants come later
 > lettering or pictures. Neutral expression. (Not "heavyset", which came out fat, and not "muscular"
 > or "lifts weights", which came out as a bodybuilder.)
 
-**Kevin** (`marvin.png`) — nit, actuary; the imaginary one, drunk and unhinged.
+**Kevin** (`marvin.png`) — nit, actuary; the imaginary one, drunk and unhinged. Done.
 > A heavyset white man in his late forties with a big round face, double chin, thick neck and heavy
 > shoulders, messy dark hair sticking up on one side, flushed red cheeks and nose, wearing a wrinkled
 > dark plaid shirt with the collar askew and one button undone. He looks wildly drunk and unhinged:
