@@ -83,8 +83,10 @@ level, eyes calm, mouth closed and straight); the expression variants come later
 > (Do not say "Popeye", "bald" or "square chin": the generator turns those into Mr. Clean.)
 
 **Tim** (`trish.png`) — tourist, cruise-ship regular, superstitious.
-> A man in his mid fifties, deep tan, silver hair combed back, loud floral shirt, a beaded lucky
-> bracelet visible at the shoulder line, warm chatty smile, crinkled eyes, a little too relaxed.
+> A heavyset white man in his mid thirties with a round soft face and a double chin, somewhat long
+> straight brown hair hanging past his ears and out from under a red baseball cap worn backwards,
+> wearing a black video-game themed t-shirt with a generic colourful pixel-art space-invader style
+> graphic on the chest, no words or logos. Neutral expression.
 
 **Luca** (`benny.png`) — tourist, big night out, overconfident.
 > A man in his late twenties, slicked dark hair, open-collared black shirt, thin gold chain, strong

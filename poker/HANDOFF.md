@@ -48,7 +48,7 @@ The ids never change (saves, memories and file names depend on them). Only names
 | dolores | Paul (40s, average build, dark hair, tank top, tribal armbands) | nit | meh | **done** |
 | marvin | Kevin (late 40s, heavy, dark messy hair, drunk and crazy; imaginary) | nit | anti | **done** |
 | chad | Bawb (late 40s, short, fit, buzzed stubble, white tee) | tourist | pro | **done** |
-| trish | Tim | tourist | meh | needed |
+| trish | Tim (mid 30s, heavy, longish brown hair, red backwards cap, video-game tee) | tourist | meh | prompt ready |
 | benny | Luca | tourist | pro | needed |
 | wen | Jonathan | calculator | pro | needed |
 | priya | Will | calculator | meh | needed |
