@@ -162,10 +162,10 @@ export class Figure {
     this.folded = folded;
     this.group.traverse((o) => {
       const m = (o as THREE.Mesh).material as THREE.Material | undefined;
-      if (m && 'opacity' in m) {
-        m.transparent = folded;
-        m.opacity = folded ? 0.38 : 1;
-      }
+      if (!m || !('opacity' in m)) return;
+      // The face plane is always transparent; only its opacity changes.
+      if (m !== this.faceMaterial) m.transparent = folded;
+      m.opacity = folded ? 0.38 : 1;
     });
   }
 
@@ -191,11 +191,10 @@ export class Figure {
     const v = out ? 0.35 : 1;
     this.bodyMaterial.color.multiplyScalar(1);
     this.group.traverse((o) => {
-      const m = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
-      if (m && 'opacity' in m) {
-        m.transparent = out;
-        m.opacity = v;
-      }
+      const m = (o as THREE.Mesh).material as THREE.Material | undefined;
+      if (!m || !('opacity' in m)) return;
+      if (m !== this.faceMaterial) m.transparent = out;
+      m.opacity = v;
     });
     if (out) this.setExpression('out');
   }
