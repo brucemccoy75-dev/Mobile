@@ -2,6 +2,7 @@
 // never repeated until the set runs dry, and rate-limited so the table stays readable.
 import { CONVERSATIONS, INTERJECTIONS, type Conversation, type Interjection, type Stance } from '../content/conversations';
 import { TEASES } from '../content/teases';
+import { DEALER_OPENERS, OPENERS } from '../content/openers';
 import { CHARACTERS } from '../bots/characters';
 import { thinkAloud } from './thinking';
 import { LINES } from '../content/lines';
@@ -81,6 +82,8 @@ export class Banter {
   private usedJabs = new Set<Interjection>();
   private usedTeases = new Map<string, Set<string>>();
   private recentThoughts = new Map<string, string[]>();
+  /** Men still owed a good-luck line as the night opens. */
+  private openers: number[] = [];
   /** Names of men not at this table; a line that mentions one is never said. */
   private absent: { key: string; re: RegExp | null; present: Set<string> } | null = null;
 
@@ -110,6 +113,13 @@ export class Banter {
 
   /** Feeds a table event; returns at most one thing someone says. */
   onEvent(ev: TableEvent, table: BanterTable): Speech | null {
+    if (this.openers.length > 0 && ev.type !== 'tournamentStart') {
+      const said = this.opener(table);
+      if (said) return said;
+      // Once the action starts, the pleasantries are over.
+      if (ev.type === 'action' || this.hand?.board.length) this.openers = [];
+      return null;
+    }
     const said = this.onGameEvent(ev, table);
     if (said) return said;
     return this.chatter(ev, table);
@@ -117,6 +127,15 @@ export class Banter {
 
   private onGameEvent(ev: TableEvent, table: BanterTable): Speech | null {
     switch (ev.type) {
+      case 'tournamentStart': {
+        // Nobody is owed a line yet, and the first things said are good luck, of a sort.
+        const now = this.now();
+        for (const id of table.ids.values()) this.lastSpoke.set(id, now);
+        this.lastAny = now - GLOBAL_GAP_MS;
+        this.openers = this.shuffled(this.seatsOf(table)).slice(0, 2 + (this.chance(0.5) ? 1 : 0));
+        if (this.chance(0.35)) this.openers.push(DEALER_SEAT);
+        return this.opener(table);
+      }
       case 'handStart': {
         this.hand = ev.hand;
         this.lastAggressor = null;
@@ -529,6 +548,22 @@ export class Banter {
     this.lastAny = now;
     this.lastSpoke.set(id, now);
     return { seat, speaker: id, text, trigger: 'thinking', targetSeat: targetSeat ?? undefined };
+  }
+
+  /** The next good-luck line of the opening round, spaced out. */
+  private opener(table: BanterTable): Speech | null {
+    const now = this.now();
+    if (now - this.lastAny < 4000) return null;
+    const seat = this.openers.shift();
+    if (seat === undefined) return null;
+    const id = seat === DEALER_SEAT ? 'dealer' : table.ids.get(seat);
+    if (!id) return null;
+    const own = this.pickLine(id, 'gameStart', 'calm', table);
+    const pool = seat === DEALER_SEAT ? DEALER_OPENERS : OPENERS.filter((l) => !this.mentionsAbsent(l, table));
+    const text = (own ? own.s : this.pick(pool)).replace(/\{you\}/g, table.names.get(HUMAN_SEAT) ?? 'you').replace(/\{target\}/g, table.names.get(HUMAN_SEAT) ?? 'you');
+    this.lastAny = now;
+    this.lastSpoke.set(id, now);
+    return { seat, speaker: id, text, trigger: 'gameStart', targetSeat: HUMAN_SEAT };
   }
 
   /** A line with no gates but the cooldown: for men the table has been ignoring. */

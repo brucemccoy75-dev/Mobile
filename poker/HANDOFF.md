@@ -15,7 +15,7 @@ Read this first in a new session. It says what exists, how to work on it, and wh
 
 ```sh
 npm install
-npm test                 # 66 tests: engine, bots, controller, banter, career, conversations
+npm test                 # 67 tests: engine, bots, controller, banter, career, conversations
 npm run build            # typecheck + production build
 npm run sim -- --n 100   # bot-only nights (mixed lineups), prints finishes and tendencies per type
 python3 tools/key-portrait.py in.jpg public/portraits/<id>.png   # green-screen to transparent PNG
@@ -115,7 +115,9 @@ covered for every character and at least 100 lines per type. To rewrite a person
 3. Update the bio in `characters.ts`. Run `npm test`. Push.
 4. **Jack is done.** Sixteen, respectful trash talk ("sir", "respectfully", "no offense"), school,
    driving, a job, where the snacks are.
-   **Tim is done.** Anime towels (TowelZoneDotBiz, forty dollars), his bowels, snacks he cannot have,
+   **Tim is done.** Anime towels (TowelZoneDotBiz, forty dollars, hacked by Disney Towels, a Thailand
+   scouting trip in March, the towel that broke when he dropped it), his bowels (the cattle farm,
+   the proctologist who whispered “don't get erect, Mark”; Mark is the proctologist's name), snacks he cannot have,
    trash talk half vicious and half misunderstanding the rules of the hand.
    **David is done.** Hothead, the castration policy for checking (a `targetChecks` trigger fires
    when anyone checks), hummus and pretzels, tilts twice as hard (`temper` in `characters.ts`).
@@ -192,6 +194,12 @@ how many cards are to come. Trigger `thinking`; recent lines are not repeated by
   parks the card in `pendingResult`, the `bust` case vaporises him over a clear table, then shows it.
 - The pick screen is a horizontal carousel (`.pgrid`, scroll-snap, gold arrow buttons, wheel); only
   men on screen pitch, so it never scrolls by itself except one nudge out and back when it appears.
+- The night opens with good luck: on `tournamentStart`, `Banter` resets every man's last-spoke
+  time (so nobody is "owed" a forced line) and queues two or three men, sometimes Skynet, to say an
+  opener from `src/content/openers.ts` ({you} is the player), four seconds apart, before anything
+  else is said. A character with his own `gameStart` lines (Tim) uses those.
+- David, Tim and Paul carry the old jokes ("Poker? I hardly knew her", "That's what she said") in
+  their own lines and three pinned exchanges.
 - Nobody names a man who is not at the table: `mentionsAbsent()` in `banter.ts` drops any line,
   tease, exchange or interjection whose text contains the name of a character not seated (names
   from `CHARACTERS`; "David Sr" is matched before "David"). Lines may still say "the boy" or "your

@@ -794,6 +794,73 @@ export const CONVERSATIONS: Conversation[] = [
     ['A', 'It means a hundred and thirty-one feet, Paul. Of discus. In the rain.'],
   ] },
 
+  // ---- Tim: Disney Towels, Thailand, and the proctologist ----------------------------------------
+  { tag: 'office', who: { A: ['trish'] }, lines: [
+    ['A', 'The site got hacked.'],
+    ['B', 'TowelZone?'],
+    ['A', 'Dot biz. Disney Towels. I know it was them. Every towel on the homepage is Goofy now. I don’t sell Goofy.'],
+    ['B', 'Disney has a towel division?'],
+    ['A', 'They do now, {B}. They saw what I built.'],
+  ] },
+  { tag: 'office', who: { A: ['trish'] }, lines: [
+    ['A', 'I’m going to Thailand in March.'],
+    ['B', 'Vacation?'],
+    ['A', 'Scouting. Towel models. It’s a business trip. There’s a spreadsheet.'],
+    ['B', 'Does your wife know it’s a business trip?'],
+    ['A', 'She has the spreadsheet, {B}. She added a column.'],
+  ] },
+  { tag: 'office', who: { A: ['trish'] }, lines: [
+    ['A', 'My towel broke.'],
+    ['B', 'Towels don’t break, Tim.'],
+    ['A', 'I dropped it. It broke. Clean in half. I have the halves. I’m sending them to a lab.'],
+  ] },
+  { tag: 'office', who: { A: ['trish'] }, lines: [
+    ['A', 'Drove past a cattle farm Tuesday. Went straight to my proctologist.'],
+    ['B', 'Why would a cattle farm'],
+    ['A', 'Don’t. {B}. Don’t. They connect. I know how they connect. You don’t want to.'],
+  ] },
+  { tag: 'office', who: { A: ['trish'] }, lines: [
+    ['A', 'My proctologist whispered something during the exam.'],
+    ['B', 'What did he say?'],
+    ['A', '“Don’t get erect, Mark.” Very quiet. Right by my ear. Well. Not my ear.'],
+    ['B', 'Why did he call you Mark?'],
+    ['A', 'That’s his name.'],
+    ['B', 'That doesn’t'],
+    ['A', 'I know, {B}. I know. I’ve been thinking about it all week.'],
+  ] },
+  { tag: 'office', who: { A: ['trish'], B: ['jimmy'] }, lines: [
+    ['A', 'Disney Towels sent me a bath sheet. As a threat.'],
+    ['B', 'How is a bath sheet a threat?'],
+    ['A', 'It was very soft, Bruce. Softer than anything I sell. That’s the threat.'],
+    ['B', 'That’s just a better towel, Tim.'],
+  ] },
+  { tag: 'office', who: { A: ['trish'], B: ['nadia'] }, lines: [
+    ['A', 'David, you want a towel. Forty. Before Disney gets me.'],
+    ['B', 'I want you to stop saying towel. I want to play cards. I want the hummus back.'],
+    ['A', 'Thirty-five. Tonight only. Hummus not included.'],
+  ] },
+  // ---- the old jokes: David, Tim and Paul ----------------------------------------------------------
+  { tag: 'office', who: { A: ['trish'], B: ['nadia'] }, lines: [
+    ['A', 'Poker? I hardly knew her.'],
+    ['B', 'Every week, Tim.'],
+    ['A', 'Every week she comes back.'],
+    ['B', 'That’s what she said.'],
+    ['A', 'See, now you’re playing.'],
+  ] },
+  { tag: 'office', who: { A: ['nadia'], B: ['dolores'] }, lines: [
+    ['A', 'Are you all in, Paul?'],
+    ['B', 'That’s what she said.'],
+    ['A', 'Who?'],
+    ['B', 'The queen. Of the hive. She says it with her body. I read bees, David.'],
+  ] },
+  { tag: 'office', who: { A: ['dolores'], B: ['trish'] }, lines: [
+    ['A', 'Big blind.'],
+    ['B', 'That’s what she said.'],
+    ['A', 'Small blind.'],
+    ['B', 'That’s also what she said. Different night. Same her.'],
+    ['A', 'I built a horse, Tim. I don’t need this.'],
+  ] },
+
   // ---- after Skynet vaporises somebody: concern, briefly, then snacks ----------------------------
   { tag: 'kill', lines: [
     ['A', 'Did. Did {gone} just get lasered.'],

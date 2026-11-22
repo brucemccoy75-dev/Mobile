@@ -229,3 +229,35 @@ describe('absent men', () => {
     expect(said.some((t) => /David/.test(t))).toBe(true);
   });
 });
+
+describe('the opening round', () => {
+  it('starts the night with good-luck lines, spaced out, and nothing else', async () => {
+    let clock = 0;
+    const banter = new Banter(mulberry32(41), () => clock);
+    const lineup = CHARACTERS.filter((c) => ['trish', 'dolores', 'nadia', 'chad', 'wen'].includes(c.id));
+    const said: { trigger: string; text: string; at: number }[] = [];
+    let hands = 0;
+    const table = new TableController({
+      lineup, humanName: 'Dave', rng: mulberry32(2), sleep: async () => {}, samples: 40,
+      human: (_h, legal) => (legal.canCheck ? { type: 'check' } : { type: 'fold' }),
+      presenter: {
+        present: (ev: TableEvent) => {
+          if (ev.type === 'handStart') hands++;
+          if (hands > 3) return;
+          clock += ev.type === 'turn' ? 2500 : 900;
+          const ids = new Map(table.seats.map((s) => [s.seat, s.id]));
+          const names = new Map(table.seats.map((s) => [s.seat, s.name]));
+          const s = banter.onEvent(ev, { ids, names, clarity: () => 0 });
+          if (s) said.push({ trigger: s.trigger, text: s.text, at: clock });
+        },
+      },
+    });
+    await table.run();
+    const openers = said.filter((s) => s.trigger === 'gameStart');
+    expect(openers.length).toBeGreaterThanOrEqual(2);
+    // They come first, one after another with a gap, and nothing random is said between them.
+    for (let i = 0; i < openers.length; i++) expect(said[i].trigger).toBe('gameStart');
+    for (let i = 1; i < openers.length; i++) expect(openers[i].at - openers[i - 1].at).toBeGreaterThanOrEqual(4000);
+    expect(openers.every((o) => !o.text.includes('{'))).toBe(true);
+  });
+});

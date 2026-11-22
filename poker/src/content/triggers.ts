@@ -27,6 +27,7 @@ export type Trigger =
   | 'headsUp'          // two left
   | 'termination'      // the dealer vaporises {target}, who just busted (dealer only)
   | 'thinking'         // a sharp player thinks out loud while deciding (generated, see thinking.ts)
+  | 'gameStart'        // good luck, of a sort, as the night begins (shared pool in openers.ts)
   | 'tease'            // a personal dig at {target}, from the shared pool in teases.ts
   | 'idle';            // table chatter
 
