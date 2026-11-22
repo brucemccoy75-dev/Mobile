@@ -221,6 +221,13 @@ export class Figure {
     this.faceMaterial.needsUpdate = true;
   }
 
+  /** Turns a portrait standee to face a camera, like a sprite; drawn figures keep facing the table. */
+  faceCamera(cameraPosition: THREE.Vector3): void {
+    if (!this.portrait) return;
+    const p = this.group.position;
+    this.group.rotation.y = Math.atan2(cameraPosition.x - p.x, cameraPosition.z - p.z);
+  }
+
   /** Dim the figure when the player is out. */
   setOut(out: boolean): void {
     const v = out ? 0.35 : 1;

@@ -23,6 +23,7 @@ export class TableScene implements Presenter {
   private readonly container: HTMLElement;
   private readonly overlay: Overlay;
   private figures = new Map<number, Figure>();
+  private dealerFigure: Figure | null = null;
   private hole = new Map<number, CardMesh[]>();
   private board: CardMesh[] = [];
   private bets = new Map<number, ChipStack>();
@@ -132,15 +133,17 @@ export class TableScene implements Presenter {
     this.pipCamera.position.copy(pose.pos);
     this.pipCamera.lookAt(pose.look);
     // A folded speaker is faded at the table but shown in full inside the inset.
-    const fig = this.figures.get(this.pip.seat);
+    const fig = this.pip.seat === -1 ? this.dealerFigure : this.figures.get(this.pip.seat);
     const wasFolded = fig?.folded ?? false;
     if (fig && wasFolded) fig.setFolded(false);
+    fig?.faceCamera(this.pipCamera.position);
     this.renderer.setScissorTest(true);
     this.renderer.setViewport(x, y, w, h);
     this.renderer.setScissor(x, y, w, h);
     this.renderer.render(this.scene, this.pipCamera);
     this.renderer.setScissorTest(false);
     if (fig && wasFolded) fig.setFolded(true);
+    fig?.faceCamera(this.camera.position);
     const size = this.renderer.getSize(new THREE.Vector2());
     this.renderer.setViewport(0, 0, size.x, size.y);
   }
@@ -215,6 +218,7 @@ export class TableScene implements Presenter {
     this.scene.add(base);
 
     const dealer = new Figure('dealer', true);
+    this.dealerFigure = dealer;
     dealer.group.position.copy(L.DEALER_POS);
     dealer.group.position.y = 0.05;
     dealer.group.rotation.y = L.faceCentre(L.DEALER_POS);
@@ -284,7 +288,12 @@ export class TableScene implements Presenter {
     this.lastFrame = t;
     this.tweens.tick(dt);
     this.director.tick();
-    for (const f of this.figures.values()) if (f.group.visible) f.tick(t);
+    for (const f of this.figures.values()) {
+      if (!f.group.visible) continue;
+      f.tick(t);
+      f.faceCamera(this.camera.position);
+    }
+    this.dealerFigure?.faceCamera(this.camera.position);
     this.overlay.update(this.camera, this.container.clientWidth, this.container.clientHeight);
     this.renderer.render(this.scene, this.camera);
     this.renderInset();
