@@ -1,19 +1,8 @@
-// Full-screen menus: title, tournament select, results.
-import { TOURNAMENTS, type TournamentKey } from '../bots/characters';
+// Full-screen menus: title with the intro video, pick your opponents, results.
+import { type Character } from '../bots/characters';
 import { type TournamentPlayer } from '../engine/tournament';
 import { money } from './format';
 import { ordinal } from './overlay';
-
-const BLURBS: Record<TournamentKey, string> = {
-  tutorial: 'Nits and tourists. Scared money and loose money. Take both.',
-  vegas: 'The full mix. Nobody at this table plays the same way.',
-  championship: 'Calculators and pros only. Every mistake gets punished.',
-};
-const TAGLINES: Record<TournamentKey, string> = {
-  tutorial: 'Folding chairs and a card table',
-  vegas: 'The dining room',
-  championship: 'Dave’s basement, door closed',
-};
 
 export class Screens {
   private readonly root: HTMLElement;
@@ -34,33 +23,113 @@ export class Screens {
 
   title(name: string, onPlay: (name: string) => void, onCareer: () => void, onSettings: () => void): void {
     this.render(`
+      <video class="intro" autoplay muted loop playsinline preload="auto" poster=""><source src="./intro.mp4" type="video/mp4"></video>
       <div class="screen title">
         <div class="eyebrow">No-Limit Hold'em · six-max · you against five of Dave's friends</div>
         <h1>Poker Night<br>at Dave's</h1>
         <div class="namerow"><label>They'll call you</label><input class="name" maxlength="14" value="${name.replace(/"/g, '')}" /></div>
-        <button class="primary">Play</button>
+        <button class="primary">Who's playing?</button>
         <div class="links"><button class="link career">Career</button><button class="link settings">Settings</button></div>
       </div>`);
+    const video = this.root.querySelector<HTMLVideoElement>('video.intro')!;
+    video.addEventListener('error', () => video.remove(), { once: true });
+    void video.play().catch(() => {});
     const input = this.root.querySelector<HTMLInputElement>('.name')!;
     this.root.querySelector('button.primary')!.addEventListener('click', () => onPlay(input.value.trim() || name));
     this.root.querySelector('.career')!.addEventListener('click', onCareer);
     this.root.querySelector('.settings')!.addEventListener('click', onSettings);
   }
 
-  select(onPick: (key: TournamentKey) => void, onBack: () => void): void {
-    const cards = (Object.keys(TOURNAMENTS) as TournamentKey[])
-      .map((k) => `<button class="tcard" data-key="${k}"><div class="tname">${TOURNAMENTS[k].name}</div><div class="ttag">${TAGLINES[k]}</div><div class="tblurb">${BLURBS[k]}</div></button>`)
+  /** Pick five opponents. Everyone wants in, and says so. */
+  select(characters: Character[], portraitBase: string, onDeal: (lineup: Character[]) => void, onBack: () => void): void {
+    const picked: string[] = [];
+    const cards = characters
+      .map((c) => `<button class="pcardc" data-id="${c.id}">
+          <div class="bubble">${c.pitch[0]}</div>
+          <div class="face"><img src="${portraitBase}${c.id}.png" alt="" draggable="false"></div>
+          <div class="pname">${c.name}</div>
+          <div class="tick">✓</div>
+        </button>`)
       .join('');
     this.render(`
-      <div class="screen select">
-        <div class="eyebrow">Pick a table</div>
-        <div class="tcards">${cards}</div>
-        <button class="link back">Back</button>
+      <div class="screen pick">
+        <div class="pickhead">
+          <button class="link back">Back</button>
+          <div class="eyebrow">Who's coming tonight? <span class="count">Pick 5</span></div>
+          <button class="link random">Random five</button>
+        </div>
+        <div class="pgrid">${cards}</div>
+        <button class="primary deal" disabled>Deal</button>
       </div>`);
-    for (const b of this.root.querySelectorAll<HTMLButtonElement>('.tcard')) {
-      b.addEventListener('click', () => onPick(b.dataset.key as TournamentKey));
+    const root = this.root;
+    const countEl = root.querySelector('.count')!;
+    const dealBtn = root.querySelector<HTMLButtonElement>('.deal')!;
+    const byId = (id: string) => characters.find((c) => c.id === id)!;
+    const bubbleTimers = new Map<string, number>();
+    const say = (id: string, text: string, revert = true) => {
+      const card = root.querySelector<HTMLElement>(`.pcardc[data-id="${id}"]`)!;
+      const b = card.querySelector('.bubble') as HTMLElement;
+      b.textContent = text;
+      b.classList.add('pop');
+      const old = bubbleTimers.get(id);
+      if (old) window.clearTimeout(old);
+      if (revert) {
+        bubbleTimers.set(id, window.setTimeout(() => {
+          b.classList.remove('pop');
+          const c = byId(id);
+          b.textContent = c.pitch[Math.floor(Math.random() * c.pitch.length)];
+        }, 2400));
+      }
+    };
+    const refresh = () => {
+      for (const card of root.querySelectorAll<HTMLElement>('.pcardc')) {
+        const on = picked.includes(card.dataset.id!);
+        card.classList.toggle('on', on);
+        card.classList.toggle('full', !on && picked.length >= 5);
+      }
+      countEl.textContent = picked.length >= 5 ? 'Table’s full' : `Pick ${5 - picked.length} more`;
+      dealBtn.disabled = picked.length !== 5;
+    };
+    for (const card of root.querySelectorAll<HTMLElement>('.pcardc')) {
+      card.addEventListener('click', () => {
+        const id = card.dataset.id!;
+        const c = byId(id);
+        const i = picked.indexOf(id);
+        if (i >= 0) {
+          picked.splice(i, 1);
+          say(id, c.dropped);
+        } else if (picked.length < 5) {
+          picked.push(id);
+          say(id, c.picked);
+        } else {
+          say(id, c.pitch[Math.floor(Math.random() * c.pitch.length)]);
+        }
+        refresh();
+      });
     }
-    this.root.querySelector('.back')!.addEventListener('click', onBack);
+    root.querySelector('.random')!.addEventListener('click', () => {
+      picked.length = 0;
+      const pool = [...characters].sort(() => Math.random() - 0.5).slice(0, 5);
+      for (const c of pool) {
+        picked.push(c.id);
+        say(c.id, c.picked);
+      }
+      refresh();
+    });
+    dealBtn.addEventListener('click', () => onDeal(picked.map(byId)));
+    root.querySelector('.back')!.addEventListener('click', onBack);
+    // Idle chatter: every few seconds somebody who is not picked pitches again.
+    const chatter = window.setInterval(() => {
+      if (!root.contains(dealBtn)) {
+        window.clearInterval(chatter);
+        return;
+      }
+      const out = characters.filter((c) => !picked.includes(c.id));
+      if (out.length === 0) return;
+      const c = out[Math.floor(Math.random() * out.length)];
+      say(c.id, c.pitch[Math.floor(Math.random() * c.pitch.length)]);
+    }, 3500);
+    refresh();
   }
 
   results(r: { humanFinish: number; standings: TournamentPlayer[]; handsPlayed: number; tournament: string; earned: { name: string }[] }, onAgain: () => void, onMenu: () => void): void {

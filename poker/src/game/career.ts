@@ -62,7 +62,7 @@ export function emptySave(): Save {
   return {
     version: 1,
     name: 'Hero',
-    tournaments: { tutorial: emptyRecord(), vegas: emptyRecord(), championship: emptyRecord() },
+    tournaments: { custom: emptyRecord(), tutorial: emptyRecord(), vegas: emptyRecord(), championship: emptyRecord() },
     trophies: {},
     settings: { sound: true, banter: 1 },
     memories: {},
