@@ -50,7 +50,7 @@ The ids never change (saves, memories and file names depend on them). Only names
 | chad | Bawb (late 40s, short, fit, buzzed stubble, white tee) | tourist | pro | **done** |
 | trish | Tim (late 30s, stocky, stubble, wild hair under a red backwards cap, video-game tee) | tourist | meh | **done** |
 | benny | Luca (mid 20s, average, dark hair, black tee, nondescript) | tourist | pro | **done** |
-| wen | Jonathan | calculator | pro | needed |
+| wen | Jonathan (big, bald, arcade-boxer look, blue B cap, blue and yellow jersey) | calculator | pro | prompt ready |
 | priya | Will | calculator | meh | needed |
 | ulrich | Menafee | calculator | anti | needed |
 | sal | Jack (16, big, blond, backwards cap, glasses) | pro | anti | **done** |

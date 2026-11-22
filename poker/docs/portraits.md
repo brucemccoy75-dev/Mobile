@@ -97,10 +97,12 @@ level, eyes calm, mouth closed and straight); the expression variants come later
 > a plain black crew-neck t-shirt with nothing on it. Nothing distinctive about him at all. Neutral
 > expression.
 
-**Jonathan** (`wen.png`) — calculator, statistician, literal.
-> A man in his mid forties, rimless glasses, close-cropped hair, grey quarter-zip over a collared
-> shirt, completely deadpan expression, precise and unbothered, eyes slightly narrowed as if measuring
-> you.
+**Jonathan** (`wen.png`) — calculator, statistician, literal; built like an arcade boxer.
+> A big white man in his forties with the look of a heavyweight boxer from an old arcade game: a large
+> bald head with no hair showing at the sides under his cap, a heavy brow, a wide strong jaw, a thick
+> neck and broad shoulders, small intense eyes. He wears a plain blue baseball cap with a single
+> embroidered capital letter B on the front, and a blue and yellow baseball jersey with blue sleeves
+> and yellow trim, no team name or numbers. Neutral expression.
 
 **Will** (`priya.png`) — calculator, chess coach, patient condescension.
 > A man in his late thirties, neat dark beard, brown cardigan over a plain shirt, a small chess-piece
