@@ -54,6 +54,8 @@ export interface LegalActions {
 export interface PlayerState {
   seat: number;
   stack: number;
+  /** Stack at the start of the hand. */
+  startStack: number;
   hole: Card[];
   /** Chips put in on the current street. */
   streetBet: number;
@@ -120,7 +122,7 @@ export class Hand {
     this.ante = cfg.ante;
     this.lastRaiseSize = cfg.bigBlind;
     this.players = cfg.seats.map((s) => ({
-      seat: s.seat, stack: s.stack, hole: [], streetBet: 0, committed: 0, folded: false, allIn: false,
+      seat: s.seat, stack: s.stack, startStack: s.stack, hole: [], streetBet: 0, committed: 0, folded: false, allIn: false,
     }));
     this.seatOrder = this.players.map((p) => p.seat);
     this.deck = cfg.deck ? [...cfg.deck] : shuffle(newDeck(), cfg.rng ?? Math.random);
