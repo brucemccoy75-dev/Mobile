@@ -417,4 +417,42 @@ export const CONVERSATIONS: Conversation[] = [
     ['A', 'I have been working on my poker face.'],
     ['B', 'I can tell. It looks like a man working on something.'],
   ] },
+  // ---- Tim: towels, bowels, and snacks he cannot have ------------------------------------------
+  { tag: 'office', who: { A: ['trish'] }, lines: [
+    ['A', 'Have you been to the website.'],
+    ['B', 'The towel website.'],
+    ['A', 'TowelZoneDotBiz. The biz is important. Dot com was taken by a different, worse towel man.'],
+    ['B', 'What is on the towels, Tim?'],
+    ['A', 'Girls. Anime ones. Tasteful. Mostly. There is a tier system.'],
+  ] },
+  { tag: 'office', who: { A: ['trish'] }, lines: [
+    ['A', 'My gastroenterologist fired me.'],
+    ['B', 'Doctors cannot fire you.'],
+    ['A', 'He said, and I quote, “Tim, I have done everything I can,” and then he left the room and the building.'],
+  ] },
+  { tag: 'office', who: { A: ['trish'], B: ['sal'] }, lines: [
+    ['A', 'Jack. Jack. Are those pretzels. Can I smell them.'],
+    ['B', 'You can have one.'],
+    ['A', 'I cannot have one. I can be NEAR one. There is a difference and the difference is my colon.'],
+    ['B', 'Okay. I am going to go sit somewhere else.'],
+  ] },
+  { tag: 'office', who: { A: ['trish'], B: ['jimmy'] }, lines: [
+    ['A', 'I am offering a friends-and-family discount on the towels.'],
+    ['B', 'How much is the discount?'],
+    ['A', 'Forty dollars.'],
+    ['B', 'That is the full price, Tim.'],
+    ['A', 'For friends and family. Strangers pay sixty. You are welcome.'],
+  ] },
+  { tag: 'office', who: { A: ['trish'], B: ['nadia'] }, lines: [
+    ['A', 'I brought the towels to the office. Set up a table by the fourth floor.'],
+    ['B', 'There is no fourth floor.'],
+    ['A', 'Sold two. To Gary. He paid in water.'],
+  ] },
+  { tag: 'office', who: { A: ['trish'] }, lines: [
+    ['A', 'The big towel, the cat girl one, is seven feet long.'],
+    ['B', 'Why?'],
+    ['A', 'You cannot dry your whole self with it. You have to pick a half. People love picking a half.'],
+    ['B', 'Which half do you pick?'],
+    ['A', 'Not tonight, {B}.'],
+  ] },
 ];
