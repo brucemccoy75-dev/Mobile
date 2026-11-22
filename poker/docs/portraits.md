@@ -53,11 +53,11 @@ level, eyes calm, mouth closed and straight); the expression variants come later
 
 **David Sr** (`harold.png`) — nit, retired accountant, scared money. David's father; generate David
 first and use his image as the reference.
-> A thin white man around seventy who is clearly the father of the man in the reference image: the
-> same long narrow face, the same long straight nose, thin lips and slim neck, but with deeper lines
-> around the eyes and mouth, a mostly bare scalp with short white hair at the sides and back, white
-> eyebrows, slightly sunken cheeks, wearing a white business button-up shirt buttoned to the top, no
-> tie. Neutral expression.
+> The same man as in the reference image, twenty years older, about seventy, clearly his father: the
+> same long narrow face, long straight nose, thin lips, light eyebrows and slim neck, but now
+> completely bald with a smooth scalp and no hair at the sides, deeper lines around the eyes and
+> mouth, slightly sunken cheeks, pale eyebrows gone grey, wearing a white business button-up shirt
+> buttoned to the top, no tie. Neutral expression.
 
 **Paul** (`dolores.png`) — nit, fourth-grade teacher.
 > A man in his mid forties, soft round face, short brown hair, sweater vest over a collared shirt,
