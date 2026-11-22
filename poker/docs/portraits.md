@@ -51,8 +51,7 @@ Each prompt is the style block plus the lines below. Ages and clothes carry the 
 New Hampshire, Dave's-basement feel. Ask for a plain neutral expression on the base portrait (eyebrows
 level, eyes calm, mouth closed and straight); the expression variants come later.
 
-**David Sr** (`harold.png`) — nit, retired accountant, scared money. David's father; generate David
-first and use his image as the reference.
+**David Sr** (`harold.png`) — nit, retired accountant, scared money. David's father. Done.
 > The same man as in the reference image, twenty years older, about seventy, clearly his father: the
 > same long narrow face, long straight nose, thin lips, light eyebrows and slim neck, but now
 > completely bald with a smooth scalp and no hair at the sides, deeper lines around the eyes and

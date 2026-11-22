@@ -44,7 +44,7 @@ The ids never change (saves, memories and file names depend on them). Only names
 
 | id | name | type | AI stance | portrait |
 |---|---|---|---|---|
-| harold | David Sr (~70, thin, white hair at sides, white shirt; David's father) | nit | anti | prompt ready |
+| harold | David Sr (~70, thin, bald, white shirt; David's father) | nit | anti | **done** |
 | dolores | Paul | nit | meh | needed |
 | marvin | Kevin | nit | anti | needed |
 | chad | Bawb (late 40s, short, fit, buzzed stubble, white tee) | tourist | pro | **done** |
@@ -99,7 +99,7 @@ about the real crew's running jokes fit there.
 
 ## Open items, in order
 
-1. Portraits for the nine remaining characters (above).
+1. Portraits for the eight remaining characters (above).
 2. Lines rewrite per persona, Jack first.
 3. Expression variants and the texture swap in `figures.ts`.
 4. Tuning from real play: nits may feel too passive; tourists' aggression; banter density.
