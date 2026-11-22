@@ -56,7 +56,7 @@ The ids never change (saves, memories and file names depend on them). Only names
 | sal | Jack (16, big, blond, backwards cap, glasses) | pro | anti | **done** |
 | nadia | David | pro | pro | needed |
 | jimmy | Bruce (late 40s, thin, grey beard, black tee, sly) | pro | meh | **done** |
-| dealer | Dave (host, deals) | — | — | needed |
+| dealer | Dave (host, deals; a white-panelled android with a black visor and a bow tie) | — | — | needed |
 
 Tables: Kids Table = nits + tourists; Adult Table = all; Real Poker = calculators + pros.
 

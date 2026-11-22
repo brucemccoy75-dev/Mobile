@@ -106,10 +106,13 @@ New Hampshire, Dave's-basement feel.
 > short dark hair going grey at the sides, a fairly large nose, plain black t-shirt, a sly knowing look
 > with a slight squint and a one-sided smirk, like he's counting how long you took to decide.
 
-**Dave** (`dealer.png`) — the host, deals every hand, long-suffering.
-> A man in his late forties, kind tired face, neat short hair, crisp white shirt, black vest and a
-> small black bow tie, the patient expression of a man dealing his eleventh hour of cards in his own
-> basement.
+**Dave** (`dealer.png`) — the host, deals every hand, long-suffering. He is a robot.
+> A sleek humanoid robot in the style of a modern general-purpose android: smooth white and silver
+> body panels with slim dark joints, a narrow black glossy visor for a face with no eyes or mouth, a
+> small elegant head, and a dealer's touch: a tiny black bow tie fixed to the chest plate and a black
+> vest pattern across the torso panels. Calm, patient, long-suffering posture, head tilted very
+> slightly as if it has dealt this hand a thousand times. (Use "matte clay-like surfaces" instead of
+> "skin" in the style block, and leave brand names out: generators refuse or distort them.)
 
 ## Expression variants (when you want them)
 
