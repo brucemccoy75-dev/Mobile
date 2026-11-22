@@ -7,6 +7,7 @@ import { type Overlay } from '../ui/overlay';
 import { CardMesh } from './cards';
 import { ChipStack } from './chips';
 import { Director, closeUpOf, seatPose } from './director';
+import { STAGE_H, STAGE_W, type Stage } from '../ui/stage';
 import { type Expression, Figure } from './figures';
 import * as L from './layout';
 import { TableAudio } from './audio';
@@ -35,9 +36,9 @@ export class TableScene implements Presenter {
   private finishes = new Map<number, number>();
   private moodBase = new Map<number, Expression>();
   private lastFrame = 0;
-  private pointer: { x: number; y: number; moved: boolean; id: number } | null = null;
-  private raycaster = new THREE.Raycaster();
+  private readonly stage: Stage;
   private seatNames = new Map<number, string>();
+  private levelChanged = false;
   private shownHands = new Map<number, { cards: Card[]; description: string }>();
   private payouts = new Map<number, number>();
   /** The picture-in-picture camera and what it is looking at. */
@@ -46,7 +47,8 @@ export class TableScene implements Presenter {
   private pipEl: HTMLElement | null = null;
   private pipToken = 0;
 
-  constructor(container: HTMLElement, overlay: Overlay) {
+  constructor(container: HTMLElement, overlay: Overlay, stage: Stage) {
+    this.stage = stage;
     this.container = container;
     this.overlay = overlay;
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -60,7 +62,7 @@ export class TableScene implements Presenter {
     this.scene.background = new THREE.Color(0x07100b);
     this.scene.fog = new THREE.Fog(0x07100b, 14, 30);
     this.camera = new THREE.PerspectiveCamera(48, 1, 0.1, 60);
-    this.director = new Director(this.camera, this.tweens);
+    this.director = new Director(this.camera);
 
     this.buildRoom();
     this.buildTable();
@@ -68,8 +70,7 @@ export class TableScene implements Presenter {
     this.scene.add(this.pot.group);
     this.pot.group.position.copy(L.POT_POS);
 
-    this.bindPointer();
-    window.addEventListener('resize', () => this.resize());
+    stage.onFit = () => this.resize();
     this.resize();
     this.renderer.setAnimationLoop((t) => this.frame(t));
   }
@@ -87,8 +88,8 @@ export class TableScene implements Presenter {
   private layoutBacking(): void {
     const el = this.pipEl;
     if (!el) return;
-    const p = el.getBoundingClientRect();
-    const f = (el.querySelector('.frame') as HTMLElement).getBoundingClientRect();
+    const p = this.stage.toStage(el.getBoundingClientRect());
+    const f = this.stage.toStage((el.querySelector('.frame') as HTMLElement).getBoundingClientRect());
     const set = (cls: string, top: number, bottom: number, left: number, right: number) => {
       const b = el.querySelector(`.backing.${cls}`) as HTMLElement;
       b.style.top = `${top}px`;
@@ -128,7 +129,8 @@ export class TableScene implements Presenter {
       this.layoutBacking();
     }
     this.overlay.setSpeaking(seat, true);
-    if (el) this.overlay.panelLeft = el.getBoundingClientRect().left;
+    // Layout position, not the bounding box: the panel is mid-slide when it opens.
+    if (el) this.overlay.panelLeft = el.offsetLeft;
     window.setTimeout(() => {
       if (this.pipToken === token) this.hideInset();
     }, ms);
@@ -146,9 +148,9 @@ export class TableScene implements Presenter {
     const el = this.pipEl;
     if (!this.pip || !el) return;
     const frame = el.querySelector('.frame') as HTMLElement;
-    const r = frame.getBoundingClientRect();
-    const c = this.renderer.domElement.getBoundingClientRect();
-    // Viewport and scissor take CSS pixels; the renderer applies the pixel ratio itself.
+    const r = this.stage.toStage(frame.getBoundingClientRect());
+    const c = this.stage.toStage(this.renderer.domElement.getBoundingClientRect());
+    // Viewport and scissor take the canvas's CSS pixels, which are stage units.
     const x = Math.round(r.left - c.left);
     const y = Math.round(c.bottom - r.bottom);
     const w = Math.round(r.width);
@@ -310,72 +312,25 @@ export class TableScene implements Presenter {
 
   private resize(): void {
     this.layoutBacking();
-    const w = this.container.clientWidth;
-    const h = this.container.clientHeight;
-    this.renderer.setSize(w, h, false);
-    this.camera.aspect = w / h;
+    this.renderer.setPixelRatio(Math.min(3, window.devicePixelRatio * this.stage.scale));
+    this.renderer.setSize(STAGE_W, STAGE_H, true);
+    this.camera.aspect = STAGE_W / STAGE_H;
     this.camera.updateProjectionMatrix();
-    this.director.setAspect(w / h);
   }
 
   private frame(t: number): void {
     const dt = this.lastFrame ? Math.min(100, t - this.lastFrame) : 16;
     this.lastFrame = t;
     this.tweens.tick(dt);
-    this.director.tick();
     for (const f of this.figures.values()) {
       if (!f.group.visible) continue;
       f.tick(t);
       f.faceCamera(this.camera.position);
     }
     this.dealerFigure?.faceCamera(this.camera.position);
-    this.overlay.update(this.camera, this.container.clientWidth, this.container.clientHeight);
+    this.overlay.update(this.camera, STAGE_W, STAGE_H);
     this.renderer.render(this.scene, this.camera);
     this.renderInset();
-  }
-
-  private bindPointer(): void {
-    const el = this.renderer.domElement;
-    el.addEventListener('pointerdown', (e) => {
-      this.pointer = { x: e.clientX, y: e.clientY, moved: false, id: e.pointerId };
-    });
-    el.addEventListener('pointermove', (e) => {
-      if (!this.pointer || e.pointerId !== this.pointer.id) return;
-      const dx = e.clientX - this.pointer.x;
-      if (!this.pointer.moved && Math.abs(dx) > 8) {
-        this.pointer.moved = true;
-        this.director.dragStart();
-      }
-      if (this.pointer.moved) {
-        this.director.dragMove(dx);
-        this.pointer.x = e.clientX;
-      }
-    });
-    const up = (e: PointerEvent) => {
-      if (!this.pointer || e.pointerId !== this.pointer.id) return;
-      if (this.pointer.moved) this.director.dragEnd();
-      else this.tap(e.clientX, e.clientY);
-      this.pointer = null;
-    };
-    el.addEventListener('pointerup', up);
-    el.addEventListener('pointercancel', up);
-  }
-
-  private tap(x: number, y: number): void {
-    const rect = this.renderer.domElement.getBoundingClientRect();
-    const ndc = new THREE.Vector2(((x - rect.left) / rect.width) * 2 - 1, -((y - rect.top) / rect.height) * 2 + 1);
-    this.raycaster.setFromCamera(ndc, this.camera);
-    const targets = [...this.figures.values()].filter((f) => f.group.visible).map((f) => f.group);
-    const hit = this.raycaster.intersectObjects(targets, true)[0];
-    if (hit) {
-      let o: THREE.Object3D | null = hit.object;
-      while (o && o.userData.seat === undefined) o = o.parent;
-      if (o) {
-        this.director.lookAt(o.userData.seat as number);
-        return;
-      }
-    }
-    if (this.director.cursor !== 0) this.director.lookAt(this.director.cursor);
   }
 
   // ---- presenting events -------------------------------------------------------------------------
@@ -418,6 +373,7 @@ export class TableScene implements Presenter {
         }
         return;
       case 'level':
+        this.levelChanged = true;
         this.overlay.setInfo({ level: ev.level });
         this.overlay.toast(`Blinds up: ${money(ev.level.sb)} / ${money(ev.level.bb)}${ev.level.ante ? ` · ante ${money(ev.level.ante)}` : ''}`);
         return this.tweens.delay(600);
@@ -479,7 +435,11 @@ export class TableScene implements Presenter {
       return { seat, name: this.seatNames.get(seat) ?? '', stack: p ? p.stack + p.committed : 0, position: positions.get(seat) ?? '', finish: this.finishes.get(seat) };
     });
     const fast = this.tweens.speed() > 1.5;
-    this.overlay.showStandings(rows, `Hand ${hand.handNumber} · Blinds ${money(level.sb)} / ${money(level.bb)}`, fast ? 700 : 2600);
+    if (hand.handNumber === 1 || this.levelChanged) {
+      const head = hand.handNumber === 1 ? `Hand 1 · Blinds ${money(level.sb)} / ${money(level.bb)}` : `Blinds up: ${money(level.sb)} / ${money(level.bb)}${level.ante ? ` · ante ${money(level.ante)}` : ''}`;
+      this.overlay.showStandings(rows, head, fast ? 900 : 3200);
+    }
+    this.levelChanged = false;
     for (const [seat, label] of positions) this.overlay.setPosition(seat, label);
     for (const seat of this.figures.keys()) {
       if (!positions.has(seat)) this.overlay.setPosition(seat, '');

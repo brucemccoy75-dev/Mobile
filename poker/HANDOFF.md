@@ -22,7 +22,8 @@ python3 tools/key-portrait.py in.jpg public/portraits/<id>.png   # green-screen 
 ```
 
 Verify visually with Playwright in headless Chromium (pre-installed): serve `dist/` with
-`npx vite preview --port 4173`, drive the page at viewport 844x390 with `isMobile`, click
+`npx vite preview --port 4173`, drive the page at viewport 844x390 with `isMobile` (also try 1024x768
+and 1400x900: the stage letterboxes), click
 `button.primary` then `.tcard[data-key=...]`, act through `#actions .passive` / `.fold`, screenshot.
 `window.__scene` exposes the scene (`director`, `showInset(seat, ms, name, caption)`, `hideInset()`).
 
@@ -35,7 +36,10 @@ tournament with the human in seat 0 and emits events to a presenter; `banter.ts`
 two-man conversations; `career.ts` is the save file and trophies. `src/scene` is Three.js: table,
 figures (`figures.ts`: drawn placeholder, or a portrait standee when `public/portraits/<id>.png`
 exists), cards, chips, camera `director.ts`, synthesized `audio.ts`. `src/ui` is HTML overlay:
-plates, board, action bar, panels, screens. `src/main.ts` wires it all. `src/content/lines.ts` holds
+plates, board, action bar, panels, screens, and `stage.ts`: a fixed 1000x460 stage scaled uniformly to
+fit the visual viewport (safe areas respected), so the layout is identical on every screen and any
+spare screen is dark bars. Everything in-game is laid out in stage units; `#panels`, `#screens` and
+`#rotate` sit outside the stage. `src/main.ts` wires it all. `src/content/lines.ts` holds
 every character's lines; `src/content/conversations.ts` the two-man exchanges.
 
 ## Characters: internal id, display name, type, portrait status
@@ -121,6 +125,8 @@ about the real crew's running jokes fit there.
 
 - Commit messages: a short title, a body saying why, then the attribution lines the session is given.
 - Never force-push. Never commit to other branches. CI must stay green.
+- The camera is fixed (no swipe or tap to look around); the speaker panel is the only close-up.
+- The standings card shows on hand one and whenever the blinds go up, not every hand.
 - Large multi-file edits worked best as a Python patch script run with `python3 -I script.py`,
   asserting each old string exists and replacing exactly once.
 

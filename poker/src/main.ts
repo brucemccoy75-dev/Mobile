@@ -11,6 +11,7 @@ import { ActionBar } from './ui/actions';
 import { Overlay } from './ui/overlay';
 import { Panels } from './ui/panels';
 import { Screens } from './ui/screens';
+import { Stage } from './ui/stage';
 
 const $ = <T extends HTMLElement>(sel: string): T => {
   const el = document.querySelector<T>(sel);
@@ -19,7 +20,8 @@ const $ = <T extends HTMLElement>(sel: string): T => {
 };
 
 const overlay = new Overlay($('#overlay'), $('#hole'), $('#info'), $('#toast'), $('#board'), $('#me'), $('#standings'), $('#result'));
-const scene = new TableScene($('#game'), overlay);
+const stage = new Stage($('#stage'), $('#safe-probe'));
+const scene = new TableScene($('#game'), overlay, stage);
 scene.attachInset($('#pip'));
 const actions = new ActionBar($('#actions'));
 const screens = new Screens($('#screens'));
