@@ -154,6 +154,16 @@ export class Figure {
     return t;
   }
 
+  /** A little life: breathing, and a lean-in while thinking. */
+  tick(timeMs: number): void {
+    const phase = timeMs / 1000 + this.hash % 7;
+    const breathe = Math.sin(phase * 1.6) * 0.012;
+    this.group.scale.y = 1 + breathe;
+    const lean = this.expression === 'thinking' ? 0.12 : this.expression === 'tilted' ? 0.06 : 0;
+    this.group.rotation.x += (lean - this.group.rotation.x) * 0.08;
+    this.head.rotation.y = Math.sin(phase * 0.7) * 0.08 + (this.expression === 'thinking' ? Math.sin(phase * 2.3) * 0.05 : 0);
+  }
+
   setExpression(e: Expression): void {
     if (e === this.expression) return;
     this.expression = e;

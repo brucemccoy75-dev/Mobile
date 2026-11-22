@@ -45,8 +45,10 @@ function bubblePos(seat: number) {
 
 function applySettings(): void {
   if (banter) banter.density = save.settings.banter;
+  scene.audio.setEnabled(save.settings.sound);
   writeSave(save);
 }
+scene.audio.setEnabled(save.settings.sound);
 
 panels.onSettings = applySettings;
 panels.onReset = () => {

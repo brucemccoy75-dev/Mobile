@@ -9,6 +9,8 @@ never plays dumb for a laugh; the poker is real, the table talk is the comedy.
 
 Status: **approved 2026-11-22**. Open points resolved: stat baselines as proposed; clarity also drifts down slowly over quiet hands; 12 characters, 3 per type; green felt; build order as proposed.
 
+Build progress: steps 1 to 6 of section 10 are implemented and live at https://brucemccoy75-dev.github.io/Mobile/poker/ with placeholder figures and synthesized sound. Remaining: real portrait art, text-to-speech, cash games, and tuning from real play.
+
 ---
 
 ## 1. Locked decisions

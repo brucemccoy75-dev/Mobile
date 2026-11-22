@@ -9,6 +9,7 @@ import { ChipStack } from './chips';
 import { Director } from './director';
 import { type Expression, Figure } from './figures';
 import * as L from './layout';
+import { TableAudio } from './audio';
 import { Tweens, easeInOutCubic, easeOutCubic, linear } from './tween';
 
 export class TableScene implements Presenter {
@@ -17,6 +18,7 @@ export class TableScene implements Presenter {
   readonly camera: THREE.PerspectiveCamera;
   readonly director: Director;
   readonly tweens = new Tweens();
+  readonly audio = new TableAudio();
   private readonly container: HTMLElement;
   private readonly overlay: Overlay;
   private figures = new Map<number, Figure>();
@@ -74,7 +76,7 @@ export class TableScene implements Presenter {
     key.position.set(0.5, 9.5, 1.5);
     key.target.position.set(0, 0, 0);
     key.castShadow = true;
-    key.shadow.mapSize.set(2048, 2048);
+    key.shadow.mapSize.set(1024, 1024);
     key.shadow.bias = -0.0004;
     key.shadow.radius = 4;
     this.scene.add(key, key.target);
@@ -201,6 +203,7 @@ export class TableScene implements Presenter {
     this.lastFrame = t;
     this.tweens.tick(dt);
     this.director.tick();
+    for (const f of this.figures.values()) if (f.group.visible) f.tick(t);
     this.overlay.update(this.camera, this.container.clientWidth, this.container.clientHeight);
     this.renderer.render(this.scene, this.camera);
   }
@@ -340,6 +343,7 @@ export class TableScene implements Presenter {
   }
 
   private dropBet(seat: number, total: number, ms: number): Promise<void> {
+    this.audio.play(total >= 1000 ? 'chips' : 'chip');
     const stack = this.bets.get(seat)!;
     stack.set(total);
     this.overlay.setBet(seat, total, L.betPos(seat));
@@ -360,6 +364,7 @@ export class TableScene implements Presenter {
       m.group.rotation.y = yaw + 0.6;
       this.scene.add(m.group);
       meshes.push(m);
+      this.audio.play('deal', 0.8);
       const target = pos.clone().add(side.clone().multiplyScalar((i - 0.5) * 0.4));
       target.y += i * 0.004;
       const from = L.DEAL_ORIGIN.clone();
@@ -382,6 +387,7 @@ export class TableScene implements Presenter {
 
   private async flipCard(card: CardMesh, faceUp: boolean, ms: number, delay = 0): Promise<void> {
     if (delay) await this.tweens.delay(delay);
+    this.audio.play('flip');
     const from = card.flip.rotation.x;
     const to = faceUp ? 0 : Math.PI;
     const baseY = card.group.position.y;
@@ -398,6 +404,10 @@ export class TableScene implements Presenter {
 
   private async turn(seat: number): Promise<void> {
     this.overlay.setActive(seat);
+    if (seat === HUMAN_SEAT) {
+      this.audio.play('tick', 0.6);
+      if (this.director.cursor !== 0) void this.director.cutTo(0, 450);
+    }
     if (seat !== HUMAN_SEAT) this.figures.get(seat)?.setExpression('thinking');
   }
 
@@ -411,6 +421,7 @@ export class TableScene implements Presenter {
     this.overlay.setTag(seat, label, type === 'fold' ? 'muted' : allIn ? 'hot' : type === 'raise' || type === 'bet' ? 'strong' : '');
     this.refreshStacks();
     if (type === 'fold') {
+      this.audio.play('fold');
       this.overlay.setFolded(seat, true);
       if (seat === HUMAN_SEAT) this.overlay.setHole(null);
       const cards = this.hole.get(seat) ?? [];
@@ -427,6 +438,7 @@ export class TableScene implements Presenter {
     }
     if (amount > 0) {
       this.betAmounts.set(seat, p.streetBet);
+      if (allIn) this.audio.play('allin');
       const cut = allIn && seat !== HUMAN_SEAT ? this.director.autoCut(seat, 1500) : Promise.resolve();
       await this.dropBet(seat, p.streetBet, 260);
       if (allIn) await cut;
@@ -440,6 +452,7 @@ export class TableScene implements Presenter {
     for (const [seat, amount] of this.betAmounts) {
       if (amount <= 0) continue;
       const stack = this.bets.get(seat)!;
+      this.audio.play('chips', 0.6);
       const from = stack.group.position.clone();
       this.overlay.setBet(seat, 0);
       moving.push(this.tweens.run(380, (t) => {
@@ -496,6 +509,7 @@ export class TableScene implements Presenter {
     const from = this.pot.group.position.clone();
     const to = L.betPos(seat);
     this.overlay.setTag(seat, `WINS ${amount}`, 'hot');
+    this.audio.play(amount >= 3000 ? 'win' : 'chips');
     this.pot.set(amount);
     await this.tweens.run(520, (t) => {
       this.pot.group.position.lerpVectors(from, to, t);
