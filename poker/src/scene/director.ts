@@ -1,92 +1,98 @@
-// First-person camera: you sit in seat 0 and look across the table. Every cut is a head turn from
-// the same eye position. Swipe to turn; it snaps to the nearest player or back to the table.
+// Camera shots: the table view from your side, plus a close-up per opponent for when you want to
+// look around. Swipe to orbit between them; it snaps to the nearest shot on release and drifts back
+// to the table. Speech and all-ins never move this camera: they use the picture-in-picture inset.
 import * as THREE from 'three';
 import { type Tweens, easeInOutCubic } from './tween';
 import { SEAT_COUNT, figurePos } from './layout';
 
-interface Gaze {
-  /** Radians; 0 is straight across the table, positive turns right. */
-  yaw: number;
-  /** Radians; negative looks down. */
-  pitch: number;
+export interface Pose {
+  pos: THREE.Vector3;
+  look: THREE.Vector3;
 }
 
-/** Eye position: just inside your own seat, at sitting height. */
-export const EYE = new THREE.Vector3(0, 1.45, 3.3);
-const TABLE_LOOK = new THREE.Vector3(0, 0.8, -1.6);
+const TV: Pose = { pos: new THREE.Vector3(0, 4.7, 6.2), look: new THREE.Vector3(0, 0.35, -1.1) };
 const RETURN_AFTER_MS = 6000;
 
-function gazeAt(target: THREE.Vector3): Gaze {
-  const d = target.clone().sub(EYE);
-  const flat = Math.hypot(d.x, d.z);
-  return { yaw: Math.atan2(d.x, -d.z), pitch: Math.atan2(d.y, flat) };
+/** A close-up of a seat: a little in front of the figure, at head height. Used by the inset too. */
+export function seatPose(seat: number): Pose {
+  const f = figurePos(seat);
+  const toCentre = new THREE.Vector3(-f.x, 0, -f.z).normalize();
+  const pos = f.clone().add(toCentre.multiplyScalar(3.0));
+  pos.y = 1.6;
+  return { pos, look: new THREE.Vector3(f.x, 1.2, f.z) };
 }
 
-function shortest(from: number, to: number): number {
-  let delta = to - from;
-  while (delta > Math.PI) delta -= Math.PI * 2;
-  while (delta < -Math.PI) delta += Math.PI * 2;
-  return delta;
+export function closeUpOf(point: THREE.Vector3): Pose {
+  const toCentre = new THREE.Vector3(-point.x, 0, -point.z).normalize();
+  const pos = point.clone().add(toCentre.multiplyScalar(3.0));
+  pos.y = 1.6;
+  return { pos, look: new THREE.Vector3(point.x, 1.2, point.z) };
+}
+
+function blend(a: Pose, b: Pose, t: number): Pose {
+  return { pos: a.pos.clone().lerp(b.pos, t), look: a.look.clone().lerp(b.look, t) };
 }
 
 export class Director {
   readonly camera: THREE.PerspectiveCamera;
-  /** 0 = the table, 1..5 = opponents. */
+  /** 0 = table view, 1..5 = opponents in seat order. */
   cursor = 0;
-  private gazes: Gaze[] = [];
-  private current: Gaze;
+  private poses: Pose[] = [];
+  private current: Pose = { pos: TV.pos.clone(), look: TV.look.clone() };
   private dragging = false;
   private lastInteraction = 0;
   private tweens: Tweens;
   private cutToken = 0;
+  /** Extra distance for narrow screens so the whole table fits. */
+  private zoomOut = 0;
 
   constructor(camera: THREE.PerspectiveCamera, tweens: Tweens) {
     this.camera = camera;
     this.tweens = tweens;
-    this.gazes = [gazeAt(TABLE_LOOK)];
-    for (let s = 1; s < SEAT_COUNT; s++) {
-      const f = figurePos(s);
-      this.gazes.push(gazeAt(new THREE.Vector3(f.x, 1.3, f.z)));
-    }
-    this.current = { ...this.gazes[0] };
-    this.apply(this.current);
+    this.poses = [TV];
+    for (let s = 1; s < SEAT_COUNT; s++) this.poses.push(seatPose(s));
+    this.apply(TV);
   }
 
-  /** Field of view widens on squarer screens so the far side of the table still fits. */
   setAspect(aspect: number): void {
-    this.camera.fov = Math.min(64, Math.max(50, 50 + (2.0 - aspect) * 16));
-    this.camera.updateProjectionMatrix();
+    this.zoomOut = Math.max(0, (1.9 - aspect) * 2.4);
+    if (this.cursor === 0 && !this.dragging) this.apply(this.poseAt(0));
   }
 
-  private apply(g: Gaze): void {
-    this.current = g;
-    const dir = new THREE.Vector3(Math.sin(g.yaw) * Math.cos(g.pitch), Math.sin(g.pitch), -Math.cos(g.yaw) * Math.cos(g.pitch));
-    this.camera.position.copy(EYE);
-    this.camera.lookAt(EYE.clone().add(dir));
+  private poseAt(cursor: number): Pose {
+    const n = this.poses.length;
+    const c = ((cursor % n) + n) % n;
+    const i = Math.floor(c);
+    const t = c - i;
+    const a = this.adjusted(i);
+    if (t < 1e-4) return a;
+    return blend(a, this.adjusted((i + 1) % n), easeInOutCubic(t));
   }
 
-  /** Turns to a shot with a smooth head movement. */
+  private adjusted(i: number): Pose {
+    const p = this.poses[i];
+    if (i !== 0 || this.zoomOut === 0) return p;
+    const dir = p.pos.clone().sub(p.look).normalize();
+    return { pos: p.pos.clone().add(dir.multiplyScalar(this.zoomOut)), look: p.look };
+  }
+
+  private apply(p: Pose): void {
+    this.current = p;
+    this.camera.position.copy(p.pos);
+    this.camera.lookAt(p.look);
+  }
+
   cutTo(cursor: number, ms = 650): Promise<void> {
-    const n = this.gazes.length;
+    const n = this.poses.length;
     this.cursor = ((cursor % n) + n) % n;
     this.lastInteraction = performance.now();
-    const from = { ...this.current };
-    const to = this.gazes[this.cursor];
-    const dYaw = shortest(from.yaw, to.yaw);
-    const dPitch = to.pitch - from.pitch;
+    const from = { pos: this.current.pos.clone(), look: this.current.look.clone() };
+    const to = this.poseAt(this.cursor);
     const token = ++this.cutToken;
     return this.tweens.run(ms, (t) => {
       if (token !== this.cutToken) return;
-      this.apply({ yaw: from.yaw + dYaw * t, pitch: from.pitch + dPitch * t });
+      this.apply(blend(from, to, t));
     }, easeInOutCubic);
-  }
-
-  /** A glance at someone, e.g. an all-in; ignored while the viewer is looking around. */
-  async autoCut(seat: number, holdMs: number): Promise<void> {
-    if (this.dragging || this.cursor !== 0 || seat === 0) return;
-    await this.cutTo(seat, 500);
-    await this.tweens.delay(holdMs);
-    if (this.cursor === seat && !this.dragging) await this.cutTo(0, 500);
   }
 
   dragStart(): void {
@@ -97,11 +103,8 @@ export class Director {
 
   dragMove(dxPixels: number): void {
     if (!this.dragging) return;
-    // Drag left to look left: the view follows the finger.
-    const yaw = this.current.yaw - dxPixels * 0.0045;
-    const nearest = this.nearest(yaw);
-    const pitch = this.current.pitch + (this.gazes[nearest].pitch - this.current.pitch) * 0.15;
-    this.apply({ yaw, pitch });
+    this.cursor += -dxPixels / 260;
+    this.apply(this.poseAt(this.cursor));
     this.lastInteraction = performance.now();
   }
 
@@ -109,20 +112,7 @@ export class Director {
     if (!this.dragging) return;
     this.dragging = false;
     this.lastInteraction = performance.now();
-    void this.cutTo(this.nearest(this.current.yaw), 420);
-  }
-
-  private nearest(yaw: number): number {
-    let best = 0;
-    let bestD = Infinity;
-    this.gazes.forEach((g, i) => {
-      const d = Math.abs(shortest(yaw, g.yaw)) + (i === 0 ? 0.05 : 0);
-      if (d < bestD) {
-        bestD = d;
-        best = i;
-      }
-    });
-    return best;
+    void this.cutTo(Math.round(this.cursor), 450);
   }
 
   /** Tap on an opponent: look at them, or back to the table if already there. */

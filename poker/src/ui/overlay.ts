@@ -140,6 +140,11 @@ export class Overlay {
     this.standingsEl.classList.remove('show');
   }
 
+  /** A glow on the plate of whoever is talking. */
+  setSpeaking(seat: number, on: boolean): void {
+    (seat === 0 ? this.meEl : this.plates.get(seat))?.classList.toggle('speaking', on);
+  }
+
   setActive(seat: number | null): void {
     for (const [s, el] of this.plates) el.classList.toggle('active', s === seat);
   }

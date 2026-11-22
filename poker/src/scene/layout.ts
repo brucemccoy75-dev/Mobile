@@ -7,7 +7,7 @@ export const FELT_RZ = 2.7;
 export const SEAT_COUNT = 6;
 
 /** Seat 0 is the human at the bottom; the rest run clockwise around the table. */
-export const SEAT_ANGLES = [90, 150, 215, 270, 325, 30];
+export const SEAT_ANGLES = [90, 150, 206, 270, 334, 30];
 export const DEALER_ANGLE = 243;
 
 export function ellipse(angleDeg: number, k: number, y = 0): THREE.Vector3 {
@@ -21,12 +21,7 @@ export const figurePos = (seat: number) => ellipse(seatAngle(seat), seat === 1 |
 export const holePos = (seat: number) => ellipse(seatAngle(seat), 0.72, 0.012);
 export const betPos = (seat: number) => ellipse(seatAngle(seat), 0.46, 0);
 export const buttonPos = (seat: number) => ellipse(seatAngle(seat) - 16, 0.62, 0.01);
-/** Plates sit on each player's chest (seen from your seat, the felt is at the bottom of the frame). Neighbours' ride higher to clear the HUD. */
-export const platePos = (seat: number) => {
-  const p = figurePos(seat);
-  p.y = seat === 1 || seat === 5 ? 1.05 : 0.62;
-  return p;
-};
+export const platePos = (seat: number) => ellipse(seatAngle(seat), seat === 1 || seat === 5 ? 0.9 : 1.17, 0.02);
 
 export const POT_POS = new THREE.Vector3(0, 0, -0.95);
 export const POT_LABEL_POS = new THREE.Vector3(0, 0, -0.42);

@@ -6,7 +6,7 @@ import { HUMAN_SEAT, type Presenter, type TableEvent } from '../game/table';
 import { type Overlay } from '../ui/overlay';
 import { CardMesh } from './cards';
 import { ChipStack } from './chips';
-import { Director } from './director';
+import { Director, closeUpOf, seatPose } from './director';
 import { type Expression, Figure } from './figures';
 import * as L from './layout';
 import { TableAudio } from './audio';
@@ -37,6 +37,11 @@ export class TableScene implements Presenter {
   private pointer: { x: number; y: number; moved: boolean; id: number } | null = null;
   private raycaster = new THREE.Raycaster();
   private seatNames = new Map<number, string>();
+  /** The picture-in-picture camera and what it is looking at. */
+  private readonly pipCamera = new THREE.PerspectiveCamera(34, 1.5, 0.1, 60);
+  private pip: { seat: number; token: number } | null = null;
+  private pipEl: HTMLElement | null = null;
+  private pipToken = 0;
 
   constructor(container: HTMLElement, overlay: Overlay) {
     this.container = container;
@@ -51,7 +56,7 @@ export class TableScene implements Presenter {
 
     this.scene.background = new THREE.Color(0x07100b);
     this.scene.fog = new THREE.Fog(0x07100b, 14, 30);
-    this.camera = new THREE.PerspectiveCamera(44, 1, 0.1, 60);
+    this.camera = new THREE.PerspectiveCamera(48, 1, 0.1, 60);
     this.director = new Director(this.camera, this.tweens);
 
     this.buildRoom();
@@ -68,6 +73,62 @@ export class TableScene implements Presenter {
 
   setSpeed(fn: () => number): void {
     this.tweens.speed = fn;
+  }
+
+  /** The HTML frame the inset renders into, with its name and caption elements. */
+  attachInset(el: HTMLElement): void {
+    this.pipEl = el;
+  }
+
+  /** Shows a close-up of a seat (or the dealer, -1) in the inset for a while. */
+  showInset(seat: number, ms: number, name: string, caption: string): number {
+    const token = ++this.pipToken;
+    this.pip = { seat, token };
+    const el = this.pipEl;
+    if (el) {
+      el.querySelector('.who')!.textContent = name;
+      const cap = el.querySelector('.caption') as HTMLElement;
+      cap.textContent = caption;
+      cap.classList.toggle('show', caption.length > 0);
+      el.classList.add('show');
+    }
+    this.overlay.setSpeaking(seat, true);
+    window.setTimeout(() => {
+      if (this.pipToken === token) this.hideInset();
+    }, ms);
+    return token;
+  }
+
+  hideInset(): void {
+    if (this.pip) this.overlay.setSpeaking(this.pip.seat, false);
+    this.pip = null;
+    this.pipEl?.classList.remove('show');
+  }
+
+  private renderInset(): void {
+    const el = this.pipEl;
+    if (!this.pip || !el) return;
+    const frame = el.querySelector('.frame') as HTMLElement;
+    const r = frame.getBoundingClientRect();
+    const c = this.renderer.domElement.getBoundingClientRect();
+    // Viewport and scissor take CSS pixels; the renderer applies the pixel ratio itself.
+    const x = Math.round(r.left - c.left);
+    const y = Math.round(c.bottom - r.bottom);
+    const w = Math.round(r.width);
+    const h = Math.round(r.height);
+    if (w <= 0 || h <= 0) return;
+    const pose = this.pip.seat === -1 ? closeUpOf(L.DEALER_POS) : seatPose(this.pip.seat);
+    this.pipCamera.aspect = r.width / r.height;
+    this.pipCamera.updateProjectionMatrix();
+    this.pipCamera.position.copy(pose.pos);
+    this.pipCamera.lookAt(pose.look);
+    this.renderer.setScissorTest(true);
+    this.renderer.setViewport(x, y, w, h);
+    this.renderer.setScissor(x, y, w, h);
+    this.renderer.render(this.scene, this.pipCamera);
+    this.renderer.setScissorTest(false);
+    const size = this.renderer.getSize(new THREE.Vector2());
+    this.renderer.setViewport(0, 0, size.x, size.y);
   }
 
   // ---- building ----------------------------------------------------------------------------------
@@ -212,6 +273,7 @@ export class TableScene implements Presenter {
     for (const f of this.figures.values()) if (f.group.visible) f.tick(t);
     this.overlay.update(this.camera, this.container.clientWidth, this.container.clientHeight);
     this.renderer.render(this.scene, this.camera);
+    this.renderInset();
   }
 
   private bindPointer(): void {
@@ -325,24 +387,25 @@ export class TableScene implements Presenter {
 
   private humanToAct = false;
 
-  /** The camera goes to whoever is talking, then to whoever they are talking about. */
-  async social(speakerSeat: number, targetSeat: number | undefined, trigger: string, conversation = false): Promise<void> {
-    const fast = this.tweens.speed() > 1.5;
-    if (fast || this.humanToAct || speakerSeat < 0) return;
+  /**
+   * Someone speaks: their close-up appears in the inset with the line as a caption, their face
+   * reacts, and if the line is about someone else that person gets a short reaction shot.
+   */
+  async speak(speakerSeat: number, targetSeat: number | undefined, text: string, ms: number, trigger: string, name: string): Promise<void> {
     const speaker = this.figures.get(speakerSeat);
     const target = targetSeat !== undefined ? this.figures.get(targetSeat) : undefined;
     const needle = ['targetFoldsToMe', 'targetCallsMeDown', 'targetTank', 'targetInstant', 'winShowdown', 'stackedTarget', 'badBeatGiven', 'playerOut'].includes(trigger);
     const sore = ['badBeatTaken', 'loseShowdown', 'stackedByTarget', 'bluffCaught'].includes(trigger);
     if (speaker && !this.out.has(speakerSeat)) speaker.setExpression(sore ? 'annoyed' : needle ? 'happy' : speaker.expression);
-    if (this.director.cursor !== 0) return;
-    await this.director.cutTo(speakerSeat, conversation ? 380 : 420);
-    await this.tweens.delay(conversation ? 1500 : 1100);
-    if (target && targetSeat !== undefined && targetSeat !== 0 && targetSeat !== speakerSeat && this.director.cursor === speakerSeat) {
+    const reaction = target && targetSeat !== undefined && targetSeat !== 0 && targetSeat !== speakerSeat ? 900 : 0;
+    const token = this.showInset(speakerSeat, ms - reaction, name, text);
+    await new Promise((r) => setTimeout(r, Math.max(0, ms - reaction)));
+    if (this.pipToken !== token) return;
+    if (reaction && target && targetSeat !== undefined) {
       if (needle && !this.out.has(targetSeat)) target.setExpression('annoyed');
-      await this.director.cutTo(targetSeat, 380);
-      await this.tweens.delay(850);
+      this.showInset(targetSeat, reaction, this.seatNames.get(targetSeat) ?? '', '');
+      await new Promise((r) => setTimeout(r, reaction));
     }
-    if (this.director.cursor !== 0) await this.director.cutTo(0, 480);
     if (speaker && !this.out.has(speakerSeat)) speaker.setExpression(this.moodBase.get(speakerSeat) ?? 'neutral');
     if (target && targetSeat !== undefined && !this.out.has(targetSeat)) target.setExpression(this.moodBase.get(targetSeat) ?? 'neutral');
   }
@@ -464,10 +527,7 @@ export class TableScene implements Presenter {
   private async turn(seat: number): Promise<void> {
     this.overlay.setActive(seat);
     this.humanToAct = seat === HUMAN_SEAT;
-    if (seat === HUMAN_SEAT) {
-      this.audio.play('tick', 0.6);
-      if (this.director.cursor !== 0) void this.director.cutTo(0, 450);
-    }
+    if (seat === HUMAN_SEAT) this.audio.play('tick', 0.6);
     if (seat !== HUMAN_SEAT) this.figures.get(seat)?.setExpression('thinking');
   }
 
@@ -501,9 +561,9 @@ export class TableScene implements Presenter {
     if (amount > 0) {
       this.betAmounts.set(seat, p.streetBet);
       if (allIn) this.audio.play('allin');
-      const cut = allIn && seat !== HUMAN_SEAT ? this.director.autoCut(seat, 1500) : Promise.resolve();
+      if (allIn && seat !== HUMAN_SEAT) this.showInset(seat, 2200, this.seatNames.get(seat) ?? '', 'All in');
       await this.dropBet(seat, p.streetBet, 260);
-      if (allIn) await cut;
+      if (allIn) await this.tweens.delay(500);
     } else {
       await this.tweens.delay(220);
     }

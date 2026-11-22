@@ -131,6 +131,18 @@
     .results li.you { color: var(--gold); font-weight: 700; }
     .results .row { display: flex; justify-content: center; gap: 12px; align-items: center; }
 
+    /* Picture-in-picture of whoever is talking */
+    #pip { position: fixed; right: max(12px, var(--sar)); top: calc(max(8px, var(--sat)) + 46px); width: 212px; opacity: 0; transform: translateX(10px);
+      transition: opacity .22s, transform .22s; pointer-events: none; z-index: 8; }
+    #pip.show { opacity: 1; transform: none; }
+    #pip .frame { position: relative; width: 212px; height: 140px; border-radius: 12px; border: 2px solid var(--gold); box-shadow: 0 10px 30px rgba(0,0,0,.6); overflow: hidden; }
+    #pip .who { position: absolute; left: 8px; bottom: 8px; background: rgba(8,12,10,.82); color: var(--gold); font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+      padding: 3px 8px; border-radius: 6px; }
+    #pip .caption { margin-top: 6px; background: rgba(8,12,10,.88); border: 1px solid rgba(255,255,255,.1); border-radius: 10px; padding: 7px 10px; font-size: 13px; line-height: 1.3; color: #f2f0e8; display: none; }
+    #pip .caption.show { display: block; }
+    .plate.speaking { box-shadow: 0 0 0 2px #f2f0e8, 0 0 16px rgba(242,240,232,.4); }
+    @media (max-height: 420px) { #pip { width: 180px; } #pip .frame { width: 180px; height: 118px; } #pip .caption { font-size: 12px; } }
+
     /* Standings between hands */
     #standings { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -46%); width: min(400px, calc(100vw - 32px));
       background: rgba(10,15,12,.9); border: 1px solid rgba(227,192,106,.45); border-radius: 14px; padding: 10px 12px 8px; z-index: 12;
@@ -213,6 +225,7 @@
   </div>
   <div id="toast"></div>
   <div id="board"><div class="potline"></div><div class="cards"></div></div>
+  <div id="pip"><div class="frame"><div class="who"></div></div><div class="caption"></div></div>
   <div id="standings"></div>
   <div id="me" class="plate me"></div>
   <div id="hole"></div>
