@@ -44,7 +44,7 @@ The ids never change (saves, memories and file names depend on them). Only names
 
 | id | name | type | AI stance | portrait |
 |---|---|---|---|---|
-| harold | David Sr | nit | anti | needed |
+| harold | David Sr (~70, thin, white hair at sides, white shirt; David's father) | nit | anti | prompt ready |
 | dolores | Paul | nit | meh | needed |
 | marvin | Kevin | nit | anti | needed |
 | chad | Bawb (late 40s, short, fit, buzzed stubble, white tee) | tourist | pro | **done** |
@@ -54,7 +54,7 @@ The ids never change (saves, memories and file names depend on them). Only names
 | priya | Will | calculator | meh | needed |
 | ulrich | Menafee | calculator | anti | needed |
 | sal | Jack (16, big, blond, backwards cap, glasses) | pro | anti | **done** |
-| nadia | David | pro | pro | needed |
+| nadia | David (early 50s, thin, balding, light blue button-up) | pro | pro | prompt ready |
 | jimmy | Bruce (late 40s, thin, grey beard, black tee, sly) | pro | meh | **done** |
 | dealer | Skynet (Dave's android dealer, white panels, black visor, bow tie) | — | — | **done** |
 

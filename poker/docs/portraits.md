@@ -51,10 +51,13 @@ Each prompt is the style block plus the lines below. Ages and clothes carry the 
 New Hampshire, Dave's-basement feel. Ask for a plain neutral expression on the base portrait (eyebrows
 level, eyes calm, mouth closed and straight); the expression variants come later.
 
-**David Sr** (`harold.png`) — nit, retired accountant, scared money.
-> A man in his late sixties, thin, neat grey side part, reading glasses pushed up on his forehead,
-> beige cardigan over a checked shirt, worried eyebrows, lips pressed together like he just saw the
-> bill. Neutral expression with a hint of dread.
+**David Sr** (`harold.png`) — nit, retired accountant, scared money. David's father; generate David
+first and use his image as the reference.
+> A thin white man around seventy who is clearly the father of the man in the reference image: the
+> same long narrow face, the same long straight nose, thin lips and slim neck, but with deeper lines
+> around the eyes and mouth, a mostly bare scalp with short white hair at the sides and back, white
+> eyebrows, slightly sunken cheeks, wearing a white business button-up shirt buttoned to the top, no
+> tie. Neutral expression.
 
 **Paul** (`dolores.png`) — nit, fourth-grade teacher.
 > A man in his mid forties, soft round face, short brown hair, sweater vest over a collared shirt,
@@ -102,8 +105,10 @@ level, eyes calm, mouth closed and straight); the expression variants come later
 > a confident half smirk with eyes fixed on the viewer like he already knows what you have.
 
 **David** (`nadia.png`) — pro, online crusher, bored by live play.
-> A man in his late twenties, pale from screens, messy hair, black hoodie, over-ear headphones
-> around his neck, bored unimpressed expression, one eyebrow slightly raised, chewing on nothing.
+> A thin white man in his early fifties with a long narrow face, a high receding hairline with short
+> thin light brown hair left at the sides and back and only a few strands on top, a long straight
+> nose, thin lips, light eyebrows, a slim neck, wearing a light blue business button-up shirt with the
+> collar open, no tie. Neutral expression.
 
 **Bruce** (`jimmy.png`) — pro, The Clock, reads timing.
 > A white man in his late forties, thin face and build, short full beard of mixed black and grey,
