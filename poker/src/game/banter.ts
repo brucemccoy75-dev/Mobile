@@ -46,7 +46,9 @@ export interface BanterTable {
 
 const NEEDLES: Trigger[] = ['targetFoldsToMe', 'targetCallsMeDown', 'targetTank', 'targetInstant', 'targetChecks', 'winShowdown', 'stackedTarget', 'playerOut'];
 
-const COOLDOWN_MS = 11000;
+const COOLDOWN_MS = 9000;
+/** A man silent this long gets the next quiet moment to himself. */
+const QUIET_MS = 120000;
 const GLOBAL_GAP_MS = 1800;
 const URGENT: Trigger[] = ['badBeatTaken', 'stackedTarget', 'stackedByTarget', 'allIn', 'headsUp', 'termination'];
 
@@ -171,6 +173,15 @@ export class Banter {
     }
     const quiet = now - this.lastAny > 3500 && now - this.lastConvoEnd > 9000;
     const moment = ev.type === 'turn' || ev.type === 'handEnd' || ev.type === 'handStart';
+    if (quiet && moment && !bigPot) {
+      // Somebody who has not said a word in a couple of minutes gets the floor.
+      const silent = this.seatsOf(table).filter((s) => s !== actor && now - (this.lastSpoke.get(table.ids.get(s)!) ?? -1e9) > QUIET_MS);
+      if (silent.length > 0 && this.chance(0.5)) {
+        const seat = this.pick(silent);
+        const said = this.sayForced(seat, 'idle', table);
+        if (said) return said;
+      }
+    }
     if (!quiet || !moment || bigPot || !this.chance(ev.type === 'turn' ? 0.06 : 0.22)) return null;
     return this.startConversation(table, actor);
   }
@@ -207,7 +218,7 @@ export class Banter {
       for (const a of bots) for (const b of bots) if (a !== b && fits(a, conv.needs?.A, conv.who?.A) && fits(b, conv.needs?.B, conv.who?.B)) pairs.push([a, b]);
       if (pairs.length === 0) continue;
       // Talkative men end up in more conversations; the quiet ones mostly listen.
-      const weight = (p: [number, number]) => (table.traits?.(p[0]).talk ?? 1) * (table.traits?.(p[1]).talk ?? 1);
+      const weight = (p: [number, number]) => (table.traits?.(p[0]).talk ?? 1) * (table.traits?.(p[1]).talk ?? 1) * this.silence(table, p[0]) * this.silence(table, p[1]);
       const total = pairs.reduce((s, p) => s + weight(p), 0);
       let x = this.rng() * total;
       let chosen = pairs[0];
@@ -299,7 +310,7 @@ export class Banter {
     const aggressorBefore = this.lastAggressor;
     if (type === 'bet' || type === 'raise') this.lastAggressor = ev.seat;
 
-    if (type === 'check' && this.chance(0.14 * damp)) {
+    if (type === 'check' && this.chance(0.18 * damp)) {
       const others = this.botsInHand(table).filter((s) => s !== ev.seat && !hand.player(s).folded);
       if (others.length > 0) {
         const said = this.say(this.pickSpeaker(others, table, true), 'targetChecks', table, { targetSeat: ev.seat });
@@ -322,17 +333,17 @@ export class Banter {
     if (ev.allIn && type !== 'fold' && type !== 'check' && this.chance(0.6)) return this.say(ev.seat, 'allIn', table, { target: this.aggressorName(table, aggressorBefore) });
     switch (type) {
       case 'fold':
-        if (ev.street === 'preflop' && this.chance(0.05 * damp)) return this.say(ev.seat, 'foldPreflop', table);
+        if (ev.street === 'preflop' && this.chance(0.09 * damp)) return this.say(ev.seat, 'foldPreflop', table);
         return null;
       case 'bet':
       case 'raise': {
         const over = aggressorBefore !== null && aggressorBefore !== ev.seat;
-        if (this.chance((over ? 0.14 : 0.1) * damp)) return this.say(ev.seat, over ? 'reraise' : 'raise', table, { target: over ? table.names.get(aggressorBefore!) : undefined });
+        if (this.chance((over ? 0.22 : 0.16) * damp)) return this.say(ev.seat, over ? 'reraise' : 'raise', table, { target: over ? table.names.get(aggressorBefore!) : undefined });
         return null;
       }
       case 'call': {
         const big = ev.amount >= 0.35 * (pot - ev.amount) || ev.amount >= 0.25 * (me.stack + ev.amount);
-        if (big && this.chance(0.2)) return this.say(ev.seat, 'callBig', table, { target: this.aggressorName(table, aggressorBefore) });
+        if (big && this.chance(0.3)) return this.say(ev.seat, 'callBig', table, { target: this.aggressorName(table, aggressorBefore) });
         return null;
       }
       default:
@@ -364,18 +375,18 @@ export class Banter {
         if (!showdown) {
           const weak = this.isWeak(hand, seat);
           if (weak && this.lastAggressor === seat) candidates.push({ seat, t: 'bluffWorked', p: 0.3, vars: {} });
-          else candidates.push({ seat, t: 'winNoShowdown', p: 0.15, vars: { target: name(target) } });
+          else candidates.push({ seat, t: 'winNoShowdown', p: 0.22, vars: { target: name(target) } });
         } else {
           if (outcome.suckOut) candidates.push({ seat, t: 'badBeatGiven', p: 0.45, vars: { target: name(target) } });
           if (target !== undefined && riverAggressor === seat && target === HUMAN_SEAT) candidates.push({ seat, t: 'targetCallsMeDown', p: 0.45, vars: { target: name(target) } });
-          candidates.push({ seat, t: 'winShowdown', p: 0.3, vars: { target: name(target), hand: this.shown(hand, seat) } });
+          candidates.push({ seat, t: 'winShowdown', p: 0.45, vars: { target: name(target), hand: this.shown(hand, seat) } });
         }
       } else if (showdown) {
         const target = winners[0];
         if (busted(seat)) candidates.push({ seat, t: 'stackedByTarget', p: 0.85, vars: { target: name(target) } });
         if (outcome.badBeat) candidates.push({ seat, t: 'badBeatTaken', p: 0.8, vars: { target: name(target) } });
         if (riverAggressor === seat && this.isWeak(hand, seat)) candidates.push({ seat, t: 'bluffCaught', p: 0.55, vars: { target: name(target) } });
-        candidates.push({ seat, t: 'loseShowdown', p: 0.28, vars: { target: name(target) } });
+        candidates.push({ seat, t: 'loseShowdown', p: 0.4, vars: { target: name(target) } });
       }
     }
     // The dealer announces showdown winners now and then.
@@ -405,7 +416,7 @@ export class Banter {
     if (!urgent && now - this.lastAny < GLOBAL_GAP_MS) return null;
     if (seat !== DEALER_SEAT && table.traits) {
       const t = table.traits(seat);
-      const gate = Math.min(1, t.talk * (NEEDLES.includes(trigger) ? t.trash : 1));
+      const gate = Math.min(1, t.talk * (NEEDLES.includes(trigger) ? t.trash : 1) * this.silence(table, seat));
       if (!urgent && this.rng() > gate) return null;
     }
     if (now - (this.lastSpoke.get(id) ?? -1e9) < (urgent ? COOLDOWN_MS / 3 : COOLDOWN_MS)) return null;
@@ -419,6 +430,20 @@ export class Banter {
       .replace(/\{hand\}/g, vars.hand ?? 'the hand')
       .replace(/\{amount\}/g, String(vars.amount ?? ''));
     return { seat, speaker: id, text, trigger, targetSeat: vars.targetSeat };
+  }
+
+  /** A line with no gates but the cooldown: for men the table has been ignoring. */
+  private sayForced(seat: number, trigger: Trigger, table: BanterTable): Speech | null {
+    const id = table.ids.get(seat);
+    if (!id || id === 'human') return null;
+    const mood: Mood = table.clarity(seat) >= 55 ? 'tilted' : 'calm';
+    const line = this.pickLine(id, trigger, mood);
+    if (!line) return null;
+    const now = this.now();
+    this.lastAny = now;
+    this.lastSpoke.set(id, now);
+    const text = line.s.replace(/\{target\}/g, table.names.get(HUMAN_SEAT) ?? 'friend').replace(/\{hand\}/g, 'the hand');
+    return { seat, speaker: id, text, trigger };
   }
 
   private pickLine(id: string, trigger: Trigger, mood: Mood): Line | null {
@@ -451,10 +476,17 @@ export class Banter {
   }
 
   /** A speaker weighted by how much he talks (and, for needling, how much he enjoys it). */
+  /** 1 for a man who just spoke, rising with every quiet minute, so nobody stays silent all night. */
+  private silence(table: BanterTable, seat: number): number {
+    const id = table.ids.get(seat) ?? '';
+    const quiet = this.now() - (this.lastSpoke.get(id) ?? this.now() - QUIET_MS);
+    return 1 + Math.max(0, quiet) / 45000;
+  }
+
   private pickSpeaker(seats: number[], table: BanterTable, needling = false): number {
     const w = (s: number) => {
       const t = table.traits?.(s) ?? { talk: 1, trash: 1 };
-      return t.talk * (needling ? t.trash : 1);
+      return t.talk * (needling ? t.trash : 1) * this.silence(table, s);
     };
     const total = seats.reduce((a, s) => a + w(s), 0);
     let x = this.rng() * total;

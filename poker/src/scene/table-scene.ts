@@ -501,7 +501,24 @@ export class TableScene implements Presenter {
    * Someone speaks: their close-up appears in the inset with the line as a caption, their face
    * reacts, and if the line is about someone else that person gets a short reaction shot.
    */
-  async speak(speakerSeat: number, targetSeat: number | undefined, text: string, ms: number, trigger: string, name: string): Promise<void> {
+  speak(speakerSeat: number, targetSeat: number | undefined, text: string, ms: number, trigger: string, name: string, conversation = false): Promise<void> {
+    // Lines queue behind the one on screen until it has been up long enough to read. A reaction
+    // line that has waited too long is stale and dropped; conversation lines keep their order.
+    const queuedAt = performance.now();
+    const run = this.speechChain.then(async () => {
+      const waited = performance.now() - queuedAt;
+      if (!conversation && waited > 6000) return;
+      const readMs = Math.min(ms, 1600 + text.length * 42);
+      const done = this.speakNow(speakerSeat, targetSeat, text, ms, trigger, name);
+      await Promise.race([done, new Promise<void>((r) => setTimeout(r, readMs))]);
+    });
+    this.speechChain = run.catch(() => undefined);
+    return run;
+  }
+
+  private speechChain: Promise<void> = Promise.resolve();
+
+  private async speakNow(speakerSeat: number, targetSeat: number | undefined, text: string, ms: number, trigger: string, name: string): Promise<void> {
     const speaker = this.figures.get(speakerSeat);
     const target = targetSeat !== undefined ? this.figures.get(targetSeat) : undefined;
     const needle = ['targetFoldsToMe', 'targetCallsMeDown', 'targetTank', 'targetInstant', 'winShowdown', 'stackedTarget', 'badBeatGiven', 'playerOut'].includes(trigger);
@@ -678,7 +695,7 @@ export class TableScene implements Presenter {
     if (amount > 0) {
       this.betAmounts.set(seat, p.streetBet);
       if (allIn) this.audio.play('allin');
-      if (allIn && seat !== HUMAN_SEAT) this.showInset(seat, 2200, this.seatNames.get(seat) ?? '', 'All in');
+      if (allIn && seat !== HUMAN_SEAT && !this.pip) this.showInset(seat, 2200, this.seatNames.get(seat) ?? '', 'All in');
       await this.dropBet(seat, p.streetBet, 260);
       if (allIn) await this.tweens.delay(500);
     } else {

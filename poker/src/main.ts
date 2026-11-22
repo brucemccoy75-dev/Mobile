@@ -113,9 +113,9 @@ function start(key: TournamentKey, lineup: Character[]): void {
         if (said) {
           // Conversation lines stay up until the next line arrives, so the panel never blinks mid-exchange.
           const ms = said.conversation
-            ? (said.last ? Math.min(7500, 3800 + said.text.length * 55) : Math.max(7000, 3800 + said.text.length * 55))
-            : Math.min(6500, 2600 + said.text.length * 45);
-          void scene.speak(said.seat, said.targetSeat, said.text, ms, said.trigger, speakerName(said.seat, table));
+            ? (said.last ? Math.min(8000, 4000 + said.text.length * 55) : Math.max(7500, 4000 + said.text.length * 55))
+            : Math.min(7500, 3200 + said.text.length * 50);
+          void scene.speak(said.seat, said.targetSeat, said.text, ms, said.trigger, speakerName(said.seat, table), said.conversation);
         }
         await scene.present(ev);
         if (ev.type === 'bust' && table.tournament.active().length === 2) {

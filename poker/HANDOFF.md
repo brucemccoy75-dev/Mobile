@@ -144,6 +144,12 @@ about the real crew's running jokes fit there.
 - The camera is fixed (no swipe or tap to look around); the speaker panel is the only close-up.
 - The standings card shows on hand one and whenever the blinds go up, not every hand.
 - On the pick screen one man talks at a time and his bubble fades after 3.5 s (`say()` in `screens.ts`).
+- Nobody stays silent: `silence()` in `banter.ts` weights speaker and conversation picks by how long
+  a man has been quiet, and after two quiet minutes he gets a forced idle line (`sayForced`). A
+  test checks every survivor of twenty hands has spoken.
+- Lines never get cut off: `speak()` in `table-scene.ts` queues lines behind the one on screen until
+  it has been up long enough to read (`readMs`); stale reaction lines that waited over 6 s are
+  dropped, conversation lines keep their order.
 - Large multi-file edits worked best as a Python patch script run with `python3 -I script.py`,
   asserting each old string exists and replacing exactly once.
 

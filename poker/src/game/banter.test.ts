@@ -176,3 +176,35 @@ describe('Skynet', () => {
     expect(after.some((l) => l.seat === 3)).toBe(false);
   });
 });
+
+describe('fairness', () => {
+  it('lets every man who survives the first twenty hands speak', async () => {
+    let clock = 0;
+    const banter = new Banter(mulberry32(17), () => clock);
+    const lineup = CHARACTERS.filter((c) => ['harold', 'dolores', 'nadia', 'chad', 'wen'].includes(c.id));
+    const spoke = new Map<string, number>();
+    const busted = new Set<string>();
+    let hands = 0;
+    const table = new TableController({
+      lineup, humanName: 'Dave', rng: mulberry32(23), sleep: async () => {}, samples: 40,
+      human: (_h, legal) => (legal.canCheck ? { type: 'check' } : legal.callAmount <= 300 ? { type: 'call' } : { type: 'fold' }),
+      presenter: {
+        present: (ev: TableEvent) => {
+          if (ev.type === 'handStart') hands++;
+          if (hands > 20) return;
+          clock += ev.type === 'turn' ? 2500 : ev.type === 'handEnd' ? 4000 : 900;
+          if (ev.type === 'bust') for (const b of ev.seats) busted.add(table.seats.find((x) => x.seat === b)!.id);
+          const ids = new Map(table.seats.map((s) => [s.seat, s.id]));
+          const names = new Map(table.seats.map((s) => [s.seat, s.name]));
+          const s = banter.onEvent(ev, {
+            ids, names, clarity: () => 0,
+            traits: (seat) => { const c = table.bots.get(seat)?.character; return { talk: c?.talk ?? 1, trash: c?.trash ?? 1 }; },
+          });
+          if (s) spoke.set(s.speaker, (spoke.get(s.speaker) ?? 0) + 1);
+        },
+      },
+    });
+    await table.run();
+    for (const c of lineup) if (!busted.has(c.id)) expect(spoke.get(c.id) ?? 0, c.id).toBeGreaterThanOrEqual(3);
+  });
+});
