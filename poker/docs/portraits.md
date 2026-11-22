@@ -91,7 +91,7 @@ level, eyes calm, mouth closed and straight); the expression variants come later
 > graphic on the chest, no words or logos. Neutral expression. ("Soft face" and "double chin" came
 > out as a fat teenager.)
 
-**Luca** (`benny.png`) — tourist, big night out, overconfident.
+**Luca** (`benny.png`) — tourist, big night out, overconfident. Done.
 > An ordinary white man clearly in his mid twenties, an adult, average build, average height, with an
 > unremarkable everyday face, short neat dark hair, clean-shaven with just a hint of stubble, wearing
 > a plain black crew-neck t-shirt with nothing on it. Nothing distinctive about him at all. Neutral
