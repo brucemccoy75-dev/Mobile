@@ -48,7 +48,8 @@ using drawn expressions until the variants exist.
 ## The thirteen
 
 Each prompt is the style block plus the lines below. Ages and clothes carry the personality; keep the
-New Hampshire, Dave's-basement feel.
+New Hampshire, Dave's-basement feel. Ask for a plain neutral expression on the base portrait (eyebrows
+level, eyes calm, mouth closed and straight); the expression variants come later.
 
 **David Sr** (`harold.png`) — nit, retired accountant, scared money.
 > A man in his late sixties, thin, neat grey side part, reading glasses pushed up on his forehead,
@@ -69,9 +70,9 @@ New Hampshire, Dave's-basement feel.
 > A white man in his late forties, short and fit, a compact runner's build with narrow shoulders, a
 > very round head and a round fit face. His whole head is covered in short dark buzzed stubble, the
 > same length all over, with a matching short stubbly beard across his jaw, chin and upper lip, no
-> shine anywhere. Small ears, plain white t-shirt. His expression is a grimace: brow pulled down, eyes
-> narrowed, mouth tight and pulled to one side, like he just watched the river card come. (Do not say
-> "Popeye", "bald" or "square chin": the generator turns those into Mr. Clean.)
+> shine anywhere. Small ears, plain white t-shirt. A plain, neutral, relaxed expression: eyebrows level,
+> eyes open and calm, mouth closed and straight, neither smiling nor frowning, just looking at you.
+> (Do not say "Popeye", "bald" or "square chin": the generator turns those into Mr. Clean.)
 
 **Tim** (`trish.png`) — tourist, cruise-ship regular, superstitious.
 > A man in his mid fifties, deep tan, silver hair combed back, loud floral shirt, a beaded lucky
