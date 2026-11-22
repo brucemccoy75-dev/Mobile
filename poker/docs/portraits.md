@@ -104,7 +104,7 @@ first and use his image as the reference.
 > long blond hair falling out from under a backwards baseball cap, rectangular glasses, a plain hoodie,
 > a confident half smirk with eyes fixed on the viewer like he already knows what you have.
 
-**David** (`nadia.png`) — pro, online crusher, bored by live play.
+**David** (`nadia.png`) — pro, online crusher, bored by live play. Done.
 > A thin white man in his early fifties with a long narrow face, short light brown hair that is
 > thinning on top with a slightly receded hairline, neatly combed, a long straight nose, thin lips,
 > light eyebrows, a slim neck, wearing a light blue business button-up shirt with the collar open, no

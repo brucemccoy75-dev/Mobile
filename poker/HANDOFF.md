@@ -54,7 +54,7 @@ The ids never change (saves, memories and file names depend on them). Only names
 | priya | Will | calculator | meh | needed |
 | ulrich | Menafee | calculator | anti | needed |
 | sal | Jack (16, big, blond, backwards cap, glasses) | pro | anti | **done** |
-| nadia | David (early 50s, thin, balding, light blue button-up) | pro | pro | prompt ready |
+| nadia | David (early 50s, thin, thinning hair, light blue button-up) | pro | pro | **done** |
 | jimmy | Bruce (late 40s, thin, grey beard, black tee, sly) | pro | meh | **done** |
 | dealer | Skynet (Dave's android dealer, white panels, black visor, bow tie) | — | — | **done** |
 
@@ -99,7 +99,7 @@ about the real crew's running jokes fit there.
 
 ## Open items, in order
 
-1. Portraits for the ten remaining characters (above).
+1. Portraits for the nine remaining characters (above).
 2. Lines rewrite per persona, Jack first.
 3. Expression variants and the texture swap in `figures.ts`.
 4. Tuning from real play: nits may feel too passive; tourists' aggression; banter density.
