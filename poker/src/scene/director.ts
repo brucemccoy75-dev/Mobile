@@ -9,7 +9,8 @@ export interface Pose {
   look: THREE.Vector3;
 }
 
-const TV: Pose = { pos: new THREE.Vector3(0, 6.9, 8.8), look: new THREE.Vector3(0, 0.1, -0.5) };
+// Lower and closer than a broadcast crane shot: you are sitting at the table, looking across it.
+const TV: Pose = { pos: new THREE.Vector3(0, 5.5, 7.3), look: new THREE.Vector3(0, 0.25, -0.9) };
 const RETURN_AFTER_MS = 6000;
 
 function seatPose(seat: number): Pose {

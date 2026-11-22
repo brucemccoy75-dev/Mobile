@@ -20,7 +20,7 @@ export const figurePos = (seat: number) => ellipse(seatAngle(seat), 1.34, 0);
 export const holePos = (seat: number) => ellipse(seatAngle(seat), 0.72, 0.012);
 export const betPos = (seat: number) => ellipse(seatAngle(seat), 0.46, 0);
 export const buttonPos = (seat: number) => ellipse(seatAngle(seat) - 16, 0.62, 0.01);
-export const platePos = (seat: number) => ellipse(seatAngle(seat), 1.17, 0.02);
+export const platePos = (seat: number) => ellipse(seatAngle(seat), seat === 0 ? 0.95 : 1.17, 0.02);
 
 export const POT_POS = new THREE.Vector3(0, 0, -0.95);
 export const POT_LABEL_POS = new THREE.Vector3(0, 0, -0.42);

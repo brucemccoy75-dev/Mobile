@@ -32,11 +32,34 @@ export class Overlay {
   private handNumber = 0;
   tournamentName = '';
 
-  constructor(root: HTMLElement, holeEl: HTMLElement, infoEl: HTMLElement, toastEl: HTMLElement) {
+  private readonly boardEl: HTMLElement;
+  private boardCards: Card[] = [];
+  private potAmount = 0;
+
+  constructor(root: HTMLElement, holeEl: HTMLElement, infoEl: HTMLElement, toastEl: HTMLElement, boardEl: HTMLElement) {
     this.root = root;
     this.holeEl = holeEl;
     this.infoEl = infoEl;
     this.toastEl = toastEl;
+    this.boardEl = boardEl;
+  }
+
+  /** The community cards, big and readable, at the top of the screen. */
+  setBoard(cards: Card[]): void {
+    const same = cards.length === this.boardCards.length && cards.every((c, i) => c === this.boardCards[i]);
+    if (same) return;
+    const added = cards.length > this.boardCards.length;
+    this.boardCards = [...cards];
+    const slots = cards.map((c, i) => `<div class="slot ${added && i >= cards.length - (cards.length === 3 ? 3 : 1) ? 'new' : ''}">${cardHtml(c)}</div>`);
+    for (let i = cards.length; i < 5; i++) slots.push('<div class="slot empty"></div>');
+    this.boardEl.querySelector('.cards')!.innerHTML = slots.join('');
+    this.renderPot();
+  }
+
+  private renderPot(): void {
+    const el = this.boardEl.querySelector('.potline')!;
+    el.textContent = this.potAmount > 0 ? `POT ${this.potAmount}` : '';
+    this.boardEl.classList.toggle('show', this.boardCards.length > 0 || this.potAmount > 0);
   }
 
   private anchor(key: string, pos: THREE.Vector3, className: string, offsetY = 0): HTMLElement {
@@ -54,7 +77,7 @@ export class Overlay {
   }
 
   plate(seat: number, pos: THREE.Vector3, name: string, stack: number): void {
-    const el = this.anchor(`plate${seat}`, pos, 'plate', seat === 0 ? 10 : 0);
+    const el = this.anchor(`plate${seat}`, pos, 'plate', 0);
     el.innerHTML = `<div class="tag"></div><div class="name"></div><div class="stack"></div>`;
     el.querySelector('.name')!.textContent = name;
     el.querySelector('.stack')!.textContent = String(stack);
@@ -92,15 +115,14 @@ export class Overlay {
   }
 
   setBet(seat: number, amount: number, pos?: THREE.Vector3): void {
-    const el = this.anchor(`bet${seat}`, pos ?? this.anchored.get(`bet${seat}`)?.pos ?? new THREE.Vector3(), 'bet', -26);
+    const el = this.anchor(`bet${seat}`, pos ?? this.anchored.get(`bet${seat}`)?.pos ?? new THREE.Vector3(), 'bet', 20);
     el.textContent = amount > 0 ? String(amount) : '';
     el.classList.toggle('show', amount > 0);
   }
 
-  setPot(amount: number, pos?: THREE.Vector3): void {
-    const el = this.anchor('pot', pos ?? this.anchored.get('pot')?.pos ?? new THREE.Vector3(0, 0, -0.42), 'pot', 0);
-    el.textContent = amount > 0 ? `POT ${amount}` : '';
-    el.classList.toggle('show', amount > 0);
+  setPot(amount: number, _pos?: THREE.Vector3): void {
+    this.potAmount = amount;
+    this.renderPot();
   }
 
   setHole(cards: Card[] | null): void {
@@ -151,6 +173,9 @@ export class Overlay {
     this.anchored.clear();
     this.plates.clear();
     this.setHole(null);
+    this.potAmount = 0;
+    this.boardCards = [];
+    this.boardEl.classList.remove('show');
   }
 }
 

@@ -58,9 +58,22 @@
     #info { color: var(--muted); font-size: 12px; letter-spacing: .03em; flex: 1; text-shadow: 0 1px 2px #000; }
     #hud button { pointer-events: auto; background: rgba(8,12,10,.7); border: 1px solid rgba(255,255,255,.12); border-radius: 8px; padding: 6px 10px; font-size: 12px; color: var(--muted); }
     #hud button.on { color: #141614; background: var(--gold); border-color: var(--gold); }
-    #toast { position: fixed; left: 50%; top: max(44px, calc(var(--sat) + 36px)); transform: translate(-50%, -10px); opacity: 0; transition: .25s;
+    #toast { position: fixed; left: 50%; top: max(96px, calc(var(--sat) + 90px)); transform: translate(-50%, -10px); opacity: 0; transition: .25s;
       background: var(--plate); border: 1px solid rgba(255,255,255,.1); padding: 8px 14px; border-radius: 10px; font-size: 13px; pointer-events: none; }
     #toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    /* The board, big and readable */
+    #board { position: fixed; left: 50%; top: max(8px, var(--sat)); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px;
+      opacity: 0; transition: opacity .25s; pointer-events: none; }
+    #board.show { opacity: 1; }
+    #board .potline { color: var(--gold); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-shadow: 0 1px 2px #000; min-height: 15px; }
+    #board .cards { display: flex; gap: 5px; }
+    #board .slot { width: 44px; height: 62px; border-radius: 6px; }
+    #board .slot.empty { border: 1px dashed rgba(255,255,255,.18); }
+    #board .slot .pcard { width: 44px; height: 62px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,.5); }
+    #board .slot .pcard .rank { font-size: 21px; } #board .slot .pcard .suit { font-size: 16px; margin-top: 1px; }
+    #board .slot.new .pcard { animation: boardflip .35s ease-out; }
+    @keyframes boardflip { from { transform: rotateY(90deg) scale(1.1); opacity: 0; } to { transform: none; opacity: 1; } }
 
     /* Your cards */
     #hole { position: fixed; left: max(14px, var(--sal)); bottom: max(12px, var(--sab)); display: flex; gap: 6px; opacity: 0; transform: translateY(12px); transition: .25s; pointer-events: none; }
@@ -175,6 +188,7 @@
     <button id="menu">Menu</button>
   </div>
   <div id="toast"></div>
+  <div id="board"><div class="potline"></div><div class="cards"></div></div>
   <div id="hole"></div>
   <div id="actions">
     <div class="sizing">

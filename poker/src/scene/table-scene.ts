@@ -49,7 +49,7 @@ export class TableScene implements Presenter {
 
     this.scene.background = new THREE.Color(0x07100b);
     this.scene.fog = new THREE.Fog(0x07100b, 14, 30);
-    this.camera = new THREE.PerspectiveCamera(42, 1, 0.1, 60);
+    this.camera = new THREE.PerspectiveCamera(44, 1, 0.1, 60);
     this.director = new Director(this.camera, this.tweens);
 
     this.buildRoom();
@@ -320,6 +320,7 @@ export class TableScene implements Presenter {
     this.pot.group.position.copy(L.POT_POS);
     this.overlay.setPot(0);
     this.overlay.setHole(null);
+    this.overlay.setBoard([]);
     this.overlay.setInfo({ level, handNumber: hand.handNumber });
     for (const [seat, f] of this.figures) {
       if (!this.out.has(seat)) f.setExpression(this.moodBase.get(seat) ?? 'neutral');
@@ -485,7 +486,7 @@ export class TableScene implements Presenter {
       deals.push(this.tweens.delay(delay).then(() => this.tweens.run(260, (t) => {
         m.group.position.lerpVectors(from, to, t);
         m.group.position.y += Math.sin(Math.PI * t) * 0.35;
-      })).then(() => this.flipCard(m, true, 300)));
+      })).then(() => this.flipCard(m, true, 300)).then(() => this.overlay.setBoard(board.slice(0, i + 1))));
     }
     await Promise.all(deals);
   }

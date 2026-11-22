@@ -265,13 +265,15 @@ function tourist(c: Context): Weights {
     return W(0.85, 0.15);
   }
   const something = c.made >= HandCategory.Pair || c.flushDraw || c.straightOuts >= 4;
+  // Shoving is for when the stack is not much bigger than the pot; otherwise it becomes a big bet.
+  const shove = c.spr < 4 ? 1 : 0;
   if (!c.facingBet) {
-    if (something) return W(0, 0.3, 0.1, 0.25, 0.3 * wild, 0.05 * wild);
+    if (something) return W(0, 0.3, 0.1, 0.25, 0.3 * wild + 0.05 * wild * (1 - shove), 0.05 * wild * shove);
     return W(0, 0.75, 0.1, 0.1, 0.05 * wild);
   }
   if (c.facingAllIn) return c.equity >= 0.38 ? W(0, 1) : W(1, 0);
-  if (c.equity >= 0.7) return W(0, 0.4, 0, 0.2, 0.3, 0.1 * wild);
-  if (something) return W(0.1, 0.65, 0, 0.1, 0.1, 0.05 * wild);
+  if (c.equity >= 0.7) return W(0, 0.4, 0, 0.2, 0.3 + 0.1 * wild * (1 - shove), 0.1 * wild * shove);
+  if (something) return W(0.1, 0.65, 0, 0.1, 0.1 + 0.05 * wild * (1 - shove), 0.05 * wild * shove);
   if (c.betRatio < 0.5) return W(0.5, 0.4, 0, 0.05, 0.05);
   return W(0.75, 0.15, 0, 0.05, 0.05);
 }
