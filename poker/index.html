@@ -3,17 +3,51 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#0a1f14" />
+  <meta name="theme-color" content="#07100b" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="description" content="Poker, I Hardly Knew Her: a 3D poker game for your phone." />
   <title>Poker, I Hardly Knew Her</title>
-  <style>:root{--lightningcss-light: ;--lightningcss-dark:initial;color-scheme:dark;--bg:#0a1f14;--fg:#e8ecef}*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}html,body{background:var(--bg);height:100%;color:var(--fg);-webkit-user-select:none;user-select:none;touch-action:none;overscroll-behavior:none;font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:hidden}#game{position:fixed;inset:0}#game canvas{touch-action:none;display:block}#hud{padding:12px max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));pointer-events:none;color:#b9c6bf;justify-content:space-between;align-items:center;font-size:13px;display:flex;position:fixed;bottom:0;left:0;right:0}</style>
-  <script type="module" crossorigin src="./assets/index-CiqS6dT0.js"></script>
+  <style>:root{--lightningcss-light: ;--lightningcss-dark:initial;color-scheme:dark;--bg:#07100b;--fg:#eef0ea;--muted:#9fb0a6;--gold:#e3c06a;--red:#d8463a;--green:#3fbf7f;--plate:#080c0ac7;--sal:env(safe-area-inset-left);--sar:env(safe-area-inset-right);--sab:env(safe-area-inset-bottom);--sat:env(safe-area-inset-top)}*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}html,body{background:var(--bg);height:100%;color:var(--fg);-webkit-user-select:none;user-select:none;touch-action:none;overscroll-behavior:none;font:15px/1.35 Helvetica Neue,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:hidden}button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation;background:0 0;border:0}#game{position:fixed;inset:0}#game canvas{touch-action:none;display:block;width:100%!important;height:100%!important}#overlay{pointer-events:none;position:fixed;inset:0;overflow:hidden}#overlay>div{will-change:transform;position:absolute;top:0;left:0}.plate{background:var(--plate);text-align:center;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border:1px solid #ffffff14;border-radius:10px;min-width:108px;padding:5px 10px 6px;transition:opacity .25s,box-shadow .25s}.plate .name{letter-spacing:.01em;white-space:nowrap;font-size:13px;font-weight:600}.plate .stack{color:var(--gold);font-variant-numeric:tabular-nums;font-size:12px}.plate.active{box-shadow:0 0 0 2px var(--gold), 0 0 18px #e3c06a73}.plate.folded{opacity:.45}.plate.out{opacity:.35}.plate .tag{opacity:0;color:#141614;letter-spacing:.06em;white-space:nowrap;background:#f2efe6;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;transition:transform .18s,opacity .18s;position:absolute;top:-14px;left:50%;transform:translate(-50%,-100%)scale(.8)}.plate .tag.show{opacity:1;transform:translate(-50%,-100%)scale(1)}.plate .tag.strong{background:var(--gold)}.plate .tag.hot{background:var(--red);color:#fff}.plate .tag.muted{color:#e8ebe6;background:#5c6660}.bet,.pot{color:#fff;text-shadow:0 1px 2px #000c;opacity:0;font-variant-numeric:tabular-nums;white-space:nowrap;font-size:12px;font-weight:700;transition:opacity .2s}.pot{color:var(--gold);letter-spacing:.04em;font-size:13px}.bet.show,.pot.show{opacity:1}#hud{left:max(12px, var(--sal));right:max(12px, var(--sar));top:max(8px, var(--sat));pointer-events:none;align-items:center;gap:10px;display:flex;position:fixed}#info{color:var(--muted);letter-spacing:.03em;text-shadow:0 1px 2px #000;flex:1;font-size:12px}#hud button{pointer-events:auto;color:var(--muted);background:#080c0ab3;border:1px solid #ffffff1f;border-radius:8px;padding:6px 10px;font-size:12px}#hud button.on{color:#141614;background:var(--gold);border-color:var(--gold)}#toast{left:50%;top:max(44px, calc(var(--sat) + 36px));opacity:0;background:var(--plate);pointer-events:none;border:1px solid #ffffff1a;border-radius:10px;padding:8px 14px;font-size:13px;transition:all .25s;position:fixed;transform:translate(-50%,-10px)}#toast.show{opacity:1;transform:translate(-50%)}#hole{left:max(14px, var(--sal));bottom:max(12px, var(--sab));opacity:0;pointer-events:none;gap:6px;transition:all .25s;display:flex;position:fixed;transform:translateY(12px)}#hole.show{opacity:1;transform:none}.pcard{color:#1b1b1f;background:#f7f4ec;border-radius:7px;flex-direction:column;justify-content:center;align-items:center;width:58px;height:82px;font-weight:700;display:flex;box-shadow:0 6px 16px #00000080}.pcard.red{color:#c8202c}.pcard .rank{font-size:28px;line-height:1}.pcard .suit{margin-top:2px;font-size:22px;line-height:1}#actions{right:max(12px, var(--sar));bottom:max(12px, var(--sab));opacity:0;pointer-events:none;flex-direction:column;align-items:flex-end;gap:8px;transition:all .2s;display:flex;position:fixed;transform:translateY(10px)}#actions.show{opacity:1;pointer-events:auto;transform:none}#actions .row{gap:8px;display:flex}#actions .row>button{letter-spacing:.02em;background:#141816e6;border:1px solid #ffffff24;border-radius:12px;min-width:104px;height:52px;font-size:15px;font-weight:700;box-shadow:0 4px 14px #0006}#actions .row>button:disabled{opacity:.35}#actions .fold{color:#ffb4ad}#actions .passive{color:#fff}#actions .row>button.aggressive{background:var(--gold);color:#141614;border-color:var(--gold)}#actions .clockwrap{background:#ffffff1f;border-radius:2px;width:100%;height:4px;overflow:hidden}#actions .clock{background:var(--gold);transform-origin:0;height:100%;transform:scaleX(1)}#actions .clock.urgent{background:var(--red)}.sizing{background:#141816eb;border:1px solid #ffffff1f;border-radius:12px;flex-direction:column;gap:8px;width:min(360px,100vw - 24px);padding:10px;display:none}.sizing.show{display:flex}.sizing .quicks{gap:6px;display:flex}.sizing .quick{background:#ffffff14;border-radius:8px;flex:1;height:34px;font-size:12px;font-weight:600}.sizing input[type=range]{width:100%;accent-color:var(--gold);height:28px}.sizing .confirmrow{justify-content:space-between;align-items:center;gap:10px;display:flex}.sizing .amount{font-variant-numeric:tabular-nums;font-weight:700}.sizing .confirm{background:var(--gold);color:#141614;border-radius:10px;height:40px;padding:0 18px;font-weight:700}#screens{z-index:20;background:radial-gradient(at 50% 40%,#1d6f3d59,#07100bf5 70%);place-items:center;display:none;position:fixed;inset:0}#screens.show{display:grid}.screen{text-align:center;width:100%;max-width:720px;padding:24px}.eyebrow{color:var(--muted);letter-spacing:.14em;text-transform:uppercase;margin-bottom:10px;font-size:12px}h1{letter-spacing:-.02em;margin-bottom:26px;font-size:clamp(34px,7vw,64px);font-weight:800;line-height:.98}h2{margin-bottom:14px;font-size:clamp(26px,5vw,40px)}button.primary{background:var(--gold);color:#141614;border-radius:14px;height:54px;padding:0 34px;font-size:17px;font-weight:800;box-shadow:0 8px 24px #e3c06a40}button.link{color:var(--muted);padding:12px}.tcards{grid-template-columns:repeat(3,1fr);gap:12px;margin:8px 0 14px;display:grid}.tcard{text-align:left;background:#080c0ab3;border:1px solid #ffffff1f;border-radius:14px;min-height:120px;padding:16px}.tcard:active{border-color:var(--gold)}.tname{margin-bottom:6px;font-size:20px;font-weight:800}.tblurb{color:var(--muted);font-size:13px}.results ol{text-align:left;max-width:380px;margin:0 auto 18px;list-style:none}.results li{font-variant-numeric:tabular-nums;border-bottom:1px solid #ffffff14;grid-template-columns:54px 1fr auto;gap:10px;padding:7px 10px;display:grid}.results li.you{color:var(--gold);font-weight:700}.results .row{justify-content:center;align-items:center;gap:12px;display:flex}#rotate{z-index:50;text-align:center;background:var(--bg);place-items:center;padding:24px;display:none;position:fixed;inset:0}#rotate .phone{border:3px solid var(--fg);border-radius:8px;width:36px;height:64px;margin:0 auto 18px;animation:1.6s ease-in-out infinite turn}@keyframes turn{0%,30%{transform:rotate(0)}60%,to{transform:rotate(-90deg)}}#rotate p{color:var(--muted);margin-top:6px}@media (orientation:portrait) and (max-width:900px){#rotate{display:grid}}@media (max-height:420px){.tcards{gap:8px}.tcard{min-height:0;padding:12px}h1{margin-bottom:14px}}</style>
+  <script type="module" crossorigin src="./assets/index-BnU5KvsH.js"></script>
 </head>
 <body>
   <div id="game"></div>
-  <div id="hud"><span>Poker, I Hardly Knew Her · pipeline check</span><span id="fps"></span></div>
+  <div id="overlay"></div>
+  <div id="hud">
+    <div id="info"></div>
+    <button id="fast" title="Fast forward">▶▶</button>
+    <button id="menu">Menu</button>
+  </div>
+  <div id="toast"></div>
+  <div id="hole"></div>
+  <div id="actions">
+    <div class="sizing">
+      <div class="quicks">
+        <button class="quick" data-size="min">Min</button>
+        <button class="quick" data-size="half">½ pot</button>
+        <button class="quick" data-size="threeq">¾ pot</button>
+        <button class="quick" data-size="pot">Pot</button>
+        <button class="quick" data-size="allin">All in</button>
+      </div>
+      <input type="range" min="0" max="100" step="25" value="0" />
+      <div class="confirmrow"><span class="amount"></span><button class="confirm">Raise</button></div>
+    </div>
+    <div class="row">
+      <button class="fold">Fold</button>
+      <button class="passive">Check</button>
+      <button class="aggressive">Raise</button>
+    </div>
+    <div class="clockwrap"><div class="clock"></div></div>
+  </div>
+  <div id="screens"></div>
+  <div id="rotate" aria-live="polite">
+    <div>
+      <div class="phone"></div>
+      <strong>Rotate your phone</strong>
+      <p>This table is played in landscape.</p>
+    </div>
+  </div>
 </body>
 </html>
