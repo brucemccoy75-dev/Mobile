@@ -150,14 +150,17 @@ export class Banter {
   }
 
   private startConversation(table: BanterTable, actor: number | null): Speech | null {
-    const bots = this.seatsOf(table).filter((s) => s !== actor && !(this.hand && !this.hand.isComplete && this.hand.players.some((p) => p.seat === s && !p.folded && s === actor)));
+    const bots = this.allBotSeats(table).filter((s) => s !== actor && !(this.hand && !this.hand.isComplete && this.hand.players.some((p) => p.seat === s && !p.folded && s === actor)));
     if (bots.length < 2) return null;
     const stance = (s: number): Stance => table.stance?.(s) ?? 'meh';
     const fresh = CONVERSATIONS.filter((c) => !this.usedConvos.has(c));
     const pool = fresh.length > 0 ? fresh : CONVERSATIONS;
     if (fresh.length === 0) this.usedConvos.clear();
     for (const conv of this.shuffled(pool)) {
-      const fits = (s: number, need?: Stance, who?: string[]) => (!need || stance(s) === need) && (!who || who.includes(table.ids.get(s) ?? ''));
+      // A man with no lines (Menafee) only takes part when an exchange names him on purpose.
+      const mute = (s: number) => (LINES[table.ids.get(s) ?? ''] ?? []).length === 0;
+      const fits = (s: number, need?: Stance, who?: string[]) =>
+        (!need || stance(s) === need) && (who ? who.includes(table.ids.get(s) ?? '') : !mute(s));
       const pairs: [number, number][] = [];
       for (const a of bots) for (const b of bots) if (a !== b && fits(a, conv.needs?.A, conv.who?.A) && fits(b, conv.needs?.B, conv.who?.B)) pairs.push([a, b]);
       if (pairs.length === 0) continue;
@@ -394,7 +397,15 @@ export class Banter {
     return out;
   }
 
+  /** Bot seats that can speak at all: not the human, and not a man with no lines. */
   private seatsOf(table: BanterTable): number[] {
+    return [...table.ids.entries()]
+      .filter(([s, id]) => id !== 'human' && s !== DEALER_SEAT && (LINES[id] ?? []).length > 0)
+      .map(([s]) => s);
+  }
+
+  /** Every bot seat, including the silent ones, for exchanges that name them. */
+  private allBotSeats(table: BanterTable): number[] {
     return [...table.ids.entries()].filter(([s, id]) => id !== 'human' && s !== DEALER_SEAT).map(([s]) => s);
   }
 

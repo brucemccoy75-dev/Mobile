@@ -101,3 +101,25 @@ describe('Banter', () => {
     }
   });
 });
+
+describe('Menafee', () => {
+  it('never says a word, but gets talked to', () => {
+    let clock = 0;
+    const banter = new Banter(mulberry32(21), () => clock);
+    const ids = new Map([[0, 'human'], [1, 'ulrich'], [2, 'nadia'], [3, 'trish'], [4, 'sal'], [5, 'dolores']]);
+    const names = new Map([[0, 'Bruce'], [1, 'Menafee'], [2, 'David'], [3, 'Tim'], [4, 'Jack'], [5, 'Paul']]);
+    const table = { ids, names, clarity: () => 0 };
+    const byMenafee: string[] = [];
+    let addressed = 0;
+    for (let i = 0; i < 1500; i++) {
+      clock += 1500;
+      const s = banter.onEvent({ type: 'turn', seat: 2, legal: { seat: 2 } as never, deadline: null }, table);
+      if (!s) continue;
+      if (s.seat === 1) byMenafee.push(s.text);
+      if (s.text.includes('Menafee')) addressed++;
+    }
+    expect(byMenafee.length).toBeGreaterThan(0);
+    expect(byMenafee.every((t) => t === '')).toBe(true);
+    expect(addressed).toBeGreaterThan(0);
+  });
+});
