@@ -49,7 +49,11 @@ export class Screens {
           <div class="eyebrow">Who's coming tonight? <span class="count">Pick 5</span></div>
           <button class="link random">Random five</button>
         </div>
-        <div class="pgrid">${cards}</div>
+        <div class="pstrip">
+          <button class="link arrow prev" aria-label="Earlier">‹</button>
+          <div class="pgrid">${cards}</div>
+          <button class="link arrow next" aria-label="Later">›</button>
+        </div>
         <div class="pickfoot">
           <div class="namerow"><label>They'll call you</label><input class="name" maxlength="14" value="${name.replace(/"/g, '')}" /></div>
           <button class="primary deal" disabled>Deal</button>
@@ -65,6 +69,23 @@ export class Screens {
     // One man talks at a time; his bubble fades after a few seconds.
     let talking: { id: string; timer: number } | null = null;
     const bubbleOf = (id: string) => root.querySelector<HTMLElement>(`.pcardc[data-id="${id}"] .bubble`)!;
+    // The strip scrolls sideways: arrows, swipe, or a mouse wheel. A man who talks is scrolled into view.
+    const strip = root.querySelector<HTMLElement>('.pgrid')!;
+    const step = () => (strip.querySelector<HTMLElement>('.pcardc')?.offsetWidth ?? 200) + 12;
+    root.querySelector('.prev')!.addEventListener('click', () => strip.scrollBy({ left: -step() * 2, behavior: 'smooth' }));
+    root.querySelector('.next')!.addEventListener('click', () => strip.scrollBy({ left: step() * 2, behavior: 'smooth' }));
+    strip.addEventListener('wheel', (e) => {
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        strip.scrollLeft += e.deltaY;
+        e.preventDefault();
+      }
+    }, { passive: false });
+    const visible = (id: string) => {
+      const card = root.querySelector<HTMLElement>(`.pcardc[data-id="${id}"]`);
+      if (!card) return false;
+      const left = card.offsetLeft - strip.offsetLeft - strip.scrollLeft;
+      return left + card.offsetWidth * 0.6 > 0 && left + card.offsetWidth * 0.4 < strip.clientWidth;
+    };
     const say = (id: string, text: string, pop = false) => {
       if (!text) return;
       if (talking) {
@@ -124,13 +145,13 @@ export class Screens {
         return;
       }
       if (talking) return;
-      const out = characters.filter((c) => !picked.includes(c.id) && c.pitch.some((p) => p));
+      const out = characters.filter((c) => !picked.includes(c.id) && c.pitch.some((p) => p) && visible(c.id));
       if (out.length === 0) return;
       const c = out[Math.floor(Math.random() * out.length)];
       say(c.id, c.pitch[Math.floor(Math.random() * c.pitch.length)]);
     }, 4500);
     window.setTimeout(() => {
-      const c = characters.find((x) => x.id === 'sal') ?? characters[0];
+      const c = characters.find((x) => visible(x.id)) ?? characters[0];
       say(c.id, c.pitch[0]);
     }, first ? 2500 : 500);
     refresh();

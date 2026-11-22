@@ -15,7 +15,7 @@ Read this first in a new session. It says what exists, how to work on it, and wh
 
 ```sh
 npm install
-npm test                 # 62 tests: engine, bots, controller, banter, career, conversations
+npm test                 # 65 tests: engine, bots, controller, banter, career, conversations
 npm run build            # typecheck + production build
 npm run sim -- --n 100   # bot-only nights (mixed lineups), prints finishes and tendencies per type
 python3 tools/key-portrait.py in.jpg public/portraits/<id>.png   # green-screen to transparent PNG
@@ -121,8 +121,9 @@ covered for every character and at least 100 lines per type. To rewrite a person
    when anyone checks), hummus and pretzels, tilts twice as hard (`temper` in `characters.ts`).
    **Paul is done.** Everything by hand (clothes, car, horse), honey on sale, half off a gallon if
    you show one card, "full homestead", bees, D&D with his wife as DM, work small talk.
-   **The quiet men share a pool.** David Sr and Kevin use `GENERIC` in `lines.ts`: short, plain
-   lines, with low talk factors. Replace with a persona by giving the id its own array.
+   **David Sr and Kevin are done.** David Sr: seventy, 1974, nickels, "the boy", his hip. Kevin:
+   drunk, loud, imaginary, at a different party, asks for the bathroom, calls everyone Dave. The
+   generic pool is gone: every man has his own voice.
    **Bawb and Jonathan are done** as one set: live updates from southern New Hampshire girls'
    softball, basketball and track (Bedford, Souhegan, Hollis-Brookline, Londonderry, Pinkerton,
    Alvirne, Salem, Windham, Merrimack), Kara's hamstring, the Division II standings, Jonathan's
@@ -140,7 +141,6 @@ stuff ridiculous: "the new girl died during her test and now I have to finish it
 - Bruce: joins most conversations, very dry, usually one joke at the expense of whoever he is
   talking to.
 - The whole table debates technology, AI and data centres.
-- Still generic: David Sr, Kevin (the drunk imaginary one).
 - **Bruce is done.** Dry, snide, never angry: the commute (Route 3, 93, seventy minutes), tired and
   wants to go home, praises capitalism, layoffs and AI taking jobs. He also butts in: after any
   two-man exchange he sat out, `interject()` in `banter.ts` may give him the last word from
@@ -162,6 +162,18 @@ engine uses for who speaks and who needles, and conversations can be pinned to p
 Conversations in `conversations.ts` are character-neutral and need no rewrite, but new exchanges
 about the real crew's running jokes fit there.
 
+**Teasing** (`src/content/teases.ts`): eight personal digs per man that anyone can throw at him
+("Maybe you can craft two new cards, Paul"). `say()` in `banter.ts` swaps a needle for one when
+the line lands on a man the table knows (`TEASABLE` triggers, 75%), and idle chatter is a dig at a
+random man 60% of the time; between hands somebody has a go at somebody (8%). Each dig is used
+once per night before any repeats. The speech trigger is `tease`.
+
+**Thinking aloud** (`src/game/thinking.ts`): men with IQ 72 and up sometimes say what they are
+thinking while deciding, mostly when facing a bet (30% postflop, 5% preflop). The claim is true
+55% of the time and otherwise a lie that still fits the board: reads about the bettor's straight,
+flush or trips only when the board allows them, claims about his own hand by real strength, and
+how many cards are to come. Trigger `thinking`; recent lines are not repeated by the same man.
+
 ## Conventions
 
 - Commit messages: a short title, a body saying why, then the attribution lines the session is given.
@@ -170,8 +182,16 @@ about the real crew's running jokes fit there.
 - The standings card shows on hand one and whenever the blinds go up, not every hand.
 - On the pick screen one man talks at a time and his bubble fades after 3.5 s (`say()` in `screens.ts`).
 - Nobody stays silent: `silence()` in `banter.ts` weights speaker and conversation picks by how long
-  a man has been quiet, and after two quiet minutes he gets a forced idle line (`sayForced`). A
-  test checks every survivor of twenty hands has spoken.
+  a man has been quiet, and after two and a half quiet minutes he gets a forced idle line
+  (`sayForced`). A test checks every survivor of twenty hands has spoken.
+- A conversation has the floor: while a two-man exchange (or Bruce's pending interjection) is
+  running, `say()` returns nothing except the dealer's `termination`, so exchanges are never cut
+  and resumed. A big pot abandons the exchange instead of pausing it. Conversations start rarely
+  (2% per bot turn, 9% per hand end, 30 s after the last one) so reactions dominate.
+- The result card waits for the laser: when a hand busts somebody, `handEnd` in `table-scene.ts`
+  parks the card in `pendingResult`, the `bust` case vaporises him over a clear table, then shows it.
+- The pick screen is a horizontal carousel (`.pgrid`, scroll-snap, arrows, wheel); only men on
+  screen pitch, so it never scrolls by itself.
 - Lines never get cut off: `speak()` in `table-scene.ts` queues lines behind the one on screen until
   it has been up long enough to read (`readMs`); stale reaction lines that waited over 6 s are
   dropped, conversation lines keep their order.
@@ -180,9 +200,8 @@ about the real crew's running jokes fit there.
 
 ## Open items, in order
 
-1. Lines rewrite per persona: David Sr and Kevin still share the generic pool.
-2. Expression variants (`<id>_happy.png` etc.) and the texture swap in `figures.ts`.
-3. Tuning from real play: banter density, bot busts in the first few hands, the blind schedule.
-4. Later from the design: text-to-speech, cash games.
-5. The re-rpg and map3d workflows on their own branches force-publish the whole Pages site and would
+1. Expression variants (`<id>_happy.png` etc.) and the texture swap in `figures.ts`.
+2. Tuning from real play: banter density, bot busts in the first few hands, the blind schedule.
+3. Later from the design: text-to-speech, cash games.
+4. The re-rpg and map3d workflows on their own branches force-publish the whole Pages site and would
    wipe `gh-pages/poker/`; rerunning our workflow restores it. Fix those workflows if it bites.

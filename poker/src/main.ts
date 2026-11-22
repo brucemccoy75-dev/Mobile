@@ -108,6 +108,7 @@ function start(lineup: Character[]): void {
             const c = table.bots.get(seat)?.character;
             return { talk: c?.talk ?? 1, trash: c?.trash ?? 1 };
           },
+          iq: (seat: number) => table.bots.get(seat)?.stats.iq ?? 0,
         };
         const said = talk.onEvent(ev, who);
         if (said) {

@@ -1,6 +1,8 @@
 // Decides who says what, when. Lines are picked by trigger and mood from each character's set,
 // never repeated until the set runs dry, and rate-limited so the table stays readable.
 import { CONVERSATIONS, INTERJECTIONS, type Conversation, type Interjection, type Stance } from '../content/conversations';
+import { TEASES } from '../content/teases';
+import { thinkAloud } from './thinking';
 import { LINES } from '../content/lines';
 import { type Line, type Mood, type Trigger } from '../content/triggers';
 import { HandCategory, categoryOf, evaluate } from '../engine/evaluator';
@@ -42,13 +44,17 @@ export interface BanterTable {
   stance?: (seat: number) => Stance;
   /** How talkative and how needling each bot is; defaults to 1 and 1. */
   traits?: (seat: number) => { talk: number; trash: number };
+  /** IQ per bot seat; the sharp ones think out loud. */
+  iq?: (seat: number) => number;
 }
 
 const NEEDLES: Trigger[] = ['targetFoldsToMe', 'targetCallsMeDown', 'targetTank', 'targetInstant', 'targetChecks', 'winShowdown', 'stackedTarget', 'playerOut'];
 
 const COOLDOWN_MS = 9000;
 /** A man silent this long gets the next quiet moment to himself. */
-const QUIET_MS = 120000;
+const QUIET_MS = 150000;
+/** Needles that become a personal dig when they land on a man the table knows. */
+const TEASABLE: Trigger[] = ['targetFoldsToMe', 'targetCallsMeDown', 'targetChecks', 'winShowdown', 'stackedTarget', 'playerOut', 'badBeatGiven', 'targetTank', 'targetInstant'];
 const GLOBAL_GAP_MS = 1800;
 const URGENT: Trigger[] = ['badBeatTaken', 'stackedTarget', 'stackedByTarget', 'allIn', 'headsUp', 'termination'];
 
@@ -68,6 +74,8 @@ export class Banter {
   private gone = new Set<number>();
   private usedConvos = new Set<Conversation>();
   private usedJabs = new Set<Interjection>();
+  private usedTeases = new Map<string, Set<string>>();
+  private recentThoughts = new Map<string, string[]>();
   /** A bystander's dry line queued for after the current exchange. */
   private jab: { seat: number; target: number; text: string; at: number } | null = null;
   private lastConvoEnd = -1e9;
@@ -99,6 +107,8 @@ export class Banter {
           if (stack > total * 0.42 && this.chance(0.1)) return this.say(seat, 'chipLeader', table);
         }
         if (bots.length > 0 && this.chance(0.05)) return this.say(this.pickSpeaker(bots, table), 'dealtIn', table);
+        // Between hands somebody has a go at somebody.
+        if (bots.length > 1 && this.chance(0.08)) return this.say(this.pickSpeaker(bots, table, true), 'idle', table);
         if (this.chance(0.03)) return this.say(DEALER_SEAT, 'dealtIn', table);
         return null;
       }
@@ -125,9 +135,11 @@ export class Banter {
         if (this.hand && ev.legal.callAmount >= this.hand.player(ev.seat).stack * 0.6 && ev.legal.callAmount > 0 && this.chance(0.3)) {
           return this.say(ev.seat, 'facingAllIn', table, { target: this.aggressorName(table) });
         }
+        const thought = this.thinking(ev.seat, ev.legal.callAmount, table);
+        if (thought) return thought;
         // Table chatter from someone who has folded.
         const idle = this.botsInHand(table).filter((s) => s !== ev.seat && this.hand!.player(s).folded);
-        if (idle.length > 0 && this.chance(0.035)) return this.say(this.pickSpeaker(idle, table), 'idle', table);
+        if (idle.length > 0 && this.chance(0.025)) return this.say(this.pickSpeaker(idle, table), 'idle', table);
         if (this.chance(0.01)) return this.say(DEALER_SEAT, 'idle', table);
         return null;
       }
@@ -163,15 +175,20 @@ export class Banter {
       const c = this.convo;
       const [role] = c.conv.lines[c.next];
       const seat = role === 'A' ? c.a : c.b;
-      // Wait for a gap, and never talk over your own decision or a big pot.
-      if (now - c.lastAt < 5200 || seat === actor || bigPot) return null;
+      // A big pot ends the chat; otherwise wait for a gap, and never talk over your own decision.
+      if (bigPot) {
+        this.convo = null;
+        this.lastConvoEnd = now;
+        return null;
+      }
+      if (now - c.lastAt < 5200 || seat === actor) return null;
       if (!table.ids.has(c.a) || !table.ids.has(c.b) || this.gone.has(c.a) || this.gone.has(c.b)) {
         this.convo = null;
         return null;
       }
       return this.speakConvo(table);
     }
-    const quiet = now - this.lastAny > 3500 && now - this.lastConvoEnd > 9000;
+    const quiet = now - this.lastAny > 3500 && now - this.lastConvoEnd > 30000;
     const moment = ev.type === 'turn' || ev.type === 'handEnd' || ev.type === 'handStart';
     if (quiet && moment && !bigPot) {
       // Somebody who has not said a word in a couple of minutes gets the floor.
@@ -182,7 +199,7 @@ export class Banter {
         if (said) return said;
       }
     }
-    if (!quiet || !moment || bigPot || !this.chance(ev.type === 'turn' ? 0.06 : 0.22)) return null;
+    if (!quiet || !moment || bigPot || !this.chance(ev.type === 'turn' ? 0.02 : 0.09)) return null;
     return this.startConversation(table, actor);
   }
 
@@ -413,6 +430,8 @@ export class Banter {
     }
     const now = this.now();
     const urgent = URGENT.includes(trigger);
+    // A conversation in progress has the floor; only the dealer's laser interrupts it.
+    if ((this.convo || this.jab) && trigger !== 'termination') return null;
     if (!urgent && now - this.lastAny < GLOBAL_GAP_MS) return null;
     if (seat !== DEALER_SEAT && table.traits) {
       const t = table.traits(seat);
@@ -421,7 +440,15 @@ export class Banter {
     }
     if (now - (this.lastSpoke.get(id) ?? -1e9) < (urgent ? COOLDOWN_MS / 3 : COOLDOWN_MS)) return null;
     const mood: Mood = seat !== DEALER_SEAT && table.clarity(seat) >= 55 ? 'tilted' : 'calm';
-    const line = this.pickLine(id, trigger, mood);
+    // Idle chatter is sometimes a dig at whoever is handy.
+    if (trigger === 'idle' && seat !== DEALER_SEAT && vars.targetSeat === undefined && this.chance(0.6)) {
+      const marks = this.allBotSeats(table).filter((s) => s !== seat && TEASES[table.ids.get(s) ?? '']);
+      if (marks.length > 0) vars.targetSeat = this.pick(marks);
+    }
+    const tease = seat !== DEALER_SEAT && vars.targetSeat !== undefined && vars.targetSeat !== seat && (TEASABLE.includes(trigger) || trigger === 'idle')
+      ? this.pickTease(table.ids.get(vars.targetSeat) ?? '', trigger === 'idle' ? 1 : 0.75)
+      : null;
+    const line: Line | null = tease ? { t: 'tease', s: tease } : this.pickLine(id, trigger, mood);
     if (!line) return null;
     this.lastAny = now;
     this.lastSpoke.set(id, now);
@@ -429,7 +456,56 @@ export class Banter {
       .replace(/\{target\}/g, vars.target ?? 'friend')
       .replace(/\{hand\}/g, vars.hand ?? 'the hand')
       .replace(/\{amount\}/g, String(vars.amount ?? ''));
-    return { seat, speaker: id, text, trigger, targetSeat: vars.targetSeat };
+    return { seat, speaker: id, text, trigger: line.t === 'tease' ? 'tease' : trigger, targetSeat: vars.targetSeat };
+  }
+
+  /** A fresh dig at the man with that id, or null. Each dig is used once before any repeats. */
+  private pickTease(targetId: string, chance: number): string | null {
+    const pool = TEASES[targetId];
+    if (!pool || pool.length === 0 || !this.chance(chance)) return null;
+    let used = this.usedTeases.get(targetId);
+    if (!used) {
+      used = new Set();
+      this.usedTeases.set(targetId, used);
+    }
+    let fresh = pool.filter((t) => !used.has(t));
+    if (fresh.length === 0) {
+      used.clear();
+      fresh = pool;
+    }
+    const t = this.pick(fresh);
+    used.add(t);
+    return t;
+  }
+
+  /** A sharp player thinks out loud while deciding: a claim that is true about half the time. */
+  private thinking(seat: number, callAmount: number, table: BanterTable): Speech | null {
+    const hand = this.hand;
+    const id = table.ids.get(seat);
+    if (!hand || !id || !table.iq || table.iq(seat) < 72) return null;
+    const facing = callAmount > 0;
+    const pre = hand.board.length < 3;
+    if (!this.chance(pre ? (facing ? 0.05 : 0) : facing ? 0.3 : hand.board.length >= 4 ? 0.1 : 0.04)) return null;
+    if (this.convo || this.jab) return null;
+    const now = this.now();
+    if (now - this.lastAny < GLOBAL_GAP_MS || now - (this.lastSpoke.get(id) ?? -1e9) < COOLDOWN_MS) return null;
+    // The line is aimed at the bettor, or at you if you are still in.
+    let targetSeat: number | null = facing ? this.lastAggressor : null;
+    if (targetSeat === seat) targetSeat = null;
+    if (targetSeat === null && hand.players.some((p) => p.seat === HUMAN_SEAT && !p.folded)) targetSeat = HUMAN_SEAT;
+    const target = targetSeat !== null && hand.players.some((p) => p.seat === targetSeat)
+      ? { name: table.names.get(targetSeat) ?? 'friend', hole: hand.player(targetSeat).hole }
+      : undefined;
+    let text: string | null = null;
+    const recent = this.recentThoughts.get(id) ?? [];
+    for (let i = 0; i < 4 && (text === null || recent.includes(text)); i++) {
+      text = thinkAloud({ hand, seat, callAmount, accurate: this.rng() < 0.55, target, rng: this.rng });
+    }
+    if (!text || recent.includes(text)) return null;
+    this.recentThoughts.set(id, [...recent.slice(-5), text]);
+    this.lastAny = now;
+    this.lastSpoke.set(id, now);
+    return { seat, speaker: id, text, trigger: 'thinking', targetSeat: targetSeat ?? undefined };
   }
 
   /** A line with no gates but the cooldown: for men the table has been ignoring. */

@@ -26,6 +26,8 @@ export type Trigger =
   | 'playerOut'        // {target} just busted (speaker is a bystander)
   | 'headsUp'          // two left
   | 'termination'      // the dealer vaporises {target}, who just busted (dealer only)
+  | 'thinking'         // a sharp player thinks out loud while deciding (generated, see thinking.ts)
+  | 'tease'            // a personal dig at {target}, from the shared pool in teases.ts
   | 'idle';            // table chatter
 
 export type Mood = 'calm' | 'tilted' | 'any';

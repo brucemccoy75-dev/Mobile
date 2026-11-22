@@ -40,6 +40,7 @@ export class TableScene implements Presenter {
   private seatNames = new Map<number, string>();
   private levelChanged = false;
   private puffTexture: THREE.CanvasTexture | null = null;
+  private pendingResult: (() => Promise<void>) | null = null;
   private shownHands = new Map<number, { cards: Card[]; description: string }>();
   private payouts = new Map<number, number>();
   /** The picture-in-picture camera and what it is looking at. */
@@ -371,6 +372,11 @@ export class TableScene implements Presenter {
           this.overlay.setOut(s, ev.finishes[s]);
           this.overlay.setPosition(s, '');
           await this.vaporise(s);
+        }
+        if (this.pendingResult) {
+          const show = this.pendingResult;
+          this.pendingResult = null;
+          await show();
         }
         return;
       case 'level':
@@ -793,6 +799,17 @@ export class TableScene implements Presenter {
       else if (outcome.net > 0) f.setExpression('happy');
     }
     const showdown = ev.hand.events.some((e) => e.type === 'showdown');
+    // When somebody just lost his last chip the dealer deals with him first, over a clear table;
+    // the result card follows the laser.
+    const busting = ev.hand.players.some((p) => p.stack === 0 && !ev.winners.includes(p.seat));
+    if (busting) {
+      this.pendingResult = async () => {
+        this.showResult(ev.hand, ev.winners, showdown);
+        await this.tweens.delay(showdown ? 2400 : 1200);
+      };
+      await this.tweens.delay(500);
+      return;
+    }
     this.showResult(ev.hand, ev.winners, showdown);
     await this.tweens.delay(showdown ? 2400 : 1200);
   }
