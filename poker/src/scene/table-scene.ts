@@ -31,6 +31,7 @@ export class TableScene implements Presenter {
   private button: THREE.Mesh;
   private hand: Hand | null = null;
   private out = new Set<number>();
+  private finishes = new Map<number, number>();
   private moodBase = new Map<number, Expression>();
   private lastFrame = 0;
   private pointer: { x: number; y: number; moved: boolean; id: number } | null = null;
@@ -286,8 +287,10 @@ export class TableScene implements Presenter {
       case 'bust':
         for (const s of ev.seats) {
           this.out.add(s);
+          this.finishes.set(s, ev.finishes[s]);
           this.figures.get(s)?.setOut(true);
           this.overlay.setOut(s, ev.finishes[s]);
+          this.overlay.setPosition(s, '');
         }
         return;
       case 'level':
@@ -304,9 +307,59 @@ export class TableScene implements Presenter {
     for (const p of this.hand.players) this.overlay.setStack(p.seat, p.stack);
   }
 
+  /** BTN, SB, BB, UTG, HJ, CO for the seats in a hand, by seat order from the button. */
+  static positions(hand: Hand): Map<number, string> {
+    const seats = hand.players.map((p) => p.seat);
+    const n = seats.length;
+    const bi = seats.indexOf(hand.button);
+    const order = seats.map((_, k) => seats[(bi + k) % n]);
+    const labels = n === 2 ? ['BTN', 'BB'] : ['BTN', 'SB', 'BB', ...(n === 6 ? ['UTG', 'HJ', 'CO'] : n === 5 ? ['UTG', 'CO'] : n === 4 ? ['UTG'] : [])];
+    const out = new Map<number, string>();
+    order.forEach((s, i) => out.set(s, labels[i] ?? ''));
+    return out;
+  }
+
+  private humanToAct = false;
+
+  /** The camera goes to whoever is talking, then to whoever they are talking about. */
+  async social(speakerSeat: number, targetSeat: number | undefined, trigger: string): Promise<void> {
+    const fast = this.tweens.speed() > 1.5;
+    if (fast || this.humanToAct || speakerSeat < 0) return;
+    const speaker = this.figures.get(speakerSeat);
+    const target = targetSeat !== undefined ? this.figures.get(targetSeat) : undefined;
+    const needle = ['targetFoldsToMe', 'targetCallsMeDown', 'targetTank', 'targetInstant', 'winShowdown', 'stackedTarget', 'badBeatGiven', 'playerOut'].includes(trigger);
+    const sore = ['badBeatTaken', 'loseShowdown', 'stackedByTarget', 'bluffCaught'].includes(trigger);
+    if (speaker && !this.out.has(speakerSeat)) speaker.setExpression(sore ? 'annoyed' : needle ? 'happy' : speaker.expression);
+    if (this.director.cursor !== 0) return;
+    await this.director.cutTo(speakerSeat, 420);
+    await this.tweens.delay(1100);
+    if (target && targetSeat !== undefined && targetSeat !== 0 && targetSeat !== speakerSeat && this.director.cursor === speakerSeat) {
+      if (needle && !this.out.has(targetSeat)) target.setExpression('annoyed');
+      await this.director.cutTo(targetSeat, 380);
+      await this.tweens.delay(850);
+    }
+    if (this.director.cursor !== 0) await this.director.cutTo(0, 480);
+    if (speaker && !this.out.has(speakerSeat)) speaker.setExpression(this.moodBase.get(speakerSeat) ?? 'neutral');
+    if (target && targetSeat !== undefined && !this.out.has(targetSeat)) target.setExpression(this.moodBase.get(targetSeat) ?? 'neutral');
+  }
+
   private async handStart(hand: Hand, level: { sb: number; bb: number; ante: number }): Promise<void> {
     this.hand = hand;
     this.tweens.clear();
+    this.humanToAct = false;
+    // Standings between hands: who is where, and what seat they are in for this one.
+    const positions = TableScene.positions(hand);
+    const rows = [...this.figures.keys()].map((seat) => {
+      const p = hand.players.find((q) => q.seat === seat);
+      return { seat, name: this.seatNames.get(seat) ?? '', stack: p ? p.stack + p.committed : 0, position: positions.get(seat) ?? '', finish: this.finishes.get(seat) };
+    });
+    const fast = this.tweens.speed() > 1.5;
+    this.overlay.showStandings(rows, `Hand ${hand.handNumber} · Blinds ${money(level.sb)} / ${money(level.bb)}`, fast ? 700 : 2600);
+    for (const [seat, label] of positions) this.overlay.setPosition(seat, label);
+    for (const seat of this.figures.keys()) {
+      if (!positions.has(seat)) this.overlay.setPosition(seat, '');
+      this.figures.get(seat)?.setFolded(!hand.players.some((p) => p.seat === seat) && !this.out.has(seat));
+    }
     for (const cards of this.hole.values()) for (const c of cards) this.removeCard(c);
     this.hole.clear();
     for (const c of this.board) this.removeCard(c);
@@ -406,6 +459,7 @@ export class TableScene implements Presenter {
 
   private async turn(seat: number): Promise<void> {
     this.overlay.setActive(seat);
+    this.humanToAct = seat === HUMAN_SEAT;
     if (seat === HUMAN_SEAT) {
       this.audio.play('tick', 0.6);
       if (this.director.cursor !== 0) void this.director.cutTo(0, 450);
@@ -415,6 +469,7 @@ export class TableScene implements Presenter {
 
   private async action(seat: number, type: string, amount: number, allIn: boolean): Promise<void> {
     this.overlay.setActive(null);
+    if (seat === HUMAN_SEAT) this.humanToAct = false;
     const f = this.figures.get(seat);
     if (f && !this.out.has(seat)) f.setExpression(this.moodBase.get(seat) ?? 'neutral');
     const hand = this.hand!;
@@ -425,6 +480,7 @@ export class TableScene implements Presenter {
     if (type === 'fold') {
       this.audio.play('fold');
       this.overlay.setFolded(seat, true);
+      if (seat !== HUMAN_SEAT) f?.setFolded(true);
       if (seat === HUMAN_SEAT) this.overlay.setHole(null);
       const cards = this.hole.get(seat) ?? [];
       this.hole.delete(seat);

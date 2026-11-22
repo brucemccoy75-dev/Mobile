@@ -79,6 +79,8 @@ export class Director {
   cutTo(cursor: number, ms = 650): Promise<void> {
     const n = this.poses.length;
     this.cursor = ((cursor % n) + n) % n;
+    // A cut counts as activity, so the idle return does not undo it on the next frame.
+    this.lastInteraction = performance.now();
     const from = { pos: this.current.pos.clone(), look: this.current.look.clone() };
     const to = this.poseAt(this.cursor);
     const token = ++this.cutToken;

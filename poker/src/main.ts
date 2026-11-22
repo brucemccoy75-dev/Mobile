@@ -19,7 +19,7 @@ const $ = <T extends HTMLElement>(sel: string): T => {
   return el;
 };
 
-const overlay = new Overlay($('#overlay'), $('#hole'), $('#info'), $('#toast'), $('#board'), $('#me'));
+const overlay = new Overlay($('#overlay'), $('#hole'), $('#info'), $('#toast'), $('#board'), $('#me'), $('#standings'));
 const scene = new TableScene($('#game'), overlay);
 const actions = new ActionBar($('#actions'));
 const screens = new Screens($('#screens'));
@@ -108,11 +108,17 @@ function start(key: TournamentKey): void {
           clarity: (seat: number) => table.bots.get(seat)?.stats.clarity ?? 0,
         };
         const said = talk.onEvent(ev, who);
-        if (said) overlay.say(said.speaker, bubblePos(said.seat), said.text, Math.min(6000, 2200 + said.text.length * 45));
+        if (said) {
+          overlay.say(said.speaker, bubblePos(said.seat), said.text, Math.min(6000, 2200 + said.text.length * 45));
+          void scene.social(said.seat, said.targetSeat, said.trigger);
+        }
         await scene.present(ev);
         if (ev.type === 'bust' && table.tournament.active().length === 2) {
           const hu = talk.headsUp(who);
-          if (hu) overlay.say(hu.speaker, bubblePos(hu.seat), hu.text, 4500);
+          if (hu) {
+            overlay.say(hu.speaker, bubblePos(hu.seat), hu.text, 4500);
+            void scene.social(hu.seat, hu.targetSeat, hu.trigger);
+          }
         }
         if (ev.type === 'turn' && ev.seat === HUMAN_SEAT && table.hand) showActions(table, ev.legal, ev.deadline);
       },
@@ -175,4 +181,5 @@ menuButton.addEventListener('click', () => {
   openPause();
 });
 
+(window as unknown as { __scene: unknown }).__scene = scene;
 showMenu();

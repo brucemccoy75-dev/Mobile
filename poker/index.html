@@ -32,7 +32,11 @@
     .plate .name { font-weight: 600; font-size: 13px; letter-spacing: .01em; white-space: nowrap; }
     .plate .stack { font-size: 12px; color: var(--gold); font-variant-numeric: tabular-nums; }
     .plate.active { box-shadow: 0 0 0 2px var(--gold), 0 0 18px rgba(227,192,106,.45); }
-    .plate.folded { opacity: .45; }
+    .plate.folded { opacity: .28; filter: grayscale(1); }
+    .plate .pos { position: absolute; left: -6px; top: -8px; background: #2d3a33; color: #cfe3d8; font-size: 9px; font-weight: 800; letter-spacing: .08em;
+      padding: 2px 5px; border-radius: 5px; border: 1px solid rgba(255,255,255,.14); display: none; }
+    .plate .pos.show { display: block; }
+    .plate .pos.btn { background: var(--gold); color: #141614; border-color: var(--gold); }
     .plate.out { opacity: .35; }
     .plate .tag { position: absolute; left: 50%; top: -14px; transform: translate(-50%, -100%) scale(.8); opacity: 0;
       background: #f2efe6; color: #141614; font-size: 11px; font-weight: 700; letter-spacing: .06em; padding: 3px 8px; border-radius: 6px;
@@ -127,6 +131,25 @@
     .results li.you { color: var(--gold); font-weight: 700; }
     .results .row { display: flex; justify-content: center; gap: 12px; align-items: center; }
 
+    /* Standings between hands */
+    #standings { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -46%); width: min(400px, calc(100vw - 32px));
+      background: rgba(10,15,12,.9); border: 1px solid rgba(227,192,106,.45); border-radius: 14px; padding: 10px 12px 8px; z-index: 12;
+      opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; box-shadow: 0 16px 40px rgba(0,0,0,.6); backdrop-filter: blur(6px); }
+    #standings.show { opacity: 1; transform: translate(-50%, -50%); pointer-events: auto; }
+    #standings .shead { text-align: center; color: var(--gold); font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 6px; }
+    #standings ol { list-style: none; }
+    #standings li { display: grid; grid-template-columns: 34px 1fr 44px 76px; align-items: center; gap: 8px; padding: 4px 4px; border-top: 1px solid rgba(255,255,255,.07); font-size: 13px; font-variant-numeric: tabular-nums; }
+    #standings li .rank { color: var(--muted); font-weight: 700; }
+    #standings li .nm { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #standings li .st { text-align: right; color: var(--gold); font-weight: 700; }
+    #standings li .pos { font-size: 10px; font-weight: 800; letter-spacing: .08em; color: #cfe3d8; background: #2d3a33; border-radius: 5px; padding: 2px 0; text-align: center; }
+    #standings li .pos.btn { background: var(--gold); color: #141614; }
+    #standings li .pos:empty { background: none; }
+    #standings li.you { background: rgba(227,192,106,.12); border-radius: 8px; }
+    #standings li.you .nm { color: var(--gold); }
+    #standings li.out { opacity: .4; }
+    @media (max-height: 420px) { #standings li { padding: 2px 4px; font-size: 12px; } }
+
     /* Panels */
     #panels { position: fixed; inset: 0; display: none; place-items: center; background: rgba(4,8,6,.72); backdrop-filter: blur(4px); z-index: 30; padding: max(10px, var(--sat)) max(10px, var(--sar)) max(10px, var(--sab)) max(10px, var(--sal)); }
     #panels.show { display: grid; }
@@ -190,6 +213,7 @@
   </div>
   <div id="toast"></div>
   <div id="board"><div class="potline"></div><div class="cards"></div></div>
+  <div id="standings"></div>
   <div id="me" class="plate me"></div>
   <div id="hole"></div>
   <div id="actions">

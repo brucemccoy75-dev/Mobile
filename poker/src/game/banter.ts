@@ -14,12 +14,15 @@ export interface Speech {
   speaker: string;
   text: string;
   trigger: Trigger;
+  /** The seat the line is about, when it is about someone. */
+  targetSeat?: number;
 }
 
 export const DEALER_SEAT = -1;
 
 interface Vars {
   target?: string;
+  targetSeat?: number;
   hand?: string;
   amount?: number;
 }
@@ -208,6 +211,10 @@ export class Banter {
   private say(seat: number, trigger: Trigger, table: BanterTable, vars: Vars = {}): Speech | null {
     const id = seat === DEALER_SEAT ? 'dealer' : table.ids.get(seat);
     if (!id || id === 'human') return null;
+    if (vars.targetSeat !== undefined && vars.target === undefined) vars.target = table.names.get(vars.targetSeat);
+    if (vars.targetSeat === undefined && vars.target !== undefined) {
+      for (const [s, n] of table.names) if (n === vars.target) vars.targetSeat = s;
+    }
     const now = this.now();
     const urgent = URGENT.includes(trigger);
     if (!urgent && now - this.lastAny < GLOBAL_GAP_MS) return null;
@@ -221,7 +228,7 @@ export class Banter {
       .replace(/\{target\}/g, vars.target ?? 'friend')
       .replace(/\{hand\}/g, vars.hand ?? 'the hand')
       .replace(/\{amount\}/g, String(vars.amount ?? ''));
-    return { seat, speaker: id, text, trigger };
+    return { seat, speaker: id, text, trigger, targetSeat: vars.targetSeat };
   }
 
   private pickLine(id: string, trigger: Trigger, mood: Mood): Line | null {

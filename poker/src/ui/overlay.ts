@@ -38,10 +38,13 @@ export class Overlay {
   private potAmount = 0;
 
   private readonly meEl: HTMLElement;
+  private readonly standingsEl: HTMLElement;
 
-  constructor(root: HTMLElement, holeEl: HTMLElement, infoEl: HTMLElement, toastEl: HTMLElement, boardEl: HTMLElement, meEl: HTMLElement) {
+  constructor(root: HTMLElement, holeEl: HTMLElement, infoEl: HTMLElement, toastEl: HTMLElement, boardEl: HTMLElement, meEl: HTMLElement, standingsEl: HTMLElement) {
     this.root = root;
     this.meEl = meEl;
+    this.standingsEl = standingsEl;
+    standingsEl.addEventListener('click', () => this.hideStandings());
     this.holeEl = holeEl;
     this.infoEl = infoEl;
     this.toastEl = toastEl;
@@ -83,7 +86,7 @@ export class Overlay {
   plate(seat: number, pos: THREE.Vector3, name: string, stack: number): void {
     const el = seat === 0 ? this.meEl : this.anchor(`plate${seat}`, pos, 'plate', 0);
     if (seat === 0) el.className = 'plate me';
-    el.innerHTML = `<div class="tag"></div><div class="name"></div><div class="stack"></div>`;
+    el.innerHTML = `<div class="tag"></div><div class="pos"></div><div class="name"></div><div class="stack"></div>`;
     el.querySelector('.name')!.textContent = name;
     el.querySelector('.stack')!.textContent = money(stack);
     el.dataset.seat = String(seat);
@@ -102,6 +105,39 @@ export class Overlay {
     tag.textContent = text;
     tag.className = `tag ${kind}`;
     tag.classList.toggle('show', text.length > 0);
+  }
+
+  /** Table position badge: BTN, SB, BB, UTG, HJ, CO. Empty hides it. */
+  setPosition(seat: number, label: string): void {
+    const el = this.plates.get(seat)?.querySelector('.pos') as HTMLElement | undefined;
+    if (!el) return;
+    el.textContent = label;
+    el.classList.toggle('show', label.length > 0);
+    el.classList.toggle('btn', label === 'BTN');
+  }
+
+  /** Between hands: everyone ranked by stack, with their position for the coming hand. */
+  showStandings(rows: { seat: number; name: string; stack: number; position: string; finish?: number }[], header: string, ms: number): void {
+    const el = this.standingsEl;
+    const sorted = [...rows].sort((a, b) => {
+      if (a.finish && b.finish) return a.finish - b.finish;
+      if (a.finish) return 1;
+      if (b.finish) return -1;
+      return b.stack - a.stack;
+    });
+    el.innerHTML = `<div class="shead">${header}</div><ol>${sorted
+      .map((r, i) => `<li class="${r.seat === 0 ? 'you' : ''} ${r.finish ? 'out' : ''}"><span class="rank">${r.finish ? ordinal(r.finish) : i + 1}</span><span class="nm">${r.name}</span><span class="pos ${r.position === 'BTN' ? 'btn' : ''}">${r.position}</span><span class="st">${r.finish ? 'OUT' : money(r.stack)}</span></li>`)
+      .join('')}</ol>`;
+    el.classList.add('show');
+    const token = String(Date.now());
+    el.dataset.token = token;
+    window.setTimeout(() => {
+      if (el.dataset.token === token) el.classList.remove('show');
+    }, ms);
+  }
+
+  hideStandings(): void {
+    this.standingsEl.classList.remove('show');
   }
 
   setActive(seat: number | null): void {

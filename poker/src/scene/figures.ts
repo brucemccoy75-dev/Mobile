@@ -154,12 +154,27 @@ export class Figure {
     return t;
   }
 
+  folded = false;
+
+  /** Out of the hand: sit back and fade. */
+  setFolded(folded: boolean): void {
+    if (this.folded === folded) return;
+    this.folded = folded;
+    this.group.traverse((o) => {
+      const m = (o as THREE.Mesh).material as THREE.Material | undefined;
+      if (m && 'opacity' in m) {
+        m.transparent = folded;
+        m.opacity = folded ? 0.38 : 1;
+      }
+    });
+  }
+
   /** A little life: breathing, and a lean-in while thinking. */
   tick(timeMs: number): void {
     const phase = timeMs / 1000 + this.hash % 7;
     const breathe = Math.sin(phase * 1.6) * 0.012;
     this.group.scale.y = 1 + breathe;
-    const lean = this.expression === 'thinking' ? 0.12 : this.expression === 'tilted' ? 0.06 : 0;
+    const lean = this.folded ? -0.14 : this.expression === 'thinking' ? 0.12 : this.expression === 'tilted' ? 0.06 : 0;
     this.group.rotation.x += (lean - this.group.rotation.x) * 0.08;
     this.head.rotation.y = Math.sin(phase * 0.7) * 0.08 + (this.expression === 'thinking' ? Math.sin(phase * 2.3) * 0.05 : 0);
   }
