@@ -104,7 +104,7 @@ level, eyes calm, mouth closed and straight); the expression variants come later
 > embroidered capital letter B on the front, and a blue and yellow baseball jersey with blue sleeves
 > and yellow trim, no team name or numbers. Neutral expression.
 
-**Will** (`priya.png`) — calculator, chess coach, patient condescension. Luca's twin in a turtleneck.
+**Will** (`priya.png`) — calculator, chess coach, patient condescension. Luca's twin in a turtleneck. Done.
 > An ordinary white man clearly in his mid twenties, an adult, average build, with an unremarkable
 > everyday face, short neat dark hair, clean-shaven with just a hint of stubble, wearing a plain black
 > turtleneck sweater with the collar folded up snug under his chin. Nothing distinctive about him at

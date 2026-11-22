@@ -51,7 +51,7 @@ The ids never change (saves, memories and file names depend on them). Only names
 | trish | Tim (late 30s, stocky, stubble, wild hair under a red backwards cap, video-game tee) | tourist | meh | **done** |
 | benny | Luca (mid 20s, average, dark hair, black tee, nondescript) | tourist | pro | **done** |
 | wen | Jonathan (big, bald, arcade-boxer look, blue B cap, blue and yellow jersey) | calculator | pro | **done** |
-| priya | Will (mid 20s, like Luca, black turtleneck) | calculator | meh | prompt ready |
+| priya | Will (mid 20s, like Luca, black turtleneck) | calculator | meh | **done** |
 | ulrich | Menafee | calculator | anti | needed |
 | sal | Jack (16, big, blond, backwards cap, glasses) | pro | anti | **done** |
 | nadia | David (early 50s, thin, thinning hair, light blue button-up) | pro | pro | **done** |
@@ -99,7 +99,7 @@ about the real crew's running jokes fit there.
 
 ## Open items, in order
 
-1. Portraits for the two remaining characters, Will and Menafee (above).
+1. Portrait for the one remaining character, Menafee (above).
 2. Lines rewrite per persona, Jack first.
 3. Expression variants and the texture swap in `figures.ts`.
 4. Tuning from real play: nits may feel too passive; tourists' aggression; banter density.
