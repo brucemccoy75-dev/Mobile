@@ -52,7 +52,7 @@ The ids never change (saves, memories and file names depend on them). Only names
 | benny | Luca (mid 20s, average, dark hair, black tee, nondescript) | tourist | pro | **done** |
 | wen | Jonathan (big, bald, arcade-boxer look, blue B cap, blue and yellow jersey) | calculator | pro | **done** |
 | priya | Will (mid 20s, like Luca, black turtleneck) | calculator | meh | **done** |
-| ulrich | Menafee (never shows up: an empty black poker chair with armrests and casters) | calculator | anti | prompt ready |
+| ulrich | Menafee (never shows up: an empty black poker chair) | calculator | anti | **done** |
 | sal | Jack (16, big, blond, backwards cap, glasses) | pro | anti | **done** |
 | nadia | David (early 50s, thin, thinning hair, light blue button-up) | pro | pro | **done** |
 | jimmy | Bruce (late 40s, thin, grey beard, black tee, sly) | pro | meh | **done** |
@@ -100,7 +100,7 @@ about the real crew's running jokes fit there.
 
 ## Open items, in order
 
-1. Portrait for the one remaining character, Menafee (above).
+1. Portraits: all thirteen done. Expression variants are the next art step (see 3).
 2. Lines rewrite per persona, Jack first.
 3. Expression variants and the texture swap in `figures.ts`.
 4. Tuning from real play: nits may feel too passive; tourists' aggression; banter density.

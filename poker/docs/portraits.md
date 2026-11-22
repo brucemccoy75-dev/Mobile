@@ -110,7 +110,7 @@ level, eyes calm, mouth closed and straight); the expression variants come later
 > turtleneck sweater with the collar folded up snug under his chin. Nothing distinctive about him at
 > all. Neutral expression.
 
-**Menafee** (`ulrich.png`) — calculator, structural engineer, blunt. He never shows up: an empty chair.
+**Menafee** (`ulrich.png`) — calculator, structural engineer, blunt. He never shows up: an empty chair. Done.
 > (Replace "character portrait, head and shoulders" and the skin line in the style block with the
 > surfaces wording below.) Stylised 3D-rendered portrait in the same style as the set, centred,
 > square, eye level, matte clay-like surfaces. An empty black padded poker chair, the kind with a tall
