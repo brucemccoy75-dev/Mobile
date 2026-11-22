@@ -56,7 +56,7 @@ The ids never change (saves, memories and file names depend on them). Only names
 | sal | Jack (16, big, blond, backwards cap, glasses) | pro | anti | **done** |
 | nadia | David | pro | pro | needed |
 | jimmy | Bruce (late 40s, thin, grey beard, black tee, sly) | pro | meh | **done** |
-| dealer | Dave (host, deals; a white-panelled android with a black visor and a bow tie) | — | — | needed |
+| dealer | Skynet (Dave's android dealer, white panels, black visor, bow tie) | — | — | **done** |
 
 Tables: Kids Table = nits + tourists; Adult Table = all; Real Poker = calculators + pros.
 
@@ -85,6 +85,8 @@ covered for every character and at least 100 lines per type. To rewrite a person
 3. Update the bio in `characters.ts`. Run `npm test`. Push.
 4. Jack is first: he is sixteen now and the lines still sound like a sixty-year-old grinder.
 
+The dealer is a robot named Skynet; its lines in `lines.ts` under `dealer` still read as a human dealer and want a robot voice.
+
 Conversations in `conversations.ts` are character-neutral and need no rewrite, but new exchanges
 about the real crew's running jokes fit there.
 
@@ -97,7 +99,7 @@ about the real crew's running jokes fit there.
 
 ## Open items, in order
 
-1. Portraits for the eleven remaining characters and Dave (above).
+1. Portraits for the eleven remaining characters (above).
 2. Lines rewrite per persona, Jack first.
 3. Expression variants and the texture swap in `figures.ts`.
 4. Tuning from real play: nits may feel too passive; tourists' aggression; banter density.

@@ -106,7 +106,7 @@ New Hampshire, Dave's-basement feel.
 > short dark hair going grey at the sides, a fairly large nose, plain black t-shirt, a sly knowing look
 > with a slight squint and a one-sided smirk, like he's counting how long you took to decide.
 
-**Dave** (`dealer.png`) — the host, deals every hand, long-suffering. He is a robot.
+**Skynet** (`dealer.png`) — Dave's robot, deals every hand, long-suffering. Done.
 > A sleek humanoid robot in the style of a modern general-purpose android: smooth white and silver
 > body panels with slim dark joints, a narrow black glossy visor for a face with no eyes or mouth, a
 > small elegant head, and a dealer's touch: a tiny black bow tie fixed to the chest plate and a black

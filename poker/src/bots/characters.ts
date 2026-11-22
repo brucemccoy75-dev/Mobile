@@ -36,8 +36,8 @@ export const TOURNAMENTS = {
   championship: { name: 'Real Poker', types: ['calculator', 'pro'] as BotType[] },
 };
 
-/** The host. He deals. */
-export const DEALER_NAME = 'Dave';
+/** Dave's robot. It deals. */
+export const DEALER_NAME = 'Skynet';
 
 export type TournamentKey = keyof typeof TOURNAMENTS;
 
