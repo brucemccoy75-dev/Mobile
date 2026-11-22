@@ -97,7 +97,7 @@ level, eyes calm, mouth closed and straight); the expression variants come later
 > a plain black crew-neck t-shirt with nothing on it. Nothing distinctive about him at all. Neutral
 > expression.
 
-**Jonathan** (`wen.png`) — calculator, statistician, literal; built like an arcade boxer.
+**Jonathan** (`wen.png`) — calculator, statistician, literal; built like an arcade boxer. Done.
 > A big white man in his forties with the look of a heavyweight boxer from an old arcade game: a large
 > bald head with no hair showing at the sides under his cap, a heavy brow, a wide strong jaw, a thick
 > neck and broad shoulders, small intense eyes. He wears a plain blue baseball cap with a single
