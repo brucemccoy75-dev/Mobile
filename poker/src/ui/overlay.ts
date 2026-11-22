@@ -39,16 +39,31 @@ export class Overlay {
 
   private readonly meEl: HTMLElement;
   private readonly standingsEl: HTMLElement;
+  private readonly resultEl: HTMLElement;
 
-  constructor(root: HTMLElement, holeEl: HTMLElement, infoEl: HTMLElement, toastEl: HTMLElement, boardEl: HTMLElement, meEl: HTMLElement, standingsEl: HTMLElement) {
+  constructor(root: HTMLElement, holeEl: HTMLElement, infoEl: HTMLElement, toastEl: HTMLElement, boardEl: HTMLElement, meEl: HTMLElement, standingsEl: HTMLElement, resultEl: HTMLElement) {
     this.root = root;
     this.meEl = meEl;
     this.standingsEl = standingsEl;
+    this.resultEl = resultEl;
     standingsEl.addEventListener('click', () => this.hideStandings());
     this.holeEl = holeEl;
     this.infoEl = infoEl;
     this.toastEl = toastEl;
     this.boardEl = boardEl;
+  }
+
+  /** What happened at the end of a hand: who showed what, who won, with what. */
+  showResult(headline: string, rows: { name: string; cards: Card[]; description: string; winner: boolean; amount: number; you: boolean }[]): void {
+    const el = this.resultEl;
+    el.innerHTML = `<div class="rhead">${headline}</div>` + rows.map((r) =>
+      `<div class="rrow ${r.winner ? 'win' : ''} ${r.you ? 'you' : ''}"><span class="cards">${r.cards.map(cardHtml).join('')}</span><span class="rname">${r.name}</span><span class="rdesc">${r.winner && r.amount ? `${r.description} · ${money(r.amount)}` : r.description}</span></div>`,
+    ).join('');
+    el.classList.add('show');
+  }
+
+  hideResult(): void {
+    this.resultEl.classList.remove('show');
   }
 
   /** The community cards, big and readable, at the top of the screen. */
@@ -226,6 +241,7 @@ export class Overlay {
     this.plates.clear();
     this.meEl.className = 'plate me';
     this.meEl.innerHTML = '';
+    this.hideResult();
     this.setHole(null);
     this.potAmount = 0;
     this.boardCards = [];

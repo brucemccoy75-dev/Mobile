@@ -92,6 +92,22 @@
     .pcard .rank { font-size: 28px; line-height: 1; }
     .pcard .suit { font-size: 22px; line-height: 1; margin-top: 2px; }
 
+    /* End of hand: who showed what and who won */
+    #result { position: fixed; right: max(14px, var(--sar)); bottom: calc(max(12px, var(--sab)) + 94px); width: min(300px, 36vw);
+      background: rgba(8,12,10,.92); border: 1px solid rgba(227,192,106,.5); border-radius: 12px; padding: 8px 10px; z-index: 12;
+      opacity: 0; transform: translateY(8px); transition: opacity .25s, transform .25s; pointer-events: none; }
+    #result.show { opacity: 1; transform: none; }
+    #result .rhead { color: var(--gold); font-weight: 800; font-size: 13px; line-height: 1.3; margin-bottom: 6px; }
+    #result .rrow { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 8px; align-items: center; padding: 4px 0; border-top: 1px solid rgba(255,255,255,.08); opacity: .75; }
+    #result .rrow .cards { grid-row: 1 / span 2; }
+    #result .rrow .rname { font-weight: 700; font-size: 13px; }
+    #result .rrow .rdesc { font-size: 11.5px; color: var(--muted); }
+    #result .rrow.win { opacity: 1; }
+    #result .rrow.win .rname { color: var(--gold); }
+    #result .rrow.win .rdesc { color: #f2f0e8; }
+    #result .rrow.you .rname::after { content: ' (you)'; font-weight: 400; color: var(--muted); }
+    @media (max-height: 420px) { #result { width: min(280px, 34vw); padding: 6px 8px; } #result .rrow { padding: 3px 0; } #result .rhead { font-size: 12px; } }
+
     /* Action bar */
     #actions { position: fixed; left: max(12px, var(--sal)); bottom: max(12px, var(--sab)); display: flex; flex-direction: column; align-items: flex-start; gap: 8px; z-index: 10;
       opacity: 0; pointer-events: none; transform: translateY(10px); transition: .2s; }
@@ -236,6 +252,7 @@
   <div id="board"><div class="potline"></div><div class="cards"></div></div>
   <div id="pip"><div class="backing top"></div><div class="backing bottom"></div><div class="backing left"></div><div class="backing right"></div><div class="frame"><div class="who"></div></div><div class="caption"></div></div>
   <div id="standings"></div>
+  <div id="result"></div>
   <div id="me" class="plate me"></div>
   <div id="hole"></div>
   <div id="actions">

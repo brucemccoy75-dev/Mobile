@@ -18,7 +18,7 @@ const $ = <T extends HTMLElement>(sel: string): T => {
   return el;
 };
 
-const overlay = new Overlay($('#overlay'), $('#hole'), $('#info'), $('#toast'), $('#board'), $('#me'), $('#standings'));
+const overlay = new Overlay($('#overlay'), $('#hole'), $('#info'), $('#toast'), $('#board'), $('#me'), $('#standings'), $('#result'));
 const scene = new TableScene($('#game'), overlay);
 scene.attachInset($('#pip'));
 const actions = new ActionBar($('#actions'));

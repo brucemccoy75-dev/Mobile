@@ -38,6 +38,8 @@ export class TableScene implements Presenter {
   private pointer: { x: number; y: number; moved: boolean; id: number } | null = null;
   private raycaster = new THREE.Raycaster();
   private seatNames = new Map<number, string>();
+  private shownHands = new Map<number, { cards: Card[]; description: string }>();
+  private payouts = new Map<number, number>();
   /** The picture-in-picture camera and what it is looking at. */
   private readonly pipCamera = new THREE.PerspectiveCamera(34, 1.5, 0.1, 60);
   private pip: { seat: number; token: number } | null = null;
@@ -498,6 +500,9 @@ export class TableScene implements Presenter {
     this.overlay.setPot(0);
     this.overlay.setHole(null);
     this.overlay.setBoard([]);
+    this.overlay.hideResult();
+    this.shownHands.clear();
+    this.payouts.clear();
     this.overlay.setInfo({ level, handNumber: hand.handNumber });
     for (const [seat, f] of this.figures) {
       if (!this.out.has(seat)) f.setExpression(this.moodBase.get(seat) ?? 'neutral');
@@ -669,6 +674,7 @@ export class TableScene implements Presenter {
   }
 
   private async showdown(seat: number, cards: Card[], description: string): Promise<void> {
+    this.shownHands.set(seat, { cards, description });
     const meshes = this.hole.get(seat) ?? [];
     this.overlay.setTag(seat, description.toUpperCase(), 'strong');
     if (seat !== HUMAN_SEAT) {
@@ -684,6 +690,7 @@ export class TableScene implements Presenter {
       this.refreshStacks();
       return;
     }
+    this.payouts.set(seat, (this.payouts.get(seat) ?? 0) + amount);
     const from = this.pot.group.position.clone();
     const to = L.betPos(seat);
     this.overlay.setTag(seat, `WINS ${money(amount)}`, 'hot');
@@ -713,7 +720,38 @@ export class TableScene implements Presenter {
       else if (outcome.net > 0) f.setExpression('happy');
     }
     const showdown = ev.hand.events.some((e) => e.type === 'showdown');
-    await this.tweens.delay(showdown ? 1400 : 700);
+    this.showResult(ev.hand, ev.winners, showdown);
+    await this.tweens.delay(showdown ? 2400 : 1200);
+  }
+
+  /** The result card: winners first, then everyone else who showed. */
+  private showResult(hand: Hand, winners: number[], showdown: boolean): void {
+    const name = (seat: number) => (seat === HUMAN_SEAT ? 'You' : this.seatNames.get(seat) ?? '');
+    const amountOf = (seat: number) => this.payouts.get(seat) ?? 0;
+    if (!showdown) {
+      const w = winners[0];
+      if (w === undefined) return;
+      this.overlay.showResult(`${name(w)} ${w === HUMAN_SEAT ? 'take' : 'takes'} ${money(amountOf(w))}. Everyone else folded.`, []);
+      return;
+    }
+    const live = hand.players.filter((p) => !p.folded);
+    const ordered = [...live].sort((a, b) => Number(winners.includes(b.seat)) - Number(winners.includes(a.seat)));
+    const rows = ordered.map((p) => {
+      const shown = this.shownHands.get(p.seat);
+      return {
+        name: name(p.seat),
+        cards: shown?.cards ?? p.hole,
+        description: shown?.description ?? '',
+        winner: winners.includes(p.seat),
+        amount: amountOf(p.seat),
+        you: p.seat === HUMAN_SEAT,
+      };
+    });
+    const top = rows[0];
+    const headline = winners.length > 1
+      ? `Split pot: ${winners.map(name).join(' and ')} with ${top.description}`
+      : `${top.name} ${top.you ? 'win' : 'wins'} ${money(top.amount)} with ${top.description}`;
+    this.overlay.showResult(headline, rows);
   }
 }
 void easeOutCubic;
