@@ -2,6 +2,7 @@
 // never repeated until the set runs dry, and rate-limited so the table stays readable.
 import { CONVERSATIONS, INTERJECTIONS, type Conversation, type Interjection, type Stance } from '../content/conversations';
 import { TEASES } from '../content/teases';
+import { CHARACTERS } from '../bots/characters';
 import { thinkAloud } from './thinking';
 import { LINES } from '../content/lines';
 import { type Line, type Mood, type Trigger } from '../content/triggers';
@@ -58,6 +59,10 @@ const TEASABLE: Trigger[] = ['targetFoldsToMe', 'targetCallsMeDown', 'targetChec
 const GLOBAL_GAP_MS = 1800;
 const URGENT: Trigger[] = ['badBeatTaken', 'stackedTarget', 'stackedByTarget', 'allIn', 'headsUp', 'termination'];
 
+function escape(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 export class Banter {
   private used = new Map<string, Set<Line>>();
   private lastSpoke = new Map<string, number>();
@@ -76,6 +81,24 @@ export class Banter {
   private usedJabs = new Set<Interjection>();
   private usedTeases = new Map<string, Set<string>>();
   private recentThoughts = new Map<string, string[]>();
+  /** Names of men not at this table; a line that mentions one is never said. */
+  private absent: { key: string; re: RegExp | null; present: Set<string> } | null = null;
+
+  private mentionsAbsent(text: string, table: BanterTable): boolean {
+    const key = [...table.ids.values()].sort().join(',');
+    if (!this.absent || this.absent.key !== key) {
+      const here = new Set(table.ids.values());
+      // Longer names first so "David Sr" is matched before "David".
+      const byLength = (a: string, b: string) => b.length - a.length;
+      const gone = CHARACTERS.filter((c) => !here.has(c.id)).map((c) => c.name).sort(byLength);
+      const present = CHARACTERS.filter((c) => here.has(c.id)).map((c) => c.name).sort(byLength);
+      const alt = [...present, ...gone].sort(byLength).map(escape).join('|');
+      this.absent = { key, re: gone.length > 0 ? new RegExp(`\\b(?:${alt})\\b`, 'g') : null, present: new Set(present) };
+    }
+    if (!this.absent.re) return false;
+    for (const m of text.matchAll(this.absent.re)) if (!this.absent.present.has(m[0])) return true;
+    return false;
+  }
   /** A bystander's dry line queued for after the current exchange. */
   private jab: { seat: number; target: number; text: string; at: number } | null = null;
   private lastConvoEnd = -1e9;
@@ -220,7 +243,7 @@ export class Banter {
     const bots = this.allBotSeats(table).filter((s) => s !== actor && !(this.hand && !this.hand.isComplete && this.hand.players.some((p) => p.seat === s && !p.folded && s === actor)));
     if (bots.length < 2) return null;
     const stance = (s: number): Stance => table.stance?.(s) ?? 'meh';
-    const regular = CONVERSATIONS.filter((c) => c.tag !== 'kill');
+    const regular = CONVERSATIONS.filter((c) => c.tag !== 'kill' && !c.lines.some(([, l]) => this.mentionsAbsent(l, table)));
     const fresh = regular.filter((c) => !this.usedConvos.has(c));
     const pool = fresh.length > 0 ? fresh : regular;
     if (fresh.length === 0) this.usedConvos.clear();
@@ -289,7 +312,7 @@ export class Banter {
     if (!this.chance(chance)) return null;
     const idA = table.ids.get(a) ?? '';
     const idB = table.ids.get(b) ?? '';
-    const fits = INTERJECTIONS.filter((j) => j.who === id && (j.at ? j.at.includes(idA) || j.at.includes(idB) : !j.tag || j.tag === conv.tag));
+    const fits = INTERJECTIONS.filter((j) => j.who === id && (j.at ? j.at.includes(idA) || j.at.includes(idB) : !j.tag || j.tag === conv.tag) && !this.mentionsAbsent(j.s, table));
     if (fits.length === 0) return null;
     let fresh = fits.filter((j) => !this.usedJabs.has(j));
     if (fresh.length === 0) {
@@ -446,9 +469,9 @@ export class Banter {
       if (marks.length > 0) vars.targetSeat = this.pick(marks);
     }
     const tease = seat !== DEALER_SEAT && vars.targetSeat !== undefined && vars.targetSeat !== seat && (TEASABLE.includes(trigger) || trigger === 'idle')
-      ? this.pickTease(table.ids.get(vars.targetSeat) ?? '', trigger === 'idle' ? 1 : 0.75)
+      ? this.pickTease(table.ids.get(vars.targetSeat) ?? '', trigger === 'idle' ? 1 : 0.75, table)
       : null;
-    const line: Line | null = tease ? { t: 'tease', s: tease } : this.pickLine(id, trigger, mood);
+    const line: Line | null = tease ? { t: 'tease', s: tease } : this.pickLine(id, trigger, mood, table);
     if (!line) return null;
     this.lastAny = now;
     this.lastSpoke.set(id, now);
@@ -460,8 +483,8 @@ export class Banter {
   }
 
   /** A fresh dig at the man with that id, or null. Each dig is used once before any repeats. */
-  private pickTease(targetId: string, chance: number): string | null {
-    const pool = TEASES[targetId];
+  private pickTease(targetId: string, chance: number, table: BanterTable): string | null {
+    const pool = (TEASES[targetId] ?? []).filter((t) => !this.mentionsAbsent(t, table));
     if (!pool || pool.length === 0 || !this.chance(chance)) return null;
     let used = this.usedTeases.get(targetId);
     if (!used) {
@@ -513,7 +536,7 @@ export class Banter {
     const id = table.ids.get(seat);
     if (!id || id === 'human') return null;
     const mood: Mood = table.clarity(seat) >= 55 ? 'tilted' : 'calm';
-    const line = this.pickLine(id, trigger, mood);
+    const line = this.pickLine(id, trigger, mood, table);
     if (!line) return null;
     const now = this.now();
     this.lastAny = now;
@@ -522,8 +545,8 @@ export class Banter {
     return { seat, speaker: id, text, trigger };
   }
 
-  private pickLine(id: string, trigger: Trigger, mood: Mood): Line | null {
-    const all = (LINES[id] ?? []).filter((l) => l.t === trigger && (!l.m || l.m === 'any' || l.m === mood));
+  private pickLine(id: string, trigger: Trigger, mood: Mood, table?: BanterTable): Line | null {
+    const all = (LINES[id] ?? []).filter((l) => l.t === trigger && (!l.m || l.m === 'any' || l.m === mood) && !(table && this.mentionsAbsent(l.s, table)));
     // Tilted players prefer tilted lines when there are any.
     const tilted = mood === 'tilted' ? all.filter((l) => l.m === 'tilted') : [];
     const pool = tilted.length > 0 && this.chance(0.7) ? tilted : all;

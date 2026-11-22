@@ -111,7 +111,7 @@ describe('Menafee', () => {
     const table = { ids, names, clarity: () => 0 };
     const byMenafee: string[] = [];
     let addressed = 0;
-    for (let i = 0; i < 1500; i++) {
+    for (let i = 0; i < 6000; i++) {
       clock += 1500;
       const s = banter.onEvent({ type: 'turn', seat: 2, legal: { seat: 2 } as never, deadline: null }, table);
       if (!s) continue;
@@ -132,7 +132,7 @@ describe('Bruce', () => {
     const names = new Map([[0, 'Hero'], [1, 'Bruce'], [2, 'Tim'], [3, 'Paul'], [4, 'Jack'], [5, 'David']]);
     const table = { ids, names, clarity: () => 0 };
     const lines: { seat: number; text: string; conversation?: boolean; last?: boolean }[] = [];
-    for (let i = 0; i < 1500; i++) {
+    for (let i = 0; i < 6000; i++) {
       clock += 1500;
       const s = banter.onEvent({ type: 'turn', seat: 2, legal: { seat: 2 } as never, deadline: null }, table);
       if (s) lines.push(s);
@@ -206,5 +206,26 @@ describe('fairness', () => {
     });
     await table.run();
     for (const c of lineup) if (!busted.has(c.id)) expect(spoke.get(c.id) ?? 0, c.id).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('absent men', () => {
+  it('are never named by anyone at the table', () => {
+    let clock = 0;
+    const banter = new Banter(mulberry32(31), () => clock);
+    // David without Jack, Bawb without Jonathan, Tim and Kevin: the lines that name the missing stay unsaid.
+    const ids = new Map([[0, 'human'], [1, 'nadia'], [2, 'chad'], [3, 'trish'], [4, 'marvin'], [5, 'harold']]);
+    const names = new Map([[0, 'Dave'], [1, 'David'], [2, 'Bawb'], [3, 'Tim'], [4, 'Kevin'], [5, 'David Sr']]);
+    const table = { ids, names, clarity: () => 0 };
+    const said: string[] = [];
+    for (let i = 0; i < 3000; i++) {
+      clock += 1500;
+      const ev = i % 7 === 0 ? ({ type: 'handStart', hand: null, handNumber: i, stacks: {}, level: { sb: 50, bb: 100, ante: 0 } } as never) : ({ type: 'turn', seat: 2, legal: { seat: 2 } as never, deadline: null } as never);
+      const s = banter.onEvent(ev, table);
+      if (s) said.push(s.text);
+    }
+    expect(said.length).toBeGreaterThan(50);
+    for (const t of said) expect(t, t).not.toMatch(/\b(Jack|Jonathan|Paul|Bruce|Luca|Will|Menafee)\b/);
+    expect(said.some((t) => /David/.test(t))).toBe(true);
   });
 });

@@ -150,9 +150,10 @@
     .pickfoot .namerow input { width: 130px; padding: 7px 10px; font-size: 13px; }
     .pickfoot .links { text-align: right; }
     .pickhead .count { color: var(--fg); font-weight: 800; margin-left: 6px; }
-    .pstrip { display: grid; grid-template-columns: 34px 1fr 34px; align-items: stretch; flex: 1; min-height: 0; margin: 4px 0 6px; gap: 2px; }
-    .pstrip .arrow { font-size: 34px; line-height: 1; padding: 0; color: var(--muted); border-radius: 10px; }
-    .pstrip .arrow:active { color: var(--fg); background: rgba(255,255,255,.06); }
+    .pstrip { display: grid; grid-template-columns: 48px 1fr 48px; align-items: center; flex: 1; min-height: 0; margin: 4px 0 6px; gap: 4px; position: relative; }
+    .pstrip .arrow { width: 44px; height: 44px; font-size: 30px; line-height: 40px; padding: 0; color: #141614; background: var(--gold); border-radius: 50%; justify-self: center; box-shadow: 0 6px 18px rgba(227,192,106,.3); transition: transform .15s; }
+    .pstrip .arrow:active { transform: scale(.92); }
+    .pstrip .pgrid { align-self: stretch; }
     .pgrid { display: flex; gap: 12px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; padding: 4px 6px 8px; scrollbar-width: none; -webkit-overflow-scrolling: touch; min-height: 0; }
     .pgrid::-webkit-scrollbar { display: none; }
     .pcardc { position: relative; flex: 0 0 218px; scroll-snap-align: start; text-align: center; background: rgba(8,12,10,.72); border: 2px solid rgba(255,255,255,.1); border-radius: 16px; padding: 70px 8px 8px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; transition: transform .15s, border-color .15s, opacity .15s; }

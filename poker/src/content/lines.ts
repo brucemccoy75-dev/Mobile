@@ -61,7 +61,7 @@ export const LINES: Record<string, Line[]> = {
     L('playerOut', '{target}’s gone. Happens. Everybody goes. Some of them come back for the snacks.'),
     L('playerOut', 'Goodnight, {target}. It was a good run. They were all good runs, once.'),
     L('headsUp', 'Just us, {target}. I’ve been here before. Carter was president. I lost.'),
-    L('idle', 'The boy never calls. He’s sitting right there and he never calls.'),
+    L('idle', 'The boy never calls. I have a phone. He knows the number.'),
     L('idle', 'Milk was a dollar. The whole gallon. A dollar. I’m not making a point. I’m just saying.'),
     L('idle', 'I folded a hand in 1974 that would’ve bought a boat. I think about it most days.'),
     L('idle', 'My hip is a barometer. It says snow and it says fold.'),

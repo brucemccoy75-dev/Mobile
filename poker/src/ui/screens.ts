@@ -61,7 +61,7 @@ export class Screens {
         </div>
       </div>`);
     const root = this.root;
-    if (first) this.playIntro();
+    if (first) this.playIntro(() => this.onReveal?.());
     const countEl = root.querySelector('.count')!;
     const dealBtn = root.querySelector<HTMLButtonElement>('.deal')!;
     const input = root.querySelector<HTMLInputElement>('.name')!;
@@ -154,11 +154,21 @@ export class Screens {
       const c = characters.find((x) => visible(x.id)) ?? characters[0];
       say(c.id, c.pitch[0]);
     }, first ? 2500 : 500);
+    // A nudge sideways and back once the screen is visible, so the strip is seen to scroll.
+    const nudge = () => window.setTimeout(() => {
+      if (!root.contains(strip) || strip.scrollLeft > 30) return;
+      strip.scrollTo({ left: 160, behavior: 'smooth' });
+      window.setTimeout(() => { if (root.contains(strip) && strip.scrollLeft < 300) strip.scrollTo({ left: 0, behavior: "smooth" }); }, 700);
+    }, 800);
+    if (first) this.onReveal = nudge;
+    else nudge();
     refresh();
   }
 
   /** Runs the intro video over the home screen; ended, tapped, skipped or refused, the screen appears. */
-  private playIntro(): void {
+  private onReveal: (() => void) | null = null;
+
+  private playIntro(onReveal: () => void): void {
     const video = this.root.querySelector<HTMLVideoElement>('video.intro')!;
     const screen = this.root.querySelector<HTMLElement>('.screen.pick')!;
     const reveal = () => {
@@ -167,6 +177,7 @@ export class Screens {
       screen.classList.remove('waiting');
       video.remove();
       this.root.querySelector('.skip')?.remove();
+      onReveal();
     };
     video.addEventListener('ended', reveal, { once: true });
     video.addEventListener('error', reveal, { once: true });

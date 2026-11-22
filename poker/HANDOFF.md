@@ -15,7 +15,7 @@ Read this first in a new session. It says what exists, how to work on it, and wh
 
 ```sh
 npm install
-npm test                 # 65 tests: engine, bots, controller, banter, career, conversations
+npm test                 # 66 tests: engine, bots, controller, banter, career, conversations
 npm run build            # typecheck + production build
 npm run sim -- --n 100   # bot-only nights (mixed lineups), prints finishes and tendencies per type
 python3 tools/key-portrait.py in.jpg public/portraits/<id>.png   # green-screen to transparent PNG
@@ -190,8 +190,12 @@ how many cards are to come. Trigger `thinking`; recent lines are not repeated by
   (2% per bot turn, 9% per hand end, 30 s after the last one) so reactions dominate.
 - The result card waits for the laser: when a hand busts somebody, `handEnd` in `table-scene.ts`
   parks the card in `pendingResult`, the `bust` case vaporises him over a clear table, then shows it.
-- The pick screen is a horizontal carousel (`.pgrid`, scroll-snap, arrows, wheel); only men on
-  screen pitch, so it never scrolls by itself.
+- The pick screen is a horizontal carousel (`.pgrid`, scroll-snap, gold arrow buttons, wheel); only
+  men on screen pitch, so it never scrolls by itself except one nudge out and back when it appears.
+- Nobody names a man who is not at the table: `mentionsAbsent()` in `banter.ts` drops any line,
+  tease, exchange or interjection whose text contains the name of a character not seated (names
+  from `CHARACTERS`; "David Sr" is matched before "David"). Lines may still say "the boy" or "your
+  father". A test seats a table without Jack and checks nobody says his name.
 - Lines never get cut off: `speak()` in `table-scene.ts` queues lines behind the one on screen until
   it has been up long enough to read (`readMs`); stale reaction lines that waited over 6 s are
   dropped, conversation lines keep their order.
