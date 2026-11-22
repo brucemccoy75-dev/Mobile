@@ -105,10 +105,11 @@ first and use his image as the reference.
 > a confident half smirk with eyes fixed on the viewer like he already knows what you have.
 
 **David** (`nadia.png`) — pro, online crusher, bored by live play.
-> A thin white man in his early fifties with a long narrow face, a high receding hairline with short
-> thin light brown hair left at the sides and back and only a few strands on top, a long straight
-> nose, thin lips, light eyebrows, a slim neck, wearing a light blue business button-up shirt with the
-> collar open, no tie. Neutral expression.
+> A thin white man in his early fifties with a long narrow face, short light brown hair that is
+> thinning on top with a slightly receded hairline, neatly combed, a long straight nose, thin lips,
+> light eyebrows, a slim neck, wearing a light blue business button-up shirt with the collar open, no
+> tie. A friendly, open expression: eyebrows relaxed, warm eyes with a little crinkle, a small easy
+> closed-mouth smile, the look of a man who is glad you came.
 
 **Bruce** (`jimmy.png`) — pro, The Clock, reads timing.
 > A white man in his late forties, thin face and build, short full beard of mixed black and grey,
