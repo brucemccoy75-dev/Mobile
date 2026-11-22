@@ -81,17 +81,49 @@ export class TableScene implements Presenter {
     this.pipEl = el;
   }
 
+  /** Lays the half-dark backing around the close-up so the panel reads as one surface. */
+  private layoutBacking(): void {
+    const el = this.pipEl;
+    if (!el) return;
+    const p = el.getBoundingClientRect();
+    const f = (el.querySelector('.frame') as HTMLElement).getBoundingClientRect();
+    const set = (cls: string, top: number, bottom: number, left: number, right: number) => {
+      const b = el.querySelector(`.backing.${cls}`) as HTMLElement;
+      b.style.top = `${top}px`;
+      b.style.bottom = `${bottom}px`;
+      b.style.left = `${left}px`;
+      b.style.right = `${right}px`;
+    };
+    set('top', 0, p.height - (f.top - p.top), 0, 0);
+    set('bottom', f.bottom - p.top, 0, 0, 0);
+    set('left', f.top - p.top, p.height - (f.bottom - p.top), 0, p.width - (f.left - p.left));
+    set('right', f.top - p.top, p.height - (f.bottom - p.top), f.right - p.left, 0);
+  }
+
   /** Shows a close-up of a seat (or the dealer, -1) in the inset for a while. */
   showInset(seat: number, ms: number, name: string, caption: string): number {
     const token = ++this.pipToken;
+    const wasShowing = this.pip !== null;
+    const changed = !this.pip || this.pip.seat !== seat;
     this.pip = { seat, token };
     const el = this.pipEl;
     if (el) {
-      el.querySelector('.who')!.textContent = name;
-      const cap = el.querySelector('.caption') as HTMLElement;
-      cap.textContent = caption;
-      cap.classList.toggle('show', caption.length > 0);
+      const fill = () => {
+        el.querySelector('.who')!.textContent = name;
+        const cap = el.querySelector('.caption') as HTMLElement;
+        cap.textContent = caption;
+        cap.classList.toggle('show', caption.length > 0);
+        el.classList.remove('swap');
+      };
+      if (wasShowing && changed) {
+        // Crossfade the name and caption when the panel passes from one speaker to the next.
+        el.classList.add('swap');
+        window.setTimeout(() => {
+          if (this.pipToken === token) fill();
+        }, 180);
+      } else fill();
       el.classList.add('show');
+      this.layoutBacking();
     }
     this.overlay.setSpeaking(seat, true);
     if (el) this.overlay.panelLeft = el.getBoundingClientRect().left;
@@ -275,6 +307,7 @@ export class TableScene implements Presenter {
   // ---- frame and input ---------------------------------------------------------------------------
 
   private resize(): void {
+    this.layoutBacking();
     const w = this.container.clientWidth;
     const h = this.container.clientHeight;
     this.renderer.setSize(w, h, false);

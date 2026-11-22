@@ -19,6 +19,8 @@ export interface Speech {
   targetSeat?: number;
   /** Part of a two-man conversation rather than a reaction to the game. */
   conversation?: boolean;
+  /** The last line of that conversation. */
+  last?: boolean;
 }
 
 export const DEALER_SEAT = -1;
@@ -202,7 +204,7 @@ export class Banter {
       .replace(/\{A\}/g, table.names.get(c.a) ?? 'pal')
       .replace(/\{B\}/g, table.names.get(c.b) ?? 'pal')
       .replace(/\{you\}/g, table.names.get(HUMAN_SEAT) ?? 'the kid');
-    return { seat, speaker: id, text, trigger: 'idle', targetSeat: last ? other : undefined, conversation: true };
+    return { seat, speaker: id, text, trigger: 'idle', targetSeat: last ? other : undefined, conversation: true, last };
   }
 
   /** Call when the hand reaches heads-up (two players left in the tournament). */

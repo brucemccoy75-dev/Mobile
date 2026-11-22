@@ -114,8 +114,10 @@ function start(key: TournamentKey): void {
         };
         const said = talk.onEvent(ev, who);
         if (said) {
-          // Conversation lines hang around longer so the back-and-forth can be read.
-          const ms = said.conversation ? Math.min(7500, 3800 + said.text.length * 55) : Math.min(6500, 2600 + said.text.length * 45);
+          // Conversation lines stay up until the next line arrives, so the panel never blinks mid-exchange.
+          const ms = said.conversation
+            ? (said.last ? Math.min(7500, 3800 + said.text.length * 55) : Math.max(7000, 3800 + said.text.length * 55))
+            : Math.min(6500, 2600 + said.text.length * 45);
           void scene.speak(said.seat, said.targetSeat, said.text, ms, said.trigger, speakerName(said.seat, table));
         }
         await scene.present(ev);

@@ -80,11 +80,11 @@
     @keyframes boardflip { from { transform: rotateY(90deg) scale(1.1); opacity: 0; } to { transform: none; opacity: 1; } }
 
     /* You: name and stack above your cards */
-    #me { position: fixed; left: max(14px, var(--sal)); bottom: calc(max(12px, var(--sab)) + 92px); transform: none; min-width: 122px; }
+    #me { position: fixed; left: 50%; bottom: max(12px, var(--sab)); transform: translateX(-50%); min-width: 122px; z-index: 11; }
     #me .tag { top: -10px; }
 
     /* Your cards */
-    #hole { position: fixed; left: max(14px, var(--sal)); bottom: max(12px, var(--sab)); display: flex; gap: 6px; opacity: 0; transform: translateY(12px); transition: .25s; pointer-events: none; }
+    #hole { position: fixed; right: max(14px, var(--sar)); bottom: max(12px, var(--sab)); display: flex; gap: 6px; opacity: 0; transform: translateY(12px); transition: .25s; pointer-events: none; z-index: 12; }
     #hole.show { opacity: 1; transform: none; }
     .pcard { width: 58px; height: 82px; border-radius: 7px; background: #f7f4ec; color: #1b1b1f; box-shadow: 0 6px 16px rgba(0,0,0,.5);
       display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 700; }
@@ -93,7 +93,7 @@
     .pcard .suit { font-size: 22px; line-height: 1; margin-top: 2px; }
 
     /* Action bar */
-    #actions { position: fixed; right: max(12px, var(--sar)); bottom: max(12px, var(--sab)); display: flex; flex-direction: column; align-items: flex-end; gap: 8px; z-index: 10;
+    #actions { position: fixed; left: max(12px, var(--sal)); bottom: max(12px, var(--sab)); display: flex; flex-direction: column; align-items: flex-start; gap: 8px; z-index: 10;
       opacity: 0; pointer-events: none; transform: translateY(10px); transition: .2s; }
     #actions.show { opacity: 1; pointer-events: auto; transform: none; }
     #actions .row { display: flex; gap: 8px; }
@@ -134,15 +134,19 @@
 
     /* Picture-in-picture of whoever is talking */
     #pip { position: fixed; right: 0; top: 0; bottom: 0; width: min(290px, 32vw); box-sizing: border-box;
-      padding: calc(max(8px, var(--sat)) + 46px) max(12px, var(--sar)) 92px 12px;
+      padding: calc(max(8px, var(--sat)) + 46px) max(12px, var(--sar)) 108px 12px;
       border-left: 2px solid var(--gold);
       display: flex; flex-direction: column; gap: 10px; opacity: 0; transform: translateX(100%);
       transition: opacity .25s, transform .25s; pointer-events: none; z-index: 8; }
     #pip.show { opacity: 1; transform: none; }
+    #pip .backing { position: absolute; left: 0; right: 0; background: rgba(5, 9, 7, .5); pointer-events: none; }
+    #pip .frame, #pip .caption { position: relative; z-index: 1; }
+    #pip .who, #pip .caption { transition: opacity .18s; }
+    #pip.swap .who, #pip.swap .caption { opacity: 0; }
     #pip .frame { position: relative; width: 100%; aspect-ratio: 5 / 3.1; flex: none; border-radius: 12px; border: 2px solid var(--gold); box-shadow: 0 10px 30px rgba(0,0,0,.6); overflow: hidden; }
     #pip .who { position: absolute; left: 8px; bottom: 8px; background: rgba(8,12,10,.85); color: var(--gold); font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
       padding: 4px 9px; border-radius: 6px; }
-    #pip .caption { flex: 1; font-size: 16px; line-height: 1.32; color: #f6f3ea; display: none; overflow: hidden;
+    #pip .caption { flex: none; font-size: 16px; line-height: 1.32; color: #f6f3ea; display: none; overflow: hidden;
       background: rgba(5,9,7,.9); border: 1px solid rgba(227,192,106,.35); border-radius: 12px; padding: 10px 12px; }
     #pip .caption.show { display: block; }
     .plate.speaking { box-shadow: 0 0 0 2px #f2f0e8, 0 0 16px rgba(242,240,232,.4); }
@@ -230,7 +234,7 @@
   </div>
   <div id="toast"></div>
   <div id="board"><div class="potline"></div><div class="cards"></div></div>
-  <div id="pip"><div class="frame"><div class="who"></div></div><div class="caption"></div></div>
+  <div id="pip"><div class="backing top"></div><div class="backing bottom"></div><div class="backing left"></div><div class="backing right"></div><div class="frame"><div class="who"></div></div><div class="caption"></div></div>
   <div id="standings"></div>
   <div id="me" class="plate me"></div>
   <div id="hole"></div>
