@@ -96,8 +96,13 @@ covered for every character and at least 100 lines per type. To rewrite a person
    when anyone checks), hummus and pretzels, tilts twice as hard (`temper` in `characters.ts`).
    **Paul is done.** Everything by hand (clothes, car, horse), honey on sale, half off a gallon if
    you show one card, "full homestead", bees, D&D with his wife as DM, work small talk.
-   **The quiet men share a pool.** David Sr, Kevin and Jonathan use `GENERIC` in `lines.ts`: short,
-   plain lines, with low talk factors. Replace with a persona by giving the id its own array.
+   **The quiet men share a pool.** David Sr and Kevin use `GENERIC` in `lines.ts`: short, plain
+   lines, with low talk factors. Replace with a persona by giving the id its own array.
+   **Bawb and Jonathan are done** as one set: live updates from southern New Hampshire girls'
+   softball, basketball and track (Bedford, Souhegan, Hollis-Brookline, Londonderry, Pinkerton,
+   Alvirne, Salem, Windham, Merrimack), Kara's hamstring, the Division II standings, Jonathan's
+   letters to the NHIAA. Their two-man exchanges are pinned under tag `sports`; a few have anyone
+   else asking and regretting it.
    **Menafee never speaks.** `LINES.ulrich` is empty; conversations pinned to him have empty B lines
    so the panel shows the chair with no caption while people talk to it.
    **Luca, Bawb and Will are done** as one set: the new GTA (Luca loves it, Will hates it),
@@ -110,7 +115,7 @@ stuff ridiculous: "the new girl died during her test and now I have to finish it
 - Bruce: joins most conversations, very dry, usually one joke at the expense of whoever he is
   talking to.
 - The whole table debates technology, AI and data centres.
-- Still generic: David Sr, Kevin (the drunk imaginary one), Jonathan.
+- Still generic: David Sr, Kevin (the drunk imaginary one).
 - **Bruce is done.** Dry, snide, never angry: the commute (Route 3, 93, seventy minutes), tired and
   wants to go home, praises capitalism, layoffs and AI taking jobs. He also butts in: after any
   two-man exchange he sat out, `interject()` in `banter.ts` may give him the last word from
@@ -145,7 +150,7 @@ about the real crew's running jokes fit there.
 ## Open items, in order
 
 1. Portraits: all thirteen done. Expression variants are the next art step (see 3).
-2. Lines rewrite per persona: David Sr, Kevin and Jonathan still share the generic pool.
+2. Lines rewrite per persona: David Sr and Kevin still share the generic pool.
 3. Expression variants and the texture swap in `figures.ts`.
 4. Tuning from real play: nits may feel too passive; tourists' aggression; banter density.
 5. Later from the design: text-to-speech, cash games.

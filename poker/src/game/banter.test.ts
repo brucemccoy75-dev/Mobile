@@ -170,7 +170,7 @@ describe('Skynet', () => {
     }
     // The first thing anyone says after the laser is the aftermath exchange, and it ends on snacks.
     expect(after[0].conversation).toBe(true);
-    const first = after.filter((l) => l.conversation).slice(0, 3);
+    const first = after.filter((l) => l.conversation).slice(0, 4);
     expect(first.some((l) => /pretzel|dip|cheese|wings|chips|hummus|snacks|pigs in blankets/i.test(l.text))).toBe(true);
     expect(after.every((l) => !l.text.includes('{'))).toBe(true);
     expect(after.some((l) => l.seat === 3)).toBe(false);

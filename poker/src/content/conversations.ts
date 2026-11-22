@@ -706,6 +706,94 @@ export const CONVERSATIONS: Conversation[] = [
     ['B', 'With us?'],
     ['A', 'That was her question too, {B}. Word for word. You two should meet. You’d get on. You both think I’m wasting my time.'],
   ] },
+  // ---- Bawb and Jonathan: Division II, live ----------------------------------------------------
+  { tag: 'sports', who: { A: ['chad'], B: ['wen'] }, lines: [
+    ['A', 'Kara pulled her hamstring again.'],
+    ['B', 'Which leg.'],
+    ['A', 'Left. Same as the regional.'],
+    ['B', 'Then it’s not again. It’s still. Bedford has to know that going into Souhegan.'],
+  ] },
+  { tag: 'sports', who: { A: ['wen'], B: ['chad'] }, lines: [
+    ['A', 'Standings as of tonight. Bedford, Souhegan, Hollis-Brookline, Londonderry.'],
+    ['B', 'Pinkerton.'],
+    ['A', 'Pinkerton is fifth on the tiebreaker.'],
+    ['B', 'The tiebreaker is wrong.'],
+    ['A', 'I wrote to them, Bawb. I wrote to them Tuesday.'],
+  ] },
+  { tag: 'sports', who: { A: ['chad'], B: ['wen'] }, lines: [
+    ['A', 'Hold on. Bedford four, Londonderry three. Sixth. Maddie on second.'],
+    ['B', 'Who’s up.'],
+    ['A', 'The Dubois twin.'],
+    ['B', 'Which one.'],
+    ['A', 'The good one.'],
+    ['B', 'They’re both the good one, Bawb. That is the whole problem with the Dubois twins.'],
+  ] },
+  { tag: 'sports', who: { A: ['wen'], B: ['chad'] }, lines: [
+    ['A', 'The 4x800 at Hollis-Brookline Saturday. Seven a.m.'],
+    ['B', 'I’m bringing the chairs.'],
+    ['A', 'Bring the good chairs. Last time you brought the Pinkerton chairs.'],
+    ['B', 'Those are the good chairs.'],
+    ['A', 'Those are the chairs with the Pinkerton logo, Bawb. At a Hollis-Brookline meet. People looked.'],
+  ] },
+  { tag: 'sports', who: { A: ['chad'], B: ['wen'] }, lines: [
+    ['A', 'Souhegan ran four corners for the whole fourth quarter.'],
+    ['B', 'Against Windham?'],
+    ['A', 'Against Windham. Nine points in the quarter. Total. Both teams.'],
+    ['B', 'That’s beautiful. That is the most beautiful thing I have heard all week.'],
+  ] },
+  { tag: 'sports', who: { A: ['wen'], B: ['chad'] }, lines: [
+    ['A', 'Salem’s catcher threw out four girls in one game.'],
+    ['B', 'Junior.'],
+    ['A', 'Junior. She’s going to UNH.'],
+    ['B', 'For softball.'],
+    ['A', 'For softball, Bawb. Yes. Not for the catcher thing in general.'],
+  ] },
+  { tag: 'sports', who: { A: ['chad'], B: ['wen'] }, lines: [
+    ['A', 'Alvirne walked the bases loaded. Twice. Same inning.'],
+    ['B', 'How do you do that twice in one inning.'],
+    ['A', 'Pitching change. Walked three more.'],
+    ['B', 'Alvirne is a cry for help with a bus.'],
+  ] },
+  { tag: 'sports', who: { A: ['wen'], B: ['chad'] }, lines: [
+    ['A', 'The NHIAA moved the quarterfinal to Tuesday.'],
+    ['B', 'I work Tuesday.'],
+    ['A', 'I work Tuesday. Kara’s hamstring works Tuesday. Nobody asked us.'],
+    ['B', 'Write to them.'],
+    ['A', 'I already wrote to them, Bawb. I write to them every Tuesday. It is a Tuesday thing now.'],
+  ] },
+  // Somebody else makes the mistake of asking.
+  { tag: 'sports', who: { B: ['chad', 'wen'] }, lines: [
+    ['A', 'Who’s Kara?'],
+    ['B', 'Bedford. Shortstop. Hamstring.'],
+    ['A', 'Is she your kid?'],
+    ['B', 'No.'],
+    ['A', 'A niece?'],
+    ['B', 'Shortstop, {A}. Bedford. I said.'],
+  ] },
+  { tag: 'sports', who: { B: ['chad', 'wen'] }, lines: [
+    ['A', 'Is this the Celtics?'],
+    ['B', 'Girls basketball. Souhegan at Pinkerton. Four corners. Stall ball.'],
+    ['A', 'Why are you watching that?'],
+    ['B', 'Why are you not watching that, {A}. It is nine to seven at the half. Nine to seven.'],
+  ] },
+  { tag: 'sports', who: { B: ['chad', 'wen'] }, lines: [
+    ['A', 'How’s your weekend looking?'],
+    ['B', 'Track Saturday, seven a.m., Hollis-Brookline. Softball doubleheader Sunday, Windham at Bedford. Pelham scrimmage Monday. I’m not going to the Pelham one.'],
+    ['A', 'Why not?'],
+    ['B', 'I have a life, {A}.'],
+  ] },
+  { tag: 'sports', who: { A: ['chad', 'wen'], B: ['jimmy'] }, lines: [
+    ['A', 'Londonderry lost.'],
+    ['B', 'To whom?'],
+    ['A', 'Alvirne.'],
+    ['B', 'I don’t know what either of those are, and I can tell it’s bad, and I’m going to sit with that.'],
+  ] },
+  { tag: 'sports', who: { A: ['chad', 'wen'], B: ['dolores'] }, lines: [
+    ['A', 'Hollis-Brookline’s discus girl threw a hundred and thirty-one feet.'],
+    ['B', 'I raise bees, {A}. I don’t know what that means.'],
+    ['A', 'It means a hundred and thirty-one feet, Paul. Of discus. In the rain.'],
+  ] },
+
   // ---- after Skynet vaporises somebody: concern, briefly, then snacks ----------------------------
   { tag: 'kill', lines: [
     ['A', 'Did. Did {gone} just get lasered.'],
@@ -792,12 +880,14 @@ export const INTERJECTIONS: Interjection[] = [
   { who: 'jimmy', at: ['benny'], s: 'Luca, the clown school thing. Was that before or after the finance job. Trick question. It’s the same job.' },
   { who: 'jimmy', at: ['priya'], s: 'Will hates the game. Will hates most things. Will loves one thing, and it is telling us about the things he hates.' },
   // Bawb
-  { who: 'jimmy', at: ['chad'], s: 'Bawb said four words tonight. All of them better than anything {them} said.' },
+  { who: 'jimmy', at: ['chad'], s: 'Bawb has said more about Kara’s hamstring tonight than about his own marriage. Which tracks.' },
+  { who: 'jimmy', at: ['chad', 'wen'], s: 'Two grown men. Girls’ softball. A spreadsheet. Nobody at this table is allowed to judge me ever again.' },
   // Kevin
   { who: 'jimmy', at: ['marvin'], s: 'Kevin is doing great. For a man who is not real.' },
   { who: 'jimmy', at: ['marvin'], s: 'Somebody check Kevin’s cup. Then check if Kevin is in it.' },
   // Jonathan
   { who: 'jimmy', at: ['wen'], s: 'Jonathan drove here in a jersey. On purpose. In this economy.' },
+  { who: 'jimmy', at: ['wen'], s: 'Jonathan writes letters to the NHIAA. Handwritten. They have a folder for him. He’s seen the folder.' },
   // David Sr
   { who: 'jimmy', at: ['harold'], s: 'Listen to David Sr. He’s seen four recessions. He caused two of them.' },
   // Menafee
