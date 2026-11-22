@@ -1,5 +1,6 @@
 // Decides who says what, when. Lines are picked by trigger and mood from each character's set,
 // never repeated until the set runs dry, and rate-limited so the table stays readable.
+import { CONVERSATIONS, type Conversation, type Stance } from '../content/conversations';
 import { LINES } from '../content/lines';
 import { type Line, type Mood, type Trigger } from '../content/triggers';
 import { HandCategory, categoryOf, evaluate } from '../engine/evaluator';
@@ -16,6 +17,8 @@ export interface Speech {
   trigger: Trigger;
   /** The seat the line is about, when it is about someone. */
   targetSeat?: number;
+  /** Part of a two-man conversation rather than a reaction to the game. */
+  conversation?: boolean;
 }
 
 export const DEALER_SEAT = -1;
@@ -33,6 +36,8 @@ export interface BanterTable {
   names: Map<number, string>;
   /** Clarity per bot seat, for mood. */
   clarity: (seat: number) => number;
+  /** Where each bot stands on AI, for the arguments. */
+  stance?: (seat: number) => Stance;
 }
 
 const COOLDOWN_MS = 11000;
@@ -50,6 +55,9 @@ export class Banter {
   private humanLastThink = 0;
   /** Chance multiplier; 0 silences the table. */
   density = 1;
+  private convo: { conv: Conversation; a: number; b: number; next: number; lastAt: number } | null = null;
+  private usedConvos = new Set<Conversation>();
+  private lastConvoEnd = -1e9;
 
   constructor(rng: Rng, now: () => number = () => Date.now()) {
     this.rng = rng;
@@ -58,6 +66,12 @@ export class Banter {
 
   /** Feeds a table event; returns at most one thing someone says. */
   onEvent(ev: TableEvent, table: BanterTable): Speech | null {
+    const said = this.onGameEvent(ev, table);
+    if (said) return said;
+    return this.chatter(ev, table);
+  }
+
+  private onGameEvent(ev: TableEvent, table: BanterTable): Speech | null {
     switch (ev.type) {
       case 'handStart': {
         this.hand = ev.hand;
@@ -102,6 +116,76 @@ export class Banter {
       default:
         return null;
     }
+  }
+
+  // ---- conversations ---------------------------------------------------------------------------------
+
+  /** Keeps a two-man conversation going in the gaps, or starts a new one now and then. */
+  private chatter(ev: TableEvent, table: BanterTable): Speech | null {
+    if (ev.type === 'tournamentEnd') return null;
+    const now = this.now();
+    const actor = this.hand && !this.hand.isComplete ? this.hand.actor : null;
+    const bigPot = this.hand ? this.hand.potTotal() > 0.3 * this.avgStack() : false;
+    if (this.convo) {
+      const c = this.convo;
+      const [role] = c.conv.lines[c.next];
+      const seat = role === 'A' ? c.a : c.b;
+      // Wait for a gap, and never talk over your own decision or a big pot.
+      if (now - c.lastAt < 2600 || seat === actor || bigPot) return null;
+      if (!table.ids.has(c.a) || !table.ids.has(c.b)) {
+        this.convo = null;
+        return null;
+      }
+      return this.speakConvo(table);
+    }
+    const quiet = now - this.lastAny > 3500 && now - this.lastConvoEnd > 9000;
+    const moment = ev.type === 'turn' || ev.type === 'handEnd' || ev.type === 'handStart';
+    if (!quiet || !moment || bigPot || !this.chance(ev.type === 'turn' ? 0.06 : 0.22)) return null;
+    return this.startConversation(table, actor);
+  }
+
+  private startConversation(table: BanterTable, actor: number | null): Speech | null {
+    const bots = this.seatsOf(table).filter((s) => s !== actor && !(this.hand && !this.hand.isComplete && this.hand.players.some((p) => p.seat === s && !p.folded && s === actor)));
+    if (bots.length < 2) return null;
+    const stance = (s: number): Stance => table.stance?.(s) ?? 'meh';
+    const fresh = CONVERSATIONS.filter((c) => !this.usedConvos.has(c));
+    const pool = fresh.length > 0 ? fresh : CONVERSATIONS;
+    if (fresh.length === 0) this.usedConvos.clear();
+    for (const conv of this.shuffled(pool)) {
+      const fits = (s: number, need?: Stance) => !need || stance(s) === need;
+      const pairs: [number, number][] = [];
+      for (const a of bots) for (const b of bots) if (a !== b && fits(a, conv.needs?.A) && fits(b, conv.needs?.B)) pairs.push([a, b]);
+      if (pairs.length === 0) continue;
+      const [a, b] = this.pick(pairs);
+      this.convo = { conv, a, b, next: 0, lastAt: -1e9 };
+      this.usedConvos.add(conv);
+      return this.speakConvo(table);
+    }
+    return null;
+  }
+
+  private speakConvo(table: BanterTable): Speech | null {
+    const c = this.convo!;
+    const [role, raw] = c.conv.lines[c.next];
+    const seat = role === 'A' ? c.a : c.b;
+    const other = role === 'A' ? c.b : c.a;
+    const id = table.ids.get(seat);
+    if (!id) return null;
+    const now = this.now();
+    c.lastAt = now;
+    this.lastAny = now;
+    this.lastSpoke.set(id, now);
+    c.next++;
+    const last = c.next >= c.conv.lines.length;
+    if (last) {
+      this.convo = null;
+      this.lastConvoEnd = now;
+    }
+    const text = raw
+      .replace(/\{A\}/g, table.names.get(c.a) ?? 'pal')
+      .replace(/\{B\}/g, table.names.get(c.b) ?? 'pal')
+      .replace(/\{you\}/g, table.names.get(HUMAN_SEAT) ?? 'the kid');
+    return { seat, speaker: id, text, trigger: 'idle', targetSeat: last ? other : undefined, conversation: true };
   }
 
   /** Call when the hand reaches heads-up (two players left in the tournament). */

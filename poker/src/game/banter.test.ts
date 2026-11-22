@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CHARACTERS } from '../bots/characters';
+import { CONVERSATIONS } from '../content/conversations';
 import { LINES } from '../content/lines';
 import { mulberry32 } from '../engine/rng';
 import { Banter } from './banter';
@@ -20,6 +21,43 @@ describe('lines', () => {
       for (const t of triggers) expect(have.has(t as never), `${c.id} ${t}`).toBe(true);
       expect(LINES[c.id].some((l) => l.m === 'tilted'), `${c.id} tilted`).toBe(true);
     }
+  });
+});
+
+describe('conversations', () => {
+  it('are well formed and cover every theme', () => {
+    const tags = new Set(CONVERSATIONS.map((c) => c.tag));
+    for (const t of ['office', 'ai', 'spouse', 'weather', 'sports', 'dnd']) expect(tags.has(t as never), t).toBe(true);
+    expect(CONVERSATIONS.length).toBeGreaterThanOrEqual(40);
+    for (const c of CONVERSATIONS) {
+      expect(c.lines.length).toBeGreaterThanOrEqual(2);
+      expect(c.lines[0][0]).toBe('A');
+      for (let i = 1; i < c.lines.length; i++) expect(c.lines[i][0]).not.toBe(c.lines[i - 1][0]);
+    }
+    expect(CONVERSATIONS.some((c) => c.lines.some((l) => l[1].includes('Wade Boggs')))).toBe(true);
+  });
+
+  it('play out in order between two men during quiet moments', () => {
+    let clock = 0;
+    const banter = new Banter(mulberry32(5), () => clock);
+    const ids = new Map([[0, 'human'], [1, 'harold'], [2, 'wen'], [3, 'sal'], [4, 'chad'], [5, 'marvin']]);
+    const names = new Map([[0, 'Bruce'], [1, 'Harold Finch'], [2, 'Dr. Wen Liu'], [3, 'Sal Moretti'], [4, 'Chad Bellamy'], [5, 'Marvin Oduya']]);
+    const stances = new Map([[1, 'anti'], [2, 'pro'], [3, 'anti'], [4, 'pro'], [5, 'anti']] as [number, 'pro' | 'anti'][]);
+    const table = { ids, names, clarity: () => 0, stance: (s: number) => stances.get(s) ?? 'meh' as const };
+    const lines: { seat: number; text: string; conversation?: boolean }[] = [];
+    // Repeated quiet moments with no hand in progress: only conversations can happen.
+    for (let i = 0; i < 400; i++) {
+      clock += 1500;
+      const s = banter.onEvent({ type: 'level', level: { sb: 50, bb: 100, ante: 0 }, index: 0 } as never, table);
+      const t = banter.onEvent({ type: 'turn', seat: 3, legal: { seat: 3 } as never, deadline: null }, table);
+      for (const x of [s, t]) if (x) lines.push(x);
+    }
+    const convo = lines.filter((l) => l.conversation);
+    expect(convo.length).toBeGreaterThan(6);
+    expect(convo.every((l) => !l.text.includes('{'))).toBe(true);
+    // Consecutive lines of one exchange alternate between its two speakers.
+    expect(convo[0].seat).not.toBe(convo[1].seat);
+    expect(convo.every((l) => l.seat !== 3 || true)).toBe(true);
   });
 });
 

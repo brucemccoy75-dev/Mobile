@@ -106,11 +106,12 @@ function start(key: TournamentKey): void {
           ids: new Map(table.seats.map((s) => [s.seat, s.id])),
           names: new Map(table.seats.map((s) => [s.seat, s.name])),
           clarity: (seat: number) => table.bots.get(seat)?.stats.clarity ?? 0,
+          stance: (seat: number) => table.bots.get(seat)?.character.aiStance ?? 'meh',
         };
         const said = talk.onEvent(ev, who);
         if (said) {
           overlay.say(said.speaker, bubblePos(said.seat), said.text, Math.min(6000, 2200 + said.text.length * 45));
-          void scene.social(said.seat, said.targetSeat, said.trigger);
+          void scene.social(said.seat, said.targetSeat, said.trigger, said.conversation);
         }
         await scene.present(ev);
         if (ev.type === 'bust' && table.tournament.active().length === 2) {

@@ -51,7 +51,7 @@ export class TableScene implements Presenter {
 
     this.scene.background = new THREE.Color(0x07100b);
     this.scene.fog = new THREE.Fog(0x07100b, 14, 30);
-    this.camera = new THREE.PerspectiveCamera(48, 1, 0.1, 60);
+    this.camera = new THREE.PerspectiveCamera(44, 1, 0.1, 60);
     this.director = new Director(this.camera, this.tweens);
 
     this.buildRoom();
@@ -88,6 +88,10 @@ export class TableScene implements Presenter {
     const rim = new THREE.DirectionalLight(0xffd9a8, 0.55);
     rim.position.set(0, 4, -10);
     this.scene.add(rim);
+    // Soft light from your side of the table so faces read from the front.
+    const front = new THREE.DirectionalLight(0xfff2e0, 0.75);
+    front.position.set(0, 3.5, 9);
+    this.scene.add(front);
 
     const floor = new THREE.Mesh(
       new THREE.CircleGeometry(22, 48),
@@ -322,7 +326,7 @@ export class TableScene implements Presenter {
   private humanToAct = false;
 
   /** The camera goes to whoever is talking, then to whoever they are talking about. */
-  async social(speakerSeat: number, targetSeat: number | undefined, trigger: string): Promise<void> {
+  async social(speakerSeat: number, targetSeat: number | undefined, trigger: string, conversation = false): Promise<void> {
     const fast = this.tweens.speed() > 1.5;
     if (fast || this.humanToAct || speakerSeat < 0) return;
     const speaker = this.figures.get(speakerSeat);
@@ -331,8 +335,8 @@ export class TableScene implements Presenter {
     const sore = ['badBeatTaken', 'loseShowdown', 'stackedByTarget', 'bluffCaught'].includes(trigger);
     if (speaker && !this.out.has(speakerSeat)) speaker.setExpression(sore ? 'annoyed' : needle ? 'happy' : speaker.expression);
     if (this.director.cursor !== 0) return;
-    await this.director.cutTo(speakerSeat, 420);
-    await this.tweens.delay(1100);
+    await this.director.cutTo(speakerSeat, conversation ? 380 : 420);
+    await this.tweens.delay(conversation ? 1500 : 1100);
     if (target && targetSeat !== undefined && targetSeat !== 0 && targetSeat !== speakerSeat && this.director.cursor === speakerSeat) {
       if (needle && !this.out.has(targetSeat)) target.setExpression('annoyed');
       await this.director.cutTo(targetSeat, 380);
