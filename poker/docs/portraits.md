@@ -104,10 +104,11 @@ level, eyes calm, mouth closed and straight); the expression variants come later
 > embroidered capital letter B on the front, and a blue and yellow baseball jersey with blue sleeves
 > and yellow trim, no team name or numbers. Neutral expression.
 
-**Will** (`priya.png`) — calculator, chess coach, patient condescension.
-> A man in his late thirties, neat dark beard, brown cardigan over a plain shirt, a small chess-piece
-> pin on the collar, calm half-lidded eyes, the faint smile of a teacher who already sees your next
-> three moves.
+**Will** (`priya.png`) — calculator, chess coach, patient condescension. Luca's twin in a turtleneck.
+> An ordinary white man clearly in his mid twenties, an adult, average build, with an unremarkable
+> everyday face, short neat dark hair, clean-shaven with just a hint of stubble, wearing a plain black
+> turtleneck sweater with the collar folded up snug under his chin. Nothing distinctive about him at
+> all. Neutral expression.
 
 **Menafee** (`ulrich.png`) — calculator, structural engineer, blunt.
 > A man about fifty, crew cut, square face, heavy brow, red and black flannel shirt, flat direct
