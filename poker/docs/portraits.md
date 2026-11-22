@@ -66,9 +66,11 @@ New Hampshire, Dave's-basement feel.
 > ends.
 
 **Bawb** (`chad.png`) — tourist, loud, the life of the party.
-> A white man in his late forties, short and fit, completely bald, with a Popeye look: a jutting square
-> chin, a slightly squinted eye, thick neck and compact broad shoulders, plain white t-shirt, a big
-> easy grin like he just arrived at the party and is already the loudest guy in it.
+> A white man in his late forties, short and fit, with a very round head and a round fit face, bald on
+> top with very short dark stubble around the sides and a shadow of stubble on his jaw, not shiny,
+> small ears, narrow compact shoulders rather than broad ones, plain white t-shirt, a big easy grin
+> like he just arrived at the party and is already the loudest guy in it. (Do not say "Popeye" or
+> "square chin": the generator turns that into Mr. Clean.)
 
 **Tim** (`trish.png`) — tourist, cruise-ship regular, superstitious.
 > A man in his mid fifties, deep tan, silver hair combed back, loud floral shirt, a beaded lucky
