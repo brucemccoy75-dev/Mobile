@@ -93,6 +93,7 @@ export class TableScene implements Presenter {
       el.classList.add('show');
     }
     this.overlay.setSpeaking(seat, true);
+    if (el) this.overlay.panelLeft = el.getBoundingClientRect().left;
     window.setTimeout(() => {
       if (this.pipToken === token) this.hideInset();
     }, ms);
@@ -103,6 +104,7 @@ export class TableScene implements Presenter {
     if (this.pip) this.overlay.setSpeaking(this.pip.seat, false);
     this.pip = null;
     this.pipEl?.classList.remove('show');
+    this.overlay.panelLeft = null;
   }
 
   private renderInset(): void {
@@ -122,11 +124,16 @@ export class TableScene implements Presenter {
     this.pipCamera.updateProjectionMatrix();
     this.pipCamera.position.copy(pose.pos);
     this.pipCamera.lookAt(pose.look);
+    // A folded speaker is faded at the table but shown in full inside the inset.
+    const fig = this.figures.get(this.pip.seat);
+    const wasFolded = fig?.folded ?? false;
+    if (fig && wasFolded) fig.setFolded(false);
     this.renderer.setScissorTest(true);
     this.renderer.setViewport(x, y, w, h);
     this.renderer.setScissor(x, y, w, h);
     this.renderer.render(this.scene, this.pipCamera);
     this.renderer.setScissorTest(false);
+    if (fig && wasFolded) fig.setFolded(true);
     const size = this.renderer.getSize(new THREE.Vector2());
     this.renderer.setViewport(0, 0, size.x, size.y);
   }

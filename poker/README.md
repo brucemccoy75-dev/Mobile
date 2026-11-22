@@ -1,4 +1,4 @@
-# Poker, I Hardly Knew Her
+# Poker Night at Dave's
 
 A web-based, phone-friendly 3D poker game. Vite + TypeScript + Three.js.
 

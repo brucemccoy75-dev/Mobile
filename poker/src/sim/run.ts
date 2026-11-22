@@ -161,6 +161,7 @@ export function summarize(reports: TournamentReport[]): { types: TypeSummary[]; 
 
 /** Picks a 6-seat lineup for a tournament from its eligible characters. */
 export function pickLineup(key: TournamentKey, rng: Rng, size = 6): Character[] {
+  // size may exceed the pool; callers trim.
   const pool = shuffle([...eligibleCharacters(key)], rng);
   return pool.slice(0, size);
 }

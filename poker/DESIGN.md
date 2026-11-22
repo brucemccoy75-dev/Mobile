@@ -1,4 +1,4 @@
-# Poker, I Hardly Knew Her — Design Document (v1, for sign-off)
+# Poker Night at Dave's — Design Document (v1, for sign-off)
 
 Single-player, phone-first, 3D No-Limit Texas Hold'em. You against five bots at a
 six-seat table with a dealer. Tournament play only. Looks like watching poker on TV.
@@ -20,7 +20,7 @@ Build progress: steps 1 to 6 of section 10 are implemented and live at https://b
 | Variant | No-Limit Texas Hold'em only |
 | Format | 6-max sit-and-go: you + 5 bots. Ends when you bust or win |
 | Stacks / blinds | 10,000 chips. Blinds 50/100. Levels rise every 8 hands. Antes from level 4. No rebuys |
-| Tournaments | Tutorial (Type 1 + 2 bots), Vegas (all types), Championship (Type 3 + 4). All open from the start |
+| Tournaments | Kids Table (Type 1 + 2 bots), Adult Table (all types), Real Poker (Type 3 + 4). All open from the start |
 | Tutorial | Softest opponents only. No teaching aids |
 | Dealer | Visible dealer character who deals, announces action, and has a small line set |
 | Bots | Fixed named roster. 5 seated per tournament from those eligible |
@@ -32,7 +32,7 @@ Build progress: steps 1 to 6 of section 10 are implemented and live at https://b
 | Hole cards | Only yours during the hand. After the hand, optional replay with everyone's cards (hole cam) |
 | Camera | TV view by default. Swipe to orbit, snapping to seats. Tap a face for bio and recent moves. Auto-cuts to the actor in big moments unless you are looking around |
 | Comments | Text speech bubbles. Raw tone: swearing allowed, no slurs. Always funny: dry, timely, character-driven |
-| Name | *Poker, I Hardly Knew Her* |
+| Name | *Poker Night at Dave's* (was *Poker, I Hardly Knew Her*) |
 | Timing | 20-second shot clock on you. Your speed is a tell bots can read |
 | Pace | Realistic bot think times (1–6 s) with a fast-forward toggle |
 | Audio | Cards, chips, ambient casino. All mutable. No music |

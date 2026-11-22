@@ -190,11 +190,14 @@ export class Overlay {
     this.toastTimer = window.setTimeout(() => this.toastEl.classList.remove('show'), ms);
   }
 
+  /** Screen x from which a side panel covers the table; anchored labels under it are hidden. */
+  panelLeft: number | null = null;
+
   /** Projects every anchored element to the screen. Called each frame. */
   update(camera: THREE.Camera, width: number, height: number): void {
     for (const a of this.anchored.values()) {
       this.tmp.copy(a.pos).project(camera);
-      const behind = this.tmp.z > 1;
+      const behind = this.tmp.z > 1 || (this.panelLeft !== null && (this.tmp.x * 0.5 + 0.5) * width > this.panelLeft - 20);
       let x = (this.tmp.x * 0.5 + 0.5) * width;
       const y = (-this.tmp.y * 0.5 + 0.5) * height + a.offsetY;
       // Keep bubbles and plates on screen when a seat sits near the edge.

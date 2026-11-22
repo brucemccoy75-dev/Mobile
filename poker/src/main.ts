@@ -1,5 +1,5 @@
 // Wires the screens, the 3D table, the action bar, the panels and the game controller together.
-import { TOURNAMENTS, type TournamentKey } from './bots/characters';
+import { DEALER_NAME, TOURNAMENTS, type TournamentKey } from './bots/characters';
 import { mulberry32, seedFromString } from './engine/rng';
 import { Banter, DEALER_SEAT } from './game/banter';
 import { TournamentTracker, clearSave, loadSave, recordTournament, writeSave } from './game/career';
@@ -39,7 +39,7 @@ fastButton.addEventListener('click', () => {
 });
 
 function speakerName(seat: number, table: TableController): string {
-  return seat === DEALER_SEAT ? 'Dealer' : table.seats.find((s) => s.seat === seat)?.name ?? '';
+  return seat === DEALER_SEAT ? DEALER_NAME : table.seats.find((s) => s.seat === seat)?.name ?? '';
 }
 
 function applySettings(): void {
@@ -83,7 +83,9 @@ function start(key: TournamentKey): void {
   overlay.tournamentName = TOURNAMENTS[key].name;
   const seed = seedFromString(`${key}:${Date.now()}:${Math.random()}`);
   const rng = mulberry32(seed);
-  const lineup = pickLineup(key, rng, 5);
+  // Nobody at the table shares your name.
+  let lineup = pickLineup(key, rng, 6).filter((c) => c.name.toLowerCase() !== save.name.trim().toLowerCase()).slice(0, 5);
+  if (lineup.length < 5) lineup = pickLineup(key, rng, 5);
   const tracker = new TournamentTracker();
   banter = new Banter(mulberry32(seed ^ 0x5bd1e995));
   banter.density = save.settings.banter;
@@ -108,7 +110,8 @@ function start(key: TournamentKey): void {
         };
         const said = talk.onEvent(ev, who);
         if (said) {
-          const ms = Math.min(6500, 2600 + said.text.length * 45);
+          // Conversation lines hang around longer so the back-and-forth can be read.
+          const ms = said.conversation ? Math.min(7500, 3800 + said.text.length * 55) : Math.min(6500, 2600 + said.text.length * 45);
           void scene.speak(said.seat, said.targetSeat, said.text, ms, said.trigger, speakerName(said.seat, table));
         }
         await scene.present(ev);

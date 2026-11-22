@@ -9,6 +9,11 @@ const BLURBS: Record<TournamentKey, string> = {
   vegas: 'The full mix. Nobody at this table plays the same way.',
   championship: 'Calculators and pros only. Every mistake gets punished.',
 };
+const TAGLINES: Record<TournamentKey, string> = {
+  tutorial: 'Folding chairs and a card table',
+  vegas: 'The dining room',
+  championship: 'Dave’s basement, door closed',
+};
 
 export class Screens {
   private readonly root: HTMLElement;
@@ -30,8 +35,8 @@ export class Screens {
   title(name: string, onPlay: (name: string) => void, onCareer: () => void, onSettings: () => void): void {
     this.render(`
       <div class="screen title">
-        <div class="eyebrow">No-Limit Hold'em · six-max · you against five</div>
-        <h1>Poker,<br>I Hardly Knew Her</h1>
+        <div class="eyebrow">No-Limit Hold'em · six-max · you against five of Dave's friends</div>
+        <h1>Poker Night<br>at Dave's</h1>
         <div class="namerow"><label>They'll call you</label><input class="name" maxlength="14" value="${name.replace(/"/g, '')}" /></div>
         <button class="primary">Play</button>
         <div class="links"><button class="link career">Career</button><button class="link settings">Settings</button></div>
@@ -44,7 +49,7 @@ export class Screens {
 
   select(onPick: (key: TournamentKey) => void, onBack: () => void): void {
     const cards = (Object.keys(TOURNAMENTS) as TournamentKey[])
-      .map((k) => `<button class="tcard" data-key="${k}"><div class="tname">${TOURNAMENTS[k].name}</div><div class="tblurb">${BLURBS[k]}</div></button>`)
+      .map((k) => `<button class="tcard" data-key="${k}"><div class="tname">${TOURNAMENTS[k].name}</div><div class="ttag">${TAGLINES[k]}</div><div class="tblurb">${BLURBS[k]}</div></button>`)
       .join('');
     this.render(`
       <div class="screen select">

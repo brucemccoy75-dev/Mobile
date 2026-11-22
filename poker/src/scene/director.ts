@@ -17,16 +17,16 @@ const RETURN_AFTER_MS = 6000;
 export function seatPose(seat: number): Pose {
   const f = figurePos(seat);
   const toCentre = new THREE.Vector3(-f.x, 0, -f.z).normalize();
-  const pos = f.clone().add(toCentre.multiplyScalar(3.0));
-  pos.y = 1.6;
-  return { pos, look: new THREE.Vector3(f.x, 1.2, f.z) };
+  const pos = f.clone().add(toCentre.multiplyScalar(2.4));
+  pos.y = 1.55;
+  return { pos, look: new THREE.Vector3(f.x, 1.25, f.z) };
 }
 
 export function closeUpOf(point: THREE.Vector3): Pose {
   const toCentre = new THREE.Vector3(-point.x, 0, -point.z).normalize();
-  const pos = point.clone().add(toCentre.multiplyScalar(3.0));
-  pos.y = 1.6;
-  return { pos, look: new THREE.Vector3(point.x, 1.2, point.z) };
+  const pos = point.clone().add(toCentre.multiplyScalar(2.4));
+  pos.y = 1.55;
+  return { pos, look: new THREE.Vector3(point.x, 1.25, point.z) };
 }
 
 function blend(a: Pose, b: Pose, t: number): Pose {

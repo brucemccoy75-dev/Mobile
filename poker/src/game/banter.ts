@@ -131,7 +131,7 @@ export class Banter {
       const [role] = c.conv.lines[c.next];
       const seat = role === 'A' ? c.a : c.b;
       // Wait for a gap, and never talk over your own decision or a big pot.
-      if (now - c.lastAt < 2600 || seat === actor || bigPot) return null;
+      if (now - c.lastAt < 5200 || seat === actor || bigPot) return null;
       if (!table.ids.has(c.a) || !table.ids.has(c.b)) {
         this.convo = null;
         return null;
