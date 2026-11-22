@@ -110,9 +110,13 @@ level, eyes calm, mouth closed and straight); the expression variants come later
 > turtleneck sweater with the collar folded up snug under his chin. Nothing distinctive about him at
 > all. Neutral expression.
 
-**Menafee** (`ulrich.png`) — calculator, structural engineer, blunt.
-> A man about fifty, crew cut, square face, heavy brow, red and black flannel shirt, flat direct
-> stare, mouth a straight line, built like he carries beams for fun.
+**Menafee** (`ulrich.png`) — calculator, structural engineer, blunt. He never shows up: an empty chair.
+> (Replace "character portrait, head and shoulders" and the skin line in the style block with the
+> surfaces wording below.) Stylised 3D-rendered portrait in the same style as the set, centred,
+> square, eye level, matte clay-like surfaces. An empty grey metal folding chair, the kind from a
+> church basement, seen straight on from the front with the chair back filling the frame where a
+> person's head and shoulders would be, nobody sitting in it, a faint dent in the seat as if someone
+> was expected. Nothing in the image is green except the background.
 
 **Jack** (`sal.png`) — pro, the best player at the table, and sixteen.
 > A sixteen-year-old boy, big for his age, broad shoulders and a heavy build, round full face, fairly

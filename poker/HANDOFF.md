@@ -52,7 +52,7 @@ The ids never change (saves, memories and file names depend on them). Only names
 | benny | Luca (mid 20s, average, dark hair, black tee, nondescript) | tourist | pro | **done** |
 | wen | Jonathan (big, bald, arcade-boxer look, blue B cap, blue and yellow jersey) | calculator | pro | **done** |
 | priya | Will (mid 20s, like Luca, black turtleneck) | calculator | meh | **done** |
-| ulrich | Menafee | calculator | anti | needed |
+| ulrich | Menafee (never shows up: an empty folding chair) | calculator | anti | prompt ready |
 | sal | Jack (16, big, blond, backwards cap, glasses) | pro | anti | **done** |
 | nadia | David (early 50s, thin, thinning hair, light blue button-up) | pro | pro | **done** |
 | jimmy | Bruce (late 40s, thin, grey beard, black tee, sly) | pro | meh | **done** |
@@ -84,6 +84,7 @@ covered for every character and at least 100 lines per type. To rewrite a person
    keep the trigger coverage, keep it funny first, raw tone allowed, no slurs.
 3. Update the bio in `characters.ts`. Run `npm test`. Push.
 4. Jack is first: he is sixteen now and the lines still sound like a sixty-year-old grinder.
+5. Menafee is an empty chair that talks; nobody at the table should ever remark on it.
 
 The dealer is a robot named Skynet; its lines in `lines.ts` under `dealer` still read as a human dealer and want a robot voice.
 
