@@ -89,15 +89,17 @@ covered for every character and at least 100 lines per type. To rewrite a person
    trash talk half vicious and half misunderstanding the rules of the hand.
    **David is done.** Hothead, the castration policy for checking (a `targetChecks` trigger fires
    when anyone checks), hummus and pretzels, tilts twice as hard (`temper` in `characters.ts`).
+   **Luca, Bawb and Will are done** as one set: the new GTA (Luca loves it, Will hates it),
+   Christmas plans, clown school, failed proposals (balloon, Celtics game, bridge, thirty-slide
+   deck), and trying for children. Bawb's lines are a few words each because he barely talks.
 5. Menafee is an empty chair that talks; nobody at the table should ever remark on it.
 
 Persona notes from the owner for the rest (all lines exaggerated, a little in character, the work
 stuff ridiculous: "the new girl died during her test and now I have to finish it for her"):
-- Luca (Tim and David done): the boring financial-services office, but absurd.
 - Paul: raises bees by hand, has found the spot to tickle them for the special honey.
 - Bruce: joins most conversations, very dry, usually one joke at the expense of whoever he is
   talking to.
-- David Sr and Bawb: almost always quiet.
+- David Sr: almost always quiet (Bawb done).
 - The whole table debates technology, AI and data centres.
 - Kevin: the drunk imaginary one. Skynet: the android dealer; give it a robot voice.
 Already wired: each character has `talk` and `trash` factors in `characters.ts` that the banter

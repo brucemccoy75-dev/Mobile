@@ -492,4 +492,78 @@ export const CONVERSATIONS: Conversation[] = [
     ['B', 'You could try not talking.'],
     ['A', 'I tried that. In 2019. For eleven minutes. Tim sold a towel in the silence. Never again.'],
   ] },
+  // ---- Luca, Bawb, Will: GTA, Christmas, clown school, proposals, trying for kids -----------------
+  { tag: 'office', who: { A: ['benny'], B: ['priya'] }, lines: [
+    ['A', 'The new GTA is the best thing ever made.'],
+    ['B', 'It is a forty-hour commute with a soundtrack.'],
+    ['A', 'You can rob a bank with a horse.'],
+    ['B', 'You can rob a bank with a horse in real life, Luca. Nobody does. That is the point of banks and horses.'],
+  ] },
+  { tag: 'office', who: { A: ['benny'], B: ['chad'] }, lines: [
+    ['A', 'Bawb, did you finish the new GTA?'],
+    ['B', 'Nobody finishes it.'],
+    ['A', 'Right? It is like a relationship.'],
+    ['B', 'You would not know.'],
+  ] },
+  { tag: 'office', who: { A: ['priya'], B: ['benny'] }, lines: [
+    ['A', 'What are you doing for Christmas?'],
+    ['B', 'My mom’s. Alone. She is going to ask about the balloon.'],
+    ['A', 'I have a plan. Laminated. Colour-coded. There is a slot for sadness at four.'],
+    ['B', 'Can I come to yours?'],
+    ['A', 'There is no slot for you, Luca. I would have to re-laminate.'],
+  ] },
+  { tag: 'office', who: { A: ['benny'], B: ['chad'] }, lines: [
+    ['A', 'Clown school tomorrow. Nine a.m. You coming?'],
+    ['B', 'Second year. I have to.'],
+    ['A', 'What is second year?'],
+    ['B', 'Same as first year. But sadder.'],
+  ] },
+  { tag: 'office', who: { A: ['benny'] }, lines: [
+    ['A', 'I proposed again.'],
+    ['B', 'Where this time?'],
+    ['A', 'Bridge. Over the highway. I thought the cars would be romantic. They honked. She thought they were honking at her. Technically yes.'],
+    ['B', 'What did she say?'],
+    ['A', 'She said “no” and then “which way is my car.”'],
+  ] },
+  { tag: 'office', who: { A: ['priya'] }, lines: [
+    ['A', 'Month fourteen of trying.'],
+    ['B', 'For?'],
+    ['A', 'A baby, {B}. The doctor said relax. So I made a relaxation schedule. It has slots. My wife tore it up. So that is a slot filled, I suppose.'],
+  ] },
+  { tag: 'office', who: { A: ['chad'] }, lines: [
+    ['A', 'We are trying too.'],
+    ['B', 'For a kid?'],
+    ['A', 'Yeah.'],
+    ['B', 'How is it going?'],
+    ['A', 'The doctor laughed. Not at us. Near us. Then at us.'],
+  ] },
+  { tag: 'office', who: { A: ['priya'], B: ['benny'] }, lines: [
+    ['A', 'How did you propose, the first time?'],
+    ['B', 'Hot air balloon.'],
+    ['A', 'And?'],
+    ['B', 'No. At altitude. Forty minutes left up there. We talked about the weather. The weather was fine. We were not.'],
+  ] },
+  { tag: 'office', who: { A: ['benny'], B: ['priya'] }, lines: [
+    ['A', 'How did you propose?'],
+    ['B', 'Thirty-slide deck. She said yes on slide twelve.'],
+    ['A', 'And you stopped?'],
+    ['B', 'I kept going. There was a Q and A. Nobody asked anything. I had prepared answers.'],
+  ] },
+  { tag: 'office', who: { A: ['benny'], B: ['jimmy'] }, lines: [
+    ['A', 'I am thinking of proposing a fourth time.'],
+    ['B', 'To whom?'],
+    ['A', 'I have not decided. Does it matter?'],
+    ['B', 'Historically, Luca, no.'],
+  ] },
+  { tag: 'office', who: { A: ['priya'], B: ['chad'] }, lines: [
+    ['A', 'Christmas at her parents again?'],
+    ['B', 'Yep. They know about the no.'],
+    ['A', 'Which no?'],
+    ['B', 'All of them.'],
+  ] },
+  { tag: 'office', who: { A: ['benny'] }, lines: [
+    ['A', 'Clown school had a career day.'],
+    ['B', 'Who came?'],
+    ['A', 'One clown. He did not have a job either. He just stood there. It was the best lecture so far.'],
+  ] },
 ];
