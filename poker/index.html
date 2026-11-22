@@ -150,10 +150,10 @@
     .pcardc .face { flex: 1; min-height: 0; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; }
     .pcardc .face img { height: 100%; max-height: 72px; width: auto; object-fit: contain; filter: drop-shadow(0 6px 10px rgba(0,0,0,.5)); }
     .pcardc .pname { font-weight: 700; font-size: 11px; margin-top: 2px; flex: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .pcardc .bubble { position: absolute; left: 3px; right: 3px; top: 3px; background: #f4f1ea; color: #15181a; font-size: 10px; line-height: 1.2; padding: 4px 6px; border-radius: 8px;
-      opacity: .85; transition: transform .15s, opacity .15s; min-height: 14px; z-index: 2; }
-    .pcardc .bubble:empty { opacity: 0; }
-    .pcardc .bubble.pop { transform: scale(1.08); opacity: 1; background: var(--gold); }
+    .pcardc .bubble { position: absolute; left: 3px; right: 3px; top: 3px; background: #f4f1ea; color: #15181a; font-size: 11px; line-height: 1.2; padding: 5px 7px; border-radius: 8px;
+      opacity: 0; transform: translateY(4px) scale(.96); transition: transform .2s, opacity .35s; min-height: 14px; z-index: 2; pointer-events: none; }
+    .pcardc .bubble.show { opacity: 1; transform: none; }
+    .pcardc .bubble.pop { background: var(--gold); }
     .pcardc .tick { position: absolute; right: 6px; top: 6px; width: 20px; height: 20px; border-radius: 50%; background: var(--gold); color: #141614; font-weight: 800; font-size: 12px; line-height: 20px; opacity: 0; transform: scale(.5); transition: .15s; }
     .pcardc.on { border-color: var(--gold); transform: translateY(-3px); box-shadow: 0 0 0 1px var(--gold), 0 10px 24px rgba(227,192,106,.25); }
     .pcardc.on .tick { opacity: 1; transform: none; }
@@ -162,7 +162,7 @@
     .pick .deal:disabled { opacity: .35; box-shadow: none; }
 
     /* Screens */
-    #screens { position: fixed; inset: 0; display: none; place-items: center; background: radial-gradient(ellipse at 50% 40%, rgba(29,111,61,.35), rgba(7,16,11,.96) 70%); z-index: 20; }
+    #screens { position: absolute; inset: 0; display: none; place-items: center; background: #06110b; z-index: 20; overflow: hidden; }
     #screens.show { display: grid; }
     .screen { text-align: center; padding: 24px; max-width: 720px; width: 100%; }
     .eyebrow { color: var(--muted); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; margin-bottom: 10px; }
@@ -213,7 +213,7 @@
     #standings li.out { opacity: .4; }
 
     /* Panels */
-    #panels { position: fixed; inset: 0; display: none; place-items: center; background: rgba(4,8,6,.72); backdrop-filter: blur(4px); z-index: 30; padding: 10px 10px 10px 10px; }
+    #panels { position: absolute; inset: 0; display: none; place-items: center; background: rgba(4,8,6,.72); backdrop-filter: blur(4px); z-index: 30; padding: 10px; }
     #panels.show { display: grid; }
     .panel { background: rgba(12,18,14,.96); border: 1px solid rgba(255,255,255,.12); border-radius: 16px; padding: 16px; width: min(760px, 100%); max-height: 100%; overflow: auto; text-align: center; }
     .panel .stack { display: flex; flex-direction: column; gap: 8px; max-width: 340px; margin: 0 auto; }
@@ -303,9 +303,9 @@
       <button class="aggressive">Raise</button>
     </div>
   </div>
-  </div></div>
   <div id="panels"></div>
   <div id="screens"></div>
+  </div></div>
   <div id="rotate" aria-live="polite">
     <div>
       <div class="phone"></div>

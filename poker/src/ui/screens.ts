@@ -73,7 +73,7 @@ export class Screens {
     const picked: string[] = [];
     const cards = characters
       .map((c) => `<button class="pcardc" data-id="${c.id}">
-          <div class="bubble">${c.pitch[0]}</div>
+          <div class="bubble"></div>
           <div class="face"><img src="${portraitBase}${c.id}.png" alt="" draggable="false"></div>
           <div class="pname">${c.name}</div>
           <div class="tick">✓</div>
@@ -93,21 +93,24 @@ export class Screens {
     const countEl = root.querySelector('.count')!;
     const dealBtn = root.querySelector<HTMLButtonElement>('.deal')!;
     const byId = (id: string) => characters.find((c) => c.id === id)!;
-    const bubbleTimers = new Map<string, number>();
-    const say = (id: string, text: string, revert = true) => {
-      const card = root.querySelector<HTMLElement>(`.pcardc[data-id="${id}"]`)!;
-      const b = card.querySelector('.bubble') as HTMLElement;
-      b.textContent = text;
-      b.classList.add('pop');
-      const old = bubbleTimers.get(id);
-      if (old) window.clearTimeout(old);
-      if (revert) {
-        bubbleTimers.set(id, window.setTimeout(() => {
-          b.classList.remove('pop');
-          const c = byId(id);
-          b.textContent = c.pitch[Math.floor(Math.random() * c.pitch.length)];
-        }, 2400));
+    // One man talks at a time; his bubble fades after a few seconds.
+    let talking: { id: string; timer: number } | null = null;
+    const bubbleOf = (id: string) => root.querySelector<HTMLElement>(`.pcardc[data-id="${id}"] .bubble`)!;
+    const say = (id: string, text: string, pop = false) => {
+      if (!text) return;
+      if (talking) {
+        window.clearTimeout(talking.timer);
+        bubbleOf(talking.id).classList.remove('show', 'pop');
       }
+      const b = bubbleOf(id);
+      b.textContent = text;
+      b.classList.toggle('pop', pop);
+      b.classList.add('show');
+      const timer = window.setTimeout(() => {
+        b.classList.remove('show', 'pop');
+        if (talking && talking.id === id) talking = null;
+      }, 3500);
+      talking = { id, timer };
     };
     const refresh = () => {
       for (const card of root.querySelectorAll<HTMLElement>('.pcardc')) {
@@ -125,10 +128,10 @@ export class Screens {
         const i = picked.indexOf(id);
         if (i >= 0) {
           picked.splice(i, 1);
-          say(id, c.dropped);
+          say(id, c.dropped, true);
         } else if (picked.length < 5) {
           picked.push(id);
-          say(id, c.picked);
+          say(id, c.picked, true);
         } else {
           say(id, c.pitch[Math.floor(Math.random() * c.pitch.length)]);
         }
@@ -138,25 +141,28 @@ export class Screens {
     root.querySelector('.random')!.addEventListener('click', () => {
       picked.length = 0;
       const pool = [...characters].sort(() => Math.random() - 0.5).slice(0, 5);
-      for (const c of pool) {
-        picked.push(c.id);
-        say(c.id, c.picked);
-      }
+      for (const c of pool) picked.push(c.id);
+      say(pool[0].id, pool[0].picked, true);
       refresh();
     });
     dealBtn.addEventListener('click', () => onDeal(picked.map(byId)));
     root.querySelector('.back')!.addEventListener('click', onBack);
-    // Idle chatter: every few seconds somebody who is not picked pitches again.
+    // Chatter: every few seconds one man who is not picked makes his pitch.
     const chatter = window.setInterval(() => {
       if (!root.contains(dealBtn)) {
         window.clearInterval(chatter);
         return;
       }
-      const out = characters.filter((c) => !picked.includes(c.id));
+      if (talking) return;
+      const out = characters.filter((c) => !picked.includes(c.id) && c.pitch.some((p) => p));
       if (out.length === 0) return;
       const c = out[Math.floor(Math.random() * out.length)];
       say(c.id, c.pitch[Math.floor(Math.random() * c.pitch.length)]);
-    }, 3500);
+    }, 4500);
+    window.setTimeout(() => {
+      const c = characters.find((x) => x.id === 'sal') ?? characters[0];
+      say(c.id, c.pitch[0]);
+    }, 500);
     refresh();
   }
 
