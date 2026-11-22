@@ -58,7 +58,7 @@ level, eyes calm, mouth closed and straight); the expression variants come later
 > mouth, slightly sunken cheeks, pale eyebrows gone grey, wearing a white business button-up shirt
 > buttoned to the top, no tie. Neutral expression.
 
-**Paul** (`dolores.png`) — nit, fourth-grade teacher who looks like a bouncer.
+**Paul** (`dolores.png`) — nit, fourth-grade teacher. Done.
 > An ordinary white man in his forties with an average build, regular shoulders and a normal neck,
 > arms just a little thicker than average like a guy who does yard work, short dark hair, a plain
 > friendly everyday face, wearing a plain grey tank top so his upper arms are visible, with solid
