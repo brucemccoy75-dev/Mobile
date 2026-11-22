@@ -3,6 +3,7 @@ import { TOURNAMENTS, type TournamentKey } from './bots/characters';
 import { mulberry32, seedFromString } from './engine/rng';
 import { Banter, DEALER_SEAT } from './game/banter';
 import { TournamentTracker, clearSave, loadSave, recordTournament, writeSave } from './game/career';
+import { type LegalActions } from './engine/hand';
 import { HUMAN_SEAT, TableController, type TableEvent } from './game/table';
 import { DEALER_POS, figurePos } from './scene/layout';
 import { TableScene } from './scene/table-scene';
@@ -113,11 +114,11 @@ function start(key: TournamentKey): void {
           const hu = talk.headsUp(who);
           if (hu) overlay.say(hu.speaker, bubblePos(hu.seat), hu.text, 4500);
         }
-        if (ev.type === 'turn' && ev.seat === HUMAN_SEAT && table.hand) showActions(table, ev.deadline);
+        if (ev.type === 'turn' && ev.seat === HUMAN_SEAT && table.hand) showActions(table, ev.legal, ev.deadline);
       },
     },
   });
-  table.onDeadline = (deadline) => showActions(table, deadline);
+  table.onDeadline = (deadline) => showActions(table, table.humanLegal, deadline);
   controller = table;
   actions.onAction = (a) => void table.humanAct(a);
 
@@ -137,9 +138,8 @@ function start(key: TournamentKey): void {
   });
 }
 
-function showActions(table: TableController, deadline: number | null): void {
+function showActions(table: TableController, legal: LegalActions | null, deadline: number | null): void {
   const hand = table.hand;
-  const legal = table.humanLegal;
   if (!hand || !legal || table.isPaused) return;
   const me = hand.player(HUMAN_SEAT);
   actions.show({ legal, pot: hand.potTotal(), streetBet: me.streetBet, bigBlind: hand.bigBlind, deadline });
@@ -154,7 +154,7 @@ function openPause(): void {
   panels.onResume = () => {
     panels.close();
     table.resume();
-    if (table.humanLegal) showActions(table, null);
+    if (table.humanLegal) showActions(table, table.humanLegal, null);
   };
   panels.onQuit = () => {
     panels.close();

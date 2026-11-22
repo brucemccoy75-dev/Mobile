@@ -15,9 +15,9 @@ const RETURN_AFTER_MS = 6000;
 function seatPose(seat: number): Pose {
   const f = figurePos(seat);
   const toCentre = new THREE.Vector3(-f.x, 0, -f.z).normalize();
-  const pos = f.clone().add(toCentre.multiplyScalar(2.7));
-  pos.y = 1.5;
-  return { pos, look: new THREE.Vector3(f.x, 1.3, f.z) };
+  const pos = f.clone().add(toCentre.multiplyScalar(3.6));
+  pos.y = 1.75;
+  return { pos, look: new THREE.Vector3(f.x, 1.15, f.z) };
 }
 
 function blend(a: Pose, b: Pose, t: number): Pose {
