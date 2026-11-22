@@ -58,10 +58,11 @@ level, eyes calm, mouth closed and straight); the expression variants come later
 > mouth, slightly sunken cheeks, pale eyebrows gone grey, wearing a white business button-up shirt
 > buttoned to the top, no tie. Neutral expression.
 
-**Paul** (`dolores.png`) — nit, fourth-grade teacher.
-> A man in his mid forties, soft round face, short brown hair, sweater vest over a collared shirt,
-> school lanyard just visible, patient tired eyes, the half smile of someone waiting for the class to
-> settle down.
+**Paul** (`dolores.png`) — nit, fourth-grade teacher who looks like a bouncer.
+> A strong, heavyset white man in his forties with thick shoulders and a wide neck, short dark hair, a
+> broad face, wearing a plain grey tank top so his upper arms are visible, with solid black tribal
+> armband tattoos ringing each upper arm, thick bands of plain black ink with no lettering or
+> pictures. Neutral expression.
 
 **Kevin** (`marvin.png`) — nit, actuary, fatalistic.
 > A man in his late thirties, pale, slightly hollow cheeks, thinning dark hair, short-sleeve white
