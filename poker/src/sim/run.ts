@@ -170,7 +170,10 @@ export function pickLineup(key: TournamentKey, rng: Rng, size = 6): Character[] 
 export function mixedLineup(rng: Rng): Character[] {
   const byType = (t: BotType) => CHARACTERS.filter((c) => c.type === t);
   const picks: Character[] = [];
-  for (const t of ['nit', 'tourist', 'calculator', 'pro'] as BotType[]) picks.push(byType(t)[Math.floor(rng() * 3)]);
+  for (const t of ['nit', 'tourist', 'calculator', 'pro'] as BotType[]) {
+    const pool = byType(t);
+    picks.push(pool[Math.floor(rng() * pool.length)]);
+  }
   const rest = shuffle(CHARACTERS.filter((c) => !picks.includes(c)), rng);
   picks.push(...rest.slice(0, 2));
   return shuffle(picks, rng);

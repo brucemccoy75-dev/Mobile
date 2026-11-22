@@ -52,19 +52,18 @@ The ids never change (saves, memories and file names depend on them). Only names
 |---|---|---|---|---|
 | harold | David Sr (~70, thin, bald, white shirt; David's father) | nit | anti | **done** |
 | dolores | Paul (40s, average build, dark hair, tank top, tribal armbands) | nit | meh | **done** |
-| marvin | Kevin (late 40s, heavy, dark messy hair, drunk and crazy; imaginary) | nit | anti | **done** |
-| chad | Bawb (late 40s, short, fit, buzzed stubble, white tee) | tourist | pro | **done** |
+| marvin | Kevin (late 40s, heavy, dark messy hair, drunk and crazy; imaginary) | tourist (very low) | anti | **done** |
+| chad | Bawb (late 40s, short, fit, buzzed stubble, white tee) | pro (David's level) | pro | **done** |
 | trish | Tim (late 30s, stocky, stubble, wild hair under a red backwards cap, video-game tee) | tourist | meh | **done** |
 | benny | Luca (mid 20s, average, dark hair, black tee, nondescript) | tourist | pro | **done** |
 | wen | Jonathan (big, bald, arcade-boxer look, blue B cap, blue and yellow jersey) | calculator | pro | **done** |
 | priya | Will (mid 20s, like Luca, black turtleneck) | calculator | meh | **done** |
-| ulrich | Menafee (never shows up: an empty black poker chair) | calculator | anti | **done** |
-| sal | Jack (16, big, blond, backwards cap, glasses) | pro | anti | **done** |
+| ulrich | Menafee (never shows up: an empty black poker chair) | tourist (very low) | anti | **done** |
+| sal | Jack (16, big, blond, backwards cap, glasses) | tourist (low) | anti | **done** |
 | nadia | David (early 50s, thin, thinning hair, light blue button-up) | pro | pro | **done** |
 | jimmy | Bruce (late 40s, thin, grey beard, black tee, sly) | pro | meh | **done** |
 | dealer | Skynet (Dave's android dealer, white panels, black visor, bow tie) | — | — | **done** |
 
-Tables: Kids Table = nits + tourists; Adult Table = all; Real Poker = calculators + pros.
 
 ## Portrait pipeline (per character)
 

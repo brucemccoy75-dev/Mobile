@@ -238,13 +238,13 @@ describe('Bot', () => {
     const mem = bot.memory();
     const again = new Bot(characterById('sal'), mem);
     expect(again.profiles.get('chad')?.folds).toBe(1);
-    expect(again.stats.iq).toBe(86);
+    expect(again.stats.iq).toBe(characterById('sal').iq);
   });
 
-  it('has twelve characters, three per type, and the right pools per tournament', () => {
+  it('has twelve characters, every type represented, and the right pools per tournament', () => {
     expect(CHARACTERS).toHaveLength(12);
     for (const t of ['nit', 'tourist', 'calculator', 'pro'] as BotType[]) {
-      expect(CHARACTERS.filter((c) => c.type === t)).toHaveLength(3);
+      expect(CHARACTERS.filter((c) => c.type === t).length, t).toBeGreaterThanOrEqual(2);
     }
     expect(eligibleCharacters('tutorial').every((c) => c.type === 'nit' || c.type === 'tourist')).toBe(true);
     expect(eligibleCharacters('championship').every((c) => c.type === 'calculator' || c.type === 'pro')).toBe(true);
