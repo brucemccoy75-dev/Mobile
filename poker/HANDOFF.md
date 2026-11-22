@@ -47,7 +47,7 @@ The ids never change (saves, memories and file names depend on them). Only names
 | harold | David Sr | nit | anti | needed |
 | dolores | Paul | nit | meh | needed |
 | marvin | Kevin | nit | anti | needed |
-| chad | Bawb | tourist | pro | needed |
+| chad | Bawb (late 40s, short, fit, bald, Popeye chin, white tee) | tourist | pro | prompt ready |
 | trish | Tim | tourist | meh | needed |
 | benny | Luca | tourist | pro | needed |
 | wen | Jonathan | calculator | pro | needed |

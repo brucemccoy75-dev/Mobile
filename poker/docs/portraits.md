@@ -65,10 +65,10 @@ New Hampshire, Dave's-basement feel.
 > dress shirt with a narrow tie, flat resigned expression, eyes that have already calculated how this
 > ends.
 
-**Bawb** (`chad.png`) — tourist, loud, bachelor-party energy.
-> A man about thirty, big grin, sunburned nose, backwards baseball cap, green basketball jersey over
-> a t-shirt, gold-rimmed sunglasses pushed up on the cap, thick neck, eyebrows up like he just had an
-> idea.
+**Bawb** (`chad.png`) — tourist, loud, the life of the party.
+> A white man in his late forties, short and fit, completely bald, with a Popeye look: a jutting square
+> chin, a slightly squinted eye, thick neck and compact broad shoulders, plain white t-shirt, a big
+> easy grin like he just arrived at the party and is already the loudest guy in it.
 
 **Tim** (`trish.png`) — tourist, cruise-ship regular, superstitious.
 > A man in his mid fifties, deep tan, silver hair combed back, loud floral shirt, a beaded lucky
