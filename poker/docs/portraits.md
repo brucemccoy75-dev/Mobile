@@ -59,11 +59,12 @@ level, eyes calm, mouth closed and straight); the expression variants come later
 > buttoned to the top, no tie. Neutral expression.
 
 **Paul** (`dolores.png`) — nit, fourth-grade teacher who looks like a bouncer.
-> A muscular white man in his forties with the build of someone who lifts weights: broad square
-> shoulders, a thick neck, defined arms, a lean jaw with no extra weight on the face, short dark hair,
-> wearing a plain grey tank top so his upper arms are visible, with solid black tribal armband tattoos
-> ringing each upper arm, thick bands of plain black ink with no lettering or pictures. Neutral
-> expression. (Not "heavyset": that came out fat.)
+> An ordinary white man in his forties with an average build, regular shoulders and a normal neck,
+> arms just a little thicker than average like a guy who does yard work, short dark hair, a plain
+> friendly everyday face, wearing a plain grey tank top so his upper arms are visible, with solid
+> black tribal armband tattoos ringing each upper arm, thick bands of plain black ink with no
+> lettering or pictures. Neutral expression. (Not "heavyset", which came out fat, and not "muscular"
+> or "lifts weights", which came out as a bodybuilder.)
 
 **Kevin** (`marvin.png`) — nit, actuary, fatalistic.
 > A man in his late thirties, pale, slightly hollow cheeks, thinning dark hair, short-sleeve white
