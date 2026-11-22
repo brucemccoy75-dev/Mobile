@@ -3,7 +3,7 @@ import { cardsToString, parseCards } from '../engine/cards';
 import { Hand } from '../engine/hand';
 import { mulberry32 } from '../engine/rng';
 import { Bot } from './bot';
-import { CHARACTERS, characterById, eligibleCharacters } from './characters';
+import { CHARACTERS, characterById } from './characters';
 import { classCombos, classLabel, equity, handClass, preflopPercentile, preflopRanking, rangeTop } from './equity';
 import { type Move, decide } from './policy';
 import { foldToBet, newProfile, observeHand, vpipRate } from './profile';
@@ -241,13 +241,10 @@ describe('Bot', () => {
     expect(again.stats.iq).toBe(characterById('sal').iq);
   });
 
-  it('has twelve characters, every type represented, and the right pools per tournament', () => {
+  it('has twelve characters with every type represented', () => {
     expect(CHARACTERS).toHaveLength(12);
     for (const t of ['nit', 'tourist', 'calculator', 'pro'] as BotType[]) {
       expect(CHARACTERS.filter((c) => c.type === t).length, t).toBeGreaterThanOrEqual(2);
     }
-    expect(eligibleCharacters('tutorial').every((c) => c.type === 'nit' || c.type === 'tourist')).toBe(true);
-    expect(eligibleCharacters('championship').every((c) => c.type === 'calculator' || c.type === 'pro')).toBe(true);
-    expect(eligibleCharacters('vegas')).toHaveLength(12);
   });
 });

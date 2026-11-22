@@ -3,7 +3,7 @@ import { Tournament } from '../engine/tournament';
 import { type Rng, mulberry32 } from '../engine/rng';
 import { shuffle } from '../engine/cards';
 import { Bot } from '../bots/bot';
-import { type Character, CHARACTERS, type TournamentKey, eligibleCharacters } from '../bots/characters';
+import { type Character, CHARACTERS } from '../bots/characters';
 import { type BotType } from '../bots/stats';
 
 export interface SeatReport {
@@ -160,12 +160,6 @@ export function summarize(reports: TournamentReport[]): { types: TypeSummary[]; 
 }
 
 /** Picks a 6-seat lineup for a tournament from its eligible characters. */
-export function pickLineup(key: TournamentKey, rng: Rng, size = 6): Character[] {
-  // size may exceed the pool; callers trim.
-  const pool = shuffle([...eligibleCharacters(key)], rng);
-  return pool.slice(0, size);
-}
-
 /** One of each type plus two more, drawn by seed, so every type is always represented. */
 export function mixedLineup(rng: Rng): Character[] {
   const byType = (t: BotType) => CHARACTERS.filter((c) => c.type === t);

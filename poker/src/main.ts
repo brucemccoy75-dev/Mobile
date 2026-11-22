@@ -1,5 +1,5 @@
 // Wires the screens, the 3D table, the action bar, the panels and the game controller together.
-import { CHARACTERS, type Character, DEALER_NAME, TOURNAMENTS, type TournamentKey } from './bots/characters';
+import { CHARACTERS, type Character, DEALER_NAME, GAME_NAME } from './bots/characters';
 import { mulberry32, seedFromString } from './engine/rng';
 import { Banter, DEALER_SEAT } from './game/banter';
 import { TournamentTracker, clearSave, loadSave, recordTournament, writeSave } from './game/career';
@@ -69,19 +69,19 @@ function showMenu(): void {
     deal: (name, lineup) => {
       save.name = name;
       writeSave(save);
-      start('custom', lineup);
+      start(lineup);
     },
-    career: () => panels.career(save, () => panels.close()),
+    career: () => panels.career(save, `${import.meta.env.BASE_URL}portraits/`, () => panels.close()),
     settings: () => panels.settings(save, () => panels.close()),
   });
 }
 
-function start(key: TournamentKey, lineup: Character[]): void {
+function start(lineup: Character[]): void {
   screens.hide();
   panels.close();
   overlay.clear();
-  overlay.tournamentName = TOURNAMENTS[key].name;
-  const seed = seedFromString(`${key}:${Date.now()}:${Math.random()}`);
+  overlay.tournamentName = GAME_NAME;
+  const seed = seedFromString(`night:${Date.now()}:${Math.random()}`);
   const rng = mulberry32(seed);
   const tracker = new TournamentTracker();
   banter = new Banter(mulberry32(seed ^ 0x5bd1e995));
@@ -134,13 +134,13 @@ function start(key: TournamentKey, lineup: Character[]): void {
     if (controller !== table) return;
     controller = null;
     save.memories = { ...save.memories, ...table.memories() };
-    const earned = recordTournament(save, { key, humanFinish: result.humanFinish, handsPlayed: table.tournament.handsPlayed }, tracker);
+    const earned = recordTournament(save, { humanFinish: result.humanFinish, handsPlayed: table.tournament.handsPlayed }, tracker);
     writeSave(save);
     actions.hide();
     panels.close();
     screens.results(
-      { ...result, handsPlayed: table.tournament.handsPlayed, tournament: TOURNAMENTS[key].name, earned },
-      () => start(key, lineup),
+      { ...result, handsPlayed: table.tournament.handsPlayed, tournament: GAME_NAME, earned },
+      () => start(lineup),
       showMenu,
     );
   });

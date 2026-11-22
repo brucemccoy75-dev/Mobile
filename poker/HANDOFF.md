@@ -15,9 +15,9 @@ Read this first in a new session. It says what exists, how to work on it, and wh
 
 ```sh
 npm install
-npm test                 # 58 tests: engine, bots, controller, banter, career, conversations
+npm test                 # 62 tests: engine, bots, controller, banter, career, conversations
 npm run build            # typecheck + production build
-npm run sim -- --n 100   # bot-only tournaments, prints finishes and tendencies per type
+npm run sim -- --n 100   # bot-only nights (mixed lineups), prints finishes and tendencies per type
 python3 tools/key-portrait.py in.jpg public/portraits/<id>.png   # green-screen to transparent PNG
 ```
 
@@ -26,7 +26,9 @@ Verify visually with Playwright in headless Chromium (pre-installed): serve `dis
 `dist/` at the root and falls back to index.html for anything else). Drive the page at viewport 844x390
 with `isMobile` (also try 1024x768 and 1400x900: the stage letterboxes). The home screen is the pick
 screen: click `.random` then `.deal`, act through `#actions .passive` / `.fold`, screenshot.
-`window.__scene` exposes the scene (`director`, `showInset(seat, ms, name, caption)`, `hideInset()`).
+`window.__scene` exposes the scene (`showInset(seat, ms, name, caption)`, `hideInset()`, `speak(...)`,
+`vaporise(seat)`). To see the career page with data, write a `pihkh.save.v2` JSON into localStorage
+first (shape in `career.ts`), reload, skip the intro, click `.go-career`.
 
 ## Architecture in one paragraph
 
@@ -34,7 +36,8 @@ screen: click `.random` then `.deal`, act through `#actions .passive` / `.fold`,
 tournament loop). `src/bots` is the AI: equity, four policies (nit, tourist, calculator, pro), stats
 IQ/Read/Clarity, opponent profiles, the roster in `characters.ts`. `src/game/table.ts` runs a
 tournament with the human in seat 0 and emits events to a presenter; `banter.ts` picks lines and runs
-two-man conversations; `career.ts` is the save file and trophies. `src/scene` is Three.js: table,
+two-man conversations; `career.ts` is the save file (one overall record, a rivalry record per man,
+trophies, settings, bot memories). `src/scene` is Three.js: table,
 figures (`figures.ts`: drawn placeholder, or a portrait standee when `public/portraits/<id>.png`
 exists), cards, chips, camera `director.ts`, synthesized `audio.ts`. `src/ui` is HTML overlay:
 plates, board, action bar, panels, screens (the home screen is the pick-your-opponents grid with name
@@ -43,6 +46,28 @@ fit the visual viewport (safe areas respected), so the layout is identical on ev
 spare screen is dark bars. Everything, menus and panels included, is laid out in stage units inside
 `#stage`; only `#rotate` sits outside it. `src/main.ts` wires it all. `src/content/lines.ts` holds
 every character's lines; `src/content/conversations.ts` the two-man exchanges.
+
+## The game, as it stands
+
+One format, called Poker Night: you pick five men from the twelve on the home screen, everyone
+starts with $10,000, blinds 50/100 rising every eight hands, antes from level four, until one man
+has everything or you bust. There are no table tiers any more (Kids Table, Adult Table and Real
+Poker are gone, along with their records and trophies). Skynet deals and vaporises whoever busts.
+
+**Career** (`career.ts`, panel in `panels.ts`): the save is `pihkh.save.v2` in localStorage:
+- `record`: nights played, wins, finishes by place, best hand, biggest pot, hands played.
+- `rivals[id]`: per man, `games` (nights you both played), `wins` (nights you finished ahead of
+  him), `losses` (he finished ahead; a man still in when you bust counts as ahead), `knockouts`
+  (you took his last chip) and `knockedOutBy` (he took yours). `TournamentTracker` collects these
+  from events: `rivals`, `finishes`, `knockouts`, `knockedOutBy`. `recordTournament` applies them.
+- `trophies`: First Blood, Regular (five wins), Pro Killer, Cleaner, Nemesis (five knockouts of one
+  man), Nobody's Safe (every man knocked out once), Pure Air, The Nuts, Chip and a Chair, Rivered,
+  Short Night, Scared Money.
+- An old `pihkh.save.v1` (records per table) is read once and folded into `record`; its rivalries
+  start empty. `clearSave` removes both keys.
+The career page shows the record, then every man on the roster with his record against you
+("4–1"), knockouts you dealt him and knockouts he dealt you, sorted by your knockouts; men you have
+never played are dimmed. Portraits come from `public/portraits/`.
 
 ## Characters: internal id, display name, type, portrait status
 
@@ -155,10 +180,9 @@ about the real crew's running jokes fit there.
 
 ## Open items, in order
 
-1. Portraits: all thirteen done. Expression variants are the next art step (see 3).
-2. Lines rewrite per persona: David Sr and Kevin still share the generic pool.
-3. Expression variants and the texture swap in `figures.ts`.
-4. Tuning from real play: nits may feel too passive; tourists' aggression; banter density.
-5. Later from the design: text-to-speech, cash games.
-6. The re-rpg and map3d workflows on their own branches force-publish the whole Pages site and would
+1. Lines rewrite per persona: David Sr and Kevin still share the generic pool.
+2. Expression variants (`<id>_happy.png` etc.) and the texture swap in `figures.ts`.
+3. Tuning from real play: banter density, bot busts in the first few hands, the blind schedule.
+4. Later from the design: text-to-speech, cash games.
+5. The re-rpg and map3d workflows on their own branches force-publish the whole Pages site and would
    wipe `gh-pages/poker/`; rerunning our workflow restores it. Fix those workflows if it bites.

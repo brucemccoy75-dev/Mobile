@@ -1,7 +1,7 @@
 // In-game panels: pause menu, hand replay with everyone's cards and equity per street, settings,
 // and the career screen.
 import { equity } from '../bots/equity';
-import { TOURNAMENTS, type TournamentKey } from '../bots/characters';
+import { CHARACTERS } from '../bots/characters';
 import { describeHand, evaluate } from '../engine/evaluator';
 import { type Hand, type Street } from '../engine/hand';
 import { mulberry32 } from '../engine/rng';
@@ -168,16 +168,26 @@ export class Panels {
     this.root.querySelector('.back')!.addEventListener('click', onBack);
   }
 
-  career(save: Save, onBack: () => void): void {
-    const keys = Object.keys(TOURNAMENTS) as TournamentKey[];
-    const rows = keys.map((k) => {
-      const r = save.tournaments[k];
-      const finishes = r.finishes.slice(1).map((n, i) => `<span class="fin"><b>${ordinal(i + 1)}</b> ${n}</span>`).join('');
-      return `<div class="crow"><div class="cname">${TOURNAMENTS[k].name}</div>
-        <div class="cstats">${r.played} played · ${r.wins} won · ${r.handsPlayed} hands</div>
+  career(save: Save, portraitBase: string, onBack: () => void): void {
+    const r = save.record;
+    const finishes = r.finishes.slice(1).map((n, i) => `<span class="fin"><b>${ordinal(i + 1)}</b> ${n}</span>`).join('');
+    const record = `<div class="crow"><div class="cname">${r.played} ${r.played === 1 ? 'night' : 'nights'} · ${r.wins} won · ${r.handsPlayed} hands</div>
         <div class="cfin">${finishes}</div>
         <div class="cbest">${r.bestHand ? `Best hand: ${r.bestHand.description}` : 'No showdowns won yet'}${r.biggestPot ? ` · Biggest pot: ${money(r.biggestPot)}` : ''}</div></div>`;
-    }).join('');
+    // Rivals: the men you have knocked out most come first, then the ones you have played most.
+    const rows = [...CHARACTERS]
+      .map((c) => ({ c, r: save.rivals[c.id] }))
+      .sort((a, b) => (b.r?.knockouts ?? 0) - (a.r?.knockouts ?? 0) || (b.r?.games ?? 0) - (a.r?.games ?? 0))
+      .map(({ c, r }) => `<div class="rival ${r ? '' : 'never'}">
+          <img src="${portraitBase}${c.id}.png" alt="" draggable="false">
+          <div class="rname">${c.name}</div>
+          ${r
+            ? `<div class="rrec" title="Nights you finished ahead, nights he did">${r.wins}–${r.losses}</div>
+               <div class="rko"><b>${r.knockouts}</b> KO${r.knockouts === 1 ? '' : 's'}</div>
+               <div class="rkob"><b>${r.knockedOutBy}</b> on you</div>`
+            : '<div class="rrec">—</div><div class="rko">Never played</div><div class="rkob"></div>'}
+        </div>`)
+      .join('');
     const trophies = TROPHIES.map((t) => {
       const got = save.trophies[t.id];
       return `<div class="trophy ${got ? 'got' : ''}"><div class="tn">${t.name}</div><div class="tb">${t.blurb}</div>${got && got.count > 1 ? `<div class="tc">×${got.count}</div>` : ''}</div>`;
@@ -185,7 +195,9 @@ export class Panels {
     this.render(`
       <div class="replayhead"><button class="link back">Back</button><div class="eyebrow">Career</div><div></div></div>
       <div class="replaybody">
-        <div class="career">${rows}</div>
+        <div class="career">${record}</div>
+        <div class="eyebrow" style="margin-top:14px">Rivals · record · knockouts</div>
+        <div class="rivals">${rows}</div>
         <div class="eyebrow" style="margin-top:14px">Trophies · ${Object.keys(save.trophies).length} of ${TROPHIES.length}</div>
         <div class="trophies">${trophies}</div>
       </div>`);

@@ -1,7 +1,6 @@
-// npm run sim -- [--n 40] [--seed 1] [--lineup mixed|tutorial|vegas|championship] [--samples 120]
+// npm run sim -- [--n 40] [--seed 1] [--samples 120]
 import { mulberry32 } from '../engine/rng';
-import { type TournamentKey } from '../bots/characters';
-import { mixedLineup, pickLineup, runTournament, summarize } from './run';
+import { mixedLineup, runTournament, summarize } from './run';
 
 const args = process.argv.slice(2);
 const opt = (name: string, def: string) => {
@@ -10,7 +9,6 @@ const opt = (name: string, def: string) => {
 };
 const n = Number(opt('n', '40'));
 const seed = Number(opt('seed', '1'));
-const lineupKey = opt('lineup', 'mixed');
 const samples = Number(opt('samples', '120'));
 
 const started = Date.now();
@@ -18,7 +16,7 @@ const reports = [];
 for (let i = 0; i < n; i++) {
   const s = seed + i;
   const rng = mulberry32(s * 7919);
-  const lineup = lineupKey === 'mixed' ? mixedLineup(rng) : pickLineup(lineupKey as TournamentKey, rng);
+  const lineup = mixedLineup(rng);
   reports.push(runTournament(lineup, { seed: s, samples }));
   process.stdout.write(`\rtournament ${i + 1}/${n}`);
 }

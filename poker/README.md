@@ -7,9 +7,9 @@ A web-based, phone-friendly 3D poker game. Vite + TypeScript + Three.js.
 - `src/engine` — the poker: cards, 7-card evaluator, a No-Limit Hold'em hand with side pots, the sit-and-go loop. Pure TypeScript, fully tested.
 - `src/bots` — equity, the four personalities (nit, tourist, calculator, pro), IQ / Read / Clarity stats, opponent profiles, the roster.
 - `src/sim` — `npm run sim` plays bot-only tournaments and reports finishes and tendencies per type.
-- `src/game` — the table controller (human seat, think times, shot clock, pause, history), the banter engine, career and trophies.
+- `src/game` — the table controller (human seat, think times, pause, history), the banter engine, career (record, rivalries, trophies).
 - `src/content` — every character's lines.
-- `src/scene` — the Three.js table, figures, cards, chips, camera director, audio.
+- `src/scene` — the Three.js table, figures, cards, chips, the speaker panel, the dealer's laser, audio.
 - `src/ui` — overlay labels, action bar, screens and panels.
 
 ## Develop
@@ -21,7 +21,7 @@ npm run dev        # http://localhost:5173, also reachable from a phone on the s
 npm run build      # typecheck + production build into dist/
 npm run preview    # serve dist/ locally
 npm test           # unit tests (engine, bots, controller, banter, career)
-npm run sim -- --n 100 --lineup vegas   # bot-only tournaments for tuning
+npm run sim -- --n 100   # bot-only nights for tuning
 ```
 
 ## Hosting

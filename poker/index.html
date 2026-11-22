@@ -252,6 +252,14 @@
     .cstats, .cbest { color: var(--muted); font-size: 12px; }
     .cfin { display: flex; gap: 10px; font-size: 12px; margin: 4px 0; flex-wrap: wrap; }
     .cfin b { color: var(--gold); }
+    .rivals { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 6px; margin-top: 8px; }
+    .rival { display: grid; grid-template-columns: 34px 1fr auto auto auto; align-items: center; gap: 8px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 4px 10px 4px 6px; font-size: 12px; }
+    .rival img { width: 34px; height: 34px; object-fit: cover; object-position: top; border-radius: 8px; background: rgba(0,0,0,.3); }
+    .rival .rname { font-weight: 700; font-size: 13px; }
+    .rival .rrec { font-variant-numeric: tabular-nums; color: var(--fg); font-weight: 700; min-width: 34px; text-align: center; }
+    .rival .rko, .rival .rkob { color: var(--muted); white-space: nowrap; }
+    .rival b { color: var(--gold); }
+    .rival.never { opacity: .45; }
     .trophies { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin-top: 8px; }
     .trophy { position: relative; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 8px 10px; opacity: .45; }
     .trophy.got { opacity: 1; border-color: rgba(227,192,106,.5); }

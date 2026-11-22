@@ -20,24 +20,23 @@ Build progress: steps 1 to 6 of section 10 are implemented and live at https://b
 | Variant | No-Limit Texas Hold'em only |
 | Format | 6-max sit-and-go: you + 5 bots. Ends when you bust or win |
 | Stacks / blinds | 10,000 chips. Blinds 50/100. Levels rise every 8 hands. Antes from level 4. No rebuys |
-| Tournaments | Kids Table (Type 1 + 2 bots), Adult Table (all types), Real Poker (Type 3 + 4). All open from the start |
-| Tutorial | Softest opponents only. No teaching aids |
-| Dealer | Visible dealer character who deals, announces action, and has a small line set |
-| Bots | Fixed named roster. 5 seated per tournament from those eligible |
+| Format | One format, *Poker Night*: you pick any five of the twelve men on the home screen. No table tiers (the Kids Table / Adult Table / Real Poker split was built and then removed) |
+| Dealer | Skynet, Dave's android. Deals, misquotes science fiction, and vaporises whoever busts (red laser, puff of smoke, chair stays empty) |
+| Bots | Fixed named roster of twelve, modelled on the real crew. You seat five |
 | Persistence | Device only (browser storage). No accounts |
 | Stats shown | Hidden. Tilt shows through behavior and comments, never as a number |
-| Reads help | Tap a player: last shown-down hands and a few recent actions. No notes, no auto labels |
+| Reads help | Hole-cam replay of the last hand from the pause menu. No notes, no auto labels |
 | Orientation | Landscape. Rotate prompt in portrait |
 | Faces | 2D portraits with expression states, mounted in the 3D scene. Procedural placeholders first; real art later |
 | Hole cards | Only yours during the hand. After the hand, optional replay with everyone's cards (hole cam) |
-| Camera | TV view by default. Swipe to orbit, snapping to seats. Tap a face for bio and recent moves. Auto-cuts to the actor in big moments unless you are looking around |
-| Comments | Text speech bubbles. Raw tone: swearing allowed, no slurs. Always funny: dry, timely, character-driven |
+| Camera | Fixed TV view of the table. No swipe or tap to look around. Whoever is talking appears in a picture-in-picture panel down the right side with the line as a caption |
+| Comments | Captions in the speaker panel. Raw tone: swearing allowed, no slurs. Always funny: dry, timely, character-driven. Two-man conversations about the office, AI and data centres, wives, NH weather, out-of-date Boston sports, D&D, and Division II girls' sports. Lines are never cut off before they can be read; nobody stays silent for long |
 | Name | *Poker Night at Dave's* (was *Poker, I Hardly Knew Her*) |
-| Timing | 20-second shot clock on you. Your speed is a tell bots can read |
+| Timing | No shot clock. Your speed is still tracked and is a tell bots can read |
 | Pace | Realistic bot think times (1–6 s) with a fast-forward toggle |
 | Audio | Cards, chips, ambient casino. All mutable. No music |
-| Career | Results per tournament. Trophies and achievements |
-| Later | Cash games, real portrait art, device text-to-speech |
+| Career | One overall record (nights, wins, finishes, best hand, biggest pot) plus a rivalry record per man: nights together, who finished ahead, knockouts each way. Trophies |
+| Later | Cash games, portrait expression variants, device text-to-speech |
 
 ---
 
@@ -94,9 +93,9 @@ One engine, parameterized by type and stats.
 
 ## 5. Roster
 
-12 named characters, 3 per type, each with a name, short bio, portrait, voice (comment style), and stat baselines. Eligibility per tournament: Tutorial seats Types 1–2, Vegas any, Championship Types 3–4. 5 are drawn each time, so tables vary. One dealer character.
+Twelve named men, modelled on the real crew: two nits (David Sr, Paul), five tourists (Kevin, Tim, Luca, Jack, Menafee), two calculators (Jonathan, Will) and three pros (Bawb, David, Bruce), each with a bio, portrait, voice and stat baselines (the table is in `HANDOFF.md`). You pick five on the home screen; each man pitches to be picked. Menafee never shows up: his seat is an empty chair that people talk to. Skynet is the dealer.
 
-Character names, bios, and portraits are produced in the content phase and reviewed by you. Placeholder figures (procedural, stylized, clearly distinct silhouettes and colors) ship first.
+All thirteen portraits are in (`docs/portraits.md` has the prompts and the green-screen pipeline). Expression variants are the remaining art step.
 
 ---
 
@@ -124,14 +123,13 @@ Display: speech bubble beside the speaker's seat, readable from the TV camera, 2
 
 ## 7. Screens and flow
 
-1. **Title / menu** — play, career, settings.
-2. **Tournament select** — Tutorial, Vegas, Championship, each with your record and trophies.
-3. **Table** — the game. TV camera, your cards large bottom-center, action bar (fold / check-call / bet-raise with a slider and quick sizes), shot clock ring, pot and board center, each seat with portrait, name, stack, current bet, and dealer button.
-4. **Hand replay** — after any hand, tap to re-watch with all hole cards shown and equity per street.
-5. **Player card** — tap a face: name, bio, stack, last shown-down hands, last few actions.
-6. **Results** — finish position, hands played, biggest pot, best hand, trophies earned.
-7. **Career** — per-tournament results, trophy case, achievements.
-8. **Settings** — sound, fast-forward, comment density, reset save.
+1. **Intro** — a short video, skippable, once per visit.
+2. **Home** — the pick screen: all twelve men pitching to be picked, choose five (or Random five), your name, Deal, Career, Settings. There is no separate title screen.
+3. **Table** — the game on a fixed 1000x460 stage that scales to any screen. Fixed TV camera, the board large at the top, your cards and stack bottom right, action bar bottom left (fold / check-call / bet-raise with a slider and quick sizes), each seat with portrait, name plate and stack in dollars, dealer button, a speaker panel down the right side. A standings card on hand one and whenever the blinds go up. A result card mid-table at the end of each hand showing who showed what and who won. Busted men are vaporised by the dealer.
+4. **Hand replay** — from the pause menu, the last hand with all hole cards and equity per street.
+5. **Results** — finish position, hands played, trophies earned, play again or home.
+6. **Career** — overall record, rivalry record per man (record against you, knockouts each way), trophy case.
+7. **Settings** — sound, comment density, reset save.
 
 ---
 
@@ -141,7 +139,7 @@ Display: speech bubble beside the speaker's seat, readable from the TV camera, 2
 - Cards: crisp, large, physically dealt and flipped. Chips stack and slide in animated bets.
 - Seats: portrait at each seat with expression states (neutral, thinking, pleased, annoyed, tilted, shocked). Placeholder: stylized procedural busts.
 - Overlays: minimal, clean, TV-graphics style name plates and pot readouts.
-- Camera: a rail of preset shots (table, each seat, board close-up, your cards). Swipe orbits between seat shots; auto-director cuts for all-ins, showdowns, and eliminations.
+- Camera: one fixed table shot. Close-ups happen in the speaker panel (a second camera rendered into a scissor region), never by moving the main view.
 - 60 fps target on mid-range phones. Pixel ratio capped at 2.
 
 ---
@@ -162,7 +160,7 @@ Display: speech bubble beside the speaker's seat, readable from the TV camera, 2
 
 1. Engine: rules, evaluator, tournament loop, hand history. Tests.
 2. Bot engine: stats, opponent model, the four policies, clarity. Simulation harness that pits types against each other to tune them.
-3. Table scene: felt, cards, chips, seats, camera director, action bar, shot clock. Playable against bots with placeholder faces.
+3. Table scene: felt, cards, chips, seats, fixed camera, action bar. Playable against bots with placeholder faces. (Done; the shot clock was built and removed.)
 4. Comments: trigger system, roster, first 400+ lines.
 5. Tournaments, results, career, trophies, settings, replay.
 6. Polish: audio, animations, expressions, performance pass on real phones.
@@ -174,5 +172,7 @@ Display: speech bubble beside the speaker's seat, readable from the TV camera, 2
 
 - Stat baselines: as proposed in section 3, to be tuned in the simulator.
 - Clarity: rises on bad beats and big losses, falls on wins, and drifts down slowly over quiet hands.
-- Roster: 12 characters, 3 per type.
+- Roster: 12 characters, modelled on the real crew; type counts are uneven (2 nits, 5 tourists, 2 calculators, 3 pros).
+- Tables: dropped in favour of picking your five opponents. Career tracks rivalries instead of table records.
+- Shot clock: dropped. Swipe-to-look: dropped. Title screen: dropped.
 - Felt: green.

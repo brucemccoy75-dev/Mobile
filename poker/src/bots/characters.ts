@@ -40,24 +40,14 @@ export const CHARACTERS: Character[] = [
   { id: 'jimmy', name: 'Bruce', type: 'pro', iq: 82, read: 90, clarityBase: 22, bio: 'Drove an hour to be tired here instead of at home. Never raises his voice; never misses. Loves the free market, the layoffs, and the machines that will replace you.', aiStance: 'pro', talk: 1.1, trash: 1.3, pitch: ['Pick me. I drove seventy minutes for this. Make it mean something.', 'I’ve got one joke tonight. It’s about you.', 'I’m tired, it’s late, and I’d still beat you. Deal.'], picked: 'Good. I was leaving at ten regardless.', dropped: 'Fine. Shorter night. Thank you, honestly.' },
 ];
 
-export const TOURNAMENTS = {
-  custom: { name: 'Poker Night', types: ['nit', 'tourist', 'calculator', 'pro'] as BotType[] },
-  tutorial: { name: 'Kids Table', types: ['nit', 'tourist'] as BotType[] },
-  vegas: { name: 'Adult Table', types: ['nit', 'tourist', 'calculator', 'pro'] as BotType[] },
-  championship: { name: 'Real Poker', types: ['calculator', 'pro'] as BotType[] },
-};
+/** The one format: you pick five men from the roster. */
+export const GAME_NAME = 'Poker Night';
 
 /** Dave's robot. It deals. */
 export const DEALER_NAME = 'Skynet';
-
-export type TournamentKey = keyof typeof TOURNAMENTS;
 
 export function characterById(id: string): Character {
   const c = CHARACTERS.find((x) => x.id === id);
   if (!c) throw new Error(`unknown character ${id}`);
   return c;
-}
-
-export function eligibleCharacters(key: TournamentKey): Character[] {
-  return CHARACTERS.filter((c) => TOURNAMENTS[key].types.includes(c.type));
 }
