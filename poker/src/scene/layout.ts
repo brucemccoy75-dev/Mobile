@@ -11,7 +11,7 @@ export const SEAT_COUNT = 6;
  * the top centre like a seventh chair: three seats spread evenly up the left side, two down the
  * right, so the ring reads as uniform.
  */
-export const SEAT_ANGLES = [90, 134, 181, 226, 330, 31];
+export const SEAT_ANGLES = [90, 128, 181, 226, 330, 37];
 export const DEALER_ANGLE = 270;
 
 export function ellipse(angleDeg: number, k: number, y = 0): THREE.Vector3 {

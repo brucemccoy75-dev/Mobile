@@ -85,7 +85,7 @@ as upright frames, and they stand on the rail line (`figurePos` k 1.14, y 0.05) 
 rail (`holePos(seat, true)`); each plate is re-anchored every frame to a point on the standee itself
 (`plateLocal`, 0.5 figure units up, via `overlay.movePlate()`), so it sits tight over the faded
 foot of the portrait and draws its bottom line; `platePos` is only the first placement and the last action takes the name's place inside
-the plate (`.plate.tagged`). Skynet top centre as a seventh chair with his own DEALER plate, the
+the plate (`.plate.tagged`). Skynet top centre as a seventh chair with a plate like the others (name, then "Dealer" where the stack goes), the
 five seats spread evenly (three up the left, two down the right; angles in `layout.ts`), the board large at the top, your cards and
 stack bottom right, the action bar bottom left, dollar stacks under names, a standings card on hand
 one and whenever the blinds go up, a result card mid-table at the end of each hand (who showed
