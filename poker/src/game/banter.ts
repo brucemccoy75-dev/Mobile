@@ -111,6 +111,15 @@ export class Banter {
     this.now = now;
   }
 
+  /**
+   * A clock tick between events, so the table keeps talking while the player thinks: exchanges
+   * carry on, a new one may start, the opening round and Bruce's last word land on time.
+   */
+  tick(table: BanterTable): Speech | null {
+    if (this.openers.length > 0) return this.opener(table);
+    return this.chatter({ type: 'tick' } as unknown as TableEvent, table);
+  }
+
   /** Feeds a table event; returns at most one thing someone says. */
   onEvent(ev: TableEvent, table: BanterTable): Speech | null {
     if (this.openers.length > 0 && ev.type !== 'tournamentStart') {
@@ -229,7 +238,7 @@ export class Banter {
       return this.speakConvo(table);
     }
     const quiet = now - this.lastAny > 3500 && now - this.lastConvoEnd > 60000;
-    const moment = ev.type === 'turn' || ev.type === 'handEnd' || ev.type === 'handStart';
+    const moment = ev.type === 'turn' || ev.type === 'handEnd' || ev.type === 'handStart' || (ev.type as string) === 'tick';
     if (quiet && moment && !bigPot) {
       // Somebody who has not said a word in a couple of minutes gets the floor.
       const silent = this.seatsOf(table).filter((s) => s !== actor && now - (this.lastSpoke.get(table.ids.get(s)!) ?? -1e9) > QUIET_MS);
@@ -239,7 +248,7 @@ export class Banter {
         if (said) return said;
       }
     }
-    if (!quiet || !moment || bigPot || !this.chance(ev.type === 'turn' ? 0.01 : 0.05)) return null;
+    if (!quiet || !moment || bigPot || !this.chance(ev.type === 'handEnd' || ev.type === 'handStart' ? 0.05 : 0.01)) return null;
     return this.startConversation(table, actor);
   }
 

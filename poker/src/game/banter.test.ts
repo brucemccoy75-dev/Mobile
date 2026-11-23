@@ -261,3 +261,25 @@ describe('the opening round', () => {
     expect(openers.every((o) => !o.text.includes('{'))).toBe(true);
   });
 });
+
+describe('the clock tick', () => {
+  it('keeps an exchange going and starts new ones while the player thinks', () => {
+    let clock = 0;
+    const banter = new Banter(mulberry32(77), () => clock);
+    const ids = new Map([[0, 'human'], [1, 'jimmy'], [2, 'trish'], [3, 'dolores'], [4, 'nadia'], [5, 'wen']]);
+    const names = new Map([[0, 'Dave'], [1, 'Bruce'], [2, 'Tim'], [3, 'Paul'], [4, 'David'], [5, 'Jonathan']]);
+    const table = { ids, names, clarity: () => 0 };
+    // No table events at all: only ticks, as if the player sat on a decision for ten minutes.
+    const said: { conversation?: boolean; last?: boolean; seat: number }[] = [];
+    for (let i = 0; i < 800; i++) {
+      clock += 1500;
+      const s = banter.tick(table);
+      if (s) said.push(s);
+    }
+    const convo = said.filter((s) => s.conversation);
+    expect(convo.length).toBeGreaterThanOrEqual(6);
+    expect(convo.some((s) => s.last)).toBe(true);
+    // Lines of one exchange alternate between its two men.
+    for (let i = 1; i < convo.length; i++) if (!convo[i - 1].last) expect(convo[i].seat).not.toBe(convo[i - 1].seat);
+  });
+});

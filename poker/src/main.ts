@@ -88,6 +88,17 @@ function start(lineup: Character[]): void {
   banter.density = save.settings.banter;
   const talk = banter;
 
+  type Who = Parameters<Banter['onEvent']>[1];
+  let lastWho: Who | null = null;
+  const deliver = (said: ReturnType<Banter['onEvent']>) => {
+    if (!said) return;
+    // Conversation lines stay up until the next line arrives, so the panel never blinks mid-exchange.
+    const ms = said.conversation
+      ? (said.last ? Math.min(8000, 4000 + said.text.length * 55) : Math.max(7500, 4000 + said.text.length * 55))
+      : Math.min(7500, 3200 + said.text.length * 50);
+    void scene.speak(said.seat, said.targetSeat, said.text, ms, said.trigger, speakerName(said.seat, table), said.conversation);
+  };
+
   const table = new TableController({
     lineup,
     humanName: save.name,
@@ -110,14 +121,8 @@ function start(lineup: Character[]): void {
           },
           iq: (seat: number) => table.bots.get(seat)?.stats.iq ?? 0,
         };
-        const said = talk.onEvent(ev, who);
-        if (said) {
-          // Conversation lines stay up until the next line arrives, so the panel never blinks mid-exchange.
-          const ms = said.conversation
-            ? (said.last ? Math.min(8000, 4000 + said.text.length * 55) : Math.max(7500, 4000 + said.text.length * 55))
-            : Math.min(7500, 3200 + said.text.length * 50);
-          void scene.speak(said.seat, said.targetSeat, said.text, ms, said.trigger, speakerName(said.seat, table), said.conversation);
-        }
+        lastWho = who;
+        deliver(talk.onEvent(ev, who));
         await scene.present(ev);
         if (ev.type === 'bust' && table.tournament.active().length === 2) {
           const hu = talk.headsUp(who);
@@ -129,6 +134,15 @@ function start(lineup: Character[]): void {
   });
   table.onDeadline = (deadline) => showActions(table, table.humanLegal, deadline);
   controller = table;
+  // The table keeps talking between events, while you think; the clock stops when the game pauses.
+  const ticker = window.setInterval(() => {
+    if (controller !== table) {
+      window.clearInterval(ticker);
+      return;
+    }
+    if (table.isPaused || !lastWho) return;
+    deliver(talk.tick(lastWho));
+  }, 1500);
   actions.onAction = (a) => void table.humanAct(a);
 
   table.run().then((result) => {

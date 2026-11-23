@@ -136,7 +136,9 @@ order: pros and calculators win most nights, nits lose slowly, tourists lose fas
 ## The banter engine (`banter.ts`)
 
 Everything said at the table comes through `Banter.onEvent(event, table)`, which returns at most
-one `Speech` per event. `main.ts` passes it to `TableScene.speak()`, which queues lines so the one
+one `Speech` per event, and `Banter.tick(table)`, which `main.ts` calls every 1.5 s while a night
+runs (not while paused) so the table keeps talking between events: exchanges carry on and new ones
+start while you sit on a decision, and the opening round lands on time. `main.ts` passes it to `TableScene.speak()`, which queues lines so the one
 on screen stays until it has been up long enough to read (`readMs`, by length); stale reaction
 lines that waited over 6 s are dropped, conversation lines keep their order. The speaker appears in
 the right-hand panel with the line as caption; a line about someone cuts to him for a beat after.
