@@ -161,7 +161,21 @@ export class Figure {
   /** Tries the character's portrait; the drawn figure stays until it arrives, or forever if none. */
   private loadPortrait(id: string): void {
     const url = `${import.meta.env.BASE_URL}portraits/${id}.png`;
-    textureLoader.load(url, (tex) => {
+    textureLoader.load(url, (loaded) => {
+      // The bottom of the standee fades out, so the cut edge never shows below the rail.
+      const img = loaded.image as HTMLImageElement;
+      const c = document.createElement('canvas');
+      c.width = img.width;
+      c.height = img.height;
+      const g = c.getContext('2d')!;
+      g.drawImage(img, 0, 0);
+      g.globalCompositeOperation = 'destination-in';
+      const grad = g.createLinearGradient(0, c.height * 0.66, 0, c.height * 0.97);
+      grad.addColorStop(0, 'rgba(0,0,0,1)');
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = grad;
+      g.fillRect(0, 0, c.width, c.height);
+      const tex = new THREE.CanvasTexture(c);
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = 8;
       const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.08, color: 0xfff1e2, side: THREE.DoubleSide });

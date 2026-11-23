@@ -86,34 +86,18 @@ the portraits, aspect kept) is a decal plane 7.4 units wide lying 3 mm above the
 chips and the button, shaded like the felt (`MeshStandardMaterial`, opacity 0.82, receives shadows).
 It shows in both room modes.
 
-**The room.** The backdrop is a photo of Dave's game room (`public/room.jpg`, 2048x1152: light
-oak planks, pool table edge at the left, windows on the right) drawn as `scene.background` and
-cropped to cover the viewport (`fitBackdrop()`: full width, ceiling cropped before floor; the
-speaker inset gets its own crop). In room mode the lamp, fog and dark floor are hidden and a
-daylight set shows: a bright hemisphere, a sun from the windows with shadows, a bounce, and a
-shadow-only floor so the table's shadow falls on the planks. Settings has "Dave's room"
-(`settings.room`, default on); off restores the old dark room exactly. The commit before the room is
-7d3b223 (`git revert` 37d346b, or `git checkout 7d3b223 -- poker/src/scene/table-scene.ts` and
-friends) should it need reverting wholesale; the git proxy here does not push tags.
+**The room.** A bright room drawn in 3D so it shares the table's perspective: a procedural
+light-oak plank floor (`plankTexture()`, a 1024 canvas of six staggered planks with grain and
+seams, repeated over a 48-unit plane), warm off-white walls as the background colour, and fog of
+the same colour from 10 to 26 units so the floor fades into the wall with no horizon line. Daylight:
+a bright hemisphere, a sun from the right with shadows, a bounce from your side. A photo backdrop
+was tried first and dropped because a level photo fought the table's downward perspective.
+Settings has "Dave's room" (`settings.room`, default on); off restores the dark room exactly
+(lamp, fog, dark floor). The commit before any room work is 7d3b223.
 
-**Career** (`career.ts`, page in `panels.ts`). Save key `pihkh.save.v2` in localStorage:
-- `record`: nights, wins, finishes by place, best hand, biggest pot, hands played.
-- `rivals[id]` per man: `games`, `wins` (nights you finished ahead of him), `losses` (he finished
-  ahead; a man still in when you bust counts as ahead), `knockouts` (you took his last chip),
-  `knockedOutBy` (he took yours). `TournamentTracker` collects them from events;
-  `recordTournament` applies them.
-- `trophies`: First Blood, Regular (five wins), Pro Killer, Cleaner, Nemesis (five knockouts of one
-  man), Nobody's Safe (every man knocked out once), Pure Air, The Nuts, Chip and a Chair, Rivered,
-  Short Night, Scared Money.
-- A version-1 save (records per table) is folded into `record` on first load; `clearSave` removes
-  both keys. The page lists every man with portrait, record against you ("4–1"), knockouts each
-  way, sorted by your knockouts; men never played are dimmed.
-
-**Busting.** When a hand takes a man's last chip the result card waits (`pendingResult`), Skynet
-says a `termination` line as `vaporise()` fires a red beam from the visor, the screen flashes, a
-puff of smoke goes up, the figure is hidden and the `zap` sound plays. When it is you the beam comes
-at the camera and the flash is hard. Then the result card shows. Busted seats go in `Banter.gone`
-and never speak or get cast again.
+**Standees.** Portraits load into a canvas whose bottom third fades to transparent
+(`loadPortrait()` in `figures.ts`), so the cut edge of a standee never shows below the rail at the
+near seats.
 
 ## The bots
 
@@ -211,7 +195,8 @@ Rules that hold everywhere:
   a man may get a forced idle line. A test checks every survivor of twenty hands has spoken.
 - Menafee never speaks (`LINES.ulrich` is empty); exchanges pinned to him have empty B lines so the
   panel shows the chair with no caption. Nobody at the table ever remarks on it.
-- Volume lands around two lines a minute in simulated nights, nearly all reactions to real plays.
+- Volume lands around two and a half lines a minute in simulated nights (more in play, since
+  the clock tick adds talk while you think), mostly reactions to real plays.
 - Tests require every trigger in the coverage list for every man, a tilted line each, 100+ lines
   per type, well-formed exchanges (A first, alternating), and the behaviours above.
 

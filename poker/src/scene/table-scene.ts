@@ -12,6 +12,7 @@ import { type Expression, Figure } from './figures';
 import * as L from './layout';
 import { TableAudio } from './audio';
 import { DEALER_NAME } from '../bots/characters';
+import { mulberry32 } from '../engine/rng';
 import { Tweens, easeInOutCubic, easeOutCubic, linear } from './tween';
 import { money } from '../ui/format';
 
@@ -179,9 +180,7 @@ export class TableScene implements Presenter {
     this.renderer.setScissorTest(true);
     this.renderer.setViewport(x, y, w, h);
     this.renderer.setScissor(x, y, w, h);
-    this.fitBackdrop(w / h);
     this.renderer.render(this.scene, this.pipCamera);
-    this.fitBackdrop(STAGE_W / STAGE_H);
     this.renderer.setScissorTest(false);
     if (fig && wasFolded) fig.setFolded(true);
     fig?.faceCamera(this.camera.position);
@@ -194,7 +193,6 @@ export class TableScene implements Presenter {
   /** The two looks: Dave's room (a photo backdrop, daylight) and the dark room with a lamp. */
   private darkSet: THREE.Object3D[] = [];
   private brightSet: THREE.Object3D[] = [];
-  private roomTexture: THREE.Texture | null = null;
   private roomOn = false;
 
   setRoom(on: boolean): void {
@@ -202,13 +200,9 @@ export class TableScene implements Presenter {
     for (const o of this.darkSet) o.visible = !on;
     for (const o of this.brightSet) o.visible = on;
     if (on) {
-      if (!this.roomTexture) {
-        const tex = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}room.jpg`);
-        tex.colorSpace = THREE.SRGBColorSpace;
-        this.roomTexture = tex;
-      }
-      this.scene.background = this.roomTexture;
-      this.scene.fog = null;
+      // A bright room: warm off-white walls, the oak floor fading into them with distance.
+      this.scene.background = new THREE.Color(0xe9e3d7);
+      this.scene.fog = new THREE.Fog(0xe9e3d7, 10, 26);
       this.renderer.toneMappingExposure = 1.0;
     } else {
       this.scene.background = new THREE.Color(0x07100b);
@@ -217,20 +211,41 @@ export class TableScene implements Presenter {
     }
   }
 
-  /** Crops the backdrop to cover a viewport of the given aspect, keeping the floor and losing ceiling first. */
-  private fitBackdrop(aspect: number): void {
-    const tex = this.roomTexture;
-    if (!tex || !this.roomOn) return;
-    const image = 2048 / 1152;
-    if (aspect >= image) {
-      const ry = image / aspect;
-      tex.repeat.set(1, ry);
-      tex.offset.set(0, Math.max(0, (1 - ry) * 0.3));
-    } else {
-      const rx = aspect / image;
-      tex.repeat.set(rx, 1);
-      tex.offset.set((1 - rx) / 2, 0);
+  /** Wide light-oak planks, drawn once: plank tones vary, seams are thin, grain is faint. */
+  private plankTexture(): THREE.CanvasTexture {
+    const c = document.createElement('canvas');
+    c.width = c.height = 1024;
+    const g = c.getContext('2d')!;
+    const planks = 6;
+    const w = c.width / planks;
+    const rng = mulberry32(7);
+    for (let i = 0; i < planks; i++) {
+      // Each plank is a column; a stagger line across it breaks the run.
+      const tone = 0.9 + rng() * 0.18;
+      const base = `rgb(${Math.round(214 * tone)}, ${Math.round(183 * tone)}, ${Math.round(132 * tone)})`;
+      g.fillStyle = base;
+      g.fillRect(i * w, 0, w, c.height);
+      // Grain: long faint streaks.
+      for (let k = 0; k < 26; k++) {
+        const x = i * w + rng() * w;
+        g.strokeStyle = `rgba(120, 85, 45, ${0.05 + rng() * 0.08})`;
+        g.lineWidth = 1 + rng() * 2;
+        g.beginPath();
+        g.moveTo(x, 0);
+        g.bezierCurveTo(x + (rng() - 0.5) * 18, c.height * 0.33, x + (rng() - 0.5) * 18, c.height * 0.66, x + (rng() - 0.5) * 10, c.height);
+        g.stroke();
+      }
+      // The seam and a butt joint somewhere along the plank.
+      g.fillStyle = 'rgba(90, 62, 35, .55)';
+      g.fillRect(i * w, 0, 2, c.height);
+      const joint = rng() * c.height;
+      g.fillRect(i * w, joint, w, 2);
     }
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.anisotropy = 8;
+    return tex;
   }
 
   private buildRoom(): void {
@@ -284,12 +299,14 @@ export class TableScene implements Presenter {
     const bounce = new THREE.DirectionalLight(0xfff0dc, 0.5);
     bounce.position.set(-5, 3, 8);
     this.scene.add(bounce);
-    const catcher = new THREE.Mesh(new THREE.CircleGeometry(22, 48), new THREE.ShadowMaterial({ opacity: 0.22 }));
-    catcher.rotation.x = -Math.PI / 2;
-    catcher.position.y = -1.2;
-    catcher.receiveShadow = true;
-    this.scene.add(catcher);
-    this.brightSet.push(sky, sun, bounce, catcher);
+    const planks = this.plankTexture();
+    planks.repeat.set(9, 9);
+    const oak = new THREE.Mesh(new THREE.PlaneGeometry(48, 48), new THREE.MeshStandardMaterial({ map: planks, roughness: 0.88, metalness: 0 }));
+    oak.rotation.x = -Math.PI / 2;
+    oak.position.y = -1.2;
+    oak.receiveShadow = true;
+    this.scene.add(oak);
+    this.brightSet.push(sky, sun, bounce, oak);
     for (const o of this.brightSet) o.visible = false;
   }
 
@@ -418,7 +435,6 @@ export class TableScene implements Presenter {
     }
     this.dealerFigure?.faceCamera(this.camera.position);
     this.overlay.update(this.camera, STAGE_W, STAGE_H);
-    this.fitBackdrop(STAGE_W / STAGE_H);
     this.renderer.render(this.scene, this.camera);
     this.renderInset();
   }

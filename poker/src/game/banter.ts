@@ -54,7 +54,7 @@ const NEEDLES: Trigger[] = ['targetFoldsToMe', 'targetCallsMeDown', 'targetTank'
 
 const COOLDOWN_MS = 9000;
 /** A man silent this long gets the next quiet moment to himself. */
-const QUIET_MS = 300000;
+const QUIET_MS = 200000;
 /** Needles that become a personal dig when they land on a man the table knows. */
 const TEASABLE: Trigger[] = ['targetFoldsToMe', 'targetCallsMeDown', 'targetChecks', 'winShowdown', 'stackedTarget', 'playerOut', 'badBeatGiven', 'targetTank', 'targetInstant'];
 const GLOBAL_GAP_MS = 1800;
@@ -159,7 +159,7 @@ export class Banter {
         }
         if (bots.length > 0 && this.chance(0.02)) return this.say(this.pickSpeaker(bots, table), 'dealtIn', table);
         // Between hands somebody has a go at somebody.
-        if (bots.length > 1 && this.chance(0.02)) return this.say(this.pickSpeaker(bots, table, true), 'idle', table);
+        if (bots.length > 1 && this.chance(0.07)) return this.say(this.pickSpeaker(bots, table, true), "idle", table);
         if (this.chance(0.03)) return this.say(DEALER_SEAT, 'dealtIn', table);
         return null;
       }
@@ -188,7 +188,7 @@ export class Banter {
         }
         // Table chatter from someone who has folded.
         const idle = this.botsInHand(table).filter((s) => s !== ev.seat && this.hand!.player(s).folded);
-        if (idle.length > 0 && this.chance(0.01)) return this.say(this.pickSpeaker(idle, table), 'idle', table);
+        if (idle.length > 0 && this.chance(0.02)) return this.say(this.pickSpeaker(idle, table), 'idle', table);
         if (this.chance(0.005)) return this.say(DEALER_SEAT, 'idle', table);
         return null;
       }
@@ -237,7 +237,7 @@ export class Banter {
       }
       return this.speakConvo(table);
     }
-    const quiet = now - this.lastAny > 3500 && now - this.lastConvoEnd > 60000;
+    const quiet = now - this.lastAny > 3500 && now - this.lastConvoEnd > 40000;
     const moment = ev.type === 'turn' || ev.type === 'handEnd' || ev.type === 'handStart' || (ev.type as string) === 'tick';
     if (quiet && moment && !bigPot) {
       // Somebody who has not said a word in a couple of minutes gets the floor.
@@ -248,7 +248,7 @@ export class Banter {
         if (said) return said;
       }
     }
-    if (!quiet || !moment || bigPot || !this.chance(ev.type === 'handEnd' || ev.type === 'handStart' ? 0.05 : 0.01)) return null;
+    if (!quiet || !moment || bigPot || !this.chance(ev.type === "handEnd" || ev.type === "handStart" ? 0.1 : 0.03)) return null;
     return this.startConversation(table, actor);
   }
 
@@ -376,7 +376,7 @@ export class Banter {
     const aggressorBefore = this.aggressorThisStreet(hand);
     if (type === 'bet' || type === 'raise') this.lastAggressor = ev.seat;
 
-    if (type === 'check' && this.chance(0.06 * damp)) {
+    if (type === 'check' && this.chance(0.09 * damp)) {
       const others = this.botsInHand(table).filter((s) => s !== ev.seat && !hand.player(s).folded);
       if (others.length > 0) {
         const said = this.say(this.pickSpeaker(others, table, true), 'targetChecks', table, { targetSeat: ev.seat });
@@ -410,12 +410,12 @@ export class Banter {
         const over = aggressorBefore !== null && aggressorBefore !== ev.seat;
         // An open is routine; a raise over a bet, or a big bet, is a play.
         const bigBet = ev.amount >= Math.max(8 * hand.bigBlind, 0.6 * pot);
-        if (this.chance((over ? 0.2 : bigBet ? 0.12 : 0.03) * damp)) return this.say(ev.seat, over ? 'reraise' : 'raise', table, { target: over ? table.names.get(aggressorBefore!) : undefined });
+        if (this.chance((over ? 0.3 : bigBet ? 0.2 : 0.05) * damp)) return this.say(ev.seat, over ? 'reraise' : 'raise', table, { target: over ? table.names.get(aggressorBefore!) : undefined });
         return null;
       }
       case 'call': {
         const big = ev.amount >= 0.35 * (pot - ev.amount) || ev.amount >= 0.25 * (me.stack + ev.amount);
-        if (big && ev.amount >= 5 * hand.bigBlind && this.chance(0.25)) return this.say(ev.seat, 'callBig', table, { target: this.aggressorName(table, aggressorBefore) });
+        if (big && ev.amount >= 5 * hand.bigBlind && this.chance(0.35)) return this.say(ev.seat, 'callBig', table, { target: this.aggressorName(table, aggressorBefore) });
         return null;
       }
       default:
@@ -437,7 +437,7 @@ export class Banter {
     // Only pots that matter get a word: the odds scale with the pot against the average stack.
     const pot = hand.potTotal();
     const size = pot / Math.max(1, this.avgStack());
-    const weight = size >= 0.25 ? 1 : size >= 0.1 ? 0.5 : 0.12;
+    const weight = size >= 0.2 ? 1 : size >= 0.08 ? 0.6 : 0.25;
 
     for (const [seatKey, outcome] of Object.entries(ev.outcomes)) {
       const seat = Number(seatKey);
@@ -455,14 +455,14 @@ export class Banter {
         } else {
           if (outcome.suckOut) candidates.push({ seat, t: 'badBeatGiven', p: 0.45, vars: { target: name(target) } });
           if (target !== undefined && riverAggressor === seat && target === HUMAN_SEAT) candidates.push({ seat, t: 'targetCallsMeDown', p: 0.45, vars: { target: name(target) } });
-          candidates.push({ seat, t: 'winShowdown', p: 0.45, vars: { target: name(target), hand: this.shown(hand, seat) } });
+          candidates.push({ seat, t: 'winShowdown', p: 0.55, vars: { target: name(target), hand: this.shown(hand, seat) } });
         }
       } else if (showdown) {
         const target = winners[0];
         if (busted(seat)) candidates.push({ seat, t: 'stackedByTarget', p: 0.85, vars: { target: name(target) } });
         if (outcome.badBeat) candidates.push({ seat, t: 'badBeatTaken', p: 0.8, vars: { target: name(target) } });
         if (riverAggressor === seat && this.isWeak(hand, seat)) candidates.push({ seat, t: 'bluffCaught', p: 0.55, vars: { target: name(target) } });
-        candidates.push({ seat, t: 'loseShowdown', p: 0.4, vars: { target: name(target) } });
+        candidates.push({ seat, t: 'loseShowdown', p: 0.5, vars: { target: name(target) } });
       }
     }
     // The dealer announces showdown winners now and then.
@@ -549,7 +549,7 @@ export class Banter {
     const facing = aggressorBefore !== null && aggressorBefore !== seat;
     const pre = hand.board.length < 3;
     // Only the moments that matter: facing a bet after the flop, or a big move of his own.
-    const odds = pre ? (facing && move !== 'fold' ? 0.04 : 0) : facing ? (move === 'fold' ? 0.12 : 0.22) : move === 'raise' || move === 'allin' ? 0.12 : 0;
+    const odds = pre ? (facing && move !== 'fold' ? 0.05 : 0) : facing ? (move === 'fold' ? 0.15 : 0.3) : move === 'raise' || move === 'allin' ? 0.18 : 0;
     if (!this.chance(odds)) return null;
     if (this.convo || this.jab) return null;
     const now = this.now();
