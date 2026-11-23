@@ -7,11 +7,12 @@ export const FELT_RZ = 2.7;
 export const SEAT_COUNT = 6;
 
 /**
- * Seat 0 is the human at the bottom; the rest run clockwise around the table. The dealer stands at
- * the top centre like a seventh chair: three seats spread evenly up the left side, two down the
- * right, so the ring reads as uniform.
+ * Eight slots at 45 degrees around the table: you at the bottom (90), the dealer at the top (270),
+ * five men, and a snack table in the lower-right slot (45) so the spacing stays uniform.
+ * Seat 0 is the human; the rest run clockwise.
  */
-export const SEAT_ANGLES = [90, 128, 181, 226, 330, 37];
+export const SEAT_ANGLES = [90, 135, 180, 225, 315, 0];
+export const SNACK_ANGLE = 45;
 export const DEALER_ANGLE = 270;
 
 export function ellipse(angleDeg: number, k: number, y = 0): THREE.Vector3 {
@@ -34,6 +35,7 @@ export const POT_LABEL_POS = new THREE.Vector3(0, 0, -0.42);
 export const BOARD_Z = 0.3;
 export const BOARD_SPACING = 0.72;
 export const DEALER_POS = ellipse(DEALER_ANGLE, 1.2, 0);
+export const SNACK_POS = ellipse(SNACK_ANGLE, 1.22, 0);
 export const DEALER_PLATE_POS = ellipse(DEALER_ANGLE, 1.18, -0.1);
 export const DEAL_ORIGIN = ellipse(DEALER_ANGLE, 0.92, 0.6);
 export const MUCK_POS = ellipse(DEALER_ANGLE, 0.7, 0.01);

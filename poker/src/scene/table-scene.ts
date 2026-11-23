@@ -107,6 +107,10 @@ export class TableScene implements Presenter {
     set('bottom', f.bottom - p.top, 0, 0, 0);
     set('left', f.top - p.top, p.height - (f.bottom - p.top), 0, p.width - (f.left - p.left));
     set('right', f.top - p.top, p.height - (f.bottom - p.top), f.right - p.left, 0);
+    // The panel is mid-slide when it opens, so boxes are built from its layout position plus offsets within it.
+    const c = this.stage.toStage((el.querySelector('.caption') as HTMLElement).getBoundingClientRect());
+    const x0 = el.offsetLeft;
+    this.overlay.panelBoxes = [f, c].map((r) => ({ left: x0 + (r.left - p.left), top: r.top, right: x0 + (r.right - p.left), bottom: r.bottom }));
   }
 
   /** Shows a close-up of a seat (or the dealer, -1) in the inset for a while. */
@@ -135,8 +139,6 @@ export class TableScene implements Presenter {
       this.layoutBacking();
     }
     this.overlay.setSpeaking(seat, true);
-    // Layout position, not the bounding box: the panel is mid-slide when it opens.
-    if (el) this.overlay.panelLeft = el.offsetLeft;
     window.setTimeout(() => {
       if (this.pipToken === token) this.hideInset();
     }, ms);
@@ -147,7 +149,7 @@ export class TableScene implements Presenter {
     if (this.pip) this.overlay.setSpeaking(this.pip.seat, false);
     this.pip = null;
     this.pipEl?.classList.remove('show');
-    this.overlay.panelLeft = null;
+    this.overlay.panelBoxes = [];
   }
 
   private renderInset(): void {
@@ -313,7 +315,37 @@ export class TableScene implements Presenter {
     for (const o of this.brightSet) o.visible = false;
   }
 
+  /** A little round side table with the snacks, in the slot where an eighth man would sit. */
+  private buildSnackTable(): void {
+    const g = new THREE.Group();
+    const wood = new THREE.MeshStandardMaterial({ color: 0x4a2f1c, roughness: 0.6 });
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 0.06, 32), wood);
+    top.position.y = 0.42;
+    top.castShadow = top.receiveShadow = true;
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.4, 12), wood);
+    stem.position.y = 0.2;
+    const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.04, 24), wood);
+    foot.position.y = 0.02;
+    g.add(top, stem, foot);
+    // Bowls: pretzels, chips, the hummus.
+    const bowl = (x: number, z: number, r: number, colour: number, fill: number) => {
+      const b = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.75, 0.1, 20, 1, true), new THREE.MeshStandardMaterial({ color: colour, roughness: 0.5, side: THREE.DoubleSide }));
+      b.position.set(x, 0.5, z);
+      const f = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.92, r * 0.92, 0.03, 20), new THREE.MeshStandardMaterial({ color: fill, roughness: 0.95 }));
+      f.position.set(x, 0.53, z);
+      b.castShadow = true;
+      g.add(b, f);
+    };
+    bowl(-0.22, 0.1, 0.24, 0xe9e2d4, 0xc98a3a);
+    bowl(0.22, -0.12, 0.2, 0xd8d2c6, 0xe3c48a);
+    bowl(0.08, 0.3, 0.14, 0xb9b2a4, 0xd9c9a6);
+    g.position.copy(L.SNACK_POS);
+    g.position.y = -1.2 + 0.0;
+    this.scene.add(g);
+  }
+
   private buildTable(): void {
+    this.buildSnackTable();
     const feltMat = new THREE.MeshStandardMaterial({ color: 0x1d6f3d, roughness: 0.96 });
     const felt = new THREE.Mesh(new THREE.CylinderGeometry(L.FELT_RX, L.FELT_RX, 0.16, 96), feltMat);
     felt.scale.z = L.FELT_RZ / L.FELT_RX;

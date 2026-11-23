@@ -221,16 +221,19 @@ export class Overlay {
     this.toastTimer = window.setTimeout(() => this.toastEl.classList.remove('show'), ms);
   }
 
-  /** Screen x from which a side panel covers the table; anchored labels under it are hidden. */
-  panelLeft: number | null = null;
+  /** Opaque parts of the speaker panel (its frame and caption) in stage px; a label that would sit under one is hidden. */
+  panelBoxes: { left: number; top: number; right: number; bottom: number }[] = [];
 
   /** Projects every anchored element to the screen. Called each frame. */
   update(camera: THREE.Camera, width: number, height: number): void {
     for (const a of this.anchored.values()) {
       this.tmp.copy(a.pos).project(camera);
-      const behind = this.tmp.z > 1 || (this.panelLeft !== null && (this.tmp.x * 0.5 + 0.5) * width > this.panelLeft - 20);
       let x = (this.tmp.x * 0.5 + 0.5) * width;
       const y = (-this.tmp.y * 0.5 + 0.5) * height + a.offsetY;
+      const hw = a.el.offsetWidth / 2;
+      const hh = a.el.offsetHeight / 2;
+      const under = this.panelBoxes.some((b) => x + hw > b.left - 6 && x - hw < b.right + 6 && y + hh > b.top - 6 && y - hh < b.bottom + 6);
+      const behind = this.tmp.z > 1 || under;
       // Keep bubbles and plates on screen when a seat sits near the edge.
       const half = a.el.offsetWidth / 2 + 8;
       if (half > 8) x = Math.min(width - half, Math.max(half, x));

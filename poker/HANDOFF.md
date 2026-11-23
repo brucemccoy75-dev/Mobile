@@ -86,7 +86,9 @@ rail (`holePos(seat, true)`); each plate is re-anchored every frame to a point o
 (`plateLocal`, 0.5 figure units up, via `overlay.movePlate()`), so it sits tight over the faded
 foot of the portrait and draws its bottom line; `platePos` is only the first placement and the last action takes the name's place inside
 the plate (`.plate.tagged`). Skynet top centre as a seventh chair with a plate like the others (name, then "Dealer" where the stack goes), the
-five seats spread evenly (three up the left, two down the right; angles in `layout.ts`), the board large at the top, your cards and
+eight slots at 45 degrees (`SEAT_ANGLES` in `layout.ts`: you at 90, Skynet at 270, five seats at
+135/180/225/315/0, and a 3D snack table (`buildSnackTable()`) in the lower-right slot at 45 so the
+spacing stays uniform), the board large at the top, your cards and
 stack bottom right, the action bar bottom left, dollar stacks under names, a standings card on hand
 one and whenever the blinds go up, a result card mid-table at the end of each hand (who showed
 what, who won), and the speaker panel down the right side. Results screen, then back home.
