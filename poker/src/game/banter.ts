@@ -53,6 +53,8 @@ export interface BanterTable {
 const NEEDLES: Trigger[] = ['targetFoldsToMe', 'targetCallsMeDown', 'targetTank', 'targetInstant', 'targetChecks', 'winShowdown', 'stackedTarget', 'playerOut'];
 
 const COOLDOWN_MS = 9000;
+/** Themes a man never gets cast into unless the exchange names him. */
+const UNPINNED_EXCLUDE: Record<string, Conversation['tag'][]> = { sal: ['spouse', 'office'], benny: ['spouse'] };
 /** A man silent this long gets the next quiet moment to himself. */
 const QUIET_MS = 200000;
 /** Needles that become a personal dig when they land on a man the table knows. */
@@ -276,10 +278,11 @@ export class Banter {
     for (const conv of this.shuffled(pool)) {
       // A man with no lines (Menafee) only takes part when an exchange names him on purpose.
       const mute = (s: number) => (LINES[table.ids.get(s) ?? ''] ?? []).length === 0;
-      // Jack is sixteen: he only talks about his wife when an exchange is written for him.
-      const kid = (s: number) => conv.tag === 'spouse' && table.ids.get(s) === 'sal';
+      // Some men only take certain themes when an exchange is written for them: Jack is sixteen
+      // (no wife, no office), Luca has been turned down four times (no wife).
+      const wrong = (s: number) => (UNPINNED_EXCLUDE[table.ids.get(s) ?? ''] ?? []).includes(conv.tag);
       const fits = (s: number, need?: Stance, who?: string[]) =>
-        (!need || stance(s) === need) && (who ? who.includes(table.ids.get(s) ?? '') : !mute(s) && !kid(s));
+        (!need || stance(s) === need) && (who ? who.includes(table.ids.get(s) ?? '') : !mute(s) && !wrong(s));
       const pairs: [number, number][] = [];
       for (const a of bots) for (const b of bots) if (a !== b && fits(a, conv.needs?.A, conv.who?.A) && fits(b, conv.needs?.B, conv.who?.B)) pairs.push([a, b]);
       if (pairs.length === 0) continue;
