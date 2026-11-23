@@ -87,10 +87,14 @@ export interface Context {
 
 const SIZE: Record<'small' | 'medium' | 'big', number> = { small: 0.45, medium: 0.7, big: 1.1 };
 /** Postflop bets as a share of the pot, scaled per type: the weak players bet smaller and odder. */
-const SIZE_SCALE: Record<BotType, number> = { nit: 0.85, tourist: 0.7, calculator: 1, pro: 1 };
+const SIZE_SCALE: Record<BotType, number> = { nit: 0.85, tourist: 0.55, calculator: 1, pro: 1 };
 const PREFLOP_MULT: Record<'small' | 'medium' | 'big', number> = { small: 2.2, medium: 2.8, big: 4 };
 /** A re-raise before the flop is a multiple of the bet it is over, not of the pot. */
 const PREFLOP_RERAISE: Record<'small' | 'medium' | 'big', number> = { small: 2.3, medium: 2.8, big: 3.5 };
+/** A four-bet or later is a smaller multiple still, or the pot runs away before the flop. */
+const PREFLOP_FOURBET: Record<'small' | 'medium' | 'big', number> = { small: 2.0, medium: 2.2, big: 2.5 };
+/** A raise over a bet after the flop is a multiple of that bet. */
+const POSTFLOP_RERAISE: Record<'small' | 'medium' | 'big', number> = { small: 2.3, medium: 2.8, big: 3.5 };
 
 function gaussian(rng: Rng): number {
   let u = 0;
@@ -262,7 +266,8 @@ function tourist(c: Context): Weights {
   if (c.preflop) {
     if (c.facingAllIn) return c.equity >= 0.4 ? W(0, 1) : W(1, 0);
     if (!c.facingRaise) {
-      if (c.percentile <= 0.55) return W(0, 0.55, 0.15, 0.2, 0.1 * wild, c.stackBB < 20 ? 0.1 * wild : 0);
+      // Mostly a limp; the raise is the exception.
+      if (c.percentile <= 0.55) return W(0, 0.7, 0.12, 0.12, 0.04 * wild, c.stackBB < 20 ? 0.06 * wild : 0);
       return W(0.8, 0.2);
     }
     if (c.percentile <= 0.5) return W(0.15, 0.7, 0.03, 0.08, 0.03 * wild, c.stackBB < 30 ? 0.02 * wild : 0);
@@ -271,15 +276,17 @@ function tourist(c: Context): Weights {
   const something = c.made >= HandCategory.Pair || c.flushDraw || c.straightOuts >= 4;
   // Shoving is for when the stack is not much bigger than the pot; otherwise it becomes a big bet.
   const shove = c.spr < 4 ? 1 : 0;
+  // Loose and passive: a tourist calls with anything and bets some of the time; he rarely raises
+  // a bet, and when he does it is with a hand, or on tilt.
   if (!c.facingBet) {
-    if (something) return W(0, 0.3, 0.2, 0.3, 0.15 * wild + 0.05 * wild * (1 - shove), 0.05 * wild * shove);
-    return W(0, 0.75, 0.12, 0.1, 0.03 * wild);
+    if (something) return W(0, 0.7, 0.16, 0.1, 0.03 * wild + 0.01 * wild * (1 - shove), 0.01 * wild * shove);
+    return W(0, 0.88, 0.08, 0.03, 0.01 * wild);
   }
   if (c.facingAllIn) return c.equity >= 0.38 ? W(0, 1) : W(1, 0);
-  if (c.equity >= 0.7) return W(0, 0.4, 0.05, 0.25, 0.2 + 0.1 * wild * (1 - shove), 0.1 * wild * shove);
-  if (something) return W(0.1, 0.65, 0.05, 0.1, 0.05 + 0.05 * wild * (1 - shove), 0.05 * wild * shove);
-  if (c.betRatio < 0.5) return W(0.5, 0.4, 0, 0.05, 0.05);
-  return W(0.75, 0.15, 0, 0.05, 0.05);
+  if (c.equity >= 0.7) return W(0, 0.65, 0.05, 0.15, 0.08 + 0.04 * wild * (1 - shove), 0.04 * wild * shove);
+  if (something) return W(0.12, 0.83, 0.02, 0.02, 0.01 * wild * (1 - shove), 0.005 * wild * shove);
+  if (c.betRatio < 0.5) return W(0.5, 0.45, 0, 0.03, 0.02);
+  return W(0.78, 0.17, 0, 0.03, 0.02);
 }
 
 interface CalcParams {
@@ -404,11 +411,13 @@ function sizeToAction(hand: Hand, legal: LegalActions, c: Context, move: 'small'
     if (c.preflop && c.raisesThisStreet === 0) {
       amount = hand.bigBlind * PREFLOP_MULT[move] + c.limpers * hand.bigBlind;
     } else if (c.preflop) {
-      // Three-bets and four-bets scale with the raise in front, so a 3bb open draws 7 to 10bb, not 25.
-      // The weak players mostly min-raise; the scale pulls their multiple down to the floor.
-      amount = hand.currentBet * PREFLOP_RERAISE[move] * (type === 'tourist' ? 0.8 : 1) + c.limpers * hand.bigBlind;
+      // Three-bets scale with the raise in front, so a 3bb open draws 7 to 10bb, not 25; four-bets
+      // less again. The weak players mostly min-raise; the scale pulls their multiple to the floor.
+      const mult = (c.raisesThisStreet >= 2 ? PREFLOP_FOURBET : PREFLOP_RERAISE)[move];
+      amount = hand.currentBet * mult * (type === 'tourist' ? 0.8 : 1) + c.limpers * hand.bigBlind;
     } else {
-      amount = hand.currentBet + (c.pot + c.toCall) * share;
+      // A raise over a bet is a multiple of the bet, so a 10bb bet draws 23 to 35bb, not 50.
+      amount = hand.currentBet * POSTFLOP_RERAISE[move] * SIZE_SCALE[type];
     }
     amount = clamp(roundChips(amount, hand.bigBlind), legal.minRaiseTo, legal.maxTo);
     // A raise that leaves crumbs behind is just a shove.

@@ -126,12 +126,17 @@ rises and falls (pros barely tilt, nits stay tilted).
 The ids never change (saves, memories and portrait file names depend on them). `talk` is how often
 a man speaks and lands in exchanges; `trash` how often he needles and how often Bruce butts in.
 
-**Bet sizing** (`policy.ts`): `PREFLOP_MULT` for opens (2.2 to 4bb plus limpers),
-`PREFLOP_RERAISE` for three- and four-bets as a multiple of the raise in front (2.3 to 3.5x;
-tourists x0.8 so they mostly min-raise), `SIZE` for postflop bets as a share of the pot scaled by
-`SIZE_SCALE` per type (tourists 0.7). Tourists are loose and call too much but no longer force pots:
-their three-bets run a 7bb median, 12bb at the ninetieth percentile. The simulator keeps the type
-order: pros and calculators win most nights, nits lose slowly, tourists lose fast.
+**Bet sizing and aggression** (`policy.ts`): `PREFLOP_MULT` for opens (2.2 to 4bb plus limpers),
+`PREFLOP_RERAISE` for three-bets as a multiple of the raise in front (2.3 to 3.5x) and
+`PREFLOP_FOURBET` for four-bets and later (2.0 to 2.5x), `POSTFLOP_RERAISE` for a raise over a bet
+after the flop (2.3 to 3.5x the bet, not pot-based), `SIZE` for bets as a share of the pot, all
+scaled by `SIZE_SCALE` per type (tourists 0.55, nits 0.85; tourists also x0.8 on preflop re-raises,
+so they mostly min-raise). Tourists are loose-passive: they limp seven times in ten, call with
+anything, bet about a quarter of the time they have something, and rarely raise a bet unless they
+have the goods or are on tilt. Measured over the first sixteen hands of 25 bot-only nights, the
+pot in big blinds runs median 10, three-quarters under 27, nine in ten under 80; the biggest pots
+are now value bets against calling stations and a nit shoving aces, which is poker. The simulator
+keeps the type order: calculators and pros win most nights, nits lose slowly, tourists lose fast.
 
 ## The banter engine (`banter.ts`)
 
