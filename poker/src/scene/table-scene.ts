@@ -894,6 +894,7 @@ export class TableScene implements Presenter {
     const deals: Promise<void>[] = [];
     for (let i = start; i < board.length; i++) {
       const m = new CardMesh(board[i]);
+      m.group.scale.setScalar(L.BOARD_SCALE);
       m.group.position.copy(L.DEAL_ORIGIN);
       this.scene.add(m.group);
       this.board.push(m);

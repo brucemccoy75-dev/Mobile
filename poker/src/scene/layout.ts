@@ -30,10 +30,12 @@ export const buttonPos = (seat: number) => ellipse(seatAngle(seat) - 16, 0.62, 0
 /** Plates hang from the base of the bust (the screen offset puts them just under the rail line). */
 export const platePos = (seat: number) => ellipse(seatAngle(seat), 1.14, -0.1);
 
-export const POT_POS = new THREE.Vector3(0, 0, -0.95);
-export const POT_LABEL_POS = new THREE.Vector3(0, 0, -0.42);
-export const BOARD_Z = 0.3;
-export const BOARD_SPACING = 0.72;
+/** The board is the centre of the felt, large; the pot sits above it (further from you). */
+export const POT_POS = new THREE.Vector3(0, 0, -1.55);
+export const POT_LABEL_POS = new THREE.Vector3(0, 0, -0.98);
+export const BOARD_Z = 0.05;
+export const BOARD_SPACING = 0.98;
+export const BOARD_SCALE = 1.45;
 export const DEALER_POS = ellipse(DEALER_ANGLE, 1.2, 0);
 export const SNACK_POS = ellipse(SNACK_ANGLE, 1.22, 0);
 export const DEALER_PLATE_POS = ellipse(DEALER_ANGLE, 1.18, -0.1);

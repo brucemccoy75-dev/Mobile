@@ -77,7 +77,8 @@
     #flash { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 60%, rgba(255,40,20,.9), rgba(255,0,0,.55)); opacity: 0; pointer-events: none; z-index: 9; }
 
     /* The board, big and readable */
-    #board { position: absolute; left: 50%; top: 8px; z-index: 9; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px;
+    /* The board lives on the felt now; this HUD copy is kept off. */
+    #board { display: none !important; position: absolute; left: 50%; top: 8px; z-index: 9; transform: translateX(-50%); flex-direction: column; align-items: center; gap: 4px;
       opacity: 0; transition: opacity .25s; pointer-events: none; }
     #board.show { opacity: 1; }
     #board .potline { color: var(--gold); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-shadow: 0 1px 2px #000; min-height: 15px; }
