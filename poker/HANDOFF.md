@@ -148,19 +148,28 @@ Sources, in the order the engine tries them:
 2. **Reactions** to the game: triggers in `triggers.ts` (dealt in, folds, raises, calls, all-ins,
    showdowns, bad beats, bluffs, needles at whoever folded, called, tanked, snapped or checked,
    short stack, chip leader, player out, heads up, idle). Odds per trigger are in `onAction`,
-   `onHandEnd` and the `turn` case. `say()` gates by a global 1.8 s gap, a 9 s cooldown per man,
-   the man's `talk` (times `trash` for needles) softened by how long he has been quiet, and picks an
-   unused line of the right mood (tilted at clarity 55+).
+   `onHandEnd` and the `turn` case, and they favour the plays that matter: opens, checks, preflop
+   folds and snap calls are near-silent; raises over a bet, big bets (8bb or 60% of pot), big
+   calls (5bb+), all-ins, bluffs, bad beats and knockouts speak. At hand end the odds scale with the
+   pot against the average stack (x1 at 25%+, x0.5 at 10%+, x0.12 below), except knockouts and
+   bad beats, which always get a word. `aggressorThisStreet()` tells a bet on this street from a
+   carry-over, so "re-raise" and "facing" mean this street. `say()` gates by a global 1.8 s gap,
+   a 9 s cooldown per man, the man's `talk` (times `trash` for needles) softened by how long he
+   has been quiet, and picks an unused line of the right mood (tilted at clarity 55+).
 3. **Teases** (`teases.ts`): eight personal digs per man that anyone can throw. A needle that lands
    on a man the table knows becomes a tease 75% of the time; idle chatter is a dig at a random man
    60% of the time; between hands somebody has a go at somebody (8%). Trigger `tease`.
-4. **Thinking aloud** (`thinking.ts`): men with IQ 72 and up say what they are thinking while
-   deciding, mostly facing a bet (30% postflop, 5% preflop). True 55% of the time, otherwise a lie
-   that still fits the board: reads about the bettor's straight, flush or trips only when the board
-   allows them, claims about his own hand graded against what he holds, and how many cards are to
-   come. Trigger `thinking`. A man does not repeat his recent lines.
+4. **Thinking aloud** (`thinking.ts`): men with IQ 72 and up say what they are thinking as they
+   act. The line is generated on the `action` event from the move he is making, so it always
+   agrees with it: a fold credits the other man ("You've got the straight, don't you") or admits
+   air, a call claims a pair or denies the read, a raise claims strength or denies the read, and it
+   ends with the move ("Fold." "I'll call." "Raise."). Reads about a straight, flush or trips
+   appear only when the board allows them; the street tag says how many cards are to come. Whether
+   the claim is true depends on his cards, so a bluff comes with a lie and a value bet with the
+   truth. Odds: facing a bet after the flop 22% (12% when folding), his own big move 12%, preflop
+   4%. Trigger `thinking`. A man does not repeat his recent lines.
 5. **Conversations** (`conversations.ts`, 155 exchanges tagged office, ai, spouse, weather, sports,
-   dnd, kill): start only in quiet moments (2% per bot turn, 9% per hand end, 30 s after the last),
+   dnd, kill): start only in quiet moments (1% per bot turn, 5% per hand end, 60 s after the last),
    pairs weighted by `talk` and silence, pinned to particular men with `who`, stance-gated with
    `needs`. A running exchange has the floor: `say()` returns nothing except `termination` until it
    ends, and a big pot abandons it rather than pausing it. `{A}`, `{B}`, `{you}`, `{gone}`.
@@ -174,11 +183,11 @@ Rules that hold everywhere:
 - Nobody names a man who is not at the table: `mentionsAbsent()` drops any line, tease, exchange or
   interjection whose text contains an absent character's name ("David Sr" matched before "David").
   "The boy" and "your father" still pass.
-- Nobody stays silent: `silence()` weights every pick by quiet time, and after two and a half quiet
-  minutes a man gets a forced idle line. A test checks every survivor of twenty hands has spoken.
+- Nobody stays silent: `silence()` weights every pick by quiet time, and after five quiet minutes
+  a man may get a forced idle line. A test checks every survivor of twenty hands has spoken.
 - Menafee never speaks (`LINES.ulrich` is empty); exchanges pinned to him have empty B lines so the
   panel shows the chair with no caption. Nobody at the table ever remarks on it.
-- Volume lands around three lines a minute in simulated nights, mostly reactions.
+- Volume lands around two lines a minute in simulated nights, nearly all reactions to real plays.
 - Tests require every trigger in the coverage list for every man, a tilted line each, 100+ lines
   per type, well-formed exchanges (A first, alternating), and the behaviours above.
 

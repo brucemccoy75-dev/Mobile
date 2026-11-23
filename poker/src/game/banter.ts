@@ -4,7 +4,7 @@ import { CONVERSATIONS, INTERJECTIONS, type Conversation, type Interjection, typ
 import { TEASES } from '../content/teases';
 import { DEALER_OPENERS, OPENERS } from '../content/openers';
 import { CHARACTERS } from '../bots/characters';
-import { thinkAloud } from './thinking';
+import { type ThinkMove, thinkAloud } from './thinking';
 import { LINES } from '../content/lines';
 import { type Line, type Mood, type Trigger } from '../content/triggers';
 import { HandCategory, categoryOf, evaluate } from '../engine/evaluator';
@@ -54,7 +54,7 @@ const NEEDLES: Trigger[] = ['targetFoldsToMe', 'targetCallsMeDown', 'targetTank'
 
 const COOLDOWN_MS = 9000;
 /** A man silent this long gets the next quiet moment to himself. */
-const QUIET_MS = 150000;
+const QUIET_MS = 300000;
 /** Needles that become a personal dig when they land on a man the table knows. */
 const TEASABLE: Trigger[] = ['targetFoldsToMe', 'targetCallsMeDown', 'targetChecks', 'winShowdown', 'stackedTarget', 'playerOut', 'badBeatGiven', 'targetTank', 'targetInstant'];
 const GLOBAL_GAP_MS = 1800;
@@ -148,9 +148,9 @@ export class Banter {
           if (stack / bb < 10 && this.chance(0.18)) return this.say(seat, 'shortStack', table);
           if (stack > total * 0.42 && this.chance(0.1)) return this.say(seat, 'chipLeader', table);
         }
-        if (bots.length > 0 && this.chance(0.05)) return this.say(this.pickSpeaker(bots, table), 'dealtIn', table);
+        if (bots.length > 0 && this.chance(0.02)) return this.say(this.pickSpeaker(bots, table), 'dealtIn', table);
         // Between hands somebody has a go at somebody.
-        if (bots.length > 1 && this.chance(0.08)) return this.say(this.pickSpeaker(bots, table, true), 'idle', table);
+        if (bots.length > 1 && this.chance(0.02)) return this.say(this.pickSpeaker(bots, table, true), 'idle', table);
         if (this.chance(0.03)) return this.say(DEALER_SEAT, 'dealtIn', table);
         return null;
       }
@@ -177,12 +177,10 @@ export class Banter {
         if (this.hand && ev.legal.callAmount >= this.hand.player(ev.seat).stack * 0.6 && ev.legal.callAmount > 0 && this.chance(0.3)) {
           return this.say(ev.seat, 'facingAllIn', table, { target: this.aggressorName(table) });
         }
-        const thought = this.thinking(ev.seat, ev.legal.callAmount, table);
-        if (thought) return thought;
         // Table chatter from someone who has folded.
         const idle = this.botsInHand(table).filter((s) => s !== ev.seat && this.hand!.player(s).folded);
-        if (idle.length > 0 && this.chance(0.025)) return this.say(this.pickSpeaker(idle, table), 'idle', table);
-        if (this.chance(0.01)) return this.say(DEALER_SEAT, 'idle', table);
+        if (idle.length > 0 && this.chance(0.01)) return this.say(this.pickSpeaker(idle, table), 'idle', table);
+        if (this.chance(0.005)) return this.say(DEALER_SEAT, 'idle', table);
         return null;
       }
       case 'level':
@@ -230,18 +228,18 @@ export class Banter {
       }
       return this.speakConvo(table);
     }
-    const quiet = now - this.lastAny > 3500 && now - this.lastConvoEnd > 30000;
+    const quiet = now - this.lastAny > 3500 && now - this.lastConvoEnd > 60000;
     const moment = ev.type === 'turn' || ev.type === 'handEnd' || ev.type === 'handStart';
     if (quiet && moment && !bigPot) {
       // Somebody who has not said a word in a couple of minutes gets the floor.
       const silent = this.seatsOf(table).filter((s) => s !== actor && now - (this.lastSpoke.get(table.ids.get(s)!) ?? -1e9) > QUIET_MS);
-      if (silent.length > 0 && this.chance(0.5)) {
+      if (silent.length > 0 && this.chance(0.3)) {
         const seat = this.pick(silent);
         const said = this.sayForced(seat, 'idle', table);
         if (said) return said;
       }
     }
-    if (!quiet || !moment || bigPot || !this.chance(ev.type === 'turn' ? 0.02 : 0.09)) return null;
+    if (!quiet || !moment || bigPot || !this.chance(ev.type === 'turn' ? 0.01 : 0.05)) return null;
     return this.startConversation(table, actor);
   }
 
@@ -366,10 +364,10 @@ export class Banter {
     const pot = hand.potTotal();
     const bigPot = pot > 0.3 * this.avgStack();
     const damp = bigPot ? 0.5 : 1;
-    const aggressorBefore = this.lastAggressor;
+    const aggressorBefore = this.aggressorThisStreet(hand);
     if (type === 'bet' || type === 'raise') this.lastAggressor = ev.seat;
 
-    if (type === 'check' && this.chance(0.18 * damp)) {
+    if (type === 'check' && this.chance(0.06 * damp)) {
       const others = this.botsInHand(table).filter((s) => s !== ev.seat && !hand.player(s).folded);
       if (others.length > 0) {
         const said = this.say(this.pickSpeaker(others, table, true), 'targetChecks', table, { targetSeat: ev.seat });
@@ -381,28 +379,34 @@ export class Banter {
       const bots = this.botsInHand(table).filter((s) => !hand.player(s).folded);
       if (bots.length === 0) return null;
       if (ev.thinkMs > 12000 && this.chance(0.35)) return this.say(this.pickSpeaker(bots, table, true), 'targetTank', table, { target: table.names.get(HUMAN_SEAT) });
-      if (ev.thinkMs < 700 && type !== 'fold' && this.chance(0.15)) return this.say(this.pickSpeaker(bots, table, true), 'targetInstant', table, { target: table.names.get(HUMAN_SEAT) });
-      if (type === 'fold' && aggressorBefore !== null && aggressorBefore !== HUMAN_SEAT && this.chance(0.22 * damp)) {
+      if (ev.thinkMs < 700 && type !== 'fold' && this.chance(0.06)) return this.say(this.pickSpeaker(bots, table, true), 'targetInstant', table, { target: table.names.get(HUMAN_SEAT) });
+      // Folding to a real bet draws a line; folding to a min-raise does not.
+      if (type === 'fold' && aggressorBefore !== null && aggressorBefore !== HUMAN_SEAT && pot >= 6 * hand.bigBlind && this.chance(0.18 * damp)) {
         return this.say(aggressorBefore, 'targetFoldsToMe', table, { target: table.names.get(HUMAN_SEAT) });
       }
       return null;
     }
 
     const me = hand.player(ev.seat);
+    // The sharp players say what they are thinking as they act; the line agrees with the move.
+    const thought = this.thinking(ev.seat, ev, aggressorBefore, table);
+    if (thought) return thought;
     if (ev.allIn && type !== 'fold' && type !== 'check' && this.chance(0.6)) return this.say(ev.seat, 'allIn', table, { target: this.aggressorName(table, aggressorBefore) });
     switch (type) {
       case 'fold':
-        if (ev.street === 'preflop' && this.chance(0.09 * damp)) return this.say(ev.seat, 'foldPreflop', table);
+        if (ev.street === 'preflop' && this.chance(0.03 * damp)) return this.say(ev.seat, 'foldPreflop', table);
         return null;
       case 'bet':
       case 'raise': {
         const over = aggressorBefore !== null && aggressorBefore !== ev.seat;
-        if (this.chance((over ? 0.22 : 0.16) * damp)) return this.say(ev.seat, over ? 'reraise' : 'raise', table, { target: over ? table.names.get(aggressorBefore!) : undefined });
+        // An open is routine; a raise over a bet, or a big bet, is a play.
+        const bigBet = ev.amount >= Math.max(8 * hand.bigBlind, 0.6 * pot);
+        if (this.chance((over ? 0.2 : bigBet ? 0.12 : 0.03) * damp)) return this.say(ev.seat, over ? 'reraise' : 'raise', table, { target: over ? table.names.get(aggressorBefore!) : undefined });
         return null;
       }
       case 'call': {
         const big = ev.amount >= 0.35 * (pot - ev.amount) || ev.amount >= 0.25 * (me.stack + ev.amount);
-        if (big && this.chance(0.3)) return this.say(ev.seat, 'callBig', table, { target: this.aggressorName(table, aggressorBefore) });
+        if (big && ev.amount >= 5 * hand.bigBlind && this.chance(0.25)) return this.say(ev.seat, 'callBig', table, { target: this.aggressorName(table, aggressorBefore) });
         return null;
       }
       default:
@@ -421,6 +425,10 @@ export class Banter {
     const candidates: { seat: number; t: Trigger; p: number; vars: Vars }[] = [];
     const name = (s: number | undefined) => (s === undefined ? undefined : table.names.get(s));
     const busted = (s: number) => hand.player(s).stack === 0;
+    // Only pots that matter get a word: the odds scale with the pot against the average stack.
+    const pot = hand.potTotal();
+    const size = pot / Math.max(1, this.avgStack());
+    const weight = size >= 0.25 ? 1 : size >= 0.1 ? 0.5 : 0.12;
 
     for (const [seatKey, outcome] of Object.entries(ev.outcomes)) {
       const seat = Number(seatKey);
@@ -453,7 +461,9 @@ export class Banter {
       candidates.push({ seat: DEALER_SEAT, t: 'winShowdown', p: 1, vars: { hand: this.shown(hand, winners[0]) } });
     }
     for (const c of this.shuffled(candidates.sort((a, b) => b.p - a.p))) {
-      if (this.chance(c.p)) {
+      // Knockouts and bad beats are always worth a word; the rest depend on the pot.
+      const always = c.t === 'stackedTarget' || c.t === 'stackedByTarget' || c.t === 'badBeatTaken';
+      if (this.chance(c.p * (always ? 1 : weight))) {
         const s = this.say(c.seat, c.t, table, c.vars);
         if (s) return s;
       }
@@ -521,18 +531,22 @@ export class Banter {
   }
 
   /** A sharp player thinks out loud while deciding: a claim that is true about half the time. */
-  private thinking(seat: number, callAmount: number, table: BanterTable): Speech | null {
+  private thinking(seat: number, ev: Extract<TableEvent, { type: 'action' }>, aggressorBefore: number | null, table: BanterTable): Speech | null {
     const hand = this.hand;
     const id = table.ids.get(seat);
     if (!hand || !id || !table.iq || table.iq(seat) < 72) return null;
-    const facing = callAmount > 0;
+    const type = ev.action.type;
+    const move: ThinkMove = ev.allIn && type !== 'fold' && type !== 'check' ? 'allin' : type === 'bet' ? 'raise' : type === 'raise' ? 'raise' : type === 'call' ? 'call' : type === 'fold' ? 'fold' : 'check';
+    const facing = aggressorBefore !== null && aggressorBefore !== seat;
     const pre = hand.board.length < 3;
-    if (!this.chance(pre ? (facing ? 0.05 : 0) : facing ? 0.3 : hand.board.length >= 4 ? 0.1 : 0.04)) return null;
+    // Only the moments that matter: facing a bet after the flop, or a big move of his own.
+    const odds = pre ? (facing && move !== 'fold' ? 0.04 : 0) : facing ? (move === 'fold' ? 0.12 : 0.22) : move === 'raise' || move === 'allin' ? 0.12 : 0;
+    if (!this.chance(odds)) return null;
     if (this.convo || this.jab) return null;
     const now = this.now();
     if (now - this.lastAny < GLOBAL_GAP_MS || now - (this.lastSpoke.get(id) ?? -1e9) < COOLDOWN_MS) return null;
     // The line is aimed at the bettor, or at you if you are still in.
-    let targetSeat: number | null = facing ? this.lastAggressor : null;
+    let targetSeat: number | null = facing ? aggressorBefore : null;
     if (targetSeat === seat) targetSeat = null;
     if (targetSeat === null && hand.players.some((p) => p.seat === HUMAN_SEAT && !p.folded)) targetSeat = HUMAN_SEAT;
     const target = targetSeat !== null && hand.players.some((p) => p.seat === targetSeat)
@@ -541,7 +555,7 @@ export class Banter {
     let text: string | null = null;
     const recent = this.recentThoughts.get(id) ?? [];
     for (let i = 0; i < 4 && (text === null || recent.includes(text)); i++) {
-      text = thinkAloud({ hand, seat, callAmount, accurate: this.rng() < 0.55, target, rng: this.rng });
+      text = thinkAloud({ hand, seat, move, target, rng: this.rng });
     }
     if (!text || recent.includes(text)) return null;
     this.recentThoughts.set(id, [...recent.slice(-5), text]);
@@ -676,6 +690,17 @@ export class Banter {
   private shown(hand: Hand, seat: number): string | undefined {
     const e = hand.events.find((x) => x.type === 'showdown' && x.seat === seat);
     return e && e.type === 'showdown' ? e.description : undefined;
+  }
+
+  /** Who bet or raised last on the current street before the most recent action, or null. */
+  private aggressorThisStreet(hand: Hand): number | null {
+    let seat: number | null = null;
+    const events = hand.events.slice(0, -1);
+    for (const e of events) {
+      if (e.type === 'street') seat = null;
+      if (e.type === 'action' && (e.action.type === 'bet' || e.action.type === 'raise')) seat = e.seat;
+    }
+    return seat;
   }
 
   private lastAggressorOnRiver(hand: Hand): number | null {

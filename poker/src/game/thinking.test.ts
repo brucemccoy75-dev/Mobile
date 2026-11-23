@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { parseCards } from '../engine/cards';
 import { Hand } from '../engine/hand';
 import { mulberry32 } from '../engine/rng';
-import { boardTexture, thinkAloud } from './thinking';
+import { boardTexture, strength, thinkAloud } from './thinking';
 
 function fixedDeck(holes: Record<number, string>, board: string): number[] {
   const order = [1, 2, 0]; // dealing starts left of the button
@@ -34,28 +34,40 @@ describe('thinking aloud', () => {
     expect(boardTexture(parseCards('2c 7d Ks'))).toEqual({ flush: false, straight: false, paired: false });
   });
 
-  it('tells the truth when accurate, and lies to fit the board when not', () => {
-    // Seat 1 holds the straight on a straight board; seat 2 has air.
+  it('agrees with the move: a fold credits the other man, a raise denies him or claims strength', () => {
+    // A straight is possible; seat 1 holds it.
     const h = dealt({ 0: 'Qh Qd', 1: '8s 7s', 2: '2c 3d' }, '9c Tc Jd 4h 5s', 5);
     const rng = mulberry32(3);
-    let truths = 0;
-    let lies = 0;
-    for (let i = 0; i < 40; i++) {
-      const t = thinkAloud({ hand: h, seat: 2, callAmount: 500, accurate: true, target: { name: 'Jack', hole: h.player(1).hole }, rng });
-      const l = thinkAloud({ hand: h, seat: 2, callAmount: 500, accurate: false, target: { name: 'Jack', hole: h.player(1).hole }, rng });
-      if (t && /straight/.test(t)) { expect(t).toMatch(/got the straight|has the straight/); truths++; }
-      if (l && /straight/.test(l)) { expect(l).toMatch(/don’t think|No straight/); lies++; }
-      if (t && !/Jack/.test(t)) expect(t).toMatch(/nothing|ace|Missed|two cards|Nothing/i);
+    const target = { name: 'Jack', hole: h.player(1).hole };
+    let reads = 0;
+    for (let i = 0; i < 60; i++) {
+      const fold = thinkAloud({ hand: h, seat: 2, move: 'fold', target, rng })!;
+      const raise = thinkAloud({ hand: h, seat: 2, move: 'raise', target, rng })!;
+      const call = thinkAloud({ hand: h, seat: 2, move: 'call', target, rng })!;
+      expect(fold).toMatch(/Fold\.|I’m out\.|Take it\.$/);
+      expect(raise).toMatch(/Raise|raising|Bet\.$/);
+      expect(call).toMatch(/[Cc]all/);
+      if (/straight/.test(fold)) { expect(fold).toMatch(/got the straight|has the straight/); reads++; }
+      if (/straight/.test(raise)) expect(raise).toMatch(/don’t think|No straight/);
+      if (!/Jack/.test(fold)) expect(fold).toMatch(/nothing|ace|Missed|two cards|Nothing/i);
+      if (!/Jack/.test(raise)) expect(raise).toMatch(/got it|Flopped|Two pair|can’t fold|have this|Got there/);
+      expect(fold).not.toMatch(/flush|trips/);
     }
-    expect(truths).toBeGreaterThan(0);
-    expect(lies).toBeGreaterThan(0);
+    expect(reads).toBeGreaterThan(0);
+  });
+
+  it('is honest or not depending on the cards, never on the words', () => {
+    const h = dealt({ 0: 'Qh Qd', 1: '8s 7s', 2: '2c 3d' }, '9c Tc Jd 4h 5s', 5);
+    expect(strength(h.player(2).hole, h.board)).toBe('nothing');
+    expect(strength(h.player(1).hole, h.board)).toBe('made');
+    expect(strength(h.player(0).hole, h.board)).toBe('pair');
   });
 
   it('mentions how many cards are to come', () => {
-    const flop = dealt({ 0: 'Qh Qd', 1: '8s 7s', 2: '2c 3d' }, '9c 2d Kd', 3);
+    const flop = dealt({ 0: 'Qh Qd', 1: '8s 7s', 2: '2c 3d' }, '9c 2d Kd 4h 5s', 3);
     const rng = mulberry32(9);
     const texts = new Set<string>();
-    for (let i = 0; i < 30; i++) texts.add(thinkAloud({ hand: flop, seat: 2, callAmount: 0, accurate: true, rng })!);
+    for (let i = 0; i < 30; i++) texts.add(thinkAloud({ hand: flop, seat: 2, move: 'call', rng })!);
     expect([...texts].some((t) => /Two to come|Two more cards/.test(t))).toBe(true);
     expect([...texts].every((t) => !/One card|No more cards/.test(t))).toBe(true);
   });
