@@ -87,8 +87,9 @@ cropped to cover the viewport (`fitBackdrop()`: full width, ceiling cropped befo
 speaker inset gets its own crop). In room mode the lamp, fog and dark floor are hidden and a
 daylight set shows: a bright hemisphere, a sun from the windows with shadows, a bounce, and a
 shadow-only floor so the table's shadow falls on the planks. Settings has "Dave's room"
-(`settings.room`, default on); off restores the old dark room exactly. The commit before the room
-is tagged `pre-room` (7d3b223) should it need reverting wholesale.
+(`settings.room`, default on); off restores the old dark room exactly. The commit before the room is
+7d3b223 (`git revert` 37d346b, or `git checkout 7d3b223 -- poker/src/scene/table-scene.ts` and
+friends) should it need reverting wholesale; the git proxy here does not push tags.
 
 **Career** (`career.ts`, page in `panels.ts`). Save key `pihkh.save.v2` in localStorage:
 - `record`: nights, wins, finishes by place, best hand, biggest pot, hands played.
