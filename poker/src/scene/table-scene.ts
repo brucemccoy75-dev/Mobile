@@ -11,6 +11,7 @@ import { STAGE_H, STAGE_W, type Stage } from '../ui/stage';
 import { type Expression, Figure } from './figures';
 import * as L from './layout';
 import { TableAudio } from './audio';
+import { DEALER_NAME } from '../bots/characters';
 import { Tweens, easeInOutCubic, easeOutCubic, linear } from './tween';
 import { money } from '../ui/format';
 
@@ -346,7 +347,7 @@ export class TableScene implements Presenter {
     dealer.group.position.copy(L.DEALER_POS);
     dealer.group.position.y = 0.05;
     dealer.group.rotation.y = L.faceCentre(L.DEALER_POS);
-    dealer.group.scale.setScalar(0.95);
+    dealer.group.scale.setScalar(1.18);
     this.scene.add(dealer.group);
   }
 
@@ -432,6 +433,7 @@ export class TableScene implements Presenter {
           this.seatNames.set(s.seat, s.name);
           this.overlay.plate(s.seat, L.platePos(s.seat), s.name, s.stack);
         }
+        this.overlay.dealerPlate(L.DEALER_PLATE_POS, DEALER_NAME);
         this.overlay.setInfo({ level: ev.level, handNumber: 0 });
         return;
       case 'handStart':

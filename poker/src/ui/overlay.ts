@@ -108,6 +108,15 @@ export class Overlay {
     this.plates.set(seat, el);
   }
 
+  /** The dealer's plate: a name and a DEALER badge, no stack. Keyed at seat -1 so the glow works. */
+  dealerPlate(pos: THREE.Vector3, name: string): void {
+    const el = this.anchor('plateDealer', pos, 'plate dealer', 0);
+    el.innerHTML = `<div class="tag"></div><div class="pos show">DEALER</div><div class="name"></div>`;
+    el.querySelector('.name')!.textContent = name;
+    el.dataset.seat = '-1';
+    this.plates.set(-1, el);
+  }
+
   setStack(seat: number, stack: number): void {
     const el = this.plates.get(seat);
     if (el) el.querySelector('.stack')!.textContent = stack > 0 ? money(stack) : 'ALL IN';
