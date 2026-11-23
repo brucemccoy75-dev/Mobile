@@ -283,3 +283,24 @@ describe('the clock tick', () => {
     for (let i = 1; i < convo.length; i++) if (!convo[i - 1].last) expect(convo[i].seat).not.toBe(convo[i - 1].seat);
   });
 });
+
+describe('Jack', () => {
+  it('never talks about a wife or the office unless an exchange was written for him', () => {
+    let clock = 0;
+    const banter = new Banter(mulberry32(91), () => clock);
+    const ids = new Map([[0, 'human'], [1, 'sal'], [2, 'jimmy'], [3, 'trish'], [4, 'harold'], [5, 'benny']]);
+    const names = new Map([[0, 'Dave'], [1, 'Jack'], [2, 'Bruce'], [3, 'Tim'], [4, 'David Sr'], [5, 'Luca']]);
+    const table = { ids, names, clarity: () => 0 };
+    const jack: string[] = [];
+    const luca: string[] = [];
+    for (let i = 0; i < 12000; i++) {
+      clock += 1500;
+      const s = i % 9 === 0 ? banter.onEvent({ type: 'turn', seat: 3, legal: { seat: 3 } as never, deadline: null }, table) : banter.tick(table);
+      if (s?.seat === 1) jack.push(s.text);
+      if (s?.seat === 5) luca.push(s.text);
+    }
+    expect(jack.length).toBeGreaterThan(30);
+    for (const t of jack) expect(t, t).not.toMatch(/\b(my wife|wife|the office|my boss|cowork\w*|my client|my desk|neighbou?r)\b/i);
+    for (const t of luca) expect(t, t).not.toMatch(/\bmy wife\b/i);
+  });
+});

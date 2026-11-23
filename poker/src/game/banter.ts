@@ -55,6 +55,14 @@ const NEEDLES: Trigger[] = ['targetFoldsToMe', 'targetCallsMeDown', 'targetTank'
 const COOLDOWN_MS = 9000;
 /** Themes a man never gets cast into unless the exchange names him. */
 const UNPINNED_EXCLUDE: Record<string, Conversation['tag'][]> = { sal: ['spouse', 'office'], benny: ['spouse'] };
+/**
+ * Words a man's own lines may not contain when an exchange is shared or unpinned, whatever its
+ * theme: Jack is sixteen, so no wife, no kids, no office; Luca has been turned down four times.
+ */
+const UNPINNED_WORDS: Record<string, RegExp> = {
+  sal: /\b(wife|wives|marri\w*|divorc\w*|my kids|our kids|the office|at work|my boss|my desk|cowork\w*|payroll|commute|mortgage|retire\w*|my client|the kids|neighbou?r)\b/i,
+  benny: /\b(my wife|wives|marri\w*|divorc\w*|my kids|our kids)\b/i,
+};
 /** A man silent this long gets the next quiet moment to himself. */
 const QUIET_MS = 200000;
 /** Needles that become a personal dig when they land on a man the table knows. */
@@ -281,10 +289,20 @@ export class Banter {
       // Some men only take certain themes when an exchange is written for them: Jack is sixteen
       // (no wife, no office), Luca has been turned down four times (no wife).
       const wrong = (s: number) => (UNPINNED_EXCLUDE[table.ids.get(s) ?? ''] ?? []).includes(conv.tag);
-      const fits = (s: number, need?: Stance, who?: string[]) =>
-        (!need || stance(s) === need) && (who ? who.includes(table.ids.get(s) ?? '') : !mute(s) && !wrong(s));
+      // His own lines in this role, for the word filter.
+      const said = (role: 'A' | 'B') => conv.lines.filter(([r]) => r === role).map(([, l]) => l).join(' ');
+      const wrongWords = (s: number, role: 'A' | 'B') => {
+        const re = UNPINNED_WORDS[table.ids.get(s) ?? ''];
+        return !!re && re.test(said(role));
+      };
+      // An exchange written for one man alone is trusted; shared or open roles are filtered.
+      const fits = (s: number, role: 'A' | 'B', need?: Stance, who?: string[]) =>
+        (!need || stance(s) === need) &&
+        (who
+          ? who.includes(table.ids.get(s) ?? '') && (who.length === 1 || !wrongWords(s, role))
+          : !mute(s) && !wrong(s) && !wrongWords(s, role));
       const pairs: [number, number][] = [];
-      for (const a of bots) for (const b of bots) if (a !== b && fits(a, conv.needs?.A, conv.who?.A) && fits(b, conv.needs?.B, conv.who?.B)) pairs.push([a, b]);
+      for (const a of bots) for (const b of bots) if (a !== b && fits(a, 'A', conv.needs?.A, conv.who?.A) && fits(b, 'B', conv.needs?.B, conv.who?.B)) pairs.push([a, b]);
       if (pairs.length === 0) continue;
       // Talkative men end up in more conversations; the quiet ones mostly listen.
       const weight = (p: [number, number]) => (table.traits?.(p[0]).talk ?? 1) * (table.traits?.(p[1]).talk ?? 1) * this.silence(table, p[0]) * this.silence(table, p[1]);
