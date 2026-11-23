@@ -81,6 +81,11 @@ stack bottom right, the action bar bottom left, dollar stacks under names, a sta
 one and whenever the blinds go up, a result card mid-table at the end of each hand (who showed
 what, who won), and the speaker panel down the right side. Results screen, then back home.
 
+**The dragon.** `public/dragon.webp` (1536x864, keyed from a green-screen render the same way as
+the portraits, aspect kept) is a decal plane 7.4 units wide lying 3 mm above the felt under cards,
+chips and the button, shaded like the felt (`MeshStandardMaterial`, opacity 0.82, receives shadows).
+It shows in both room modes.
+
 **The room.** The backdrop is a photo of Dave's game room (`public/room.jpg`, 2048x1152: light
 oak planks, pool table edge at the left, windows on the right) drawn as `scene.background` and
 cropped to cover the viewport (`fitBackdrop()`: full width, ceiling cropped before floor; the

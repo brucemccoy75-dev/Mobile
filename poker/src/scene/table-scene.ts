@@ -299,6 +299,19 @@ export class TableScene implements Presenter {
     felt.position.y = -0.08;
     felt.receiveShadow = true;
     this.scene.add(felt);
+    // The dragon printed on the felt: a wide decal just above the cloth, under cards and chips,
+    // shaded like the felt so it reads as dyed in rather than stuck on.
+    const dragonTex = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}dragon.webp`);
+    dragonTex.colorSpace = THREE.SRGBColorSpace;
+    dragonTex.anisotropy = 8;
+    const dragon = new THREE.Mesh(
+      new THREE.PlaneGeometry(7.4, 7.4 * (864 / 1536)),
+      new THREE.MeshStandardMaterial({ map: dragonTex, transparent: true, opacity: 0.82, roughness: 1, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 }),
+    );
+    dragon.rotation.x = -Math.PI / 2;
+    dragon.position.set(0, 0.003, -0.1);
+    dragon.receiveShadow = true;
+    this.scene.add(dragon);
 
     // A darker betting line, drawn as a thin ring.
     const line = new THREE.Mesh(
