@@ -315,33 +315,18 @@ export class TableScene implements Presenter {
     for (const o of this.brightSet) o.visible = false;
   }
 
-  /** A little round side table with the snacks, in the slot where an eighth man would sit. */
+  /** The snacks, in the slot where an eighth man would sit: a standee like the players'. */
+  private snackFigure: Figure | null = null;
+
   private buildSnackTable(): void {
-    const g = new THREE.Group();
-    const wood = new THREE.MeshStandardMaterial({ color: 0x4a2f1c, roughness: 0.6 });
-    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 0.06, 32), wood);
-    top.position.y = 0.42;
-    top.castShadow = top.receiveShadow = true;
-    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.4, 12), wood);
-    stem.position.y = 0.2;
-    const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.04, 24), wood);
-    foot.position.y = 0.02;
-    g.add(top, stem, foot);
-    // Bowls: pretzels, chips, the hummus.
-    const bowl = (x: number, z: number, r: number, colour: number, fill: number) => {
-      const b = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.75, 0.1, 20, 1, true), new THREE.MeshStandardMaterial({ color: colour, roughness: 0.5, side: THREE.DoubleSide }));
-      b.position.set(x, 0.5, z);
-      const f = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.92, r * 0.92, 0.03, 20), new THREE.MeshStandardMaterial({ color: fill, roughness: 0.95 }));
-      f.position.set(x, 0.53, z);
-      b.castShadow = true;
-      g.add(b, f);
-    };
-    bowl(-0.22, 0.1, 0.24, 0xe9e2d4, 0xc98a3a);
-    bowl(0.22, -0.12, 0.2, 0xd8d2c6, 0xe3c48a);
-    bowl(0.08, 0.3, 0.14, 0xb9b2a4, 0xd9c9a6);
-    g.position.copy(L.SNACK_POS);
-    g.position.y = -1.2 + 0.0;
-    this.scene.add(g);
+    const f = new Figure('snacks');
+    f.capsule.visible = false;
+    f.group.position.copy(L.SNACK_POS);
+    f.group.position.y = 0.05;
+    f.group.rotation.y = L.faceCentre(L.SNACK_POS);
+    f.setScale(1.3 * this.equalise(L.SNACK_POS));
+    this.snackFigure = f;
+    this.scene.add(f.group);
   }
 
   private buildTable(): void {
@@ -478,6 +463,7 @@ export class TableScene implements Presenter {
       // The plate sits tight over the faded foot of the standee, so it draws the clean bottom line.
       if (f.portrait) this.overlay.movePlate(seat, f.group.localToWorld(this.plateLocal.clone()));
     }
+    this.snackFigure?.faceCamera(this.camera.position);
     if (this.dealerFigure) {
       this.dealerFigure.faceCamera(this.camera.position);
       if (this.dealerFigure.portrait) this.overlay.movePlate(-1, this.dealerFigure.group.localToWorld(this.plateLocal.clone()));
