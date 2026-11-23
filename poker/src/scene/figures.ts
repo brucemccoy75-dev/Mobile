@@ -224,7 +224,8 @@ export class Figure {
     const breathe = Math.sin(phase * 1.6) * 0.012;
     this.group.scale.y = this.baseScale * (1 + breathe);
     const lean = this.folded ? -0.14 : this.expression === 'thinking' ? 0.12 : this.expression === 'tilted' ? 0.06 : 0;
-    this.group.rotation.x += (lean - this.group.rotation.x) * 0.08;
+    this.leanNow += (lean - this.leanNow) * 0.08;
+    this.group.rotation.x = this.basePitch + this.leanNow;
     this.head.rotation.y = Math.sin(phase * 0.7) * 0.08 + (this.expression === 'thinking' ? Math.sin(phase * 2.3) * 0.05 : 0);
     if (this.portrait) this.portrait.rotation.z = Math.sin(phase * 0.9) * 0.012;
   }
@@ -240,8 +241,19 @@ export class Figure {
   faceCamera(cameraPosition: THREE.Vector3): void {
     if (!this.portrait) return;
     const p = this.group.position;
-    this.group.rotation.y = Math.atan2(cameraPosition.x - p.x, cameraPosition.z - p.z);
+    const dx = cameraPosition.x - p.x;
+    const dz = cameraPosition.z - p.z;
+    this.group.rotation.y = Math.atan2(dx, dz);
+    // Square to the camera in pitch too, so a standee seen from above reads as an upright frame
+    // rather than a foreshortened board. The lean in tick() moves around this.
+    const head = p.y + 1.2 * this.baseScale;
+    this.basePitch = -Math.atan2(cameraPosition.y - head, Math.hypot(dx, dz)) * 0.85;
+    // Applied at once, so a render from another camera (the speaker inset) is square to it too.
+    this.group.rotation.x = this.basePitch + this.leanNow;
   }
+
+  private basePitch = 0;
+  private leanNow = 0;
 
   /** Uniform size of the whole figure; the breathing animation moves around it. */
   private baseScale = 1;

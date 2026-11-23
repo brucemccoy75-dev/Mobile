@@ -79,7 +79,9 @@ Career and Settings. In the game: a fixed camera well above the rail looking dow
 degrees with a 40-degree lens (`TABLE_VIEW` in `director.ts`), so the felt reads as an oval;
 every bust is scaled by its distance from that camera (`equalise()` in `table-scene.ts`,
 `Figure.setScale()`; the breathing animation moves around the base scale) so all six men and the
-dealer land the same height on screen; the other men's hole cards are 62% size and tucked by the
+dealer land the same height on screen; standees are billboarded in pitch as well as yaw
+(`faceCamera()` sets `basePitch`, applied at once so the inset camera gets its own), so they read
+as upright frames, and they stand on the rail line (`figurePos` k 1.14, y 0.05) overlapping it; the other men's hole cards are 62% size and tucked by the
 rail (`holePos(seat, true)`); each plate hangs from the base of its bust (`platePos` at the
 figure's ground point plus a 26 px screen offset) and the last action takes the name's place inside
 the plate (`.plate.tagged`). Skynet top centre as a seventh chair with his own DEALER plate, the

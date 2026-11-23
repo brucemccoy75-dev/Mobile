@@ -363,7 +363,7 @@ export class TableScene implements Presenter {
     const dealer = new Figure('dealer', true);
     this.dealerFigure = dealer;
     dealer.group.position.copy(L.DEALER_POS);
-    dealer.group.position.y = 0.05;
+    dealer.group.position.y = 0.12;
     dealer.group.rotation.y = L.faceCentre(L.DEALER_POS);
     dealer.setScale(1.18 * this.equalise(L.DEALER_POS));
     this.scene.add(dealer.group);
@@ -408,7 +408,7 @@ export class TableScene implements Presenter {
     f = new Figure(id);
     const p = L.figurePos(seat);
     f.group.position.copy(p);
-    f.group.position.y = -0.1;
+    f.group.position.y = 0.05;
     f.group.rotation.y = L.faceCentre(p);
     // Every bust lands the same height on screen: scale with distance from the fixed camera.
     f.setScale(this.equalise(p));
