@@ -4,7 +4,7 @@
 export type Stance = 'pro' | 'anti' | 'meh';
 
 export interface Conversation {
-  tag: 'office' | 'ai' | 'spouse' | 'weather' | 'sports' | 'dnd' | 'kill';
+  tag: 'office' | 'ai' | 'spouse' | 'weather' | 'sports' | 'dnd' | 'kill' | 'jokes';
   /** `kill` exchanges may use {gone}: the man the dealer just vaporised. */
   /** Required AI stance for a role, when the exchange depends on it. */
   needs?: { A?: Stance; B?: Stance };
@@ -859,6 +859,180 @@ export const CONVERSATIONS: Conversation[] = [
     ['A', 'Small blind.'],
     ['B', 'That’s also what she said. Different night. Same her.'],
     ['A', 'I built a horse, Tim. I don’t need this.'],
+  ] },
+
+  // ---- Jokes: the one-liner men (Luca, Will, Jack) --------------------------------------------
+  // Short, sideways, dead serious. The other man plays it straight and gets nothing for it.
+  { tag: 'jokes', who: { A: ['benny', 'priya', 'sal'] }, lines: [
+    ['A', 'I don’t own a watch. I own a clock. I carry it. It’s a big clock.'],
+    ['B', 'Why not just get a watch?'],
+    ['A', 'People see a watch, they ask the time. People see a clock, they leave me alone.'],
+  ] },
+  { tag: 'jokes', who: { A: ['benny', 'priya', 'sal'] }, lines: [
+    ['A', 'I ordered a ladder online. It said “ships in two days.”'],
+    ['B', 'Okay.'],
+    ['A', 'I didn’t need a ship. I needed a ladder. Now I have both. The ship is in the yard. I use the ladder to get on it.'],
+  ] },
+  { tag: 'jokes', who: { A: ['benny', 'priya', 'sal'] }, lines: [
+    ['A', 'My car has a sunroof. It’s for the sun.'],
+    ['B', 'Sure.'],
+    ['A', 'The sun has never once come in. It just looks. Like you with my chips, {B}.'],
+  ] },
+  { tag: 'jokes', who: { A: ['benny', 'priya', 'sal'] }, lines: [
+    ['A', 'I ordered a half sandwich. They cut a whole one and kept the other half.'],
+    ['B', 'That’s how a half sandwich works.'],
+    ['A', 'So somewhere there’s a guy with my half. I think about him. I hope he’s doing okay. I hope he got the pickle.'],
+  ] },
+  { tag: 'jokes', who: { A: ['benny', 'priya', 'sal'] }, lines: [
+    ['A', 'I joined a gym. They gave me a card.'],
+    ['B', 'And?'],
+    ['A', 'I carry the card. Every day. It’s the heaviest thing I lift. I’m getting stronger in one specific finger.'],
+  ] },
+  { tag: 'jokes', who: { A: ['benny', 'priya', 'sal'] }, lines: [
+    ['A', 'My toaster has a setting called “bagel.”'],
+    ['B', 'Most do.'],
+    ['A', 'I put bread in on bagel. The toaster didn’t notice. Nobody notices anything, {B}. That’s the whole secret.'],
+  ] },
+  { tag: 'jokes', who: { A: ['benny', 'priya', 'sal'] }, lines: [
+    ['A', 'I bought a doormat that says “welcome.” I put it inside the door.'],
+    ['B', 'Why?'],
+    ['A', 'So it welcomes me out. I’m going somewhere. Somebody should be glad.'],
+  ] },
+  { tag: 'jokes', who: { A: ['benny', 'priya', 'sal'] }, lines: [
+    ['A', 'Hotels give you a tiny soap.'],
+    ['B', 'They do.'],
+    ['A', 'That’s so you know the big soap exists. Somewhere. And you weren’t invited.'],
+  ] },
+  { tag: 'jokes', who: { A: ['benny', 'priya', 'sal'] }, lines: [
+    ['A', 'I water my plant with a glass.'],
+    ['B', 'Fine.'],
+    ['A', 'So the plant thinks it rains in a very small area. Every day. Same spot. It’s the luckiest plant in the world and it doesn’t know anything.'],
+  ] },
+  { tag: 'jokes', who: { A: ['benny', 'priya', 'sal'] }, lines: [
+    ['A', 'I don’t fold laundry. I leave it in the dryer and call the dryer a drawer.'],
+    ['B', 'That’s a drawer with a motor.'],
+    ['A', 'It’s a warm drawer, {B}. You’ve never had a warm drawer. I can tell. Your shirt’s cold.'],
+  ] },
+  { tag: 'jokes', who: { A: ['benny', 'priya', 'sal'] }, lines: [
+    ['A', 'I tried to return a boomerang.'],
+    ['B', 'Did it come back?'],
+    ['A', 'The store said that’s not a return, that’s the product. They had a point. I threw it at them. It came back. We’re all stuck with it.'],
+  ] },
+  { tag: 'jokes', who: { A: ['benny', 'priya', 'sal'] }, lines: [
+    ['A', 'I bought a sleeping bag.'],
+    ['B', 'For camping?'],
+    ['A', 'For the couch. It’s a bag you sleep in. The couch doesn’t care where the bag is. Only my wife cares. The bag is in the car now.'],
+  ] },
+  { tag: 'jokes', who: { A: ['benny', 'priya', 'sal'] }, lines: [
+    ['A', 'They put “serving size” on the bag of chips.'],
+    ['B', 'Right.'],
+    ['A', 'The serving size is one bag. The bag just doesn’t know it yet.'],
+  ] },
+  { tag: 'jokes', who: { A: ['benny', 'priya', 'sal'] }, lines: [
+    ['A', 'My phone says “storage almost full.”'],
+    ['B', 'Delete some stuff.'],
+    ['A', 'It’s photos of my food. If I delete them, I don’t remember eating. Then I have to eat again. The phone is trying to make me fat, {B}.'],
+  ] },
+
+  // ---- Jokes: the long way round (David Sr, Paul, Kevin, Jack) --------------------------------
+  // Slow, deadpan, nowhere in particular, and the punchline is that there isn't one. The other
+  // man keeps waiting for it.
+  { tag: 'jokes', who: { A: ['harold', 'dolores', 'marvin', 'sal'] }, lines: [
+    ['A', 'You ever hear about my uncle? The one with the boat.'],
+    ['B', 'No.'],
+    ['A', 'He had a boat. Big boat. Took him nine years to pay it off. Nine years. Every Sunday he’d go down to the dock and look at it.'],
+    ['B', 'And?'],
+    ['A', 'Well, that’s it. He looked at it. He’s dead now. Boat’s fine.'],
+  ] },
+  { tag: 'jokes', who: { A: ['harold', 'dolores', 'marvin', 'sal'] }, lines: [
+    ['A', 'A guy walks into a hardware store. Asks for a hammer.'],
+    ['B', 'Okay.'],
+    ['A', 'Clerk says, we’ve got hammers. Shows him a hammer. Guy says, that’s a good hammer. Buys the hammer.'],
+    ['B', 'And then what?'],
+    ['A', 'That’s it. He needed a hammer.'],
+    ['B', 'Why would you tell me that?'],
+    ['A', 'You seemed like a man who’d never heard of a hardware store, {B}.'],
+  ] },
+  { tag: 'jokes', who: { A: ['harold', 'dolores', 'marvin', 'sal'] }, lines: [
+    ['A', 'My neighbour’s a gambler. Terrible gambler.'],
+    ['B', 'Yeah?'],
+    ['A', 'Lost his house. Lost his car. Lost his wife.'],
+    ['B', 'That’s awful.'],
+    ['A', 'She’s at my house now. I don’t gamble, {B}. I just wait.'],
+  ] },
+  { tag: 'jokes', who: { A: ['harold', 'dolores', 'marvin', 'sal'] }, lines: [
+    ['A', 'I read the whole newspaper the other day. Every page.'],
+    ['B', 'The whole thing?'],
+    ['A', 'Took me three hours. You know what I learned?'],
+    ['B', 'What?'],
+    ['A', 'The newspaper is long.'],
+  ] },
+  { tag: 'jokes', who: { A: ['harold', 'dolores', 'marvin', 'sal'] }, lines: [
+    ['A', 'I was at a funeral last week.'],
+    ['B', 'Sorry to hear it.'],
+    ['A', 'Nice service. The priest gets up, says the fella was a great man, loved by everyone, never said a bad word about anybody. And I’m sitting there thinking.'],
+    ['B', 'Thinking what?'],
+    ['A', 'I’m at the wrong funeral. Stayed for the sandwiches, though. Those were his.'],
+  ] },
+  { tag: 'jokes', who: { A: ['harold', 'dolores', 'marvin', 'sal'] }, lines: [
+    ['A', 'You know what’s a good investment, {B}? Land. They’re not making any more of it.'],
+    ['B', 'That’s an old line.'],
+    ['A', 'It’s an old line because it’s true. Although. They did make Hawaii. Volcano’s still going. So that’s new land. So I’m wrong. Don’t buy land.'],
+  ] },
+  { tag: 'jokes', who: { A: ['harold', 'dolores', 'marvin', 'sal'] }, lines: [
+    ['A', 'I had a dog for eleven years.'],
+    ['B', 'What happened to him?'],
+    ['A', 'Nothing. I still have him. He’s at home. He’s eleven.'],
+    ['B', 'Then why did you say it like that?'],
+    ['A', 'I don’t know, {B}. I don’t know why I said it like that. It’s been bothering me too.'],
+  ] },
+  { tag: 'jokes', who: { A: ['harold', 'dolores', 'marvin', 'sal'] }, lines: [
+    ['A', 'Guy at work tells me he’s a self-made man.'],
+    ['B', 'Okay.'],
+    ['A', 'I said that’s a lot of responsibility. Because now if there’s anything wrong with you, there’s only the one guy to blame.'],
+    ['B', 'What did he say?'],
+    ['A', 'He didn’t like it. He’s a self-made man who gets upset easy. He made that part too.'],
+  ] },
+  { tag: 'jokes', who: { A: ['harold', 'dolores', 'marvin', 'sal'] }, lines: [
+    ['A', 'Fella told me the other day, life is short.'],
+    ['B', 'It is.'],
+    ['A', 'And I said no it isn’t. It’s the longest thing you’ll ever do. Everything else is shorter. The movie’s shorter. The drive’s shorter.'],
+    ['B', 'What did he say?'],
+    ['A', 'Nothing. We were at a red light. The light was shorter. He proved my point and drove off.'],
+  ] },
+  { tag: 'jokes', who: { A: ['harold', 'dolores', 'marvin', 'sal'] }, lines: [
+    ['A', 'I was thinking about the lottery.'],
+    ['B', 'Did you win?'],
+    ['A', 'No. I was thinking about it. That part’s free. Winning costs a dollar. So I’m up a dollar on every man who played.'],
+    ['B', 'That’s not how it works.'],
+    ['A', 'Tell that to my dollar, {B}. It’s right here. Where’s theirs.'],
+  ] },
+  { tag: 'jokes', who: { A: ['harold', 'dolores', 'marvin', 'sal'] }, lines: [
+    ['A', 'They say money can’t buy happiness.'],
+    ['B', 'Sure.'],
+    ['A', 'I’ve got neither, so I can’t check. But I notice the fellas who say it always have the money, and they keep saying it. So it must be holding up.'],
+  ] },
+  { tag: 'jokes', who: { A: ['harold', 'dolores', 'marvin', 'sal'] }, lines: [
+    ['A', 'My brother-in-law got a job as a night watchman.'],
+    ['B', 'Good for him.'],
+    ['A', 'Second night, somebody robbed the place.'],
+    ['B', 'Was he hurt?'],
+    ['A', 'No, he was asleep. Slept right through it. They gave him the day shift. He’s fine. Place got robbed again. He was at lunch. He’s got a knack, {B}.'],
+  ] },
+  { tag: 'jokes', who: { A: ['harold', 'dolores', 'marvin', 'sal'] }, lines: [
+    ['A', 'I went to the doctor. He says, you’ve got the body of a man half your age.'],
+    ['B', 'That’s good.'],
+    ['A', 'I said that’s good. He says, no. A man half your age who’s very sick. Then he charged me for the two of us.'],
+  ] },
+  { tag: 'jokes', who: { A: ['harold', 'dolores', 'marvin', 'sal'] }, lines: [
+    ['A', 'You know what I like about a hot dog, {B}?'],
+    ['B', 'What?'],
+    ['A', 'Nothing. I don’t like them. I was going to make a point and I lost it. You ever lose a point? It was right there. It was a good one. It was about mustard.'],
+  ] },
+  { tag: 'jokes', who: { A: ['harold', 'dolores', 'marvin', 'sal'] }, lines: [
+    ['A', 'A man comes up to me on the street. Says, do you know what time it is.'],
+    ['B', 'And?'],
+    ['A', 'I said yes. And I kept walking. He asked if I knew. I did know. I know most of the time what time it is, {B}. He didn’t ask me to share it.'],
   ] },
 
   // ---- after Skynet vaporises somebody: concern, briefly, then snacks ----------------------------

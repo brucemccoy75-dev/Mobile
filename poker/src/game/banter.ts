@@ -230,14 +230,14 @@ export class Banter {
         this.lastConvoEnd = now;
         return null;
       }
-      if (now - c.lastAt < 5200 || seat === actor) return null;
+      if (now - c.lastAt < 4400 || seat === actor) return null;
       if (!table.ids.has(c.a) || !table.ids.has(c.b) || this.gone.has(c.a) || this.gone.has(c.b)) {
         this.convo = null;
         return null;
       }
       return this.speakConvo(table);
     }
-    const quiet = now - this.lastAny > 3500 && now - this.lastConvoEnd > 40000;
+    const quiet = now - this.lastAny > 3500 && now - this.lastConvoEnd > 15000;
     const moment = ev.type === 'turn' || ev.type === 'handEnd' || ev.type === 'handStart' || (ev.type as string) === 'tick';
     if (quiet && moment && !bigPot) {
       // Somebody who has not said a word in a couple of minutes gets the floor.
@@ -248,7 +248,7 @@ export class Banter {
         if (said) return said;
       }
     }
-    if (!quiet || !moment || bigPot || !this.chance(ev.type === "handEnd" || ev.type === "handStart" ? 0.1 : 0.03)) return null;
+    if (!quiet || !moment || bigPot || !this.chance(ev.type === "handEnd" || ev.type === "handStart" ? 0.22 : 0.06)) return null;
     return this.startConversation(table, actor);
   }
 

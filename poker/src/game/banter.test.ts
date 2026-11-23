@@ -28,7 +28,7 @@ describe('lines', () => {
 describe('conversations', () => {
   it('are well formed and cover every theme', () => {
     const tags = new Set(CONVERSATIONS.map((c) => c.tag));
-    for (const t of ['office', 'ai', 'spouse', 'weather', 'sports', 'dnd', 'kill']) expect(tags.has(t as never), t).toBe(true);
+    for (const t of ['office', 'ai', 'spouse', 'weather', 'sports', 'dnd', 'kill', 'jokes']) expect(tags.has(t as never), t).toBe(true);
     expect(CONVERSATIONS.length).toBeGreaterThanOrEqual(40);
     for (const c of CONVERSATIONS) {
       expect(c.lines.length).toBeGreaterThanOrEqual(2);

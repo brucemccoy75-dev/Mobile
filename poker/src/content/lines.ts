@@ -389,6 +389,13 @@ export const LINES: Record<string, Line[]> = {
     L('idle', 'I have proposed three times. Hot air balloon, Celtics game, bridge. I am running out of places that are high up.'),
     L('idle', 'Nobody say the word balloon. Nobody say the word ring. Nobody say Celtics. Just deal.', 'tilted'),
     L('targetChecks', 'You checked, {target}? That is what she did. At the restaurant. She just... checked. Her phone. For four hours.'),
+    // Sideways one-liners, said like facts.
+    L('idle', 'I bought a cordless drill. Then I bought a cord for it. I like to have the option.'),
+    L('idle', 'My apartment has a “junk drawer.” The whole apartment. I live in the drawer.'),
+    L('idle', 'I have a fear of heights. Not all heights. Just the ones with me at the top.'),
+    L('idle', 'I put my keys in the same place every time. I just don’t know where that place is.'),
+    L('idle', 'I got a reusable bag. I’ve used it once. So far it’s a usable bag.'),
+    L('idle', 'A smoke detector is a very small, very loud roommate who only cares about toast.'),
   ],
 
   // ---- CALCULATORS ----------------------------------------------------------------------------
@@ -509,6 +516,13 @@ export const LINES: Record<string, Line[]> = {
     L('idle', 'Clown school, week six. The exam is a pie. I have a study plan for the pie.'),
     L('idle', 'Do not talk to me. Day nine was supposed to be the day. Day nine was not the day.', 'tilted'),
     L('targetChecks', 'A check, {target}. The chart says checking here is wrong. The chart says a lot of things are wrong. Mostly me.'),
+    // Will's version: the same thing, colder.
+    L('idle', 'I bought noise-cancelling headphones. They cancel the noise. The people are still there.'),
+    L('idle', 'My calendar sends me a reminder for the reminder. I’m two reminders from doing anything.'),
+    L('idle', 'I have a standing desk. It stands. I sit next to it. We’re both doing our part.'),
+    L('idle', 'They say sleep is important. I’ve laminated that. I keep it by the bed. I read it at three a.m.'),
+    L('idle', 'A password manager is a thing that remembers your passwords so you can forget it.'),
+    L('idle', 'I set my thermostat to “away.” I was home. Now the house thinks I’m lying.'),
   ],
   // Menafee never shows up and never speaks; people talk to the chair and it gets shown.
   ulrich: [],
@@ -562,6 +576,13 @@ export const LINES: Record<string, Line[]> = {
     L('idle', 'I applied at Market Basket. They said I need experience. For bagging. Experience. Bagging.'),
     L('idle', 'Does anyone know where the snacks went. I feel like there were more snacks.'),
     L('idle', 'Okay I am not mad. I am not mad. I am going to go check on the snacks and I am not mad.', 'tilted'),
+    // Jack's: sixteen and sincere about it.
+    L('idle', 'Sir, I got a job application and it asked for references. I put my mom. She said no. So I have zero references and one enemy.'),
+    L('idle', 'My driving instructor said “look where you want to go.” I looked at the Dairy Queen. We went to the Dairy Queen. I passed.'),
+    L('idle', 'I have a locker at school. It’s for books. I keep a sandwich in it. The books are in my backpack. The sandwich has a locker, respectfully.'),
+    L('idle', 'Chem test Friday. The teacher said study the periodic table. I did. It’s a table. It’s got elements on it. I feel ready.'),
+    L('idle', 'I asked for a raise at my job. I don’t have a job. I asked my dad. He said no. I’m going to ask again Friday. That’s how raises work, I think.'),
+    L('idle', 'My mom packs me a snack. She says it’s for after school. School is after school. Everything is. I eat it at nine.'),
   ],
   nadia: [
     L('dealtIn', 'Cards. Good. Everybody shut up and play. Not you, Jack, you are fine. Everyone else.'),

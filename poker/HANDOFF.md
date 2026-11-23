@@ -176,8 +176,9 @@ Sources, in the order the engine tries them:
    the claim is true depends on his cards, so a bluff comes with a lie and a value bet with the
    truth. Odds: facing a bet after the flop 22% (12% when folding), his own big move 12%, preflop
    4%. Trigger `thinking`. A man does not repeat his recent lines.
-5. **Conversations** (`conversations.ts`, 155 exchanges tagged office, ai, spouse, weather, sports,
-   dnd, kill): start only in quiet moments (1% per bot turn, 5% per hand end, 60 s after the last),
+5. **Conversations** (`conversations.ts`, 184 exchanges tagged office, ai, spouse, weather, sports,
+   dnd, kill, jokes): start in quiet moments (6% per bot turn or clock tick, 22% per hand start or
+   end, 15 s after the last; 4.4 s between lines),
    pairs weighted by `talk` and silence, pinned to particular men with `who`, stance-gated with
    `needs`. A running exchange has the floor: `say()` returns nothing except `termination` until it
    ends, and a big pot abandons it rather than pausing it. `{A}`, `{B}`, `{you}`, `{gone}`.
@@ -195,8 +196,9 @@ Rules that hold everywhere:
   a man may get a forced idle line. A test checks every survivor of twenty hands has spoken.
 - Menafee never speaks (`LINES.ulrich` is empty); exchanges pinned to him have empty B lines so the
   panel shows the chair with no caption. Nobody at the table ever remarks on it.
-- Volume lands around two and a half lines a minute in simulated nights (more in play, since
-  the clock tick adds talk while you think), mostly reactions to real plays.
+- Volume lands around three and a half lines a minute in simulated nights (more in play, since
+  the clock tick adds talk while you think): reactions to real plays plus the back-and-forth,
+  which is the fun part, so it is weighted up rather than down.
 - Tests require every trigger in the coverage list for every man, a tilted line each, 100+ lines
   per type, well-formed exchanges (A first, alternating), and the behaviours above.
 
@@ -223,6 +225,11 @@ allowed, no slurs. `{target}` and `{hand}` are substituted.
   clown school, failed proposals (balloon, Celtics game, bridge, thirty-slide deck), trying for
   children, Will's laminated plans.
 - **Menafee** (ulrich): the empty chair. People talk to it.
+- **The jokes** (tag `jokes`): two styles for the men short on lines. One-liners said like facts,
+  sideways and dead serious, pinned to Luca, Will and Jack as A (fourteen exchanges, plus six
+  `idle` lines each); and the long way round, slow deadpan stories with no punchline, pinned to
+  David Sr, Paul, Kevin and Jack as A (fifteen exchanges). The other man plays it straight and
+  gets nothing for it. All original; written in the manner, not quoted.
 - **Jack** (sal): sixteen, respectful trash talk ("sir", "respectfully"), school, driving, a job,
   where the snacks are. Never cast in unpinned "my wife" exchanges.
 - **David** (nadia): hothead, the castration policy for checking (`targetChecks`), hummus and
