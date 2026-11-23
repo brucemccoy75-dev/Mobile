@@ -164,7 +164,8 @@ export class TableScene implements Presenter {
     const w = Math.round(r.width);
     const h = Math.round(r.height);
     if (w <= 0 || h <= 0) return;
-    const fig0 = this.figures.get(this.pip.seat);
+    // The dealer is a figure too; his close-up follows the same portrait framing as the men.
+    const fig0 = this.pip.seat === -1 ? this.dealerFigure : this.figures.get(this.pip.seat);
     let pose = this.pip.seat === -1 ? closeUpOf(L.DEALER_POS) : seatPose(this.pip.seat);
     if (fig0?.portrait) {
       // A flat portrait standee reads best from closer in, squarely from the front.
@@ -382,7 +383,7 @@ export class TableScene implements Presenter {
     const dealer = new Figure('dealer', true);
     this.dealerFigure = dealer;
     dealer.group.position.copy(L.DEALER_POS);
-    dealer.group.position.y = 0.12;
+    dealer.group.position.y = 0.05;
     dealer.group.rotation.y = L.faceCentre(L.DEALER_POS);
     dealer.setScale(1.18 * this.equalise(L.DEALER_POS));
     this.scene.add(dealer.group);

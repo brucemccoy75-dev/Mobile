@@ -36,9 +36,9 @@ export const POT_LABEL_POS = new THREE.Vector3(0, 0, -0.98);
 export const BOARD_Z = 0.05;
 export const BOARD_SPACING = 0.98;
 export const BOARD_SCALE = 1.45;
-export const DEALER_POS = ellipse(DEALER_ANGLE, 1.2, 0);
+export const DEALER_POS = ellipse(DEALER_ANGLE, 1.14, 0);
 export const SNACK_POS = ellipse(SNACK_ANGLE, 1.22, 0);
-export const DEALER_PLATE_POS = ellipse(DEALER_ANGLE, 1.18, -0.1);
+export const DEALER_PLATE_POS = ellipse(DEALER_ANGLE, 1.14, -0.1);
 export const DEAL_ORIGIN = ellipse(DEALER_ANGLE, 0.92, 0.6);
 export const MUCK_POS = ellipse(DEALER_ANGLE, 0.7, 0.01);
 
