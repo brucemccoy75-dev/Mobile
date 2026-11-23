@@ -324,7 +324,7 @@ export class TableScene implements Presenter {
     dragonTex.anisotropy = 8;
     const dragon = new THREE.Mesh(
       new THREE.PlaneGeometry(7.4, 7.4 * (864 / 1536)),
-      new THREE.MeshStandardMaterial({ map: dragonTex, transparent: true, opacity: 0.82, roughness: 1, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 }),
+      new THREE.MeshStandardMaterial({ map: dragonTex, transparent: true, opacity: 0.55, roughness: 1, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 }),
     );
     dragon.rotation.x = -Math.PI / 2;
     dragon.position.set(0, 0.003, -0.1);

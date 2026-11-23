@@ -82,9 +82,11 @@ one and whenever the blinds go up, a result card mid-table at the end of each ha
 what, who won), and the speaker panel down the right side. Results screen, then back home.
 
 **The dragon.** `public/dragon.webp` (1536x864, keyed from a green-screen render the same way as
-the portraits, aspect kept) is a decal plane 7.4 units wide lying 3 mm above the felt under cards,
-chips and the button, shaded like the felt (`MeshStandardMaterial`, opacity 0.82, receives shadows).
-It shows in both room modes.
+the portraits, aspect kept, then remapped tone-on-tone: luminance only, into a band of felt greens
+from 0.62x to 1.35x the cloth colour, so the fire is a lighter green, not orange) is a decal plane
+7.4 units wide lying 3 mm above the felt under cards, chips and the button, shaded like the felt
+(`MeshStandardMaterial`, opacity 0.55, receives shadows). It is meant to be barely there; the
+original full-colour version was too loud behind the cards. It shows in both room modes.
 
 **The room.** A bright room drawn in 3D so it shares the table's perspective: a procedural
 light-oak plank floor (`plankTexture()`, a 1024 canvas of six staggered planks with grain and
