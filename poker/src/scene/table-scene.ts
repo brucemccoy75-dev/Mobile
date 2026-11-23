@@ -201,9 +201,9 @@ export class TableScene implements Presenter {
     for (const o of this.brightSet) o.visible = on;
     if (on) {
       // A bright room: warm off-white walls, the oak floor fading into them with distance.
-      this.scene.background = new THREE.Color(0xe9e3d7);
-      this.scene.fog = new THREE.Fog(0xe9e3d7, 10, 26);
-      this.renderer.toneMappingExposure = 1.0;
+      this.scene.background = new THREE.Color(0x6e665b);
+      this.scene.fog = new THREE.Fog(0x6e665b, 9, 24);
+      this.renderer.toneMappingExposure = 0.92;
     } else {
       this.scene.background = new THREE.Color(0x07100b);
       this.scene.fog = new THREE.Fog(0x07100b, 14, 30);
@@ -222,7 +222,7 @@ export class TableScene implements Presenter {
     for (let i = 0; i < planks; i++) {
       // Each plank is a column; a stagger line across it breaks the run.
       const tone = 0.9 + rng() * 0.18;
-      const base = `rgb(${Math.round(214 * tone)}, ${Math.round(183 * tone)}, ${Math.round(132 * tone)})`;
+      const base = `rgb(${Math.round(172 * tone)}, ${Math.round(138 * tone)}, ${Math.round(92 * tone)})`;
       g.fillStyle = base;
       g.fillRect(i * w, 0, w, c.height);
       // Grain: long faint streaks.
@@ -286,9 +286,9 @@ export class TableScene implements Presenter {
 
     // Dave's room: daylight from the windows on the right, a soft sky, and a floor that only
     // catches the table's shadow so the photo's planks show through.
-    const sky = new THREE.HemisphereLight(0xffffff, 0xd9c3a0, 0.95);
+    const sky = new THREE.HemisphereLight(0xfff6ea, 0x8c7352, 0.5);
     this.scene.add(sky);
-    const sun = new THREE.DirectionalLight(0xfff4e4, 1.5);
+    const sun = new THREE.DirectionalLight(0xffe9cc, 1.15);
     sun.position.set(7, 9, 4);
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
@@ -296,7 +296,7 @@ export class TableScene implements Presenter {
     sun.shadow.camera.left = sun.shadow.camera.bottom = -8;
     sun.shadow.camera.right = sun.shadow.camera.top = 8;
     this.scene.add(sun, sun.target);
-    const bounce = new THREE.DirectionalLight(0xfff0dc, 0.5);
+    const bounce = new THREE.DirectionalLight(0xfff0dc, 0.35);
     bounce.position.set(-5, 3, 8);
     this.scene.add(bounce);
     const planks = this.plankTexture();

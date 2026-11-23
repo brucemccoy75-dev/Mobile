@@ -88,11 +88,12 @@ from 0.62x to 1.35x the cloth colour, so the fire is a lighter green, not orange
 (`MeshStandardMaterial`, opacity 0.55, receives shadows). It is meant to be barely there; the
 original full-colour version was too loud behind the cards. It shows in both room modes.
 
-**The room.** A bright room drawn in 3D so it shares the table's perspective: a procedural
-light-oak plank floor (`plankTexture()`, a 1024 canvas of six staggered planks with grain and
-seams, repeated over a 48-unit plane), warm off-white walls as the background colour, and fog of
-the same colour from 10 to 26 units so the floor fades into the wall with no horizon line. Daylight:
-a bright hemisphere, a sun from the right with shadows, a bounce from your side. A photo backdrop
+**The room.** An evening-lit room drawn in 3D so it shares the table's perspective: a procedural
+medium-oak plank floor (`plankTexture()`, a 1024 canvas of six staggered planks with grain and
+seams, repeated over a 48-unit plane), dim warm-grey walls (0x6e665b) as the background colour, and
+fog of the same colour from 9 to 24 units so the floor fades into the wall with no horizon line.
+Light: a soft hemisphere, a warm key from the right with shadows, a bounce from your side, exposure
+0.92. It was first built bright and pale and darkened because the floor pulled the eye off the table. A photo backdrop
 was tried first and dropped because a level photo fought the table's downward perspective.
 Settings has "Dave's room" (`settings.room`, default on); off restores the dark room exactly
 (lamp, fog, dark floor). The commit before any room work is 7d3b223.
