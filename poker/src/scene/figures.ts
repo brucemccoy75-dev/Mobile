@@ -174,6 +174,7 @@ export class Figure {
       this.group.add(mesh);
       this.capsule.visible = false;
       if (this.folded) mat.opacity = 0.38;
+      this.applyTilt();
     }, undefined, () => {
       // No portrait for this character yet: keep the drawn figure.
     });
@@ -226,6 +227,24 @@ export class Figure {
     if (!this.portrait) return;
     const p = this.group.position;
     this.group.rotation.y = Math.atan2(cameraPosition.x - p.x, cameraPosition.z - p.z);
+  }
+
+  /** 0 = calm, 1 = steaming: the man flushes red as he tilts. */
+  private tilt = 0;
+
+  setTilt(t: number): void {
+    this.tilt = Math.max(0, Math.min(1, t));
+    this.applyTilt();
+  }
+
+  private applyTilt(): void {
+    const t = this.tilt;
+    // The portrait's own warm white, pulled toward red: green and blue drop, red stays.
+    const base = new THREE.Color(0xfff1e2);
+    const tinted = new THREE.Color(1, base.g * (1 - 0.62 * t), base.b * (1 - 0.72 * t));
+    if (this.portraitMaterial) this.portraitMaterial.color.copy(tinted);
+    this.faceMaterial.color.setRGB(1, 1 - 0.62 * t, 1 - 0.72 * t);
+    this.bodyMaterial.emissive.setRGB(0.35 * t, 0, 0);
   }
 
   /** Dim the figure when the player is out. */

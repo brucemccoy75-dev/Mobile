@@ -794,6 +794,8 @@ export class TableScene implements Presenter {
       const mood = ev.moods[s];
       const base: Expression = mood && mood.clarity >= 60 ? 'tilted' : 'neutral';
       this.moodBase.set(s, base);
+      // The red creeps in from clarity 25 and is full at 85.
+      if (mood) f.setTilt((mood.clarity - 25) / 60);
       if (outcome.badBeat) f.setExpression('shocked');
       else if (outcome.net < 0 && Math.abs(outcome.net) > 0.2 * Math.max(1, outcome.stackAfter)) f.setExpression('annoyed');
       else if (outcome.net > 0) f.setExpression('happy');

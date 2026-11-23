@@ -106,7 +106,8 @@ Stats run 0 to 100 and are hidden from the player. IQ is odds and position (belo
 thinking in ranges; low IQ adds noise to his equity). Read is how much he uses your history once
 he has about 25 hands on you. Clarity is tilt: up on bad beats and big losses, down on wins and
 quiet hands; at 55 he switches to tilted lines, and every point cuts effective IQ and Read by up to
-half. `temper` multiplies tilt (David 2, Kevin 1.4). Types set the play style and how fast tilt
+half. `temper` multiplies tilt (David 2, Kevin 1.4). Tilt shows on the man himself: at each hand end
+`Figure.setTilt()` flushes his portrait red from clarity 25 (none) to 85 (full). Types set the play style and how fast tilt
 rises and falls (pros barely tilt, nits stay tilted).
 
 | id | name | type | IQ | Read | Clarity | talk | trash |
