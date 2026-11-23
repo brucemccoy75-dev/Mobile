@@ -98,6 +98,12 @@ export class Overlay {
     return a.el;
   }
 
+  /** Re-anchors a plate (seat -1 is the dealer's) to a new world point. */
+  movePlate(seat: number, pos: THREE.Vector3): void {
+    const a = this.anchored.get(seat === -1 ? 'plateDealer' : `plate${seat}`);
+    if (a) a.pos.copy(pos);
+  }
+
   plate(seat: number, pos: THREE.Vector3, name: string, stack: number, offsetY = 0): void {
     const el = seat === 0 ? this.meEl : this.anchor(`plate${seat}`, pos, 'plate', offsetY);
     if (seat === 0) el.className = 'plate me';

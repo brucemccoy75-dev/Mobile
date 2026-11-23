@@ -43,6 +43,8 @@ export class TableScene implements Presenter {
   private levelChanged = false;
   private puffTexture: THREE.CanvasTexture | null = null;
   private pendingResult: (() => Promise<void>) | null = null;
+  /** Where a plate hangs on a standee, in the figure's own units: just above where the portrait fades out. */
+  private readonly plateLocal = new THREE.Vector3(0, 0.5, 0.02);
   private shownHands = new Map<number, { cards: Card[]; description: string }>();
   private payouts = new Map<number, number>();
   /** The picture-in-picture camera and what it is looking at. */
@@ -437,12 +439,17 @@ export class TableScene implements Presenter {
     const dt = this.lastFrame ? Math.min(100, t - this.lastFrame) : 16;
     this.lastFrame = t;
     this.tweens.tick(dt);
-    for (const f of this.figures.values()) {
+    for (const [seat, f] of this.figures) {
       if (!f.group.visible) continue;
       f.tick(t);
       f.faceCamera(this.camera.position);
+      // The plate sits tight over the faded foot of the standee, so it draws the clean bottom line.
+      if (f.portrait) this.overlay.movePlate(seat, f.group.localToWorld(this.plateLocal.clone()));
     }
-    this.dealerFigure?.faceCamera(this.camera.position);
+    if (this.dealerFigure) {
+      this.dealerFigure.faceCamera(this.camera.position);
+      if (this.dealerFigure.portrait) this.overlay.movePlate(-1, this.dealerFigure.group.localToWorld(this.plateLocal.clone()));
+    }
     this.overlay.update(this.camera, STAGE_W, STAGE_H);
     this.renderer.render(this.scene, this.camera);
     this.renderInset();
@@ -456,9 +463,9 @@ export class TableScene implements Presenter {
         for (const s of ev.seats) {
           this.figureFor(s.seat, s.id);
           this.seatNames.set(s.seat, s.name);
-          this.overlay.plate(s.seat, L.platePos(s.seat), s.name, s.stack, 26);
+          this.overlay.plate(s.seat, L.platePos(s.seat), s.name, s.stack, 0);
         }
-        this.overlay.dealerPlate(L.DEALER_PLATE_POS, DEALER_NAME, 26);
+        this.overlay.dealerPlate(L.DEALER_PLATE_POS, DEALER_NAME, 0);
         this.overlay.setInfo({ level: ev.level, handNumber: 0 });
         return;
       case 'handStart':
