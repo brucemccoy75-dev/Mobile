@@ -98,8 +98,8 @@ export class Overlay {
     return a.el;
   }
 
-  plate(seat: number, pos: THREE.Vector3, name: string, stack: number): void {
-    const el = seat === 0 ? this.meEl : this.anchor(`plate${seat}`, pos, 'plate', 0);
+  plate(seat: number, pos: THREE.Vector3, name: string, stack: number, offsetY = 0): void {
+    const el = seat === 0 ? this.meEl : this.anchor(`plate${seat}`, pos, 'plate', offsetY);
     if (seat === 0) el.className = 'plate me';
     el.innerHTML = `<div class="tag"></div><div class="pos"></div><div class="name"></div><div class="stack"></div>`;
     el.querySelector('.name')!.textContent = name;
@@ -109,8 +109,8 @@ export class Overlay {
   }
 
   /** The dealer's plate: a name and a DEALER badge, no stack. Keyed at seat -1 so the glow works. */
-  dealerPlate(pos: THREE.Vector3, name: string): void {
-    const el = this.anchor('plateDealer', pos, 'plate dealer', 0);
+  dealerPlate(pos: THREE.Vector3, name: string, offsetY = 0): void {
+    const el = this.anchor('plateDealer', pos, 'plate dealer', offsetY);
     el.innerHTML = `<div class="tag"></div><div class="pos show">DEALER</div><div class="name"></div>`;
     el.querySelector('.name')!.textContent = name;
     el.dataset.seat = '-1';
@@ -129,6 +129,7 @@ export class Overlay {
     tag.textContent = text;
     tag.className = `tag ${kind}`;
     tag.classList.toggle('show', text.length > 0);
+    el.classList.toggle('tagged', text.length > 0);
   }
 
   /** Table position badge: BTN, SB, BB, UTG, HJ, CO. Empty hides it. */

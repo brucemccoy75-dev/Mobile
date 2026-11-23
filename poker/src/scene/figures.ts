@@ -222,7 +222,7 @@ export class Figure {
   tick(timeMs: number): void {
     const phase = timeMs / 1000 + this.hash % 7;
     const breathe = Math.sin(phase * 1.6) * 0.012;
-    this.group.scale.y = 1 + breathe;
+    this.group.scale.y = this.baseScale * (1 + breathe);
     const lean = this.folded ? -0.14 : this.expression === 'thinking' ? 0.12 : this.expression === 'tilted' ? 0.06 : 0;
     this.group.rotation.x += (lean - this.group.rotation.x) * 0.08;
     this.head.rotation.y = Math.sin(phase * 0.7) * 0.08 + (this.expression === 'thinking' ? Math.sin(phase * 2.3) * 0.05 : 0);
@@ -241,6 +241,14 @@ export class Figure {
     if (!this.portrait) return;
     const p = this.group.position;
     this.group.rotation.y = Math.atan2(cameraPosition.x - p.x, cameraPosition.z - p.z);
+  }
+
+  /** Uniform size of the whole figure; the breathing animation moves around it. */
+  private baseScale = 1;
+
+  setScale(k: number): void {
+    this.baseScale = k;
+    this.group.scale.setScalar(k);
   }
 
   /** 0 = calm, 1 = steaming: the man flushes red as he tilts. */

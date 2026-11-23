@@ -20,19 +20,20 @@ export function ellipse(angleDeg: number, k: number, y = 0): THREE.Vector3 {
 }
 
 export const seatAngle = (seat: number) => SEAT_ANGLES[seat];
-/** The two seats beside you sit a touch closer in so they stay in frame. */
-export const figurePos = (seat: number) => ellipse(seatAngle(seat), seat === 1 || seat === 5 ? 1.24 : 1.34, 0);
-export const holePos = (seat: number) => ellipse(seatAngle(seat), 0.72, 0.012);
+export const figurePos = (seat: number) => ellipse(seatAngle(seat), 1.34, 0);
+/** Your cards sit well onto the felt; the other men's small cards tuck in by the rail. */
+export const holePos = (seat: number, tucked = false) => ellipse(seatAngle(seat), tucked ? 0.86 : 0.72, 0.012);
 export const betPos = (seat: number) => ellipse(seatAngle(seat), 0.46, 0);
 export const buttonPos = (seat: number) => ellipse(seatAngle(seat) - 16, 0.62, 0.01);
-export const platePos = (seat: number) => ellipse(seatAngle(seat), seat === 1 || seat === 5 ? 0.9 : 1.17, 0.02);
+/** Plates hang from the base of the bust (the screen offset puts them just under the rail line). */
+export const platePos = (seat: number) => ellipse(seatAngle(seat), 1.3, -0.1);
 
 export const POT_POS = new THREE.Vector3(0, 0, -0.95);
 export const POT_LABEL_POS = new THREE.Vector3(0, 0, -0.42);
 export const BOARD_Z = 0.3;
 export const BOARD_SPACING = 0.72;
 export const DEALER_POS = ellipse(DEALER_ANGLE, 1.36, 0);
-export const DEALER_PLATE_POS = ellipse(DEALER_ANGLE, 1.17, 0.02);
+export const DEALER_PLATE_POS = ellipse(DEALER_ANGLE, 1.32, -0.1);
 export const DEAL_ORIGIN = ellipse(DEALER_ANGLE, 0.92, 0.6);
 export const MUCK_POS = ellipse(DEALER_ANGLE, 0.7, 0.01);
 

@@ -6,7 +6,7 @@ import { HUMAN_SEAT, type Presenter, type TableEvent } from '../game/table';
 import { type Overlay } from '../ui/overlay';
 import { CardMesh } from './cards';
 import { ChipStack } from './chips';
-import { Director, closeUpOf, seatPose } from './director';
+import { Director, TABLE_VIEW, closeUpOf, seatPose } from './director';
 import { STAGE_H, STAGE_W, type Stage } from '../ui/stage';
 import { type Expression, Figure } from './figures';
 import * as L from './layout';
@@ -65,7 +65,7 @@ export class TableScene implements Presenter {
 
     this.scene.background = new THREE.Color(0x07100b);
     this.scene.fog = new THREE.Fog(0x07100b, 14, 30);
-    this.camera = new THREE.PerspectiveCamera(48, 1, 0.1, 60);
+    this.camera = new THREE.PerspectiveCamera(40, 1, 0.1, 60);
     this.director = new Director(this.camera);
 
     this.buildRoom();
@@ -165,8 +165,9 @@ export class TableScene implements Presenter {
     if (fig0?.portrait) {
       // A flat portrait standee reads best from closer in, squarely from the front.
       const f = fig0.group.position;
+      const k = fig0.group.scale.x;
       const toCentre = new THREE.Vector3(-f.x, 0, -f.z).normalize();
-      pose = { pos: f.clone().add(toCentre.multiplyScalar(1.75)).setY(1.4), look: new THREE.Vector3(f.x, 1.22, f.z) };
+      pose = { pos: f.clone().add(toCentre.multiplyScalar(1.75 * k)).setY(1.4 * k), look: new THREE.Vector3(f.x, 1.22 * k, f.z) };
     }
     this.pipCamera.aspect = r.width / r.height;
     this.pipCamera.updateProjectionMatrix();
@@ -202,11 +203,11 @@ export class TableScene implements Presenter {
     if (on) {
       // A bright room: warm off-white walls, the oak floor fading into them with distance.
       this.scene.background = new THREE.Color(0x6e665b);
-      this.scene.fog = new THREE.Fog(0x6e665b, 9, 24);
+      this.scene.fog = new THREE.Fog(0x6e665b, 16, 32);
       this.renderer.toneMappingExposure = 0.92;
     } else {
       this.scene.background = new THREE.Color(0x07100b);
-      this.scene.fog = new THREE.Fog(0x07100b, 14, 30);
+      this.scene.fog = new THREE.Fog(0x07100b, 18, 36);
       this.renderer.toneMappingExposure = 1.05;
     }
   }
@@ -364,7 +365,7 @@ export class TableScene implements Presenter {
     dealer.group.position.copy(L.DEALER_POS);
     dealer.group.position.y = 0.05;
     dealer.group.rotation.y = L.faceCentre(L.DEALER_POS);
-    dealer.group.scale.setScalar(1.18);
+    dealer.setScale(1.18 * this.equalise(L.DEALER_POS));
     this.scene.add(dealer.group);
   }
 
@@ -395,6 +396,12 @@ export class TableScene implements Presenter {
     return mesh;
   }
 
+  /** Scale that makes a figure at `p` the same size on screen as one at the far seat. */
+  private equalise(p: THREE.Vector3): number {
+    const ref = L.figurePos(2).distanceTo(TABLE_VIEW.pos);
+    return (p.distanceTo(TABLE_VIEW.pos) / ref) * 1.3;
+  }
+
   private figureFor(seat: number, id: string): Figure {
     let f = this.figures.get(seat);
     if (f) return f;
@@ -403,6 +410,8 @@ export class TableScene implements Presenter {
     f.group.position.copy(p);
     f.group.position.y = -0.1;
     f.group.rotation.y = L.faceCentre(p);
+    // Every bust lands the same height on screen: scale with distance from the fixed camera.
+    f.setScale(this.equalise(p));
     f.group.visible = seat !== HUMAN_SEAT;
     f.group.userData.seat = seat;
     this.scene.add(f.group);
@@ -447,9 +456,9 @@ export class TableScene implements Presenter {
         for (const s of ev.seats) {
           this.figureFor(s.seat, s.id);
           this.seatNames.set(s.seat, s.name);
-          this.overlay.plate(s.seat, L.platePos(s.seat), s.name, s.stack);
+          this.overlay.plate(s.seat, L.platePos(s.seat), s.name, s.stack, 26);
         }
-        this.overlay.dealerPlate(L.DEALER_PLATE_POS, DEALER_NAME);
+        this.overlay.dealerPlate(L.DEALER_PLATE_POS, DEALER_NAME, 26);
         this.overlay.setInfo({ level: ev.level, handNumber: 0 });
         return;
       case 'handStart':
@@ -721,18 +730,21 @@ export class TableScene implements Presenter {
   }
 
   private async deal(seat: number, cards: Card[]): Promise<void> {
-    const pos = L.holePos(seat);
+    const bot = seat !== HUMAN_SEAT;
+    const pos = L.holePos(seat, bot);
     const yaw = L.cardYaw(pos);
     const side = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
     const meshes: CardMesh[] = [];
     for (let i = 0; i < cards.length; i++) {
-      const m = new CardMesh(seat === HUMAN_SEAT ? cards[i] : null);
+      const m = new CardMesh(bot ? null : cards[i]);
+      // Other men's cards are small and tucked by the rail; yours are full size.
+      if (bot) m.group.scale.setScalar(0.62);
       m.group.position.copy(L.DEAL_ORIGIN);
       m.group.rotation.y = yaw + 0.6;
       this.scene.add(m.group);
       meshes.push(m);
       this.audio.play('deal', 0.8);
-      const target = pos.clone().add(side.clone().multiplyScalar((i - 0.5) * 0.4));
+      const target = pos.clone().add(side.clone().multiplyScalar((i - 0.5) * (bot ? 0.24 : 0.4)));
       target.y += i * 0.004;
       const from = L.DEAL_ORIGIN.clone();
       const startYaw = m.group.rotation.y;
