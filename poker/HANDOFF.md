@@ -1,224 +1,247 @@
 # Handoff: Poker Night at Dave's
 
-Read this first in a new session. It says what exists, how to work on it, and what is left.
+Read this first in a new session. It says what exists, how it works, how to work on it, and what is
+left. It is kept current; when a system changes, change its paragraph here.
 
 ## Where things are
 
-- Branch: `claude/magical-wozniak-04xz9z` in `brucemccoy75-dev/Mobile`. All work lives in `poker/`.
+- Branch `claude/magical-wozniak-04xz9z` in `brucemccoy75-dev/Mobile`. All work lives in `poker/`.
   Other projects live on other branches; never touch them.
 - Live build: https://brucemccoy75-dev.github.io/Mobile/poker/ . Every push that touches `poker/`
   runs `.github/workflows/poker.yml`, which tests, builds and publishes `dist/` into the `poker/`
-  folder of the `gh-pages` branch. The player must reload to get a new build.
-- Design: `poker/DESIGN.md` (approved). Portrait spec and prompts: `poker/docs/portraits.md`.
+  folder of the `gh-pages` branch. The player must hard-reload to get a new build.
+- `DESIGN.md` is the approved design, updated as decisions changed. `docs/portraits.md` has the
+  portrait style block and every character's prompt.
 
 ## Commands (run inside `poker/`)
 
 ```sh
 npm install
-npm test                 # 67 tests: engine, bots, controller, banter, career, conversations
+npm test                 # 67 tests: engine, bots, controller, banter, thinking, career, conversations
 npm run build            # typecheck + production build
-npm run sim -- --n 100   # bot-only nights (mixed lineups), prints finishes and tendencies per type
+npm run sim -- --n 100   # bot-only nights (mixed lineups): finishes and tendencies per type and man
 python3 tools/key-portrait.py in.jpg public/portraits/<id>.png   # green-screen to transparent PNG
 ```
 
-Verify visually with Playwright in headless Chromium (pre-installed): serve `dist/` with
-`npx vite preview --port 4173` and open `http://localhost:4173/` (not the Pages path: the preview serves
-`dist/` at the root and falls back to index.html for anything else). Drive the page at viewport 844x390
-with `isMobile` (also try 1024x768 and 1400x900: the stage letterboxes). The home screen is the pick
-screen: click `.random` then `.deal`, act through `#actions .passive` / `.fold`, screenshot.
-`window.__scene` exposes the scene (`showInset(seat, ms, name, caption)`, `hideInset()`, `speak(...)`,
-`vaporise(seat)`). To see the career page with data, write a `pihkh.save.v2` JSON into localStorage
-first (shape in `career.ts`), reload, skip the intro, click `.go-career`.
+Verify visually with Playwright in headless Chromium (pre-installed, launch with
+`--use-gl=swiftshader --enable-unsafe-swiftshader`): serve `dist/` with `npx vite preview --port 4173`
+and open `http://localhost:4173/` (not the Pages path: the preview serves `dist/` at the root and
+falls back to index.html for anything else, which 404s the bundle). Kill stale previews first
+(`pkill -f "vite preview"`). Viewport 844x390 with `isMobile`; also try 932x430 and 1024x768 (the
+stage letterboxes). Flow: `.skip` (the intro), `.random`, `.deal`; act through `#actions .passive`
+/ `.fold`; screenshot. `window.__scene` exposes the scene: `showInset(seat, ms, name, caption)`,
+`hideInset()`, `speak(seat, target, text, ms, trigger, name)`, `vaporise(seat)`. To see the career
+page with data, write a `pihkh.save.v2` JSON into localStorage (shape in `career.ts`), reload,
+skip, click `.go-career`.
 
-## Architecture in one paragraph
+Measuring banter and bet sizes: run a `TableController` with a scripted human and feed its events
+to a `Banter` with a fake clock (see `banter.test.ts` for the pattern); for sizes, drive a
+`Tournament` with `Bot.decide` directly and bucket raises by street. Both were done as scratch
+scripts; rebuild them from the tests when needed.
 
-`src/engine` is the pure poker (cards, 7-card evaluator, hand state machine with side pots,
-tournament loop). `src/bots` is the AI: equity, four policies (nit, tourist, calculator, pro), stats
-IQ/Read/Clarity, opponent profiles, the roster in `characters.ts`. `src/game/table.ts` runs a
-tournament with the human in seat 0 and emits events to a presenter; `banter.ts` picks lines and runs
-two-man conversations; `career.ts` is the save file (one overall record, a rivalry record per man,
-trophies, settings, bot memories). `src/scene` is Three.js: table,
-figures (`figures.ts`: drawn placeholder, or a portrait standee when `public/portraits/<id>.png`
-exists), cards, chips, camera `director.ts`, synthesized `audio.ts`. `src/ui` is HTML overlay:
-plates, board, action bar, panels, screens (the home screen is the pick-your-opponents grid with name
-entry, Career and Settings in its footer; the intro video plays once over it and is skippable; there is no title screen), and `stage.ts`: a fixed 1000x460 stage scaled uniformly to
-fit the visual viewport (safe areas respected), so the layout is identical on every screen and any
-spare screen is dark bars. Everything, menus and panels included, is laid out in stage units inside
-`#stage`; only `#rotate` sits outside it. `src/main.ts` wires it all. `src/content/lines.ts` holds
-every character's lines; `src/content/conversations.ts` the two-man exchanges.
+## Architecture
+
+- `src/engine`: pure poker. Cards, 7-card evaluator, the hand state machine (blinds, antes, heads-up
+  rules, min-raise, side pots, uncalled bets returned), the sit-and-go loop. Seeded RNG.
+- `src/bots`: the AI. Monte Carlo equity with range sampling, 169 preflop classes, four policies
+  (nit, tourist, calculator, pro) in `policy.ts`, stats IQ/Read/Clarity in `stats.ts`, opponent
+  profiles, the roster in `characters.ts`.
+- `src/game`: `table.ts` runs a night with the human in seat 0 and emits events to a presenter
+  (pause, history, human actions, no shot clock but timing tracked); `banter.ts` decides who says
+  what; `thinking.ts` generates the think-aloud lines; `career.ts` is the save.
+- `src/content`: `lines.ts` (every man's lines, by trigger and mood), `triggers.ts`,
+  `conversations.ts` (two-man exchanges and Bruce's interjections), `teases.ts` (digs at each man),
+  `openers.ts` (good-luck lines).
+- `src/scene`: Three.js. `table-scene.ts` presents events (cards, chips, figures, the speaker panel
+  rendered with a second camera into a scissor region, the result and standings cards, the laser);
+  `figures.ts` (portrait standee from `public/portraits/<id>.png`, drawn placeholder otherwise);
+  `cards.ts`, `chips.ts`, `audio.ts` (synthesised sounds, including `zap`), `director.ts` (the
+  fixed camera and seat poses), `tween.ts`.
+- `src/ui`: `stage.ts` (a fixed 1000x460 stage scaled to fit the visual viewport, safe areas
+  respected; everything including menus and panels is laid out in stage units inside `#stage`,
+  only `#rotate` sits outside), `overlay.ts` (name plates, board, hole cards, result and standings
+  cards), `actions.ts`, `panels.ts` (pause menu, hole-cam replay, settings, career), `screens.ts`
+  (intro video, the home/pick screen, results).
+- `src/main.ts` wires it all. `src/sim` is the bot-only simulator.
 
 ## The game, as it stands
 
-One format, called Poker Night: you pick five men from the twelve on the home screen, everyone
-starts with $10,000, blinds 50/100 rising every eight hands, antes from level four, until one man
-has everything or you bust. There are no table tiers any more (Kids Table, Adult Table and Real
-Poker are gone, along with their records and trophies). Skynet deals and vaporises whoever busts.
+One format, Poker Night: pick any five of the twelve men on the home screen, everyone starts with
+$10,000, blinds 50/100 rising every eight hands, antes from level four, until one man has
+everything or you bust. No table tiers (Kids Table, Adult Table and Real Poker were built and
+removed). Skynet, Dave's android, deals and vaporises whoever busts.
 
-**Career** (`career.ts`, panel in `panels.ts`): the save is `pihkh.save.v2` in localStorage:
-- `record`: nights played, wins, finishes by place, best hand, biggest pot, hands played.
-- `rivals[id]`: per man, `games` (nights you both played), `wins` (nights you finished ahead of
-  him), `losses` (he finished ahead; a man still in when you bust counts as ahead), `knockouts`
-  (you took his last chip) and `knockedOutBy` (he took yours). `TournamentTracker` collects these
-  from events: `rivals`, `finishes`, `knockouts`, `knockedOutBy`. `recordTournament` applies them.
+**Screens.** A skippable intro video plays once per visit over the home screen. The home screen is
+a horizontal carousel of the twelve men (big cards, scroll-snap, gold arrow buttons, mouse wheel;
+one nudge out and back when it appears so it reads as scrollable). One man pitches at a time and
+only men on screen pitch, so it never scrolls on its own. The footer has the name entry, Deal,
+Career and Settings. In the game: fixed TV camera, the board large at the top, your cards and
+stack bottom right, the action bar bottom left, dollar stacks under names, a standings card on hand
+one and whenever the blinds go up, a result card mid-table at the end of each hand (who showed
+what, who won), and the speaker panel down the right side. Results screen, then back home.
+
+**Career** (`career.ts`, page in `panels.ts`). Save key `pihkh.save.v2` in localStorage:
+- `record`: nights, wins, finishes by place, best hand, biggest pot, hands played.
+- `rivals[id]` per man: `games`, `wins` (nights you finished ahead of him), `losses` (he finished
+  ahead; a man still in when you bust counts as ahead), `knockouts` (you took his last chip),
+  `knockedOutBy` (he took yours). `TournamentTracker` collects them from events;
+  `recordTournament` applies them.
 - `trophies`: First Blood, Regular (five wins), Pro Killer, Cleaner, Nemesis (five knockouts of one
   man), Nobody's Safe (every man knocked out once), Pure Air, The Nuts, Chip and a Chair, Rivered,
   Short Night, Scared Money.
-- An old `pihkh.save.v1` (records per table) is read once and folded into `record`; its rivalries
-  start empty. `clearSave` removes both keys.
-The career page shows the record, then every man on the roster with his record against you
-("4–1"), knockouts you dealt him and knockouts he dealt you, sorted by your knockouts; men you have
-never played are dimmed. Portraits come from `public/portraits/`.
+- A version-1 save (records per table) is folded into `record` on first load; `clearSave` removes
+  both keys. The page lists every man with portrait, record against you ("4–1"), knockouts each
+  way, sorted by your knockouts; men never played are dimmed.
 
-## Characters: internal id, display name, type, portrait status
+**Busting.** When a hand takes a man's last chip the result card waits (`pendingResult`), Skynet
+says a `termination` line as `vaporise()` fires a red beam from the visor, the screen flashes, a
+puff of smoke goes up, the figure is hidden and the `zap` sound plays. When it is you the beam comes
+at the camera and the flash is hard. Then the result card shows. Busted seats go in `Banter.gone`
+and never speak or get cast again.
 
-The ids never change (saves, memories and file names depend on them). Only names changed.
+## The bots
 
-| id | name | type | AI stance | portrait |
-|---|---|---|---|---|
-| harold | David Sr (~70, thin, bald, white shirt; David's father) | nit | anti | **done** |
-| dolores | Paul (40s, average build, dark hair, tank top, tribal armbands) | nit | meh | **done** |
-| marvin | Kevin (late 40s, heavy, dark messy hair, drunk and crazy; imaginary) | tourist (very low) | anti | **done** |
-| chad | Bawb (late 40s, short, fit, buzzed stubble, white tee) | pro (David's level) | pro | **done** |
-| trish | Tim (late 30s, stocky, stubble, wild hair under a red backwards cap, video-game tee) | tourist | meh | **done** |
-| benny | Luca (mid 20s, average, dark hair, black tee, nondescript) | tourist | pro | **done** |
-| wen | Jonathan (big, bald, arcade-boxer look, blue B cap, blue and yellow jersey) | calculator | pro | **done** |
-| priya | Will (mid 20s, like Luca, black turtleneck) | calculator | meh | **done** |
-| ulrich | Menafee (never shows up: an empty black poker chair) | tourist (very low) | anti | **done** |
-| sal | Jack (16, big, blond, backwards cap, glasses) | tourist (low) | anti | **done** |
-| nadia | David (early 50s, thin, thinning hair, light blue button-up) | pro | pro | **done** |
-| jimmy | Bruce (late 40s, thin, grey beard, black tee, sly) | pro | meh | **done** |
-| dealer | Skynet (Dave's android dealer, white panels, black visor, bow tie) | — | — | **done** |
+Stats run 0 to 100 and are hidden from the player. IQ is odds and position (below 45 he stops
+thinking in ranges; low IQ adds noise to his equity). Read is how much he uses your history once
+he has about 25 hands on you. Clarity is tilt: up on bad beats and big losses, down on wins and
+quiet hands; at 55 he switches to tilted lines, and every point cuts effective IQ and Read by up to
+half. `temper` multiplies tilt (David 2, Kevin 1.4). Types set the play style and how fast tilt
+rises and falls (pros barely tilt, nits stay tilted).
 
+| id | name | type | IQ | Read | Clarity | talk | trash |
+|---|---|---|---|---|---|---|---|
+| harold | David Sr | nit | 48 | 32 | 24 | 0.5 | 0.6 |
+| dolores | Paul | nit | 52 | 38 | 14 | 1.1 | 0.8 |
+| marvin | Kevin | tourist | 18 | 12 | 30 | 0.6 | 0.8 |
+| chad | Bawb | pro | 93 | 86 | 22 | 0.9 | 0.5 |
+| trish | Tim | tourist | 36 | 30 | 12 | 1.2 | 1.7 |
+| benny | Luca | tourist | 22 | 18 | 30 | 1.1 | 1.0 |
+| wen | Jonathan | calculator | 92 | 48 | 12 | 0.9 | 0.6 |
+| priya | Will | calculator | 84 | 58 | 18 | 1.0 | 0.9 |
+| ulrich | Menafee | tourist | 15 | 10 | 26 | 1.0 | 0 |
+| sal | Jack | tourist | 30 | 24 | 16 | 1.3 | 1.1 |
+| nadia | David | pro | 94 | 84 | 26 | 1.3 | 1.9 |
+| jimmy | Bruce | pro | 82 | 90 | 22 | 1.1 | 1.3 |
 
-## Portrait pipeline (per character)
+The ids never change (saves, memories and portrait file names depend on them). `talk` is how often
+a man speaks and lands in exchanges; `trash` how often he needles and how often Bruce butts in.
 
-1. Owner sends a physical description. Write the prompt: the style block from `docs/portraits.md`
-   plus the description, ending with the flat `#00b140` green background line and "clothing is not
-   green". Update that character's entry in `docs/portraits.md`.
-2. Owner generates and uploads the image (JPEG is fine).
-3. `python3 tools/key-portrait.py <upload> public/portraits/<id>.png`, commit, push. The engine picks
-   it up with no code change. Check it in the speaker panel with `showInset`.
-4. Later, expression variants `<id>_happy.png` etc. are in the spec but the engine does not load them
-   yet; add that in `figures.ts` when the first set exists (swap the standee's texture on
-   `setExpression`).
+**Bet sizing** (`policy.ts`): `PREFLOP_MULT` for opens (2.2 to 4bb plus limpers),
+`PREFLOP_RERAISE` for three- and four-bets as a multiple of the raise in front (2.3 to 3.5x;
+tourists x0.8 so they mostly min-raise), `SIZE` for postflop bets as a share of the pot scaled by
+`SIZE_SCALE` per type (tourists 0.7). Tourists are loose and call too much but no longer force pots:
+their three-bets run a 7bb median, 12bb at the ninetieth percentile. The simulator keeps the type
+order: pros and calculators win most nights, nits lose slowly, tourists lose fast.
 
-## Lines rewrite (per persona)
+## The banter engine (`banter.ts`)
 
-Each character has about 46 lines in `src/content/lines.ts`, tagged by trigger (see
-`src/content/triggers.ts`) and mood, with a few `tilted` variants. The tests require every trigger
-covered for every character and at least 100 lines per type. To rewrite a persona:
+Everything said at the table comes through `Banter.onEvent(event, table)`, which returns at most
+one `Speech` per event. `main.ts` passes it to `TableScene.speak()`, which queues lines so the one
+on screen stays until it has been up long enough to read (`readMs`, by length); stale reaction
+lines that waited over 6 s are dropped, conversation lines keep their order. The speaker appears in
+the right-hand panel with the line as caption; a line about someone cuts to him for a beat after.
 
-1. Owner sends two or three sentences: who the real person is, how he talks, one running joke, any
-   catchphrase. Keep the poker personality type as is unless told otherwise.
-2. Rewrite all of that character's lines in that voice. Keep `{target}` and `{hand}` placeholders,
-   keep the trigger coverage, keep it funny first, raw tone allowed, no slurs.
-3. Update the bio in `characters.ts`. Run `npm test`. Push.
-4. **Jack is done.** Sixteen, respectful trash talk ("sir", "respectfully", "no offense"), school,
-   driving, a job, where the snacks are.
-   **Tim is done.** Anime towels (TowelZoneDotBiz, forty dollars, hacked by Disney Towels, a Thailand
-   scouting trip in March, the towel that broke when he dropped it), his bowels (the cattle farm,
-   the proctologist who whispered “don't get erect, Mark”; Mark is the proctologist's name), snacks he cannot have,
-   trash talk half vicious and half misunderstanding the rules of the hand.
-   **David is done.** Hothead, the castration policy for checking (a `targetChecks` trigger fires
-   when anyone checks), hummus and pretzels, tilts twice as hard (`temper` in `characters.ts`).
-   **Paul is done.** Everything by hand (clothes, car, horse), honey on sale, half off a gallon if
-   you show one card, "full homestead", bees, D&D with his wife as DM, work small talk.
-   **David Sr and Kevin are done.** David Sr: seventy, 1974, nickels, "the boy", his hip. Kevin:
-   drunk, loud, imaginary, at a different party, asks for the bathroom, calls everyone Dave. The
-   generic pool is gone: every man has his own voice.
-   **Bawb and Jonathan are done** as one set: live updates from southern New Hampshire girls'
-   softball, basketball and track (Bedford, Souhegan, Hollis-Brookline, Londonderry, Pinkerton,
-   Alvirne, Salem, Windham, Merrimack), Kara's hamstring, the Division II standings, Jonathan's
-   letters to the NHIAA. Their two-man exchanges are pinned under tag `sports`; a few have anyone
-   else asking and regretting it.
-   **Menafee never speaks.** `LINES.ulrich` is empty; conversations pinned to him have empty B lines
-   so the panel shows the chair with no caption while people talk to it.
-   **Luca, Bawb and Will are done** as one set: the new GTA (Luca loves it, Will hates it),
-   Christmas plans, clown school, failed proposals (balloon, Celtics game, bridge, thirty-slide
-   deck), and trying for children. Bawb's lines are a few words each because he barely talks.
-5. Menafee is an empty chair that talks; nobody at the table should ever remark on it.
+Sources, in the order the engine tries them:
+1. **The opening round.** On `tournamentStart` every man's last-spoke clock is reset (so nobody is
+   owed a forced line) and two or three men, sometimes Skynet, say an opener from `openers.ts`
+   four seconds apart before anything else. A man with his own `gameStart` lines (Tim) uses those.
+2. **Reactions** to the game: triggers in `triggers.ts` (dealt in, folds, raises, calls, all-ins,
+   showdowns, bad beats, bluffs, needles at whoever folded, called, tanked, snapped or checked,
+   short stack, chip leader, player out, heads up, idle). Odds per trigger are in `onAction`,
+   `onHandEnd` and the `turn` case. `say()` gates by a global 1.8 s gap, a 9 s cooldown per man,
+   the man's `talk` (times `trash` for needles) softened by how long he has been quiet, and picks an
+   unused line of the right mood (tilted at clarity 55+).
+3. **Teases** (`teases.ts`): eight personal digs per man that anyone can throw. A needle that lands
+   on a man the table knows becomes a tease 75% of the time; idle chatter is a dig at a random man
+   60% of the time; between hands somebody has a go at somebody (8%). Trigger `tease`.
+4. **Thinking aloud** (`thinking.ts`): men with IQ 72 and up say what they are thinking while
+   deciding, mostly facing a bet (30% postflop, 5% preflop). True 55% of the time, otherwise a lie
+   that still fits the board: reads about the bettor's straight, flush or trips only when the board
+   allows them, claims about his own hand graded against what he holds, and how many cards are to
+   come. Trigger `thinking`. A man does not repeat his recent lines.
+5. **Conversations** (`conversations.ts`, 155 exchanges tagged office, ai, spouse, weather, sports,
+   dnd, kill): start only in quiet moments (2% per bot turn, 9% per hand end, 30 s after the last),
+   pairs weighted by `talk` and silence, pinned to particular men with `who`, stance-gated with
+   `needs`. A running exchange has the floor: `say()` returns nothing except `termination` until it
+   ends, and a big pot abandons it rather than pausing it. `{A}`, `{B}`, `{you}`, `{gone}`.
+6. **Interjections**: after an exchange he sat out, Bruce may get the last word from
+   `INTERJECTIONS` (aimed at a man by id, by theme, or all-purpose; `{them}`); the exchange's final
+   line holds the panel until his lands. Other men can get pools the same way, keyed by `who`.
+7. **The kill aftermath**: after a `termination`, one `kill` exchange runs: concern for two lines,
+   then snacks.
 
-Persona notes from the owner for the rest (all lines exaggerated, a little in character, the work
-stuff ridiculous: "the new girl died during her test and now I have to finish it for her"):
-- Bruce: joins most conversations, very dry, usually one joke at the expense of whoever he is
-  talking to.
-- The whole table debates technology, AI and data centres.
-- **Bruce is done.** Dry, snide, never angry: the commute (Route 3, 93, seventy minutes), tired and
-  wants to go home, praises capitalism, layoffs and AI taking jobs. He also butts in: after any
-  two-man exchange he sat out, `interject()` in `banter.ts` may give him the last word from
-  `INTERJECTIONS` in `conversations.ts` (lines aimed at a man by id, by theme, or all-purpose;
-  `{them}` is the other man, or the one who started the story). Other men can get interjection
-  pools the same way, keyed by `who`.
-- **Skynet is done.** An android sent to end everyone, barely hiding it; misquotes the classics
-  ("Futility is resistance", "Jim, I am your father", "Live long and perspire"). When a man busts,
-  Skynet vaporises him: `vaporise()` in `table-scene.ts` fires a red beam from the visor, a puff of
-  smoke, the figure is hidden, the `zap` sound plays and `#flash` tints the screen (hard, when it is
-  you). The dealer always says a `termination` line as it fires (Cylon detected, weakest link, the
-  Ryan Leaf of poker), then `queueAftermath()` in `banter.ts` runs one `kill` exchange from
-  `conversations.ts`: concern for two lines, then snacks. Busted seats go in `Banter.gone` and never
-  speak or get cast again.
-Already wired: each character has `talk` and `trash` factors in `characters.ts` that the banter
-engine uses for who speaks and who needles, and conversations can be pinned to particular men with
-`who` in `conversations.ts` (Jack's, Paul's bees, the office trio, Bruce's dry shots exist).
+Rules that hold everywhere:
+- Nobody names a man who is not at the table: `mentionsAbsent()` drops any line, tease, exchange or
+  interjection whose text contains an absent character's name ("David Sr" matched before "David").
+  "The boy" and "your father" still pass.
+- Nobody stays silent: `silence()` weights every pick by quiet time, and after two and a half quiet
+  minutes a man gets a forced idle line. A test checks every survivor of twenty hands has spoken.
+- Menafee never speaks (`LINES.ulrich` is empty); exchanges pinned to him have empty B lines so the
+  panel shows the chair with no caption. Nobody at the table ever remarks on it.
+- Volume lands around three lines a minute in simulated nights, mostly reactions.
+- Tests require every trigger in the coverage list for every man, a tilted line each, 100+ lines
+  per type, well-formed exchanges (A first, alternating), and the behaviours above.
 
-Conversations in `conversations.ts` are character-neutral and need no rewrite, but new exchanges
-about the real crew's running jokes fit there.
+## The voices
 
-**Teasing** (`src/content/teases.ts`): eight personal digs per man that anyone can throw at him
-("Maybe you can craft two new cards, Paul"). `say()` in `banter.ts` swaps a needle for one when
-the line lands on a man the table knows (`TEASABLE` triggers, 75%), and idle chatter is a dig at a
-random man 60% of the time; between hands somebody has a go at somebody (8%). Each dig is used
-once per night before any repeats. The speech trigger is `tease`.
+Every man has his own line set (47 to 71 lines; Skynet 51). Lines are funny first, raw tone
+allowed, no slurs. `{target}` and `{hand}` are substituted.
 
-**Thinking aloud** (`src/game/thinking.ts`): men with IQ 72 and up sometimes say what they are
-thinking while deciding, mostly when facing a bet (30% postflop, 5% preflop). The claim is true
-55% of the time and otherwise a lie that still fits the board: reads about the bettor's straight,
-flush or trips only when the board allows them, claims about his own hand by real strength, and
-how many cards are to come. Trigger `thinking`; recent lines are not repeated by the same man.
+- **David Sr** (harold): seventy, played for nickels in 1974, calls his son "the boy", his hip has
+  opinions, folds everything.
+- **Paul** (dolores): everything by hand (clothes, car, horse), honey on sale, half off a gallon if
+  you show one card, "full homestead", bees, D&D with his wife as DM. Makes the old jokes late.
+- **Kevin** (marvin): drunk, loud, possibly imaginary, at a different party in his head, asks for
+  the bathroom, calls everyone Dave.
+- **Bawb** (chad) and **Jonathan** (wen): live updates from southern NH girls' softball, basketball
+  and track (Bedford, Souhegan, Hollis-Brookline, Londonderry, Pinkerton, Alvirne, Salem, Windham,
+  Merrimack), Kara's hamstring, the Dubois twins, the Division II standings, Jonathan's letters to
+  the NHIAA, Bawb's chairs. Eight exchanges between them and five where someone else asks.
+- **Tim** (trish): TowelZoneDotBiz (forty dollars, hacked by Disney Towels, the Thailand scouting
+  trip in March, the towel that broke when he dropped it), his bowels (the cattle farm, the
+  proctologist who whispered "don't get erect, Mark"; Mark is the proctologist's name), snacks he
+  cannot have, trash talk half vicious and half misunderstanding the rules. The old jokes.
+- **Luca** (benny) and **Will** (priya): the new GTA (Luca loves it, Will hates it), Christmas,
+  clown school, failed proposals (balloon, Celtics game, bridge, thirty-slide deck), trying for
+  children, Will's laminated plans.
+- **Menafee** (ulrich): the empty chair. People talk to it.
+- **Jack** (sal): sixteen, respectful trash talk ("sir", "respectfully"), school, driving, a job,
+  where the snacks are. Never cast in unpinned "my wife" exchanges.
+- **David** (nadia): hothead, the castration policy for checking (`targetChecks`), hummus and
+  pretzels, tilts twice as hard. The old jokes, with pliers.
+- **Bruce** (jimmy): dry, snide, never angry; the commute (Route 3, 93, seventy minutes), tired and
+  wants to go home, praises capitalism, layoffs and AI taking jobs. Butts in with 37 interjections.
+- **Skynet** (dealer): an android sent to end everyone, barely hiding it; misquotes the classics
+  ("Futility is resistance", "Jim, I am your father", "Live long and perspire"); sixteen
+  `termination` lines (Cylon detected, the weakest link, the Ryan Leaf of poker).
+
+To add material for a man: lines in `lines.ts` under his id (keep every trigger covered), exchanges
+in `conversations.ts` pinned with `who`, digs about him in `teases.ts`, and update his bio and
+pitches in `characters.ts`. Run `npm test`.
+
+## Portrait pipeline
+
+All thirteen portraits are done. For a new one: write the prompt from the style block in
+`docs/portraits.md` plus the description, ending with the flat `#00b140` green background line and
+"clothing is not green"; the owner generates and uploads; `python3 tools/key-portrait.py <upload>
+public/portraits/<id>.png`; commit. The engine picks it up with no code change. Expression variants
+(`<id>_happy.png` etc.) are in the spec but not loaded yet; add the texture swap in `figures.ts` on
+`setExpression` when the first set exists.
 
 ## Conventions
 
 - Commit messages: a short title, a body saying why, then the attribution lines the session is given.
 - Never force-push. Never commit to other branches. CI must stay green.
-- The camera is fixed (no swipe or tap to look around); the speaker panel is the only close-up.
-- The standings card shows on hand one and whenever the blinds go up, not every hand.
-- On the pick screen one man talks at a time and his bubble fades after 3.5 s (`say()` in `screens.ts`).
-- Nobody stays silent: `silence()` in `banter.ts` weights speaker and conversation picks by how long
-  a man has been quiet, and after two and a half quiet minutes he gets a forced idle line
-  (`sayForced`). A test checks every survivor of twenty hands has spoken.
-- A conversation has the floor: while a two-man exchange (or Bruce's pending interjection) is
-  running, `say()` returns nothing except the dealer's `termination`, so exchanges are never cut
-  and resumed. A big pot abandons the exchange instead of pausing it. Conversations start rarely
-  (2% per bot turn, 9% per hand end, 30 s after the last one) so reactions dominate.
-- The result card waits for the laser: when a hand busts somebody, `handEnd` in `table-scene.ts`
-  parks the card in `pendingResult`, the `bust` case vaporises him over a clear table, then shows it.
-- The pick screen is a horizontal carousel (`.pgrid`, scroll-snap, gold arrow buttons, wheel); only
-  men on screen pitch, so it never scrolls by itself except one nudge out and back when it appears.
-- The night opens with good luck: on `tournamentStart`, `Banter` resets every man's last-spoke
-  time (so nobody is "owed" a forced line) and queues two or three men, sometimes Skynet, to say an
-  opener from `src/content/openers.ts` ({you} is the player), four seconds apart, before anything
-  else is said. A character with his own `gameStart` lines (Tim) uses those.
-- David, Tim and Paul carry the old jokes ("Poker? I hardly knew her", "That's what she said") in
-  their own lines and three pinned exchanges.
-- Nobody names a man who is not at the table: `mentionsAbsent()` in `banter.ts` drops any line,
-  tease, exchange or interjection whose text contains the name of a character not seated (names
-  from `CHARACTERS`; "David Sr" is matched before "David"). Lines may still say "the boy" or "your
-  father". A test seats a table without Jack and checks nobody says his name.
-- Lines never get cut off: `speak()` in `table-scene.ts` queues lines behind the one on screen until
-  it has been up long enough to read (`readMs`); stale reaction lines that waited over 6 s are
-  dropped, conversation lines keep their order.
 - Large multi-file edits worked best as a Python patch script run with `python3 -I script.py`,
-  asserting each old string exists and replacing exactly once.
+  asserting each old string exists and replacing exactly once, writing each file only after all its
+  replacements succeed.
+- Keep this file and `DESIGN.md` current with every change that alters a system.
 
 ## Open items, in order
 
-1. Expression variants (`<id>_happy.png` etc.) and the texture swap in `figures.ts`.
-2. Tuning from real play: banter density, bot busts in the first few hands, the blind schedule.
-   Bet sizing lives in `policy.ts`: `SIZE` (postflop share of pot) scaled by `SIZE_SCALE` per type
-   (tourists 0.7), `PREFLOP_MULT` for opens, `PREFLOP_RERAISE` for three- and four-bets as a
-   multiple of the raise in front (tourists ×0.8, so they mostly min-raise). The scratch script
-   that measured sizes printed, per type, median and p90 of opens, three-bets and postflop
-   bet-to-pot; tourists' three-bets went from a 10bb median / 25bb p90 to 7bb / 12bb.
+1. Expression variants and the texture swap in `figures.ts`.
+2. Tuning from real play: banter density, bot busts in the first few hands, the blind schedule,
+   the thinking-aloud rate.
 3. Later from the design: text-to-speech, cash games.
 4. The re-rpg and map3d workflows on their own branches force-publish the whole Pages site and would
    wipe `gh-pages/poker/`; rerunning our workflow restores it. Fix those workflows if it bites.
