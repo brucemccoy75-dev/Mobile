@@ -35,6 +35,8 @@ export interface Settings {
   sound: boolean;
   /** 0 = silent table, 0.5 = less talk, 1 = normal. */
   banter: number;
+  /** Dave's room as the backdrop (daylight), or the old dark room with a lamp. */
+  room: boolean;
 }
 
 export interface Save {
@@ -87,7 +89,7 @@ export function emptySave(): Save {
     record: emptyRecord(),
     rivals: {},
     trophies: {},
-    settings: { sound: true, banter: 1 },
+    settings: { sound: true, banter: 1, room: true },
     memories: {},
   };
 }

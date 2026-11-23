@@ -81,6 +81,15 @@ stack bottom right, the action bar bottom left, dollar stacks under names, a sta
 one and whenever the blinds go up, a result card mid-table at the end of each hand (who showed
 what, who won), and the speaker panel down the right side. Results screen, then back home.
 
+**The room.** The backdrop is a photo of Dave's game room (`public/room.jpg`, 2048x1152: light
+oak planks, pool table edge at the left, windows on the right) drawn as `scene.background` and
+cropped to cover the viewport (`fitBackdrop()`: full width, ceiling cropped before floor; the
+speaker inset gets its own crop). In room mode the lamp, fog and dark floor are hidden and a
+daylight set shows: a bright hemisphere, a sun from the windows with shadows, a bounce, and a
+shadow-only floor so the table's shadow falls on the planks. Settings has "Dave's room"
+(`settings.room`, default on); off restores the old dark room exactly. The commit before the room
+is tagged `pre-room` (7d3b223) should it need reverting wholesale.
+
 **Career** (`career.ts`, page in `panels.ts`). Save key `pihkh.save.v2` in localStorage:
 - `record`: nights, wins, finishes by place, best hand, biggest pot, hands played.
 - `rivals[id]` per man: `games`, `wins` (nights you finished ahead of him), `losses` (he finished

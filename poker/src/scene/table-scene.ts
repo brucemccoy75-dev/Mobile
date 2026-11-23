@@ -178,7 +178,9 @@ export class TableScene implements Presenter {
     this.renderer.setScissorTest(true);
     this.renderer.setViewport(x, y, w, h);
     this.renderer.setScissor(x, y, w, h);
+    this.fitBackdrop(w / h);
     this.renderer.render(this.scene, this.pipCamera);
+    this.fitBackdrop(STAGE_W / STAGE_H);
     this.renderer.setScissorTest(false);
     if (fig && wasFolded) fig.setFolded(true);
     fig?.faceCamera(this.camera.position);
@@ -188,8 +190,52 @@ export class TableScene implements Presenter {
 
   // ---- building ----------------------------------------------------------------------------------
 
+  /** The two looks: Dave's room (a photo backdrop, daylight) and the dark room with a lamp. */
+  private darkSet: THREE.Object3D[] = [];
+  private brightSet: THREE.Object3D[] = [];
+  private roomTexture: THREE.Texture | null = null;
+  private roomOn = false;
+
+  setRoom(on: boolean): void {
+    this.roomOn = on;
+    for (const o of this.darkSet) o.visible = !on;
+    for (const o of this.brightSet) o.visible = on;
+    if (on) {
+      if (!this.roomTexture) {
+        const tex = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}room.jpg`);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        this.roomTexture = tex;
+      }
+      this.scene.background = this.roomTexture;
+      this.scene.fog = null;
+      this.renderer.toneMappingExposure = 1.0;
+    } else {
+      this.scene.background = new THREE.Color(0x07100b);
+      this.scene.fog = new THREE.Fog(0x07100b, 14, 30);
+      this.renderer.toneMappingExposure = 1.05;
+    }
+  }
+
+  /** Crops the backdrop to cover a viewport of the given aspect, keeping the floor and losing ceiling first. */
+  private fitBackdrop(aspect: number): void {
+    const tex = this.roomTexture;
+    if (!tex || !this.roomOn) return;
+    const image = 2048 / 1152;
+    if (aspect >= image) {
+      const ry = image / aspect;
+      tex.repeat.set(1, ry);
+      tex.offset.set(0, Math.max(0, (1 - ry) * 0.3));
+    } else {
+      const rx = aspect / image;
+      tex.repeat.set(rx, 1);
+      tex.offset.set((1 - rx) / 2, 0);
+    }
+  }
+
   private buildRoom(): void {
-    this.scene.add(new THREE.HemisphereLight(0xcfd8d2, 0x1a2a20, 0.35));
+    const hemi = new THREE.HemisphereLight(0xcfd8d2, 0x1a2a20, 0.35);
+    this.scene.add(hemi);
+    this.darkSet.push(hemi);
     const key = new THREE.SpotLight(0xfff1dc, 260, 30, 0.62, 0.55, 1.6);
     key.position.set(0.5, 9.5, 1.5);
     key.target.position.set(0, 0, 0);
@@ -198,12 +244,15 @@ export class TableScene implements Presenter {
     key.shadow.bias = -0.0004;
     key.shadow.radius = 4;
     this.scene.add(key, key.target);
+    this.darkSet.push(key);
     const fill = new THREE.DirectionalLight(0xbfd4ff, 0.5);
     fill.position.set(-6, 6, 8);
     this.scene.add(fill);
+    this.darkSet.push(fill);
     const rim = new THREE.DirectionalLight(0xffd9a8, 0.55);
     rim.position.set(0, 4, -10);
     this.scene.add(rim);
+    this.darkSet.push(rim);
     // Soft light from your side of the table so faces read from the front.
     const front = new THREE.DirectionalLight(0xfff2e0, 0.75);
     front.position.set(0, 3.5, 9);
@@ -217,6 +266,30 @@ export class TableScene implements Presenter {
     floor.position.y = -1.2;
     floor.receiveShadow = true;
     this.scene.add(floor);
+    this.darkSet.push(floor);
+
+    // Dave's room: daylight from the windows on the right, a soft sky, and a floor that only
+    // catches the table's shadow so the photo's planks show through.
+    const sky = new THREE.HemisphereLight(0xffffff, 0xd9c3a0, 0.95);
+    this.scene.add(sky);
+    const sun = new THREE.DirectionalLight(0xfff4e4, 1.5);
+    sun.position.set(7, 9, 4);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.bias = -0.0004;
+    sun.shadow.camera.left = sun.shadow.camera.bottom = -8;
+    sun.shadow.camera.right = sun.shadow.camera.top = 8;
+    this.scene.add(sun, sun.target);
+    const bounce = new THREE.DirectionalLight(0xfff0dc, 0.5);
+    bounce.position.set(-5, 3, 8);
+    this.scene.add(bounce);
+    const catcher = new THREE.Mesh(new THREE.CircleGeometry(22, 48), new THREE.ShadowMaterial({ opacity: 0.22 }));
+    catcher.rotation.x = -Math.PI / 2;
+    catcher.position.y = -1.2;
+    catcher.receiveShadow = true;
+    this.scene.add(catcher);
+    this.brightSet.push(sky, sun, bounce, catcher);
+    for (const o of this.brightSet) o.visible = false;
   }
 
   private buildTable(): void {
@@ -331,6 +404,7 @@ export class TableScene implements Presenter {
     }
     this.dealerFigure?.faceCamera(this.camera.position);
     this.overlay.update(this.camera, STAGE_W, STAGE_H);
+    this.fitBackdrop(STAGE_W / STAGE_H);
     this.renderer.render(this.scene, this.camera);
     this.renderInset();
   }

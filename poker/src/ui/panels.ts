@@ -150,6 +150,7 @@ export class Panels {
       <div class="eyebrow">Settings</div>
       <div class="stack">
         <label class="row toggle"><span>Sound</span><input type="checkbox" class="sound" ${s.sound ? 'checked' : ''}></label>
+        <label class="row toggle"><span>Dave’s room (off: the dark room)</span><input type="checkbox" class="room" ${s.room ? 'checked' : ''}></label>
         <label class="row toggle"><span>Table talk</span>
           <select class="banter"><option value="1" ${s.banter === 1 ? 'selected' : ''}>Normal</option><option value="0.5" ${s.banter === 0.5 ? 'selected' : ''}>Less</option><option value="0" ${s.banter === 0 ? 'selected' : ''}>Off</option></select></label>
         <button class="row danger reset">Reset career and bot memories</button>
@@ -157,10 +158,12 @@ export class Panels {
       </div>`);
     const apply = () => {
       s.sound = this.root.querySelector<HTMLInputElement>('.sound')!.checked;
+      s.room = this.root.querySelector<HTMLInputElement>('.room')!.checked;
       s.banter = Number(this.root.querySelector<HTMLSelectElement>('.banter')!.value);
       this.onSettings(s);
     };
     this.root.querySelector('.sound')!.addEventListener('change', apply);
+    this.root.querySelector('.room')!.addEventListener('change', apply);
     this.root.querySelector('.banter')!.addEventListener('change', apply);
     this.root.querySelector('.reset')!.addEventListener('click', () => {
       if (confirm('Wipe your career, trophies and what the bots remember about you?')) this.onReset();

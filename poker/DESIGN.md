@@ -135,7 +135,7 @@ Display: the speaker's close-up in the picture-in-picture panel down the right s
 
 ## 8. Visual direction
 
-- Broadcast look: dark room, warm pool of light on a green or blue felt, wooden rail, soft shadows, shallow depth of field on the camera cuts.
+- Dave's game room as built: a photo backdrop (light oak planks, pool table at the left, windows at the right) in daylight, green felt, wooden rail, the table's shadow on the floor. The original dark room with a lamp survives as a setting.
 - Cards: crisp, large, physically dealt and flipped. Chips stack and slide in animated bets.
 - Seats: portrait at each seat with expression states (neutral, thinking, pleased, annoyed, tilted, shocked). Placeholder: stylized procedural busts.
 - Overlays: minimal, clean, TV-graphics style name plates and pot readouts.

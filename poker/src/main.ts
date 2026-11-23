@@ -46,9 +46,11 @@ function speakerName(seat: number, table: TableController): string {
 function applySettings(): void {
   if (banter) banter.density = save.settings.banter;
   scene.audio.setEnabled(save.settings.sound);
+  scene.setRoom(save.settings.room);
   writeSave(save);
 }
 scene.audio.setEnabled(save.settings.sound);
+scene.setRoom(save.settings.room);
 
 panels.onSettings = applySettings;
 panels.onReset = () => {
