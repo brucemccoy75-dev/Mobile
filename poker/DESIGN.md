@@ -113,11 +113,11 @@ The comedy is the game's personality, so it gets the same care as the poker.
 
 Goal: 100+ lines per type, written in each character's voice, raw tone. Lines are tagged by **trigger** and **mood** (clarity band), and the game picks a matching unused line.
 
-Triggers (first pass): dealt in, folds preflop, raises, re-raises, calls big bet, goes all-in, wins without showdown, wins at showdown, loses at showdown, bad beat taken, bad beat given, bluff caught, bluff worked, you fold to them, you call them down, you stack them, they stack you, long tank by you, instant action by you, short-stacked, chip leader, new blind level, player eliminated, heads-up, idle chatter.
+**As built.** Every man has his own voice (47 to 71 lines each; the generic pool is gone). Beyond reactions to the game there are: a shared pool of personal digs about each man that anyone can throw ("Maybe you can craft two new cards, Paul"); think-aloud lines from the sharp players while they decide, true about half the time and otherwise a lie that still fits the board; 155 two-man exchanges about the office, AI and data centres, wives, NH weather, out-of-date Boston sports, D&D, Division II girls' sports and the aftermath of a laser; Bruce's dry last word on exchanges he sat out; an opening round of good-luck lines; and Skynet's termination lines. The engine and its rules are documented in `HANDOFF.md`.
 
-Rate limits keep it from being noisy: at most one speaker per action, a cooldown per character, and the table gets quieter in big pots. Dealer lines: deal announcements, action prompts, blind level changes, eliminations.
+Rate limits keep it from being noisy: at most one speaker per event, a cooldown per man, a running exchange holds the floor, big pots silence chatter, and nobody names a man who is not at the table. Around three lines a minute, mostly reactions.
 
-Display: speech bubble beside the speaker's seat, readable from the TV camera, 2–4 seconds.
+Display: the speaker's close-up in the picture-in-picture panel down the right side with the line as a caption, held until it has been read and never cut off by the next line.
 
 ---
 
