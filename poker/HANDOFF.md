@@ -75,7 +75,8 @@ removed). Skynet, Dave's android, deals and vaporises whoever busts.
 a horizontal carousel of the twelve men (big cards, scroll-snap, gold arrow buttons, mouse wheel;
 one nudge out and back when it appears so it reads as scrollable). One man pitches at a time and
 only men on screen pitch, so it never scrolls on its own. The footer has the name entry, Deal,
-Career and Settings. In the game: fixed TV camera, the board large at the top, your cards and
+Career and Settings. In the game: fixed TV camera, Skynet top centre with the five seats squeezed either side of him
+(three left, two right; angles in `layout.ts`), the board large at the top, your cards and
 stack bottom right, the action bar bottom left, dollar stacks under names, a standings card on hand
 one and whenever the blinds go up, a result card mid-table at the end of each hand (who showed
 what, who won), and the speaker panel down the right side. Results screen, then back home.
